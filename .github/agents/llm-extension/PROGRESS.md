@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `feat(llm): show token usage per assistant reply`
+- **Last commit:** `47f5fd1` — feat(llm): show token usage per assistant reply
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **Token/usage display:**
