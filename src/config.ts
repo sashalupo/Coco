@@ -182,6 +182,17 @@ export class ConversationStore {
     return this.memento.update(CONVERSATIONS_KEY, all);
   }
 
+  /** Rename a conversation by id. No-op when the id is not found. */
+  rename(id: string, title: string): Thenable<void> {
+    const all = this.getAll();
+    const idx = all.findIndex((c) => c.id === id);
+    if (idx < 0) {
+      return Promise.resolve();
+    }
+    all[idx] = { ...all[idx], title };
+    return this.memento.update(CONVERSATIONS_KEY, all);
+  }
+
   /** Clear all conversations. */
   clear(): Thenable<void> {
     return this.memento.update(CONVERSATIONS_KEY, []);

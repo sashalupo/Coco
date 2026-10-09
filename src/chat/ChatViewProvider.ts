@@ -135,6 +135,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "deleteConversation":
         this.deleteConversation(String(msg.id ?? ""));
         break;
+      case "renameConversation":
+        this.renameConversation(String(msg.id ?? ""), String(msg.title ?? ""));
+        break;
       case "export":
         void this.exportConversation();
         break;
@@ -242,6 +245,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.history = [];
       this.postMessage({ type: "clear" });
     }
+    this.pushHistory();
+  }
+
+  /** Rename a saved conversation by id and refresh the webview's dropdown. */
+  private renameConversation(id: string, title: string): void {
+    const trimmed = title.trim();
+    if (!id || !trimmed) {
+      return;
+    }
+    void this.conversationStore.rename(id, trimmed);
     this.pushHistory();
   }
 

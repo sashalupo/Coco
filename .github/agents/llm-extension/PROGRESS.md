@@ -15,8 +15,19 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `b62ea88` — feat(llm): regenerate last response (Retry button)
+- **Last commit:** `feat(llm): rename a saved conversation`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Rename conversation:**
+> - `config.ts`: `ConversationStore.rename(id, title)` — finds the conversation by id,
+>   updates its title, persists. No-op (resolved promise) when the id is not found.
+> - `ChatViewProvider`: new `renameConversation(id, title)` — trims the title, no-op when
+>   empty, calls `conversationStore.rename` then `pushHistory()` to refresh the dropdown.
+>   New `renameConversation` message handler.
+> - `webview.ts`: new `#conv-rename` button in the toolbar (before Delete). Shown only when
+>   a conversation is selected (toggled on both `change` and `restore`). Clicking prompts
+>   `prompt('Rename conversation:', currentTitle)` and posts `{type:'renameConversation',
+>   id, title}`. Cancel/empty is a no-op.
 
 > **Regenerate last response:**
 > - `ChatViewProvider`: extracted the request-build + streaming agentic loop out of

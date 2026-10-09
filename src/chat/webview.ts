@@ -390,6 +390,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		display: none;
 	}
 	#conv-delete:hover { color: var(--vscode-errorForeground, #f48771); border-color: var(--vscode-errorForeground, #f48771); }
+	#conv-rename {
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 2px;
+		color: var(--muted);
+		cursor: pointer;
+		padding: 2px 6px;
+		font-size: 11px;
+		display: none;
+	}
+	#conv-rename:hover { color: var(--fg); border-color: var(--focus); }
 	#export {
 		background: transparent;
 		border: 1px solid var(--border);
@@ -422,6 +433,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 		</span>
 		<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
+		<button id="conv-rename" title="Rename selected conversation">Rename</button>
 		<button id="conv-delete" title="Delete selected conversation">Delete</button>
 		<button id="export" title="Export conversation to Markdown">Export</button>
 		<button id="new-chat" title="Start a new conversation">New Chat</button>
@@ -458,6 +470,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
 		var newChatBtn = document.getElementById('new-chat');
 		var convSelect = document.getElementById('conv-select');
+		var convRename = document.getElementById('conv-rename');
 		var convDelete = document.getElementById('conv-delete');
 		var exportBtn = document.getElementById('export');
 
@@ -479,9 +492,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (vscode) { vscode.postMessage({ type: 'newChat' }); }
 		});
 		convSelect.addEventListener('change', function () {
-			convDelete.style.display = convSelect.value ? 'inline-block' : 'none';
+			var has = !!convSelect.value;
+			convRename.style.display = has ? 'inline-block' : 'none';
+			convDelete.style.display = has ? 'inline-block' : 'none';
 			if (streaming || !convSelect.value) { return; }
 			if (vscode) { vscode.postMessage({ type: 'switchConversation', id: convSelect.value }); }
+		});
+		convRename.addEventListener('click', function () {
+			if (streaming || !convSelect.value) { return; }
+			var current = convSelect.options[convSelect.selectedIndex].text;
+			var next = prompt('Rename conversation:', current);
+			if (next === null) { return; }
+			next = next.trim();
+			if (!next) { return; }
+			if (vscode) { vscode.postMessage({ type: 'renameConversation', id: convSelect.value, title: next }); }
 		});
 		convDelete.addEventListener('click', function () {
 			if (streaming || !convSelect.value) { return; }
@@ -811,8 +835,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						});
 						convSelect.innerHTML = opts.join('');
 						if (msg.activeId) { convSelect.value = msg.activeId; }
-						// Show the delete button only when a conversation is selected.
-						convDelete.style.display = convSelect.value ? 'inline-block' : 'none';
+						// Show the rename/delete buttons only when a conversation is selected.
+						var hasSel = !!convSelect.value;
+						convRename.style.display = hasSel ? 'inline-block' : 'none';
+						convDelete.style.display = hasSel ? 'inline-block' : 'none';
 					}
 					// Refresh the Retry button visibility for the restored conversation.
 					setStreaming(false);
