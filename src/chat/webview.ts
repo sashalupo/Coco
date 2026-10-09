@@ -261,6 +261,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	#send:hover { filter: brightness(1.1); }
 	#send:disabled { opacity: 0.5; cursor: default; }
+	#stop {
+		background: var(--vscode-inputValidation-errorBackground, #5a1d1a);
+		color: var(--btn-fg);
+		border: none;
+		border-radius: 4px;
+		padding: 6px 14px;
+		font-size: 13px;
+		cursor: pointer;
+		display: none;
+	}
+	#stop:hover { filter: brightness(1.15); }
 	#new-chat {
 		background: transparent;
 		color: var(--muted);
@@ -314,6 +325,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<div class="input-row">
 		<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
 		<button id="send">Send</button>
+		<button id="stop" title="Stop generating">Stop</button>
 	</div>
 
 	<script>window.__llmInitial = ${JSON.stringify(initialState)};</script>
@@ -328,6 +340,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var messagesEl = document.getElementById('messages');
 		var inputEl = document.getElementById('input');
 		var sendBtn = document.getElementById('send');
+		var stopBtn = document.getElementById('stop');
 		var contextIndicator = document.getElementById('context-indicator');
 		var ctxFile = document.getElementById('ctx-file');
 		var ctxSelection = document.getElementById('ctx-selection');
@@ -384,6 +397,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			}
 		}
 		sendBtn.addEventListener('click', doSend);
+		stopBtn.addEventListener('click', function () {
+			if (vscode) { vscode.postMessage({ type: 'stop' }); }
+		});
 		inputEl.addEventListener('keydown', function (e) {
 			if (e.key === 'Enter' && !e.shiftKey) {
 				e.preventDefault();
@@ -435,6 +451,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		};
 		window.setStreaming = function (streaming) {
 			sendBtn.disabled = !!streaming;
+			stopBtn.style.display = streaming ? 'inline-block' : 'none';
 		};
 
 		// --- Toolbar state access (used by S10) ---

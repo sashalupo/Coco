@@ -15,8 +15,20 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `cdaf498` — feat(llm): multiple conversations — switch between past sessions
+- **Last commit:** `feat(llm): stop generation — cancel an in-flight stream`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Stop generation (AbortController):**
+> - `ChatViewProvider`: new `abortController` field (null when idle). `handleSend` creates
+>   one per request and passes its `signal` into `streamOneTurn` → `client.chatStream(body,
+>   signal)`. The agentic loop checks `signal.aborted` between turns. On abort the catch
+>   block detects `signal.aborted` and posts `stream_end` (not an error); `finally` clears
+>   the controller. New `stop` message handler calls `abortController?.abort()`.
+> - `webview.ts`: new `#stop` button in the input row (hidden by default). `setStreaming`
+>   toggles its visibility alongside the Send button's disabled state. Clicking posts
+>   `{type:'stop'}` to the host.
+> - Net effect: the user can cancel a streaming response mid-flight; the partial answer is
+>   kept in history and the conversation is saved.
 
 > **Multiple conversations (Memento):**
 > - `config.ts`: `HistoryStore` (single `llm.history`) replaced by `ConversationStore`

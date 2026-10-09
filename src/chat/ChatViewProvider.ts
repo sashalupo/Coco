@@ -62,6 +62,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** ID of the currently active conversation. */
   private currentConvId: string;
 
+  /** Abort controller for the in-flight stream (null when idle). */
+  private abortController: AbortController | null = null;
+
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
 
@@ -127,6 +130,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "switchConversation":
         this.switchConversation(String(msg.id ?? ""));
+        break;
+      case "stop":
+        this.abortController?.abort();
         break;
       default:
         // Unknown message types are ignored for now.
@@ -293,6 +299,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     this.postMessage({ type: "stream_start", trimmed });
 
+    // Create an AbortController so the user can cancel mid-stream.
+    this.abortController = new AbortController();
+    const signal = this.abortController.signal;
+
     try {
       // Agentic loop: when tools are enabled, keep sending the request
       // while the assistant replies with tool_calls — executing each via
@@ -300,8 +310,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       // stops calling tools or the iteration cap is hit.
       let iterations = 0;
       for (;;) {
+        if (signal.aborted) {
+          break;
+        }
         const { content, reasoning, toolCalls } =
-          await this.streamOneTurn(body);
+          await this.streamOneTurn(body, signal);
         this.history.push(this.assistantMessage(content, reasoning, toolCalls));
 
         if (!settings.toolsEnabled || toolCalls.length === 0) {
@@ -341,8 +354,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       }
       this.postMessage({ type: "stream_end" });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.postMessage({ type: "error", message });
+      if (signal.aborted) {
+        // User-initiated stop — not an error.
+        this.postMessage({ type: "stream_end" });
+      } else {
+        const message = err instanceof Error ? err.message : String(err);
+        this.postMessage({ type: "error", message });
+      }
+    } finally {
+      this.abortController = null;
     }
     // Persist the updated conversation so it survives a VS Code restart.
     // Runs on both success and error paths so the user's message is never lost.
@@ -355,6 +375,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    */
   private async streamOneTurn(
     body: import("../request").ChatCompletionRequest,
+    signal?: AbortSignal,
   ): Promise<{
     content: string;
     reasoning: string;
@@ -363,7 +384,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     let content = "";
     let reasoning = "";
     let toolCalls: ToolCall[] = [];
-    for await (const chunk of this.client.chatStream(body)) {
+    for await (const chunk of this.client.chatStream(body, signal)) {
       if (chunk.done) {
         break;
       }
