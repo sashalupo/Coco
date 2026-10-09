@@ -807,11 +807,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       message = await this.generateCommitMessage(status, diff);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      vscode.window.showErrorMessage(`LLM: failed to generate commit message: ${msg}`);
+      vscode.window.showErrorMessage(
+        `LLM: failed to generate commit message: ${msg}`,
+      );
       return;
     }
     if (!message) {
-      vscode.window.showWarningMessage("LLM: the engine returned an empty commit message.");
+      vscode.window.showWarningMessage(
+        "LLM: the engine returned an empty commit message.",
+      );
       return;
     }
     // Approval gate: show the proposed message + the changed files.
@@ -829,7 +833,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const result = await this.toolExecutor.gitCommit(message);
     if (result.startsWith("Refusing to commit")) {
       vscode.window.showErrorMessage(result);
-    } else if (result.startsWith("Commit failed") || result.startsWith("Failed to stage")) {
+    } else if (
+      result.startsWith("Commit failed") ||
+      result.startsWith("Failed to stage")
+    ) {
       vscode.window.showErrorMessage(result);
     } else {
       vscode.window.showInformationMessage(result.split("\n")[0]);

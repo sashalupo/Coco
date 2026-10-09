@@ -911,16 +911,23 @@ function assert(cond, label) {
   // 8d) git_status + git_diff (Phase 10.1): real executor runs read-only git
   // commands in a temp git repo (the stubbed workspace root is editRoot).
   const { execSync } = require("child_process");
-  const git = (cmd) =>
-    execSync(cmd, { cwd: editRoot, stdio: "ignore" });
+  const git = (cmd) => execSync(cmd, { cwd: editRoot, stdio: "ignore" });
   git("git init -q");
   git('git config user.email "test@test.com"');
   git('git config user.name "Test"');
-  fs.writeFileSync(path.join(editRoot, "tracked.txt"), "line1\nline2\n", "utf8");
+  fs.writeFileSync(
+    path.join(editRoot, "tracked.txt"),
+    "line1\nline2\n",
+    "utf8",
+  );
   git("git add tracked.txt");
   git('git commit -q -m "init"');
   // Modify a tracked file and add an untracked one.
-  fs.writeFileSync(path.join(editRoot, "tracked.txt"), "line1\nline2\nline3\n", "utf8");
+  fs.writeFileSync(
+    path.join(editRoot, "tracked.txt"),
+    "line1\nline2\nline3\n",
+    "utf8",
+  );
   fs.writeFileSync(path.join(editRoot, "untracked.txt"), "new\n", "utf8");
 
   const gitStatus = await executor.execute({
@@ -941,10 +948,7 @@ function assert(cond, label) {
     type: "function",
     function: { name: "git_diff", arguments: "{}" },
   });
-  assert(
-    gitDiff.content.includes("+line3"),
-    "git_diff: shows added line",
-  );
+  assert(gitDiff.content.includes("+line3"), "git_diff: shows added line");
   assert(
     gitDiff.content.includes("tracked.txt"),
     "git_diff: names the changed file",
@@ -1134,14 +1138,8 @@ function assert(cond, label) {
     !isMutatingTool("search_files"),
     "approval: search_files is not mutating",
   );
-  assert(
-    !isMutatingTool("git_status"),
-    "approval: git_status is not mutating",
-  );
-  assert(
-    !isMutatingTool("git_diff"),
-    "approval: git_diff is not mutating",
-  );
+  assert(!isMutatingTool("git_status"), "approval: git_status is not mutating");
+  assert(!isMutatingTool("git_diff"), "approval: git_diff is not mutating");
   assert(
     !isMutatingTool("unknown_tool"),
     "approval: unknown tool is not mutating",

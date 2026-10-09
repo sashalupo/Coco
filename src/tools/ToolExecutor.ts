@@ -171,10 +171,7 @@ export class ToolExecutor {
         case "git_status":
           return this.gitStatus(call);
         case "git_diff":
-          return this.gitDiff(
-            call,
-            args.path ? String(args.path) : undefined,
-          );
+          return this.gitDiff(call, args.path ? String(args.path) : undefined);
         default:
           return this.result(call, `Unknown tool: ${name}`);
       }

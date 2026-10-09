@@ -12,9 +12,8 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 10 (git integration) complete** — all of PLAN.md (Phases 6–10) done
-- **Next step:** **none** — the PLAN.md roadmap (Phases 6–10) is complete. Await further
-  direction from the user before starting new work.
+- **Current phase:** **Phase 11 (sessions side panel)** — new roadmap phase added to PLAN.md
+- **Next step:** **11.2** — Conversation list in the panel (see PLAN.md, Phase 11)
 - **Last updated:** 2026-10-09
 - **Last commit:** `4b53d4e` — feat(llm): add git_status + git_diff tools (Phase 10.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
@@ -764,7 +763,7 @@ old, new)` which accumulates the net added/removed lines per file (a file edited
   its own changes. Added two read-only tools to `CODE_TOOLS` in `src/tools.ts`: `git_status`
   (no params) and `git_diff` (optional `path` to scope the diff). Both are read-only, so they are
   **not** added to `isMutatingTool` (no approval gate). `ToolExecutor.ts` gains a `runGit(call,
-  args)` helper that spawns `git` with a **fixed argv array** (never user-controlled shell text,
+args)` helper that spawns `git` with a **fixed argv array** (never user-controlled shell text,
   so there is no shell injection) in the first workspace folder, with a short timeout
   (`GIT_TIMEOUT_MS = 10_000`) and the existing output cap (`MAX_COMMAND_OUTPUT`). On exit 0 it
   returns the trimmed stdout (or `(no output)`); on non-zero it returns the exit code + stdout +
@@ -800,6 +799,19 @@ old, new)` which accumulates the net added/removed lines per file (a file edited
   echoes the message, a clean tree reports "No changes to commit", and a staged file containing a
   secret is refused with "Refusing to commit" and is **not** recorded in `git log`). **Phase 10
   complete — the full PLAN.md roadmap (Phases 6–10) is done.**
+- **11.1 — Sessions side-panel shell + toggle** (2026-10-09): added a collapsible left column
+  (`.side-panel`) to the webview with a "Sessions" header and an empty body placeholder
+  (`.side-panel-placeholder` = "No sessions yet"). The panel is **collapsed by default**
+  (`hidden` attribute). The body layout changed from a single column to a row: `body` is now
+  `flex-direction: row` and the existing toolbar/messages/indicators/input-row are wrapped in a
+  new `.main` column (`flex: 1 1 auto`, `min-width: 0`) so the chat area reflows when the panel
+  opens. A `#sessions-toggle` button (☰) was added at the left of the main toolbar; clicking it
+  toggles `sidePanel.hidden`, flips an `.active` class, and updates `aria-expanded`. New CSS
+  themes the panel with VS Code variables (`--vscode-sideBar-background`, themed border, muted
+  uppercase title). The panel body is an empty placeholder for now — the conversation list,
+  New/Export/Delete/Rename actions, and the quick new-conversation button arrive in 11.2–11.4.
+  Compiles clean; the built inline webview script passes `node --check`; smoke test unchanged
+  (173 assertions, all passing — the webview is not exercised by the smoke test).
 
 ## Steps — Phase 1 (one per session)
 
@@ -968,6 +980,32 @@ providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider
       `buildCodeActionPrompt` (language/path/code/diagnostics/selection present, stable order) and
       `parseCodeAction` (plain passthrough, fence strip, empty). _Accept: compiles; new assertions
       pass._
+
+## Steps — Phase 11 (one per session)
+
+Sessions side panel: move conversation-management controls (New Chat, Export, Delete, Rename)
+out of the main toolbar into a collapsible "Sessions" side panel. See PLAN.md, Phase 11.
+
+- [x] **11.1 — Side panel shell + toggle.** Add a collapsible left column (`.side-panel`) with a
+      "Sessions" header and a toggle button in the main toolbar. Default state: collapsed. The
+      panel body is an empty placeholder for now. _Accept: the toggle shows/hides the panel; the
+      chat area reflows; compiles._
+- [ ] **11.2 — Conversation list in the panel.** Replace the `#conv-select` dropdown with a
+      grouped list of conversations rendered inside the panel. Selecting a row makes it active and
+      posts `switchConversation`. _Accept: the list is populated from the `restore`/`pushHistory`
+      payload; clicking a row switches the active conversation; compiles._
+- [ ] **11.3 — Move New Chat / Export / Delete / Rename into the panel.** Remove the `#new-chat`,
+      `#export`, `#conv-delete`, and `#conv-rename` buttons from the main toolbar. Place a "New
+      Session" button at the top of the panel and Export / Delete / Rename actions for the
+      selected conversation. Reuse the existing message handlers unchanged. _Accept: all four
+      actions work from the panel; the old toolbar buttons are removed; compiles._
+- [ ] **11.4 — Quick "new conversation" button when collapsed.** Add a compact "new conversation"
+      button to the main toolbar visible only while the side panel is collapsed. _Accept: the
+      quick button is visible when collapsed and hidden when the panel is open; it starts a new
+      conversation; compiles._
+- [ ] **11.5 — Polish + verify + record.** Match the reference UI styling, keep the panel usable
+      at the webview's narrow width, run the smoke test, and update `PROGRESS.md`. _Accept: the
+      panel matches the reference layout; smoke test green; `PROGRESS.md` in sync; committed._
 
 ## Decisions
 

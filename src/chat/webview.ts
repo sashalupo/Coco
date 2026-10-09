@@ -100,7 +100,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	body {
 		display: flex;
+		flex-direction: row;
+		height: 100vh;
+	}
+	.main {
+		flex: 1 1 auto;
+		display: flex;
 		flex-direction: column;
+		min-width: 0;
 		height: 100vh;
 	}
 
@@ -543,46 +550,104 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		font-size: 11px;
 	}
 	#export:hover { color: var(--fg); border-color: var(--focus); }
+
+	/* Sessions side panel (Phase 11.1) */
+	.side-panel {
+		flex: 0 0 220px;
+		width: 220px;
+		border-right: 1px solid var(--border);
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		background: var(--vscode-sideBar-background, var(--bg));
+	}
+	.side-panel[hidden] { display: none; }
+	.side-panel-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 8px;
+		border-bottom: 1px solid var(--border);
+	}
+	.side-panel-title {
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--muted);
+	}
+	.side-panel-body {
+		flex: 1 1 auto;
+		overflow-y: auto;
+		padding: 8px;
+	}
+	.side-panel-placeholder {
+		font-size: 11px;
+		color: var(--muted);
+		font-style: italic;
+	}
+	#sessions-toggle {
+		background: transparent;
+		color: var(--muted);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 2px 8px;
+		font-size: 11px;
+		cursor: pointer;
+	}
+	#sessions-toggle:hover { color: var(--fg); border-color: var(--focus); }
+	#sessions-toggle.active { color: var(--fg); border-color: var(--focus); }
 </style>
 </head>
 <body>
-	<div class="toolbar">
-		<label>Model
-			<select id="model-select">${modelOptions}</select>
-		</label>
-		<span id="model-manual-wrap">
-			<input id="model-manual" type="text" placeholder="model id" spellcheck="false">
-		</span>
-		<label>Thinking
-			<select id="thinking-select">${thinkingOptions}</select>
-		</label>
-		<label>Context
-			<select id="context-select">${contextOptions}</select>
-		</label>
-		<span class="ctx-toggles" title="Editor context injected into the request">
-			<label><input type="checkbox" id="ctx-file" checked>file</label>
-			<label><input type="checkbox" id="ctx-selection" checked>sel</label>
-			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
-		</span>
-		<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
-		<button id="conv-rename" title="Rename selected conversation">Rename</button>
-		<button id="conv-delete" title="Delete selected conversation">Delete</button>
-		<button id="export" title="Export conversation to Markdown">Export</button>
-		<button id="revert" title="Revert last file change">Revert</button>
-		<button id="new-chat" title="Start a new conversation">New Chat</button>
+	<div class="side-panel" id="side-panel" hidden>
+		<div class="side-panel-header">
+			<span class="side-panel-title">Sessions</span>
+		</div>
+		<div class="side-panel-body" id="side-panel-body">
+			<div class="side-panel-placeholder">No sessions yet</div>
+		</div>
 	</div>
 
-	<div id="messages" class="messages"></div>
+	<div class="main">
+		<div class="toolbar">
+			<button id="sessions-toggle" title="Toggle sessions panel" aria-expanded="false">☰</button>
+			<label>Model
+				<select id="model-select">${modelOptions}</select>
+			</label>
+			<span id="model-manual-wrap">
+				<input id="model-manual" type="text" placeholder="model id" spellcheck="false">
+			</span>
+			<label>Thinking
+				<select id="thinking-select">${thinkingOptions}</select>
+			</label>
+			<label>Context
+				<select id="context-select">${contextOptions}</select>
+			</label>
+			<span class="ctx-toggles" title="Editor context injected into the request">
+				<label><input type="checkbox" id="ctx-file" checked>file</label>
+				<label><input type="checkbox" id="ctx-selection" checked>sel</label>
+				<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
+			</span>
+			<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
+			<button id="conv-rename" title="Rename selected conversation">Rename</button>
+			<button id="conv-delete" title="Delete selected conversation">Delete</button>
+			<button id="export" title="Export conversation to Markdown">Export</button>
+			<button id="revert" title="Revert last file change">Revert</button>
+			<button id="new-chat" title="Start a new conversation">New Chat</button>
+		</div>
 
-	<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
-	<div id="step-indicator" class="step-indicator" hidden></div>
+		<div id="messages" class="messages"></div>
 
-	<div class="input-row">
-		<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
-		<button id="send">Send</button>
-		<button id="retry" title="Regenerate last response">Retry</button>
-		<button id="stop" title="Stop generating">Stop</button>
-	</div>
+		<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
+		<div id="step-indicator" class="step-indicator" hidden></div>
+
+		<div class="input-row">
+			<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+			<button id="send">Send</button>
+			<button id="retry" title="Regenerate last response">Retry</button>
+			<button id="stop" title="Stop generating">Stop</button>
+		</div>
 
 	<script>window.__llmInitial = ${JSON.stringify(initialState)};</script>
 	<script>
@@ -609,6 +674,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var convDelete = document.getElementById('conv-delete');
 		var exportBtn = document.getElementById('export');
 		var revertBtn = document.getElementById('revert');
+		var sidePanel = document.getElementById('side-panel');
+		var sessionsToggle = document.getElementById('sessions-toggle');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -655,6 +722,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		revertBtn.addEventListener('click', function () {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'revertLast' }); }
+		});
+		sessionsToggle.addEventListener('click', function () {
+			var open = sidePanel.hidden;
+			sidePanel.hidden = !open;
+			sessionsToggle.classList.toggle('active', open);
+			sessionsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 		});
 
 		function postToolbar() {
