@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S11
+- **Next step:** S12
 - **Last updated:** 2026-10-09
-- **Last commit:** S10 (wire toolbar)
+- **Last commit:** S11 (thinking + context UI)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -166,6 +166,14 @@ src/
   `reasoning_effort` + `enable_thinking`, context → token budget. `setToolbar` in the webview now
   handles the `__manual__` model case. Verified under plain Node: three toolbar states produce
   three distinct request bodies (model/effort/enable_thinking/budget all change correctly).
+- **S11 — thinking + context UI** (2026-10-09): the assistant message's `<details>` thinking block
+  now starts `hidden` (no empty blocks when thinking is `off`). `revealThinking` reveals + opens it
+  the first time `reasoning_content` streams in (so the user sees the thinking happen); `collapseThinking`
+  collapses it at rest on `stream_end`/`error` (collapsed by default, click to expand). The
+  context-trimmed indicator is shown via `setContextTrimmed(!!msg.trimmed)` on `stream_start` (the
+  `trimmed` flag comes from `buildRequestBody`'s history-trim) and hidden on `clear`. Verified in the
+  compiled output: thinking block starts hidden, reveal/collapse wired to delta/stream_end/error,
+  context indicator toggled on stream_start/clear.
 
 ## Steps — Phase 1 (one per session)
 
@@ -203,7 +211,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S10 — wire toolbar.** Model/Thinking/Context dropdowns update the override state and
       feed `request.ts` (model list from `/v1/models`, thinking → `reasoning_effort`, context → budget).
       _Accept: compiles; changing a dropdown changes the next request body._
-- [ ] **S11 — thinking + context UI.** Render `reasoning_content` as a collapsed thinking block;
+- [x] **S11 — thinking + context UI.** Render `reasoning_content` as a collapsed thinking block;
       show a "context trimmed" indicator when history was trimmed.
       _Accept: compiles; thinking block collapses/expands; indicator appears on trim._
 - [ ] **S12 — smoke test.** Manual test against the running ninfer engine: health, model list,

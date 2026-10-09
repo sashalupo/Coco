@@ -328,7 +328,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			el.className = 'message assistant';
 			el.innerHTML =
 				'<div class="role">Assistant</div>' +
-				'<details class="thinking"><summary>Thinking</summary><div class="thinking-content"></div></details>' +
+				'<details class="thinking" hidden><summary>Thinking</summary><div class="thinking-content"></div></details>' +
 				'<div class="content"></div>';
 			messagesEl.appendChild(el);
 			messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -339,6 +339,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				thinkingBlock: el.querySelector('.thinking')
 			};
 		};
+		// Reveal + open the thinking block the first time reasoning arrives.
+		function revealThinking(block) {
+			if (block.hidden) {
+				block.hidden = false;
+				block.open = true;
+			}
+		}
+		// Collapse the thinking block at rest (collapsed by default).
+		function collapseThinking(block) {
+			if (block && !block.hidden) {
+				block.open = false;
+			}
+		}
 		window.setContextTrimmed = function (trimmed) {
 			contextIndicator.hidden = !trimmed;
 		};
@@ -423,6 +436,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						if (!currentAssistant) { break; }
 						if (msg.reasoning) {
 							currentAssistant.thinking.textContent += msg.reasoning;
+							revealThinking(currentAssistant.thinkingBlock);
 						}
 						if (msg.content) {
 							currentAssistant.content.textContent += msg.content;
@@ -431,12 +445,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						break;
 					case 'stream_end':
 						streaming = false;
+						if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
 						currentAssistant = null;
 						setStreaming(false);
 						inputEl.focus();
 						break;
 					case 'error':
 						streaming = false;
+						if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
 						currentAssistant = null;
 						setStreaming(false);
 						var errEl = document.createElement('div');
