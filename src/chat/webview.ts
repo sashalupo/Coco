@@ -313,10 +313,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		padding: 4px 0;
 	}
 
-	/* Tool result card (Phase 8.3) */
+	/* Tool-call card (Phase 8.3 / 9.1): visually distinct from assistant text */
 	.message.tool { margin: 4px 0; }
 	.tool-card {
 		border: 1px solid var(--border);
+		border-left: 3px solid var(--vscode-focusBorder, #007fd4);
 		border-radius: 4px;
 		background: var(--vscode-editorWidget-background, #252526);
 	}
@@ -327,6 +328,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		font-weight: 600;
 		color: var(--vscode-descriptionForeground, #9d9d9d);
 		user-select: none;
+	}
+	.tool-card summary .tool-label {
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--vscode-focusBorder, #007fd4);
+		margin-right: 6px;
 	}
 	.tool-card summary .tool-name {
 		font-family: var(--vscode-editor-font-family, monospace);
@@ -1032,9 +1041,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					var tcDetails = document.createElement('details');
 					tcDetails.className = 'tool-card';
 					var tcSummary = document.createElement('summary');
+					var tcLabel = document.createElement('span');
+					tcLabel.className = 'tool-label';
+					tcLabel.textContent = 'Tool call';
+					tcSummary.appendChild(tcLabel);
 					var tcName = document.createElement('span');
 					tcName.className = 'tool-name';
-					tcName.textContent = '⚙ ' + (msg.tool || 'tool');
+					tcName.textContent = msg.tool || 'tool';
 					tcSummary.appendChild(tcName);
 					tcDetails.appendChild(tcSummary);
 					var tcArgs = document.createElement('div');

@@ -12,12 +12,12 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 8 (harness: run & verify) complete**; Phase 9 (harness UX) next
-- **Next step:** **9.1** — Tool-call cards: render each tool call (name + args) and its result
-  as a collapsible card in the chat, visually distinct from assistant text
+- **Current phase:** **Phase 9 (harness UX) in progress**
+- **Next step:** **9.2** — Step/iteration budget: show "step i/N" during the loop and allow
+  stopping it
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `d98e0e9` — feat(llm): add get_diagnostics tool (Phase 8.2)
+- **Last commit:** `35c8e9a` — feat(llm): render tool output as collapsible card (Phase 8.3)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (143 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -713,6 +713,20 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   functional test of the `tool_result` handler (minimal DOM stub) confirms the card is built with
   the correct classes and text. Smoke test unchanged (143 assertions, all passing — the webview
   is not exercised by the smoke test). **Phase 8 complete.**
+- **9.1 — Tool-call cards (visually distinct)** (2026-10-09): made the tool-call card (introduced
+  in 8.3) visually distinct from assistant text. The card already rendered the tool call (name +
+  args) and its result as a collapsible `<details class="tool-card">`; this step adds a clear
+  visual identity so it reads as a harness action, not chat prose. CSS: `.tool-card` now has a
+  colored left accent bar (`border-left: 3px solid var(--vscode-focusBorder)`) in addition to the
+  themed border/background, and the summary gains a `.tool-label` span — a small, uppercase,
+  letter-spaced "TOOL CALL" tag in the focus-border color, followed by the monospace tool name.
+  The `tool_result` webview handler now appends the `.tool-label` span ("Tool call") before the
+  `.tool-name` span (the tool name, no longer prefixed with ⚙). All dynamic text still set via
+  `textContent` (no `innerHTML`). Compiles clean; the built inline webview script passes
+  `node --check`, and a functional test of the `tool_result` handler (minimal DOM stub) confirms
+  the summary now has two children (`.tool-label` = "Tool call", `.tool-name` = the tool name)
+  plus the `.tool-args` and `.tool-output` blocks. Smoke test unchanged (143 assertions, all
+  passing — the webview is not exercised by the smoke test).
 
 ## Steps — Phase 1 (one per session)
 
