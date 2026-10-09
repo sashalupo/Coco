@@ -12,13 +12,13 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** Phases 1–7 complete; **Phase 8 (harness: run & verify) next**
-- **Next step:** **8.1** — `run_command` tool: run a shell command in the workspace root, capture
-  stdout+stderr, enforce a timeout (e.g. 60s) and an output cap, return exit code + output
+- **Current phase:** Phases 1–7 complete; **Phase 8 (harness: run & verify) in progress**
+- **Next step:** **8.2** — `get_diagnostics` tool: return workspace diagnostics (errors/warnings)
+  for a given file (or all open files) so the model can verify its edits compile
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `a986bad` — feat(llm): add tool approval gate (Phase 7.2)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (127 assertions)
+- **Last commit:** `6109916` — feat(llm): add undo last edit (Phase 7.3)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (134 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -664,6 +664,23 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   an edit, `revertLast` restores the pre-edit content on disk, snapshot cleared after revert,
   no-snapshot → "No changes to revert", and `write_file` (new file) + revert deletes the file.
   **Phase 7 complete.**
+- **8.1 — `run_command` tool** (2026-10-09): added the `run_command` tool to `CODE_TOOLS` in
+  `src/tools.ts` (params: `command` (required), `timeout_ms` (optional, default 60000, max 60000);
+  `required: ["command"]`). Added `run_command` to `isMutatingTool` (it can mutate state, so it is
+  gated by the approval gate). Implemented `runCommand` in `ToolExecutor.ts`: spawns the command
+  via `child_process.spawn` (with `shell: true`) in the first workspace folder, captures
+  stdout+stderr, enforces a timeout (clamped to `[1000, 60000]` ms; on timeout the child is
+  `SIGKILL`ed and the result notes it) and an output cap (`MAX_COMMAND_OUTPUT = 100_000` chars;
+  excess is truncated and the child killed). Returns `$ <command>`, `Exit code: N` (with the
+  signal when killed), an optional `(timed out after Nms)` note, and the `stdout:` / `stderr:`
+  blocks (or `(no output)`). Empty command / no workspace → error result. Wired into the
+  `execute()` switch (`case "run_command"`). Compiles clean; compiled `out/tools.js` +
+  `out/tools/ToolExecutor.js` verified to contain the schema, the `isMutatingTool` update, the
+  `run_command` dispatch, and the `runCommand` logic. Smoke test extended with 7 new assertions
+  (134 total, all passing): `CODE_TOOLS` now 6 tools (names + `run_command required=[command]`),
+  `toolBody.tools.length === 6`, `isMutatingTool("run_command")`, and the real executor running
+  `echo` (exit 0 + stdout), `exit 3` (non-zero exit), `echo oops 1>&2` (stderr), and an empty
+  command (rejected).
 
 ## Steps — Phase 1 (one per session)
 

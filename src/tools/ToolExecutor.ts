@@ -9,6 +9,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
+import { spawn } from "child_process";
 import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff } from "../diff";
 
@@ -18,6 +19,12 @@ const MAX_SEARCH_MATCHES = 50;
 const MAX_READ_BYTES = 256 * 1024;
 /** Directories to skip when searching. */
 const SKIP_DIRS = new Set(["node_modules", ".git", "out", "dist", ".vscode"]);
+/** Default timeout for run_command (ms). */
+const DEFAULT_COMMAND_TIMEOUT = 60_000;
+/** Maximum timeout for run_command (ms). */
+const MAX_COMMAND_TIMEOUT = 60_000;
+/** Cap on command output (chars). */
+const MAX_COMMAND_OUTPUT = 100_000;
 
 export class ToolExecutor {
   /** Snapshot of the last mutation (for undo / revert). */
@@ -102,6 +109,12 @@ export class ToolExecutor {
             call,
             String(args.pattern ?? ""),
             args.path ? String(args.path) : undefined,
+          );
+        case "run_command":
+          return await this.runCommand(
+            call,
+            String(args.command ?? ""),
+            typeof args.timeout_ms === "number" ? args.timeout_ms : undefined,
           );
         default:
           return this.result(call, `Unknown tool: ${name}`);
@@ -321,6 +334,94 @@ export class ToolExecutor {
         ? `\n… (truncated at ${MAX_SEARCH_MATCHES})`
         : "";
     return this.result(call, matches.join("\n") + suffix);
+  }
+
+  /**
+   * Run a shell command in the workspace root, capture stdout+stderr,
+   * enforce a timeout and an output cap. Returns exit code + output.
+   */
+  private async runCommand(
+    call: ToolCall,
+    command: string,
+    timeoutMs?: number,
+  ): Promise<ToolResult> {
+    if (!command.trim()) {
+      return this.result(call, "command is empty — provide a shell command.");
+    }
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return this.result(call, "No workspace folder — cannot run command.");
+    }
+    const cwd = folders[0].uri.fsPath;
+    const timeout = Math.min(
+      Math.max(1000, timeoutMs ?? DEFAULT_COMMAND_TIMEOUT),
+      MAX_COMMAND_TIMEOUT,
+    );
+
+    return new Promise<ToolResult>((resolve) => {
+      const child = spawn(command, {
+        cwd,
+        shell: true,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout,
+      });
+      let stdout = "";
+      let stderr = "";
+      let timedOut = false;
+      let settled = false;
+
+      const settle = (content: string) => {
+        if (settled) return;
+        settled = true;
+        resolve(this.result(call, content));
+      };
+
+      child.on("timeout", () => {
+        timedOut = true;
+        child.kill("SIGKILL");
+      });
+
+      child.stdout.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString();
+        if (stdout.length > MAX_COMMAND_OUTPUT) {
+          stdout = stdout.slice(0, MAX_COMMAND_OUTPUT) + "\n… (truncated)";
+          child.kill("SIGKILL");
+        }
+      });
+      child.stderr.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+        if (stderr.length > MAX_COMMAND_OUTPUT) {
+          stderr = stderr.slice(0, MAX_COMMAND_OUTPUT) + "\n… (truncated)";
+          child.kill("SIGKILL");
+        }
+      });
+
+      child.on("error", (err) => {
+        settle(`Command failed to start: ${err.message}`);
+      });
+
+      child.on("close", (code, signal) => {
+        const exitCode = code ?? (signal ? 1 : 0);
+        const parts: string[] = [];
+        parts.push(`$ ${command}`);
+        parts.push(
+          `Exit code: ${exitCode}${signal ? ` (signal: ${signal})` : ""}`,
+        );
+        if (timedOut) {
+          parts.push(`(timed out after ${timeout}ms)`);
+        }
+        if (stdout) {
+          parts.push(`\nstdout:\n${stdout}`);
+        }
+        if (stderr) {
+          parts.push(`\nstderr:\n${stderr}`);
+        }
+        if (!stdout && !stderr) {
+          parts.push("(no output)");
+        }
+        settle(parts.join("\n"));
+      });
+    });
   }
 
   // --- Helpers -----------------------------------------------------------

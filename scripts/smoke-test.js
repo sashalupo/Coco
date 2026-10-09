@@ -403,10 +403,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 5, "tools: CODE_TOOLS has 5 tools");
+  assert(CODE_TOOLS.length === 6, "tools: CODE_TOOLS has 6 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command",
     "tools: tool names in order",
   );
   assert(
@@ -435,6 +435,10 @@ function assert(cond, label) {
   assert(
     byName.search_files.function.parameters.required.join(",") === "pattern",
     "tools: search_files required=[pattern]",
+  );
+  assert(
+    byName.run_command.function.parameters.required.join(",") === "command",
+    "tools: run_command required=[command]",
   );
 
   // 5b) toolResultMessage
@@ -501,7 +505,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 5,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 6,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -591,8 +595,7 @@ function assert(cond, label) {
     "edit: result includes diff preview",
   );
   assert(
-    editResult.content.includes("-foo") &&
-      editResult.content.includes("+bar"),
+    editResult.content.includes("-foo") && editResult.content.includes("+bar"),
     "edit: diff shows -foo and +bar",
   );
   assert(
@@ -678,10 +681,7 @@ function assert(cond, label) {
       arguments: '{"path":"new.txt","content":"hello"}',
     },
   });
-  assert(
-    fs.existsSync(newFilePath),
-    "revert: write_file created the file",
-  );
+  assert(fs.existsSync(newFilePath), "revert: write_file created the file");
   const revertNew = await executor.revertLast();
   assert(
     revertNew.includes("deleted new.txt"),
@@ -690,6 +690,62 @@ function assert(cond, label) {
   assert(
     !fs.existsSync(newFilePath),
     "revert: newly created file deleted on revert",
+  );
+
+  // 8a) run_command (Phase 8.1): real executor runs a shell command in the
+  // temp workspace and returns exit code + output.
+  const echoResult = await executor.execute({
+    id: "r1",
+    type: "function",
+    function: {
+      name: "run_command",
+      arguments: '{"command":"echo hello-from-test"}',
+    },
+  });
+  assert(
+    echoResult.content.includes("Exit code: 0"),
+    "run_command: exit code 0 for echo",
+  );
+  assert(
+    echoResult.content.includes("hello-from-test"),
+    "run_command: stdout captured",
+  );
+  const failResult = await executor.execute({
+    id: "r2",
+    type: "function",
+    function: {
+      name: "run_command",
+      arguments: '{"command":"exit 3"}',
+    },
+  });
+  assert(
+    failResult.content.includes("Exit code: 3"),
+    "run_command: non-zero exit code captured",
+  );
+  const stderrResult = await executor.execute({
+    id: "r3",
+    type: "function",
+    function: {
+      name: "run_command",
+      arguments: '{"command":"echo oops 1>&2"}',
+    },
+  });
+  assert(
+    stderrResult.content.includes("stderr:") &&
+      stderrResult.content.includes("oops"),
+    "run_command: stderr captured",
+  );
+  const emptyResult = await executor.execute({
+    id: "r4",
+    type: "function",
+    function: {
+      name: "run_command",
+      arguments: '{"command":""}',
+    },
+  });
+  assert(
+    emptyResult.content.includes("command is empty"),
+    "run_command: empty command rejected",
   );
 
   // Cleanup: restore Module._load and remove the temp dir.
@@ -793,9 +849,13 @@ function assert(cond, label) {
   // 7b) isMutatingTool (Phase 7.2: approval gate)
   assert(isMutatingTool("write_file"), "approval: write_file is mutating");
   assert(isMutatingTool("edit_file"), "approval: edit_file is mutating");
+  assert(isMutatingTool("run_command"), "approval: run_command is mutating");
   assert(!isMutatingTool("read_file"), "approval: read_file is not mutating");
   assert(!isMutatingTool("list_dir"), "approval: list_dir is not mutating");
-  assert(!isMutatingTool("search_files"), "approval: search_files is not mutating");
+  assert(
+    !isMutatingTool("search_files"),
+    "approval: search_files is not mutating",
+  );
   assert(
     !isMutatingTool("unknown_tool"),
     "approval: unknown tool is not mutating",

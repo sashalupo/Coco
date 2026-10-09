@@ -176,6 +176,33 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "run_command",
+      description:
+        "Run a shell command in the workspace root and return its exit code " +
+        "and output (stdout + stderr). Use this to run builds, tests, linters, " +
+        "or other commands to verify changes. The command is run with a 60-second " +
+        "timeout (configurable) and its output is capped.",
+      parameters: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description:
+              "The shell command to run (e.g. 'npm test', 'npx tsc --noEmit').",
+          },
+          timeout_ms: {
+            type: "number",
+            description:
+              "Optional timeout in milliseconds (default 60000, max 60000).",
+          },
+        },
+        required: ["command"],
+      },
+    },
+  },
 ];
 
 /**
@@ -200,5 +227,7 @@ export function toolResultMessage(
  * (`read_file`, `list_dir`, `search_files`) never mutate.
  */
 export function isMutatingTool(name: string): boolean {
-  return name === "write_file" || name === "edit_file";
+  return (
+    name === "write_file" || name === "edit_file" || name === "run_command"
+  );
 }
