@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 5 (in progress)
-- **Next step:** S30 (code action smoke test)
+- **Current phase:** all phases complete (1–5)
+- **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** S29 (register code action + setting)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (64 assertions)
+- **Last commit:** S30 (code action smoke test)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
@@ -82,7 +82,7 @@ src/
 | 2     | Context-aware chat (file/selection/diagnostics) | complete    |
 | 3     | Inline completion (ghost text)                  | complete    |
 | 4     | Manage code via tools (agentic loop)            | complete    |
-| 5     | Code actions / refactors                        | not started |
+| 5     | Code actions / refactors                        | complete    |
 
 ## Done
 
@@ -366,6 +366,16 @@ provider)` (all file types). The setting is read once at activation, so toggling
   `extension.js` verified to import the provider, read `codeAction.enabled`, gate on it, and call
   `registerCodeActionsProvider` with `providedCodeActionKinds` and the `**` pattern. Existing smoke
   test still passes.
+- **S30 — code action smoke test** (2026-10-09): extended `scripts/smoke-test.js` with 20 new
+  assertions covering the code-action pipeline. (a) `buildCodeActionPrompt`: full-context prompt
+  (header with language, "Return ONLY the full updated code" instruction, `File:` path, code
+  block, `Selected range (lines N–M)`, and a diagnostic line) plus the stable section order
+  (code → selection → diagnostics); a minimal prompt (no path/selection/diagnostics → no `File:`
+  / `Selected range` / `Diagnostics to address` sections); and a single-line selection
+  (`Selected range (line N)`). (b) `parseCodeAction`: empty → empty, whitespace → empty, plain
+  passthrough, trim, fence strip (with and without lang), fence-only → empty, and multi-line
+  preserved. Total assertions now 84 (was 64). Compiles clean; all 84 assertions pass. **Phase 5
+  complete.**
 
 ## Steps — Phase 1 (one per session)
 
@@ -530,7 +540,7 @@ endpoint is added.
       `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
     providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
       only when enabled._
-- [ ] **S30 — code action smoke test.** Extend `scripts/smoke-test.js` to assert
+- [x] **S30 — code action smoke test.** Extend `scripts/smoke-test.js` to assert
       `buildCodeActionPrompt` (language/path/code/diagnostics/selection present, stable order) and
       `parseCodeAction` (plain passthrough, fence strip, empty). _Accept: compiles; new assertions
       pass._

@@ -11,6 +11,7 @@ const { buildContextBlock } = require(path.join(__dirname, '..', 'out', 'context
 const { buildCompletionPrompt, parseCompletion } = require(path.join(__dirname, '..', 'out', 'inline.js'));
 const { CODE_TOOLS, toolResultMessage } = require(path.join(__dirname, '..', 'out', 'tools.js'));
 const { accumulateToolCalls } = require(path.join(__dirname, '..', 'out', 'client.js'));
+const { buildCodeActionPrompt, parseCodeAction } = require(path.join(__dirname, '..', 'out', 'codeaction.js'));
 
 const PORT = 18099;
 
@@ -227,6 +228,41 @@ function assert(cond, label) {
 	assert(finalToolCalls[0].id === 'c1', 'tools: chatStream tool call id=c1');
 	assert(finalToolCalls[0].function.name === 'read_file', 'tools: chatStream tool call name=read_file');
 	assert(finalToolCalls[0].function.arguments === '{"path":"a.ts"}', 'tools: chatStream tool call arguments reassembled across chunks');
+
+	// 6) code action: buildCodeActionPrompt + parseCodeAction (Phase 5)
+	const ca = buildCodeActionPrompt({
+		language: 'typescript',
+		path: 'src/a.ts',
+		code: 'const x = 1;\nconsole.log(x);',
+		selection: { startLine: 1, endLine: 2, text: 'const x = 1;' },
+		diagnostics: [{ line: 1, column: 7, severity: 'error', message: 'cannot find name' }],
+	});
+	assert(ca.includes('Fix or refactor the following typescript code.'), 'codeaction: prompt header with language');
+	assert(ca.includes('Return ONLY the full updated code'), 'codeaction: prompt only-code instruction');
+	assert(ca.includes('File: src/a.ts'), 'codeaction: prompt includes path');
+	assert(ca.includes('const x = 1;'), 'codeaction: prompt includes code');
+	assert(ca.includes('Selected range (lines 1–2):'), 'codeaction: prompt includes selection range');
+	assert(ca.includes('[error] 1:7 — cannot find name'), 'codeaction: prompt includes diagnostic');
+	const caCode = ca.indexOf('Code:'), caSel = ca.indexOf('Selected range'), caDiag = ca.indexOf('Diagnostics to address');
+	assert(caCode < caSel && caSel < caDiag, 'codeaction: stable order (code -> selection -> diagnostics)');
+
+	const caMin = buildCodeActionPrompt({ language: 'python', path: '', code: 'def f():\n    pass' });
+	assert(caMin.includes('python'), 'codeaction: prompt language (minimal)');
+	assert(!caMin.includes('File:'), 'codeaction: no File line when path empty');
+	assert(!caMin.includes('Selected range'), 'codeaction: no selection section when absent');
+	assert(!caMin.includes('Diagnostics to address'), 'codeaction: no diagnostics section when absent');
+
+	const caSel1 = buildCodeActionPrompt({ language: 'js', path: 'b.js', code: 'x', selection: { startLine: 5, endLine: 5, text: 'x' } });
+	assert(caSel1.includes('Selected range (line 5):'), 'codeaction: single-line selection range');
+
+	assert(parseCodeAction('') === '', 'codeaction: parse empty -> empty');
+	assert(parseCodeAction('   \n  ') === '', 'codeaction: parse whitespace -> empty');
+	assert(parseCodeAction('const y = 1;') === 'const y = 1;', 'codeaction: parse plain passthrough');
+	assert(parseCodeAction('  const y = 1;  ') === 'const y = 1;', 'codeaction: parse trims whitespace');
+	assert(parseCodeAction('```typescript\nconst y = 1;\n```') === 'const y = 1;', 'codeaction: parse strips fenced code');
+	assert(parseCodeAction('```\nfoo\n```') === 'foo', 'codeaction: parse strips fence without lang');
+	assert(parseCodeAction('```\n') === '', 'codeaction: parse fence only -> empty');
+	assert(parseCodeAction('const a = 1;\nconst b = 2;') === 'const a = 1;\nconst b = 2;', 'codeaction: parse multi-line preserved');
 
 	console.log('\nALL SMOKE TESTS PASSED');
 	server.close();
