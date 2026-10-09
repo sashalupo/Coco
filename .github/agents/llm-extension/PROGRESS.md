@@ -13,10 +13,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** Phases 1–5 complete; **Phase 6 (harness: targeted file editing) in progress**
-- **Next step:** **6.3** — extend `read_file` with optional `start_line` / `end_line`
-  (1-based, inclusive) in `src/tools/ToolExecutor.ts` (see `.github/agents/llm-extension/PLAN.md`)
+- **Next step:** **6.4** — end-to-end verify + record: enable `llm.tools.enabled`, make a small
+  edit to a real file, confirm the on-disk change + agentic loop round-trip; update `PROGRESS.md`
+  (mark 6.1–6.4 Done, set Next step to 7.1) (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `aaa3c47` — feat(llm): add edit_file tool schema to CODE_TOOLS
+- **Last commit:** `32cb07b` — feat(llm): implement edit_file execution in ToolExecutor
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -584,6 +585,19 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   contain the dispatch, `editFile`, `countOccurrences`, and all four result branches. Core logic
   verified under plain Node (10 checks: unique match, no-match, ambiguous-match, replace_all,
   empty old_string, and `countOccurrences` edge cases — all pass).
+- **6.3 — `read_file` line range** (2026-10-09): extended `read_file` with optional
+  `start_line` / `end_line` (1-based, inclusive) so the harness can read large files in chunks.
+  Schema change in `src/tools.ts`: added `start_line` / `end_line` (both `type: "number"`, optional;
+  `required` stays `["path"]`) and updated the description. `ToolExecutor.readFile` now takes
+  `startLine?` / `endLine?`; when both are omitted it returns the whole file (unchanged behavior).
+  With a range it splits on `\r?\n`, clamps `start` to `≥1` and `end` to `≤ total`, errors when
+  `start > end`, and returns `Lines <start>–<end> of <total> in <path>:\n<slice>`. The `execute()`
+  switch passes `args.start_line` / `args.end_line` (only when `typeof === "number"`). Compiles
+  clean; compiled `out/tools/ToolExecutor.js` + `out/tools.js` verified to contain the dispatch,
+  the schema fields, the clamp/error/slice logic, and the `Lines … of …` header. Core slicing
+  verified under plain Node (10 checks: no-range passthrough, full/middle/single-line ranges,
+  start-only, end-only, end clamped, start-beyond-total error, start>end error, start clamped to 1
+  — all pass).
 
 ## Steps — Phase 1 (one per session)
 

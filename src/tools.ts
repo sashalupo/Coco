@@ -50,13 +50,25 @@ export const CODE_TOOLS: Tool[] = [
     type: "function",
     function: {
       name: "read_file",
-      description: "Read the contents of a file in the workspace.",
+      description:
+        "Read the contents of a file in the workspace. Optionally read a " +
+        "line range (1-based, inclusive) to read large files in chunks.",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
             description: "Workspace-relative file path.",
+          },
+          start_line: {
+            type: "number",
+            description:
+              "Optional 1-based line number to start reading from (inclusive).",
+          },
+          end_line: {
+            type: "number",
+            description:
+              "Optional 1-based line number to stop reading at (inclusive).",
           },
         },
         required: ["path"],

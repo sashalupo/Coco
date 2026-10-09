@@ -35,7 +35,12 @@ export class ToolExecutor {
     try {
       switch (name) {
         case "read_file":
-          return await this.readFile(call, String(args.path ?? ""));
+          return await this.readFile(
+            call,
+            String(args.path ?? ""),
+            typeof args.start_line === "number" ? args.start_line : undefined,
+            typeof args.end_line === "number" ? args.end_line : undefined,
+          );
         case "write_file":
           return await this.writeFile(
             call,
@@ -68,7 +73,12 @@ export class ToolExecutor {
 
   // --- Tools -------------------------------------------------------------
 
-  private async readFile(call: ToolCall, relPath: string): Promise<ToolResult> {
+  private async readFile(
+    call: ToolCall,
+    relPath: string,
+    startLine?: number,
+    endLine?: number,
+  ): Promise<ToolResult> {
     const abs = await this.resolveSafe(relPath);
     if (!abs) {
       return this.result(
@@ -87,7 +97,24 @@ export class ToolExecutor {
       );
     }
     const content = await fs.promises.readFile(abs, "utf8");
-    return this.result(call, content);
+    // No line range: return the whole file (current behavior).
+    if (startLine === undefined && endLine === undefined) {
+      return this.result(call, content);
+    }
+    const lines = content.split(/\r?\n/);
+    const total = lines.length;
+    // Clamp to valid 1-based range.
+    const start = Math.max(1, startLine ?? 1);
+    const end = Math.min(total, endLine ?? total);
+    if (start > end) {
+      return this.result(
+        call,
+        `Invalid line range: start_line ${start} > end_line ${end} (file has ${total} lines).`,
+      );
+    }
+    const slice = lines.slice(start - 1, end);
+    const header = `Lines ${start}–${end} of ${total} in ${relPath}:\n`;
+    return this.result(call, header + slice.join("\n"));
   }
 
   private async writeFile(
