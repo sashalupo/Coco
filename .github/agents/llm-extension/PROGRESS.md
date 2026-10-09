@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S5
+- **Next step:** S6
 - **Last updated:** 2026-10-09
-- **Last commit:** S4 (src/client.ts part 1)
+- **Last commit:** S5 (src/client.ts part 2)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -113,6 +113,15 @@ src/
   `Authorization: Bearer …` only when `apiKey` is set. Uses Node 18+ global `fetch` (typed by
   `@types/node` 20 `web-globals/fetch.d.ts`); no runtime deps, no `vscode` import. Verified under
   plain Node with a stubbed `fetch`: health, models, no-key (no header), and failure paths all pass.
+- **S5 — `src/client.ts` (part 2)** (2026-10-09): `chatStream(body, signal?)` — an `AsyncGenerator<StreamChunk>`
+  that POSTs `/v1/chat/completions` with `stream: true` and hand-rolls the SSE parse. Reads the
+  `ReadableStream` via `getReader()`, buffers bytes, splits on `\r?\n`, and parses each `data:` line
+  (ignores comments/blank). Yields `{reasoning, content, done, usage}`: `reasoning_content` →
+  `reasoning`, `content` → `content`, `[DONE]` → terminal `done:true` (a synthetic terminal chunk is
+  emitted if the stream ends without it), and `usage` is surfaced on the final chunk. Throws on
+  non-2xx / missing body. Added `StreamChunk` + `UsageInfo` types. Verified under plain Node with a
+  stubbed streaming `fetch`: a line split across chunk boundaries reassembles correctly, reasoning vs
+  content are separated, exactly one `done` chunk, `usage` surfaced, `stream:true` sent.
 
 ## Steps — Phase 1 (one per session)
 
@@ -132,7 +141,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S4 — `src/client.ts` (part 1).** `LlmClient` with `health()` and `listModels()`
       (non-streaming `fetch`, optional `Authorization` header).
       _Accept: compiles; both methods return typed results._
-- [ ] **S5 — `src/client.ts` (part 2).** Add `chatStream()` — POST `/v1/chat/completions`
+- [x] **S5 — `src/client.ts` (part 2).** Add `chatStream()` — POST `/v1/chat/completions`
       with `stream:true`, hand-rolled SSE parser yielding `{reasoning, content, done, usage}`.
       _Accept: compiles; parser handles `data:` lines, `[DONE]`, and `reasoning_content` vs `content`._
 - [ ] **S6 — `src/chat/webview.ts`.** `buildWebviewHtml()` — static HTML/CSS/JS shell: message
