@@ -15,17 +15,20 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); live-debugging runtime bug
 - **Next step:** — (roadmap complete; debugging empty Model dropdown + no-send in dev-container)
 - **Last updated:** 2026-10-09
-- **Last commit:** window.onerror in webview diag (surface init-script throw)
+- **Last commit:** guard onDidReceiveMessage + dump vscode object keys
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **Active debugging (dev-container):** Model dropdown empty + send does nothing. Webview
 > `diag:` line is the ONLY reliable diagnostic channel (host `console.log` does not surface in
-> the log the user views). Rolling diag showed ONLY: `vscode api: OK` + `send posted: 2 chars` —
-> **`ready posted` is MISSING and there are NO `recv:` lines.** Since `ready` is posted at the
-> end of the init script (after the send listener), its absence means the init script THREW
-> between the send-listener wiring and the `ready` post → host never got `ready`, never ran
-> `loadModels()`, never responds to `send`. Added `window.onerror` → diag to capture the exact
-> throw. Awaiting reload to read the `ERROR:` line.
+> the log the user views). `window.onerror` captured the ROOT CAUSE:
+> **`Uncaught TypeError: vscode.onDidReceiveMessage is not a function @line 182:11`.**
+> The init script throws at the host→webview `onDidReceiveMessage` registration → `ready` never
+> posts → host never runs `loadModels()` (empty dropdown) AND the webview can never receive
+> `models`/`stream_start`/`delta` (send does nothing). `postMessage` (out) works, but the
+> receive side is broken. In a genuine VS Code webview `acquireVsCodeApi()` ALWAYS returns
+> `onDidReceiveMessage`, so its absence is the anomaly. Added: (1) a guard so the init script
+> no longer throws (→ `ready` posts, host runs `loadModels`), and (2) a `keys:` dump of the
+> `vscode` object to see exactly which methods are present. Awaiting reload to read the keys.
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
