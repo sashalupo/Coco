@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 1 (complete)
-- **Next step:** Phase 2 (S13+)
+- **Current phase:** 2 (in progress)
+- **Next step:** S14
 - **Last updated:** 2026-10-09
-- **Last commit:** S12 (smoke test)
+- **Last commit:** S13 (context.ts)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -183,6 +183,15 @@ src/
   `reasoning_effort:high`. Docker/ninfer engine are unavailable in this environment, so the mock
   server stands in for the live engine — the only untested part is live VS Code webview rendering
   (needs the extension host). Phase 1 marked complete.
+- **S13 — `src/context.ts`** (2026-10-09): new pure module (no imports at all). Types
+  `ContextDiagnostic`, `ContextFile`, `ContextSelection`, `ContextInput` and
+  `buildContextBlock(input): string` that formats gathered editor context into a readable text
+  block in a stable order (file → selection → diagnostics), returning `""` when nothing is
+  provided. File section shows `File: <path> (<language>)` (language optional) with a fenced code
+  block; selection shows a `line L, col C-C` (single line) or `lines L:C–L:C` (multi-line) range
+  with the selected text; diagnostics list as `- [severity] line:col — message`. Verified under
+  plain Node: empty input → `""`, file with/without language, single/multi-line selection,
+  diagnostics, and stable section ordering all pass.
 
 ## Steps — Phase 1 (one per session)
 
@@ -226,6 +235,28 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S12 — smoke test.** Manual test against the running ninfer engine: health, model list,
       one streamed chat with thinking. Update Status to "Phase 1 complete".
       _Accept: verified end-to-end; PROGRESS.md marked done._
+
+## Steps — Phase 2 (one per session)
+
+Context-aware chat: inject the active file, selection, and diagnostics into the request so the
+model can see what the user is looking at. Keep the gathering vscode-specific (in the provider)
+and the formatting pure (in `context.ts`) so it stays testable under plain Node.
+
+- [x] **S13 — `src/context.ts`.** Pure module (no vscode). Types `ContextInput`
+      (`file?`, `selection?`, `diagnostics?`) + `buildContextBlock(input): string` that formats the
+      gathered context into a readable text block (empty string when nothing is provided).
+      _Accept: compiles; pure module (no vscode import); verified under plain Node._
+- [ ] **S14 — gather + inject context.** In `ChatViewProvider`, read the active editor (file path,
+      language, selection range + text) and workspace diagnostics, build the context block via
+      `buildContextBlock`, and inject it into the request (prepended to the system prompt).
+      _Accept: compiles; with an open file the request body carries the context block._
+- [ ] **S15 — context settings + toggle.** Add `llm.context.includeFile` / `includeSelection` /
+      `includeDiagnostics` (default true) and a small "Context" toggle in the chat panel; respect
+      the flags when gathering.
+      _Accept: compiles; toggling a flag changes what is injected._
+- [ ] **S16 — context smoke test.** Extend `scripts/smoke-test.js` to assert `buildContextBlock`
+      output for file/selection/diagnostics and that an empty input yields an empty string.
+      _Accept: compiles; new assertions pass._
 
 ## Decisions
 
