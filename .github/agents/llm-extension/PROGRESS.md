@@ -15,14 +15,17 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); live-debugging runtime bug
 - **Next step:** — (roadmap complete; debugging empty Model dropdown + no-send in dev-container)
 - **Last updated:** 2026-10-09
-- **Last commit:** diag rolling history (webview: rolling diag log + models count)
+- **Last commit:** window.onerror in webview diag (surface init-script throw)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **Active debugging (dev-container):** Model dropdown empty + send does nothing. Webview
 > `diag:` line is the ONLY reliable diagnostic channel (host `console.log` does not surface in
-> the log the user views). `diag: send posted: N chars` proves webview CAN postMessage to host.
-> Now: `diag` shows a rolling history (last 6 events) incl. every `recv:` + `models: N model(s)`,
-> so the full webview↔host round-trip is visible in one look.
+> the log the user views). Rolling diag showed ONLY: `vscode api: OK` + `send posted: 2 chars` —
+> **`ready posted` is MISSING and there are NO `recv:` lines.** Since `ready` is posted at the
+> end of the init script (after the send listener), its absence means the init script THREW
+> between the send-listener wiring and the `ready` post → host never got `ready`, never ran
+> `loadModels()`, never responds to `send`. Added `window.onerror` → diag to capture the exact
+> throw. Awaiting reload to read the `ERROR:` line.
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
