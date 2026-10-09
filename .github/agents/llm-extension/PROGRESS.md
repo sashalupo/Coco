@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `feat(llm): copy button on assistant messages`
+- **Last commit:** `458b91e` — feat(llm): copy button on assistant messages
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **Copy button (webview, no deps):**
