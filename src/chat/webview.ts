@@ -38,6 +38,13 @@ function escapeHtml(s: string): string {
 }
 
 /**
+ * Build version marker shown in the chat panel toolbar. Bump this whenever the
+ * webview or host changes so you can confirm which build is actually running
+ * (a stale extension host shows the old marker).
+ */
+const WEBVIEW_VERSION = 'v2 (auto-models + send errors)';
+
+/**
  * Build the chat webview HTML.
  *
  * @param init Optional initial toolbar state (models + selected values).
@@ -155,6 +162,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		cursor: pointer;
 	}
 	.ctx-toggles input { margin: 0; }
+	#build-version {
+		margin-left: 10px;
+		font-size: 10px;
+		color: var(--muted);
+		opacity: 0.7;
+		white-space: nowrap;
+	}
 
 	/* Messages */
 	.messages {
@@ -282,6 +296,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label><input type="checkbox" id="ctx-selection" checked>sel</label>
 			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 		</span>
+		<span id="build-version" title="Webview build (bump to confirm the running extension host is up to date)">${WEBVIEW_VERSION}</span>
 	</div>
 
 	<div id="messages" class="messages"></div>

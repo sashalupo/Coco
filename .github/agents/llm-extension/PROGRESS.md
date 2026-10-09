@@ -528,7 +528,7 @@ endpoint is added.
 
 - [x] **S27 — `src/codeaction.ts` (pure prompt builder + parser).** New pure module (no
       `vscode` import, no network). `CodeActionContext {language, path, code,
-  selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
+selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
       `buildCodeActionPrompt(ctx): string` — a "fix/refactor this code" prompt: a header, an
       instruction to return ONLY the full updated code (no explanation, no code fences), the file
       path, the code block, and — when present — the selected range and the diagnostics to
@@ -539,7 +539,7 @@ endpoint is added.
 - [x] **S28 — `src/codeaction/CodeActionProvider.ts` (vscode-specific provider).**
       `CodeActionProvider implements vscode.CodeActionProvider` (constructed with `context` +
       `LlmClient`, like `InlineCompletionProvider`). `provideCodeActions(document, range,
-  context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
+context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
       `needsResolve: true`) and — when diagnostics fall in the range — a "Fix with LLM" action
       (kind `quickfix`). `resolveCodeAction` gathers the file context (language, path, full code,
       selection = range text, diagnostics in range), builds the prompt via `buildCodeActionPrompt`,
@@ -552,7 +552,7 @@ endpoint is added.
       `llm.codeAction.enabled` (boolean, default `false`) to `package.json`
       `contributes.configuration`. In `activate()`, when enabled, register the provider via
       `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
-  providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
+providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
       only when enabled._
 - [x] **S30 — code action smoke test.** Extend `scripts/smoke-test.js` to assert
       `buildCodeActionPrompt` (language/path/code/diagnostics/selection present, stable order) and

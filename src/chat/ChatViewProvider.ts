@@ -9,7 +9,11 @@ import * as vscode from "vscode";
 import { buildWebviewHtml } from "./webview";
 import { LlmClient } from "../client";
 import { readSettings, ToolbarStateStore } from "../config";
-import { buildRequestBody, type ChatCompletionRequest, type ChatMessage } from '../request';
+import {
+  buildRequestBody,
+  type ChatCompletionRequest,
+  type ChatMessage,
+} from "../request";
 import { buildContextBlock, type ContextInput } from "../context";
 import { toolResultMessage, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
