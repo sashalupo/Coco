@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 3 (in progress)
-- **Next step:** S19
+- **Next step:** S20
 - **Last updated:** 2026-10-09
-- **Last commit:** S18 (InlineCompletionProvider)
+- **Last commit:** S19 (register inline completion)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (26 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -243,6 +243,14 @@ src/
   `[new vscode.InlineCompletionItem(completion, new Range(position, position))]` — `[]` when the
   result is empty or the engine fails (non-fatal). Compiles clean; compiled output verified to
   contain the gathering, prompt, thinking-off, abort bridging, parse, and item-with-Range logic.
+- **S19 — register inline completion** (2026-10-09): added the `llm.inline.enabled` setting
+  (boolean, default `false`) to `package.json` (now 23 settings). In `extension.ts`, `activate()`
+  reads the setting at activation and, when enabled, constructs an `InlineCompletionProvider` and
+  registers it via `vscode.languages.registerInlineCompletionItemProvider([{ pattern: '**' }],
+  provider)` (all file types). The setting is read once at activation, so toggling it requires a
+  reload (noted in the setting description). Ghost text is opt-in and off by default. Compiles
+  clean; compiled `extension.js` verified to import the provider, read `llm.inline.enabled`, gate on
+  it, and register with the `**` selector.
 
 ## Steps — Phase 1 (one per session)
 
@@ -327,7 +335,7 @@ vscode-specific gathering lives in the provider.
       the content, then returns `[new vscode.InlineCompletionItem(parseCompletion(text), position)]`
       (empty array when there is nothing to complete or the result is empty).
       _Accept: compiles; provider returns a typed `InlineCompletionItem[]`._
-- [ ] **S19 — register inline completion.** In `extension.ts`, register the provider via
+- [x] **S19 — register inline completion.** In `extension.ts`, register the provider via
       `registerInlineCompletionItemProvider` gated by a new `llm.inline.enabled` setting (default
       `false`) so ghost text is opt-in.
       _Accept: compiles; with the setting on the provider is registered._

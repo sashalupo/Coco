@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import { LlmClient } from './client';
 import { readSettings } from './config';
 import { ChatViewProvider } from './chat/ChatViewProvider';
+import { InlineCompletionProvider } from './inline/InlineCompletionProvider';
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -17,6 +18,21 @@ export function activate(context: vscode.ExtensionContext): void {
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(provider.viewType, provider)
 	);
+
+	// Register inline (ghost text) completion, opt-in via `llm.inline.enabled`.
+	// The setting is read at activation, so toggling it requires a reload.
+	const inlineEnabled = vscode.workspace
+		.getConfiguration('llm')
+		.get<boolean>('inline.enabled', false);
+	if (inlineEnabled) {
+		const inlineProvider = new InlineCompletionProvider(context, client);
+		context.subscriptions.push(
+			vscode.languages.registerInlineCompletionItemProvider(
+				[{ pattern: '**' }],
+				inlineProvider
+			)
+		);
+	}
 
 	// Status bar item reflecting engine health.
 	const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);

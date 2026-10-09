@@ -170,6 +170,11 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Inject workspace diagnostics for the active file into the request."
+                },
+                "llm.inline.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect."
                 }
             }
         }
