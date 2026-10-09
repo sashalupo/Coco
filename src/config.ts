@@ -13,6 +13,7 @@ import type {
   ToolbarState,
 } from "./presets";
 import { DEFAULT_CONTEXT_FLAGS } from "./presets";
+import type { ChatMessage } from "./request";
 
 // Re-export the pure presets/types so existing importers of config.ts keep
 // working. (request.ts imports from ./presets directly to stay vscode-free.)
@@ -125,5 +126,36 @@ export class ToolbarStateStore {
   /** Reset all overrides back to defaults. */
   reset(): Thenable<void> {
     return this.memento.update(TOOLBAR_KEY, DEFAULT_TOOLBAR);
+  }
+}
+
+const HISTORY_KEY = "llm.history";
+
+/**
+ * Persists the chat conversation history in a Memento so it survives VS Code
+ * restarts. Reads are synchronous (in-memory); writes are persisted
+ * asynchronously by VS Code.
+ */
+export class HistoryStore {
+  private constructor(private readonly memento: vscode.Memento) {}
+
+  /** Create a store backed by the given Memento (usually `context.globalState`). */
+  static create(memento: vscode.Memento): HistoryStore {
+    return new HistoryStore(memento);
+  }
+
+  /** Read the persisted history (empty array if never set). */
+  get(): ChatMessage[] {
+    return this.memento.get<ChatMessage[]>(HISTORY_KEY, []);
+  }
+
+  /** Persist the full history. */
+  set(messages: ChatMessage[]): Thenable<void> {
+    return this.memento.update(HISTORY_KEY, messages);
+  }
+
+  /** Clear the persisted history. */
+  clear(): Thenable<void> {
+    return this.memento.update(HISTORY_KEY, []);
   }
 }

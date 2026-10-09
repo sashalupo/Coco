@@ -15,8 +15,18 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `bed0ebb` — feat(llm): add New Chat button to reset conversation
+- **Last commit:** `8755364` — feat(llm): persist chat history across VS Code restarts
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Chat history persistence (Memento):**
+> - `config.ts`: new `HistoryStore` (Memento-backed, key `llm.history`) — `get()` / `set()` / `clear()`.
+> - `ChatViewProvider`: loads history from Memento in the constructor; saves after each
+>   completed turn (success AND error paths, so the user's message is never lost); clears
+>   the store in `clear()`; pushes a `{type:'restore', messages}` message on `ready`.
+> - `webview.ts`: handles `restore` by re-rendering saved `user`/`assistant` messages
+>   (incl. collapsed thinking blocks) into the message list.
+> - Net effect: the conversation survives a VS Code restart; "New Chat" wipes both the
+>   panel and the persisted store.
 
 > **RESOLVED (dev-container) — empty Model dropdown + no-send:**
 > **Symptom:** Model dropdown empty; sending a prompt did nothing.

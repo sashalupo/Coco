@@ -8,7 +8,7 @@
 import * as vscode from "vscode";
 import { buildWebviewHtml } from "./webview";
 import { LlmClient } from "../client";
-import { readSettings, ToolbarStateStore } from "../config";
+import { readSettings, ToolbarStateStore, HistoryStore } from "../config";
 import {
   buildRequestBody,
   type ChatCompletionRequest,
@@ -51,6 +51,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Persisted toolbar overrides (Model/Thinking/Context). */
   private readonly toolbarStore: ToolbarStateStore;
 
+  /** Persisted conversation history (survives VS Code restarts). */
+  private readonly historyStore: HistoryStore;
+
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
 
@@ -59,6 +62,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     private readonly client: LlmClient,
   ) {
     this.toolbarStore = ToolbarStateStore.create(context.globalState);
+    this.historyStore = HistoryStore.create(context.globalState);
+    this.history = this.historyStore.get();
     this.toolExecutor = new ToolExecutor();
   }
 
@@ -92,6 +97,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // Model dropdown is populated when the panel opens.
         this.postMessage({ type: "hello", message: "LLM chat panel ready" });
         this.pushToolbarState();
+        this.pushHistory();
         void this.loadModels();
         break;
       case "send":
@@ -119,6 +125,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       context: t.context,
       contextFlags: t.contextFlags,
     });
+  }
+
+  /** Push the current history so the webview can render the conversation. */
+  private pushHistory(): void {
+    this.postMessage({ type: "restore", messages: this.history });
   }
 
   /**
@@ -255,6 +266,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       const message = err instanceof Error ? err.message : String(err);
       this.postMessage({ type: "error", message });
     }
+    // Persist the updated history (user turn + any assistant/tool turns) so it
+    // survives a VS Code restart. Runs on both success and error paths so the
+    // user's message is never lost.
+    void this.historyStore.set(this.history);
   }
 
   /**
@@ -404,6 +419,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Reset the conversation history and clear the webview. */
   public clear(): void {
     this.history = [];
+    void this.historyStore.clear();
     this.postMessage({ type: "clear" });
   }
 

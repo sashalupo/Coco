@@ -504,6 +504,23 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					currentAssistant = null;
 					setStreaming(false);
 					break;
+				case 'restore':
+					messagesEl.innerHTML = '';
+					(msg.messages || []).forEach(function (m) {
+						if (m.role === 'user') {
+							addUserMessage(m.content);
+						} else if (m.role === 'assistant') {
+							var a = addAssistantMessage();
+							a.content.textContent = m.content;
+							if (m.reasoning_content) {
+								a.thinking.textContent = m.reasoning_content;
+								a.thinkingBlock.hidden = false;
+								a.thinkingBlock.open = false;
+							}
+						}
+					});
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
 				case 'stream_start':
 					addUserMessage(lastSentText);
 					currentAssistant = addAssistantMessage();
