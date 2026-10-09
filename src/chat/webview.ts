@@ -332,6 +332,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (diagLog.length > 6) { diagLog.shift(); }
 			if (diagEl) { diagEl.textContent = 'diag: ' + diagLog.join('  ·  '); }
 		}
+		window.onerror = function (msg, src, line, col) {
+			diag('ERROR: ' + msg + ' @line ' + line + ':' + col);
+		};
 		diag('vscode api: ' + (vscode ? 'OK' : 'NULL') + ' | acquireVsCodeApi: ' + (typeof acquireVsCodeApi));
 		var modelSelect = document.getElementById('model-select');
 		var manualWrap = document.getElementById('model-manual-wrap');
