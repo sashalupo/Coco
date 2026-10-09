@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `feat(llm): export conversation to a Markdown file`
+- **Last commit:** `112f089` — feat(llm): export conversation to a Markdown file
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **Export to Markdown:**
