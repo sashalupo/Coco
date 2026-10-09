@@ -12,12 +12,13 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 9 (harness UX) complete**; Phase 10 (git integration) next
-- **Next step:** **10.1** — `git_status` + `git_diff` tools (read-only)
+- **Current phase:** **Phase 10 (git integration) in progress**
+- **Next step:** **10.2** — "Commit changes" command: stage + commit with a model-generated
+  message, gated by approval. Secrets are never committed.
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `0c1f19a` — feat(llm): show step i/N budget during agentic loop (Phase 9.2)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (154 assertions)
+- **Last commit:** `46adad3` — feat(llm): show per-run change summary (Phase 9.3)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (163 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -745,7 +746,7 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   reuses the same LCS line diff as `unifiedDiff` (so the counts match the diff preview); returns
   `{0,0}` when identical. `ToolExecutor` now tracks a per-run change summary in a `runChanges`
   map (keyed by workspace-relative path): `writeFile`/`editFile` call `recordChange(relPath,
-  old, new)` which accumulates the net added/removed lines per file (a file edited multiple times
+old, new)` which accumulates the net added/removed lines per file (a file edited multiple times
   in one run accumulates). New public `clearChangeSummary()` (reset at run start) and
   `getChangeSummary()` (returns `[{ path, added, removed }]`). `ChatViewProvider.runStream()`
   calls `clearChangeSummary()` right after `stream_start` and, after the agentic loop, posts a
@@ -754,12 +755,29 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   card, distinct from the blue tool-call card) with a "CHANGES" title and one `.cs-row` per file:
   the monospace path on the left and `+added` (green) / `−removed` (red) on the right. All dynamic
   text set via `textContent`. Compiles clean; the built inline webview script passes `node
-  --check`, and a functional test of the `change_summary` handler (minimal DOM stub) confirms the
+--check`, and a functional test of the `change_summary` handler (minimal DOM stub) confirms the
   card is built with the correct classes, title, path, and `+5`/`−2` stats. Smoke test extended
   with 11 new assertions (154 total, all passing): `diffStats` (identical 0/0, single-line 1/1,
   middle change 1/1, new file 2/0, deleted file 0/2) and the real executor's `getChangeSummary`
   (empty after clear, one file tracked with workspace-relative path, correct net 2/1 after a
   write, repeated edits accumulate to 4/2 without duplicating the file). **Phase 9 complete.**
+- **10.1 — `git_status` + `git_diff` tools (read-only)** (2026-10-09): let the harness inspect
+  its own changes. Added two read-only tools to `CODE_TOOLS` in `src/tools.ts`: `git_status`
+  (no params) and `git_diff` (optional `path` to scope the diff). Both are read-only, so they are
+  **not** added to `isMutatingTool` (no approval gate). `ToolExecutor.ts` gains a `runGit(call,
+  args)` helper that spawns `git` with a **fixed argv array** (never user-controlled shell text,
+  so there is no shell injection) in the first workspace folder, with a short timeout
+  (`GIT_TIMEOUT_MS = 10_000`) and the existing output cap (`MAX_COMMAND_OUTPUT`). On exit 0 it
+  returns the trimmed stdout (or `(no output)`); on non-zero it returns the exit code + stdout +
+  stderr. `gitStatus` runs `git status --short --branch`; `gitDiff` runs `git diff` and, when a
+  `path` is given, appends `-- <path>` (the `--` separator keeps the path from being parsed as a
+  git flag). Wired into the `execute()` switch (`case "git_status"`, `case "git_diff"`). Compiles
+  clean. Smoke test extended with 9 new assertions (163 total, all passing): `CODE_TOOLS` now 9
+  tools (names + `git_status`/`git_diff` have no required params), `toolBody.tools.length === 9`,
+  `isMutatingTool("git_status")`/`isMutatingTool("git_diff")` are false, and the real executor
+  (in a temp git repo at the stubbed workspace root) running `git_status` (lists a modified
+  tracked file + an untracked file), `git_diff` (shows the added `+line3` and names the changed
+  file), and a scoped `git_diff` to the untracked file (excludes the other file's diff).
 
 ## Steps — Phase 1 (one per session)
 

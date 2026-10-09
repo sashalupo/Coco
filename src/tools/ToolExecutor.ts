@@ -25,6 +25,8 @@ const DEFAULT_COMMAND_TIMEOUT = 60_000;
 const MAX_COMMAND_TIMEOUT = 60_000;
 /** Cap on command output (chars). */
 const MAX_COMMAND_OUTPUT = 100_000;
+/** Timeout for read-only git commands (ms). */
+const GIT_TIMEOUT_MS = 10_000;
 
 export class ToolExecutor {
   /** Snapshot of the last mutation (for undo / revert). */
@@ -70,7 +72,11 @@ export class ToolExecutor {
   }
 
   /** Record a file mutation in the per-run change summary. */
-  private recordChange(relPath: string, oldContent: string, newContent: string): void {
+  private recordChange(
+    relPath: string,
+    oldContent: string,
+    newContent: string,
+  ): void {
     const { added, removed } = diffStats(oldContent, newContent);
     const prev = this.runChanges.get(relPath) ?? { added: 0, removed: 0 };
     this.runChanges.set(relPath, {
@@ -158,6 +164,13 @@ export class ToolExecutor {
           );
         case "get_diagnostics":
           return this.getDiagnostics(
+            call,
+            args.path ? String(args.path) : undefined,
+          );
+        case "git_status":
+          return this.gitStatus(call);
+        case "git_diff":
+          return this.gitDiff(
             call,
             args.path ? String(args.path) : undefined,
           );
@@ -539,6 +552,91 @@ export class ToolExecutor {
       ? `Diagnostics for ${relPath} (${total}):`
       : `Diagnostics for open files (${total}):`;
     return this.result(call, header + "\n" + lines.join("\n"));
+  }
+
+  /**
+   * Run a read-only `git` command in the workspace root and return its
+   * output. `args` are the git subcommand + flags (never user-controlled
+   * shell text — they are passed as a fixed argv array, so there is no
+   * shell injection). Enforces a short timeout and an output cap.
+   */
+  private async runGit(
+    call: ToolCall,
+    args: string[],
+  ): Promise<ToolResult> {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return this.result(call, "No workspace folder — cannot run git.");
+    }
+    const cwd = folders[0].uri.fsPath;
+
+    return new Promise<ToolResult>((resolve) => {
+      const child = spawn("git", args, {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: GIT_TIMEOUT_MS,
+      });
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+
+      const settle = (content: string) => {
+        if (settled) return;
+        settled = true;
+        resolve(this.result(call, content));
+      };
+
+      child.stdout.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString();
+        if (stdout.length > MAX_COMMAND_OUTPUT) {
+          stdout = stdout.slice(0, MAX_COMMAND_OUTPUT) + "\n… (truncated)";
+          child.kill("SIGKILL");
+        }
+      });
+      child.stderr.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+        if (stderr.length > MAX_COMMAND_OUTPUT) {
+          stderr = stderr.slice(0, MAX_COMMAND_OUTPUT) + "\n… (truncated)";
+          child.kill("SIGKILL");
+        }
+      });
+
+      child.on("error", (err) => {
+        settle(`git failed to start: ${err.message}`);
+      });
+
+      child.on("close", (code) => {
+        // git exits non-zero for some benign cases (e.g. no diff); surface
+        // the output either way and note the exit code only on hard failure.
+        const out = stdout.trim();
+        const err = stderr.trim();
+        if (code === 0) {
+          settle(out || "(no output)");
+        } else {
+          settle(
+            `git exited with code ${code}.\n` +
+              (out ? `stdout:\n${out}\n` : "") +
+              (err ? `stderr:\n${err}` : "(no output)"),
+          );
+        }
+      });
+    });
+  }
+
+  /** `git status` (read-only): show which files are modified/untracked. */
+  private async gitStatus(call: ToolCall): Promise<ToolResult> {
+    return this.runGit(call, ["status", "--short", "--branch"]);
+  }
+
+  /** `git diff` (read-only): show uncommitted changes, optionally scoped. */
+  private async gitDiff(call: ToolCall, relPath?: string): Promise<ToolResult> {
+    const args = ["diff"];
+    if (relPath) {
+      // Scope to a single file. The path is passed as a separate argv
+      // element (after `--`), so it is never interpreted as a git flag.
+      args.push("--", relPath);
+    }
+    return this.runGit(call, args);
   }
 
   // --- Helpers -----------------------------------------------------------

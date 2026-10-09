@@ -224,6 +224,40 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "git_status",
+      description:
+        "Show the git status of the workspace (which files are modified, " +
+        "added, deleted, or untracked). Read-only: does not change anything. " +
+        "Use this to inspect the current state of the repository.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "git_diff",
+      description:
+        "Show the git diff of the workspace (uncommitted changes to tracked " +
+        "files). Read-only: does not change anything. Optionally scope the " +
+        "diff to a single file.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description:
+              "Optional workspace-relative file path to scope the diff to.",
+          },
+        },
+      },
+    },
+  },
 ];
 
 /**

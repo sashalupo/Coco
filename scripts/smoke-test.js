@@ -405,10 +405,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 7, "tools: CODE_TOOLS has 7 tools");
+  assert(CODE_TOOLS.length === 9, "tools: CODE_TOOLS has 9 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff",
     "tools: tool names in order",
   );
   assert(
@@ -445,6 +445,14 @@ function assert(cond, label) {
   assert(
     !byName.get_diagnostics.function.parameters.required,
     "tools: get_diagnostics has no required params (path optional)",
+  );
+  assert(
+    !byName.git_status.function.parameters.required,
+    "tools: git_status has no required params",
+  );
+  assert(
+    !byName.git_diff.function.parameters.required,
+    "tools: git_diff has no required params (path optional)",
   );
 
   // 5b) toolResultMessage
@@ -511,7 +519,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 7,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 9,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -868,8 +876,7 @@ function assert(cond, label) {
     type: "function",
     function: {
       name: "write_file",
-      arguments:
-        '{"path":"sum.txt","content":"one\\nTWO\\nthree\\nfour\\n"}',
+      arguments: '{"path":"sum.txt","content":"one\\nTWO\\nthree\\nfour\\n"}',
     },
   });
   const summary = executor.getChangeSummary();
@@ -896,6 +903,58 @@ function assert(cond, label) {
   assert(
     summary2[0].added === 4 && summary2[0].removed === 2,
     "changes: repeated edits accumulate",
+  );
+
+  // 8d) git_status + git_diff (Phase 10.1): real executor runs read-only git
+  // commands in a temp git repo (the stubbed workspace root is editRoot).
+  const { execSync } = require("child_process");
+  const git = (cmd) =>
+    execSync(cmd, { cwd: editRoot, stdio: "ignore" });
+  git("git init -q");
+  git('git config user.email "test@test.com"');
+  git('git config user.name "Test"');
+  fs.writeFileSync(path.join(editRoot, "tracked.txt"), "line1\nline2\n", "utf8");
+  git("git add tracked.txt");
+  git('git commit -q -m "init"');
+  // Modify a tracked file and add an untracked one.
+  fs.writeFileSync(path.join(editRoot, "tracked.txt"), "line1\nline2\nline3\n", "utf8");
+  fs.writeFileSync(path.join(editRoot, "untracked.txt"), "new\n", "utf8");
+
+  const gitStatus = await executor.execute({
+    id: "g1",
+    type: "function",
+    function: { name: "git_status", arguments: "{}" },
+  });
+  assert(
+    gitStatus.content.includes("tracked.txt"),
+    "git_status: modified tracked file listed",
+  );
+  assert(
+    gitStatus.content.includes("untracked.txt"),
+    "git_status: untracked file listed",
+  );
+  const gitDiff = await executor.execute({
+    id: "g2",
+    type: "function",
+    function: { name: "git_diff", arguments: "{}" },
+  });
+  assert(
+    gitDiff.content.includes("+line3"),
+    "git_diff: shows added line",
+  );
+  assert(
+    gitDiff.content.includes("tracked.txt"),
+    "git_diff: names the changed file",
+  );
+  // Scoped diff to the untracked file (not tracked) -> no diff output.
+  const gitDiffScoped = await executor.execute({
+    id: "g3",
+    type: "function",
+    function: { name: "git_diff", arguments: '{"path":"untracked.txt"}' },
+  });
+  assert(
+    !gitDiffScoped.content.includes("+line3"),
+    "git_diff: scoped diff excludes other files",
   );
 
   // Cleanup: restore Module._load and remove the temp dir.
@@ -1011,6 +1070,14 @@ function assert(cond, label) {
     "approval: search_files is not mutating",
   );
   assert(
+    !isMutatingTool("git_status"),
+    "approval: git_status is not mutating",
+  );
+  assert(
+    !isMutatingTool("git_diff"),
+    "approval: git_diff is not mutating",
+  );
+  assert(
     !isMutatingTool("unknown_tool"),
     "approval: unknown tool is not mutating",
   );
@@ -1041,30 +1108,18 @@ function assert(cond, label) {
 
   // 7b) diffStats (Phase 9.3): added/removed line counts
   const s0 = diffStats("a\nb\nc", "a\nb\nc");
-  assert(
-    s0.added === 0 && s0.removed === 0,
-    "diffStats: identical -> 0/0",
-  );
+  assert(s0.added === 0 && s0.removed === 0, "diffStats: identical -> 0/0");
   const s1 = diffStats("foo", "bar");
   assert(
     s1.added === 1 && s1.removed === 1,
     "diffStats: single-line replace -> 1/1",
   );
   const s2 = diffStats("a\nb\nc", "a\nX\nc");
-  assert(
-    s2.added === 1 && s2.removed === 1,
-    "diffStats: middle change -> 1/1",
-  );
+  assert(s2.added === 1 && s2.removed === 1, "diffStats: middle change -> 1/1");
   const s3 = diffStats("", "new\nline");
-  assert(
-    s3.added === 2 && s3.removed === 0,
-    "diffStats: new file -> 2/0",
-  );
+  assert(s3.added === 2 && s3.removed === 0, "diffStats: new file -> 2/0");
   const s4 = diffStats("old\nline", "");
-  assert(
-    s4.added === 0 && s4.removed === 2,
-    "diffStats: deleted file -> 0/2",
-  );
+  assert(s4.added === 0 && s4.removed === 2, "diffStats: deleted file -> 0/2");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
