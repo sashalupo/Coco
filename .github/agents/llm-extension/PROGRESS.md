@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 2 (in progress)
-- **Next step:** S14
+- **Next step:** S15
 - **Last updated:** 2026-10-09
-- **Last commit:** S13 (context.ts)
+- **Last commit:** S14 (gather + inject context)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -192,6 +192,17 @@ src/
   with the selected text; diagnostics list as `- [severity] line:col — message`. Verified under
   plain Node: empty input → `""`, file with/without language, single/multi-line selection,
   diagnostics, and stable section ordering all pass.
+- **S14 — gather + inject context** (2026-10-09): `ChatViewProvider` now gathers editor context and
+  folds it into the request. New `gatherContext(): ContextInput` reads the active text editor —
+  file (workspace-relative path via `asRelativePath`, `languageId`, full `getText()` contents),
+  selection (1-based range + `doc.getText(sel)`, only when non-empty), and diagnostics
+  (`vscode.languages.getDiagnostics`, mapped to `line:col — message` with a severity label via
+  `severityLabel`). `composeSystemPrompt(systemPrompt, contextBlock)` joins the configured system
+  prompt and the context block (either may be empty; empty only when both are). `handleSend` builds
+  the block via `buildContextBlock(gatherContext())` and uses the composed prompt for the leading
+  `system` message, so with an open file the request body carries the context block. No active
+  editor → empty `ContextInput` → empty block → no system message (unchanged behavior). Compiles
+  clean.
 
 ## Steps — Phase 1 (one per session)
 
@@ -246,7 +257,7 @@ and the formatting pure (in `context.ts`) so it stays testable under plain Node.
       (`file?`, `selection?`, `diagnostics?`) + `buildContextBlock(input): string` that formats the
       gathered context into a readable text block (empty string when nothing is provided).
       _Accept: compiles; pure module (no vscode import); verified under plain Node._
-- [ ] **S14 — gather + inject context.** In `ChatViewProvider`, read the active editor (file path,
+- [x] **S14 — gather + inject context.** In `ChatViewProvider`, read the active editor (file path,
       language, selection range + text) and workspace diagnostics, build the context block via
       `buildContextBlock`, and inject it into the request (prepended to the system prompt).
       _Accept: compiles; with an open file the request body carries the context block._

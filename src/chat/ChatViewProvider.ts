@@ -10,6 +10,7 @@ import { buildWebviewHtml } from './webview';
 import { LlmClient } from '../client';
 import { readSettings, ToolbarStateStore } from '../config';
 import { buildRequestBody, type ChatMessage } from '../request';
+import { buildContextBlock, type ContextInput } from '../context';
 import type { ContextLevel, ThinkingLevel, ToolbarState } from '../presets';
 
 /** Messages the webview sends to the host. */
@@ -120,8 +121,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
 		this.history.push({ role: 'user', content: text });
 
-		const withSystem: ChatMessage[] = settings.systemPrompt
-			? [{ role: 'system', content: settings.systemPrompt }, ...this.history]
+		// Gather editor context (active file, selection, diagnostics) and fold
+		// it into the system prompt so the model can see what the user is
+		// looking at. Empty context is a no-op.
+		const contextBlock = buildContextBlock(this.gatherContext());
+		const systemPrompt = this.composeSystemPrompt(settings.systemPrompt, contextBlock);
+
+		const withSystem: ChatMessage[] = systemPrompt
+			? [{ role: 'system', content: systemPrompt }, ...this.history]
 			: [...this.history];
 
 		const { body, trimmed } = buildRequestBody({ settings, toolbar }, withSystem);
@@ -158,6 +165,85 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 			const message = err instanceof Error ? err.message : String(err);
 			this.postMessage({ type: 'error', message });
 		}
+	}
+
+	/**
+	 * Gather the current editor context: the active file (path, language,
+	 * contents), the current selection (range + text), and workspace
+	 * diagnostics. Returns an empty `ContextInput` when there is no active
+	 * text editor, so `buildContextBlock` yields an empty string.
+	 */
+	private gatherContext(): ContextInput {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			return {};
+		}
+
+		const input: ContextInput = {};
+
+		// Active file: path (workspace-relative when possible), language, contents.
+		const doc = editor.document;
+		const wsFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
+		const path = wsFolder
+			? vscode.workspace.asRelativePath(doc.uri)
+			: doc.uri.fsPath;
+		input.file = {
+			path,
+			language: doc.languageId,
+			content: doc.getText(),
+		};
+
+		// Selection: only when the user has actually selected something.
+		const sel = editor.selection;
+		if (!sel.isEmpty) {
+			input.selection = {
+				startLine: sel.start.line + 1,
+				startColumn: sel.start.character + 1,
+				endLine: sel.end.line + 1,
+				endColumn: sel.end.character + 1,
+				text: doc.getText(sel),
+			};
+		}
+
+		// Diagnostics for the active file (errors/warnings/info).
+		const diags = vscode.languages.getDiagnostics(doc.uri);
+		if (diags.length > 0) {
+			input.diagnostics = diags.map((d) => ({
+				line: d.range.start.line + 1,
+				column: d.range.start.character + 1,
+				severity: this.severityLabel(d.severity),
+				message: d.message,
+			}));
+		}
+
+		return input;
+	}
+
+	/** Map a `DiagnosticSeverity` to a short human-readable label. */
+	private severityLabel(severity: vscode.DiagnosticSeverity): string {
+		switch (severity) {
+			case vscode.DiagnosticSeverity.Error:
+				return 'error';
+			case vscode.DiagnosticSeverity.Warning:
+				return 'warning';
+			case vscode.DiagnosticSeverity.Information:
+				return 'info';
+			case vscode.DiagnosticSeverity.Hint:
+				return 'hint';
+			default:
+				return 'info';
+		}
+	}
+
+	/**
+	 * Combine the configured system prompt with the gathered context block.
+	 * Either may be empty; the result is empty only when both are empty.
+	 */
+	private composeSystemPrompt(systemPrompt: string, contextBlock: string): string {
+		if (systemPrompt && contextBlock) {
+			return `${systemPrompt}\n\n${contextBlock}`;
+		}
+		return systemPrompt || contextBlock;
 	}
 
 	/** Reset the conversation history and clear the webview. */
