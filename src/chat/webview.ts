@@ -336,6 +336,45 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (state.context != null) { contextSelect.value = state.context; }
 		};
 
+		// Rebuild the model dropdown from a fresh list (keeps the manual entry).
+		function setModelOptions(ids) {
+			var current = modelSelect.value;
+			var opts = ['<option value="">Select model…</option>'];
+			(ids || []).forEach(function (id) {
+				var safe = String(id).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+				opts.push('<option value="' + safe + '">' + safe + '</option>');
+			});
+			opts.push('<option value="__manual__">manual…</option>');
+			modelSelect.innerHTML = opts.join('');
+			// Restore the previous selection if it still exists.
+			if (current) {
+				for (var i = 0; i < modelSelect.options.length; i++) {
+					if (modelSelect.options[i].value === current) {
+						modelSelect.value = current;
+						break;
+					}
+				}
+			}
+			syncManual();
+		}
+
+		// --- Host → webview messages (S8: models/clear; S9–S11 extend this) ---
+		if (vscode) {
+			vscode.onDidReceiveMessage(function (msg) {
+				switch (msg.type) {
+					case 'models':
+						setModelOptions(msg.models);
+						break;
+					case 'clear':
+						messagesEl.innerHTML = '';
+						contextIndicator.hidden = true;
+						break;
+					default:
+						break;
+				}
+			});
+		}
+
 		// Apply the initial toolbar state, then announce readiness to the host.
 		window.setToolbar(window.__llmInitial || {});
 		if (vscode) { vscode.postMessage({ type: 'ready' }); }

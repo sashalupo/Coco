@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S8
+- **Next step:** S9
 - **Last updated:** 2026-10-09
-- **Last commit:** S7 (src/chat/ChatViewProvider.ts)
+- **Last commit:** S8 (src/extension.ts)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -138,6 +138,15 @@ src/
   `{type:'hello', message:'LLM chat panel ready'}` via `postMessage` (a stable seam for S9–S11 to
   push streaming deltas / toolbar updates). Exported `WebviewToHostMessage` / `HostToWebviewMessage`
   types. `npm run compile` passes; compiled output verified to contain the round-trip logic.
+- **S8 — `src/extension.ts`** (2026-10-09): `activate()` registers the `ChatViewProvider` (view id
+  `llm.chat`), the 4 commands (`llm.openChat` → `workbench.view.llm`, `llm.testConnection` →
+  `client.health()` + info/error toast, `llm.refreshModels` → `client.listModels()` + push
+  `{type:'models'}` to the webview, `llm.clearChat` → push `{type:'clear'}`), a status bar item
+  (`$(check) LLM` / `$(error) LLM` + error background) driven by a 5s `GET /health` poll (timer
+  disposed on deactivate). Made `ChatViewProvider.postMessage` public so the extension can push
+  messages. Added a host→webview `onDidReceiveMessage` handler in `webview.ts` for `models`
+  (rebuilds the model dropdown, preserving selection + manual entry) and `clear` (empties the
+  message list + hides the context indicator). `npm run compile` passes; compiled output verified.
 
 ## Steps — Phase 1 (one per session)
 
@@ -166,7 +175,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S7 — `src/chat/ChatViewProvider.ts`.** `WebviewViewProvider` that builds the webview and
       round-trips a basic `hello`/`ready` message between webview and host.
       _Accept: compiles; view renders and a message round-trips._
-- [ ] **S8 — `src/extension.ts`.** `activate()`: register the view provider, the 4 commands, a
+- [x] **S8 — `src/extension.ts`.** `activate()`: register the view provider, the 4 commands, a
       status bar item, and a `/health` poll. Wire `llm.testConnection`.
       _Accept: compiles; extension activates; status bar reflects health._
 - [ ] **S9 — wire chat send.** Connect webview "send" → `request.ts` → `client.chatStream()` →

@@ -63,7 +63,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	/** Send a message to the webview (no-op if the view is not resolved). */
-	private postMessage(message: HostToWebviewMessage): void {
+	public postMessage(message: HostToWebviewMessage): void {
 		this.webview?.postMessage(message);
 	}
 }
