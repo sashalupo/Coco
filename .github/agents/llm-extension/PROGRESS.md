@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 2 (complete)
-- **Next step:** Phase 3 (S17+)
+- **Current phase:** 3 (in progress)
+- **Next step:** S18
 - **Last updated:** 2026-10-09
-- **Last commit:** S16 (context smoke test)
+- **Last commit:** S17 (inline.ts)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (26 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -221,6 +221,17 @@ src/
   content; single-line (`line 3, col 5-10`) and multi-line (`lines 3:1–7:4`) selection ranges +
   text; diagnostic error/warning lines; and stable section order (file → selection → diagnostics).
   Phase 2 marked complete.
+- **S17 — `src/inline.ts`** (2026-10-09): new pure module (no imports at all). Type
+  `CompletionContext` (`language`, `path`, `prefix`, `suffix`) and two functions:
+  `buildCompletionPrompt(ctx)` formats a focused "complete the code" prompt — a
+  `Complete the following <language> code.` header, an instruction to return ONLY the completion
+  (no explanation / fences / repeated code), an optional `File: <path>` line, the code before the
+  cursor in a fenced block, and (only when non-empty) the code after the cursor as context-only.
+  `parseCompletion(text)` trims, strips a surrounding markdown code fence (```` ```lang … ``` ````)
+  if present, and returns the raw completion (empty string for empty/whitespace-only input or a
+  bare fence). Verified under plain Node: prompt includes language/path/prefix/suffix and omits the
+  File/suffix sections when empty; parseCompletion handles empty, whitespace, plain text, fenced
+  (with/without lang), fence-only, and multi-line cases — ALL INLINE TESTS PASSED.
 
 ## Steps — Phase 1 (one per session)
 
@@ -285,6 +296,33 @@ and the formatting pure (in `context.ts`) so it stays testable under plain Node.
       _Accept: compiles; toggling a flag changes what is injected._
 - [x] **S16 — context smoke test.** Extend `scripts/smoke-test.js` to assert `buildContextBlock`
       output for file/selection/diagnostics and that an empty input yields an empty string.
+      _Accept: compiles; new assertions pass._
+
+## Steps — Phase 3 (one per session)
+
+Inline completion (ghost text) via `registerInlineCompletionItemProvider`. Keep the prompt
+building + response parsing pure (in `inline.ts`) so it stays testable under plain Node; the
+vscode-specific gathering lives in the provider.
+
+- [x] **S17 — `src/inline.ts`.** Pure module (no vscode). Type `CompletionContext`
+      (`language`, `path`, `prefix`, `suffix`) + `buildCompletionPrompt(ctx): string` (a focused
+      "complete the code" prompt with the surrounding code) + `parseCompletion(text): string`
+      (strip markdown code fences / leading whitespace, return the raw completion; empty when
+      nothing usable).
+      _Accept: compiles; pure module (no vscode import); verified under plain Node._
+- [ ] **S18 — `src/inline/InlineCompletionProvider.ts`.** `InlineCompletionItemProvider` whose
+      `provideInlineCompletionItems` gathers the prefix (text before the cursor) + suffix (text
+      after), builds the prompt via `buildCompletionPrompt`, calls `client.chatStream` and collects
+      the content, then returns `[new vscode.InlineCompletionItem(parseCompletion(text), position)]`
+      (empty array when there is nothing to complete or the result is empty).
+      _Accept: compiles; provider returns a typed `InlineCompletionItem[]`._
+- [ ] **S19 — register inline completion.** In `extension.ts`, register the provider via
+      `registerInlineCompletionItemProvider` gated by a new `llm.inline.enabled` setting (default
+      `false`) so ghost text is opt-in.
+      _Accept: compiles; with the setting on the provider is registered._
+- [ ] **S20 — inline smoke test.** Extend `scripts/smoke-test.js` to assert `buildCompletionPrompt`
+      (includes language + prefix + suffix) and `parseCompletion` (strips fences, trims, empty for
+      empty input).
       _Accept: compiles; new assertions pass._
 
 ## Decisions
