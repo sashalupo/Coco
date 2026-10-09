@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); webview template-literal bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `ed34862` — feat(llm): rename a saved conversation
+- **Last commit:** `9422f0e` — fix(llm): escape backslashes in webview inline JS template literal
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **Bug fix — webview inline JS template-literal escaping (2026-10-09):**
