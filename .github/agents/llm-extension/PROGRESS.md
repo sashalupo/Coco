@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** cleanup — strip debug scaffolding (diag line, onerror, keys/origin, version badge, host console.log)
+- **Last commit:** `bed0ebb` — feat(llm): add New Chat button to reset conversation
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **RESOLVED (dev-container) — empty Model dropdown + no-send:**
