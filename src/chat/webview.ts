@@ -173,6 +173,25 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 	}
+	.message.assistant .role {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.copy-btn {
+		background: transparent;
+		border: none;
+		color: var(--muted);
+		cursor: pointer;
+		font-size: 11px;
+		padding: 1px 6px;
+		border-radius: 3px;
+		opacity: 0;
+		transition: opacity 0.12s ease;
+	}
+	.message.assistant:hover .copy-btn { opacity: 1; }
+	.copy-btn:hover { color: var(--fg); background: var(--think-bg); }
+	.copy-btn.copied { color: var(--vscode-testing-iconPassed, #73c991); }
 	.message .content {
 		white-space: pre-wrap;
 		word-break: break-word;
@@ -544,10 +563,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			var el = document.createElement('div');
 			el.className = 'message assistant';
 			el.innerHTML =
-				'<div class="role">Assistant</div>' +
+				'<div class="role"><span>Assistant</span><button class="copy-btn" title="Copy message">Copy</button></div>' +
 				'<details class="thinking" hidden><summary>Thinking</summary><div class="thinking-content"></div></details>' +
 				'<div class="content"></div>' +
 				'<div class="usage-badge" hidden></div>';
+			var copyBtn = el.querySelector('.copy-btn');
+			copyBtn.addEventListener('click', function () {
+				copyText(el.querySelector('.content').textContent, copyBtn);
+			});
 			messagesEl.appendChild(el);
 			messagesEl.scrollTop = messagesEl.scrollHeight;
 			return {
@@ -559,6 +582,36 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				rawContent: ''
 			};
 		};
+		// Copy text to the clipboard (async API with a synchronous fallback).
+		function copyText(text, btn) {
+			function flash() {
+				if (!btn) { return; }
+				var orig = btn.textContent;
+				btn.textContent = 'Copied';
+				btn.classList.add('copied');
+				setTimeout(function () {
+					btn.textContent = orig;
+					btn.classList.remove('copied');
+				}, 1200);
+			}
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(text).then(flash, function () {
+					fallbackCopy(text); flash();
+				});
+			} else {
+				fallbackCopy(text); flash();
+			}
+		}
+		function fallbackCopy(text) {
+			var ta = document.createElement('textarea');
+			ta.value = text;
+			ta.style.position = 'fixed';
+			ta.style.opacity = '0';
+			document.body.appendChild(ta);
+			ta.select();
+			try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+			document.body.removeChild(ta);
+		}
 		// Reveal + open the thinking block the first time reasoning arrives.
 		function revealThinking(block) {
 			if (block.hidden) {

@@ -15,8 +15,17 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `47f5fd1` — feat(llm): show token usage per assistant reply
+- **Last commit:** `feat(llm): copy button on assistant messages`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Copy button (webview, no deps):**
+> - `webview.ts`: assistant message role row is now a flex row with a right-aligned
+>   `.copy-btn` (hidden until the message is hovered). Clicking copies the message's
+>   `textContent` (raw, not HTML) via `navigator.clipboard.writeText`, with a
+>   `document.execCommand('copy')` textarea fallback for restricted contexts. On success
+>   the button flashes "Copied" (green) for 1.2s.
+> - CSS: `.message.assistant .role` becomes `display:flex; justify-content:space-between`;
+>   `.copy-btn` is muted, fades in on hover, and turns green (`.copied`) on success.
 
 > **Token/usage display:**
 > - `ChatViewProvider`: `streamOneTurn` now captures `chunk.usage` (already parsed by
