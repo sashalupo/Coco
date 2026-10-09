@@ -7,6 +7,10 @@
 
 import * as vscode from 'vscode';
 import { buildWebviewHtml } from './webview';
+import { LlmClient } from '../client';
+import { readSettings } from '../config';
+import { buildRequestBody, type ChatMessage } from '../request';
+import type { ToolbarState } from '../presets';
 
 /** Messages the webview sends to the host. */
 export interface WebviewToHostMessage {
@@ -26,7 +30,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	/** The resolved webview (set in `resolveWebviewView`). */
 	private webview?: vscode.Webview;
 
-	constructor(private readonly context: vscode.ExtensionContext) {}
+	/** Conversation history (user/assistant turns). */
+	private history: ChatMessage[] = [];
+
+	constructor(
+		private readonly context: vscode.ExtensionContext,
+		private readonly client: LlmClient
+	) {}
 
 	/**
 	 * Resolve the webview: set its HTML and wire the message handler.
@@ -47,8 +57,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	}
 
 	/**
-	 * Handle a message from the webview. S7 only round-trips `ready` →
-	 * `hello`; the real chat/toolbar handling is added in S9–S11.
+	 * Handle a message from the webview. `ready` → `hello` (S7); `send` →
+	 * stream a chat completion (S9). Toolbar handling is added in S10.
 	 */
 	private onMessage(msg: WebviewToHostMessage): void {
 		switch (msg.type) {
@@ -56,10 +66,73 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 				// Round-trip: acknowledge the webview is up.
 				this.postMessage({ type: 'hello', message: 'LLM chat panel ready' });
 				break;
+			case 'send':
+				void this.handleSend(String(msg.text ?? ''));
+				break;
 			default:
 				// Unknown message types are ignored for now.
 				break;
 		}
+	}
+
+	/**
+	 * Send a user message and stream the assistant's reply back to the webview.
+	 * S9 uses the settings + a default toolbar state; S10 feeds the live
+	 * toolbar overrides (model/thinking/context) from the webview.
+	 */
+	private async handleSend(text: string): Promise<void> {
+		if (!text) {
+			return;
+		}
+		const settings = readSettings();
+		const toolbar: ToolbarState = { model: null, thinking: 'off', context: 'auto' };
+
+		this.history.push({ role: 'user', content: text });
+
+		const withSystem: ChatMessage[] = settings.systemPrompt
+			? [{ role: 'system', content: settings.systemPrompt }, ...this.history]
+			: [...this.history];
+
+		const { body, trimmed } = buildRequestBody({ settings, toolbar }, withSystem);
+		this.postMessage({ type: 'stream_start', trimmed });
+
+		let assistantContent = '';
+		let assistantReasoning = '';
+		try {
+			for await (const chunk of this.client.chatStream(body)) {
+				if (chunk.done) {
+					break;
+				}
+				if (chunk.reasoning) {
+					assistantReasoning += chunk.reasoning;
+				}
+				if (chunk.content) {
+					assistantContent += chunk.content;
+				}
+				if (chunk.reasoning || chunk.content) {
+					this.postMessage({
+						type: 'delta',
+						reasoning: chunk.reasoning,
+						content: chunk.content,
+					});
+				}
+			}
+			this.postMessage({ type: 'stream_end' });
+			const assistantMsg: ChatMessage = { role: 'assistant', content: assistantContent };
+			if (assistantReasoning) {
+				assistantMsg.reasoning_content = assistantReasoning;
+			}
+			this.history.push(assistantMsg);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			this.postMessage({ type: 'error', message });
+		}
+	}
+
+	/** Reset the conversation history and clear the webview. */
+	public clear(): void {
+		this.history = [];
+		this.postMessage({ type: 'clear' });
 	}
 
 	/** Send a message to the webview (no-op if the view is not resolved). */

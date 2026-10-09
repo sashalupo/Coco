@@ -156,6 +156,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		border-left: 2px solid var(--border);
 		padding-left: 8px;
 	}
+	.message.error .role { color: var(--vscode-errorForeground, #f48771); }
+	.message.error .content {
+		border-left: 2px solid var(--vscode-errorForeground, #f48771);
+		padding-left: 8px;
+		color: var(--vscode-errorForeground, #f48771);
+	}
 
 	/* Collapsible thinking block */
 	.thinking {
@@ -270,12 +276,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		}
 		modelSelect.addEventListener('change', syncManual);
 
+		var streaming = false;
+		var currentAssistant = null;
+		var lastSentText = '';
+
 		function doSend() {
 			var text = inputEl.value.trim();
-			if (!text) { return; }
-			// Placeholder: the real request flow is wired in S9.
+			if (!text || streaming) { return; }
+			lastSentText = text;
 			inputEl.value = '';
 			inputEl.focus();
+			if (vscode) { vscode.postMessage({ type: 'send', text: text }); }
 		}
 		sendBtn.addEventListener('click', doSend);
 		inputEl.addEventListener('keydown', function (e) {
@@ -358,7 +369,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			syncManual();
 		}
 
-		// --- Host → webview messages (S8: models/clear; S9–S11 extend this) ---
+		// --- Host → webview messages (S8: models/clear; S9: streaming) ---
 		if (vscode) {
 			vscode.onDidReceiveMessage(function (msg) {
 				switch (msg.type) {
@@ -368,6 +379,43 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					case 'clear':
 						messagesEl.innerHTML = '';
 						contextIndicator.hidden = true;
+						streaming = false;
+						currentAssistant = null;
+						setStreaming(false);
+						break;
+					case 'stream_start':
+						addUserMessage(lastSentText);
+						currentAssistant = addAssistantMessage();
+						setContextTrimmed(!!msg.trimmed);
+						streaming = true;
+						setStreaming(true);
+						break;
+					case 'delta':
+						if (!currentAssistant) { break; }
+						if (msg.reasoning) {
+							currentAssistant.thinking.textContent += msg.reasoning;
+						}
+						if (msg.content) {
+							currentAssistant.content.textContent += msg.content;
+						}
+						messagesEl.scrollTop = messagesEl.scrollHeight;
+						break;
+					case 'stream_end':
+						streaming = false;
+						currentAssistant = null;
+						setStreaming(false);
+						inputEl.focus();
+						break;
+					case 'error':
+						streaming = false;
+						currentAssistant = null;
+						setStreaming(false);
+						var errEl = document.createElement('div');
+						errEl.className = 'message error';
+						errEl.innerHTML = '<div class="role">Error</div><div class="content"></div>';
+						errEl.querySelector('.content').textContent = msg.message || 'Unknown error';
+						messagesEl.appendChild(errEl);
+						messagesEl.scrollTop = messagesEl.scrollHeight;
 						break;
 					default:
 						break;

@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S9
+- **Next step:** S10
 - **Last updated:** 2026-10-09
-- **Last commit:** S8 (src/extension.ts)
+- **Last commit:** S9 (wire chat send)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -147,6 +147,16 @@ src/
   messages. Added a host→webview `onDidReceiveMessage` handler in `webview.ts` for `models`
   (rebuilds the model dropdown, preserving selection + manual entry) and `clear` (empties the
   message list + hides the context indicator). `npm run compile` passes; compiled output verified.
+- **S9 — wire chat send** (2026-10-09): webview `doSend()` posts `{type:'send', text}` → host
+  `ChatViewProvider.handleSend()` reads settings, prepends the system prompt, calls
+  `buildRequestBody`, then `client.chatStream(body)`, streaming deltas back as `{type:'delta',
+  reasoning, content}` and `{type:'stream_start'}`/`{type:'stream_end'}`/`{type:'error'}`. The webview
+  renders the user message, an assistant message (content + thinking block), and appends deltas
+  live; errors render as a styled error message. History is kept in `ChatViewProvider.history`
+  (assistant turns include `reasoning_content` when present). `clear()` resets history + webview.
+  `extension.ts` now passes the `LlmClient` to the provider and `llm.clearChat` calls
+  `provider.clear()`. S9 uses a default toolbar state; S10 feeds the live toolbar overrides.
+  `npm run compile` passes; compiled output verified across all three files.
 
 ## Steps — Phase 1 (one per session)
 
@@ -178,7 +188,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S8 — `src/extension.ts`.** `activate()`: register the view provider, the 4 commands, a
       status bar item, and a `/health` poll. Wire `llm.testConnection`.
       _Accept: compiles; extension activates; status bar reflects health._
-- [ ] **S9 — wire chat send.** Connect webview "send" → `request.ts` → `client.chatStream()` →
+- [x] **S9 — wire chat send.** Connect webview "send" → `request.ts` → `client.chatStream()` →
       stream deltas back to the webview for rendering.
       _Accept: compiles; a real message streams into the panel._
 - [ ] **S10 — wire toolbar.** Model/Thinking/Context dropdowns update the override state and

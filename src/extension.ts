@@ -11,7 +11,7 @@ const HEALTH_POLL_INTERVAL_MS = 5000;
 
 export function activate(context: vscode.ExtensionContext): void {
 	const client = new LlmClient(readSettings);
-	const provider = new ChatViewProvider(context);
+	const provider = new ChatViewProvider(context, client);
 
 	// Register the chat webview (view id must match package.json `llm.chat`).
 	context.subscriptions.push(
@@ -72,7 +72,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			}
 		}),
 		vscode.commands.registerCommand('llm.clearChat', () => {
-			provider.postMessage({ type: 'clear' });
+			provider.clear();
 		})
 	);
 }
