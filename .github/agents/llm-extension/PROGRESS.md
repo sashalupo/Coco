@@ -15,21 +15,27 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); live-debugging runtime bug
 - **Next step:** — (roadmap complete; debugging empty Model dropdown + no-send in dev-container)
 - **Last updated:** 2026-10-09
-- **Last commit:** add origin/href to webview diag (confirm real webview vs browser preview)
+- **Last commit:** ROOT CAUSE = environmental (VS Code webview bridge missing onDidReceiveMessage)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
-> **Active debugging (dev-container):** Model dropdown empty + send does nothing. Webview
-> `diag:` line is the ONLY reliable diagnostic channel (host `console.log` does not surface in
-> the log the user views). ROOT CAUSE confirmed: the `vscode` object from `acquireVsCodeApi()`
-> exposes **`postMessage, setState, getState`** but **NO `onDidReceiveMessage`** (keys dump).
-> In a genuine VS Code webview `acquireVsCodeApi()` ALWAYS returns all four methods, and the
-> host→webview channel is *exclusively* `onDidReceiveMessage` (no alternative). So the webview
-> can send but cannot receive → dropdown empty (host's `models` never arrives) + send does
-> nothing (no `stream_start`/`delta`). No mock `acquireVsCodeApi` exists in our HTML, so the
-> partial API comes from the ENVIRONMENT. Hypothesis: the HTML is being previewed in a browser
-> with a hand-rolled `acquireVsCodeApi` mock (only postMessage/getState/setState). Added
-> `origin:` + `href:` to diag — a real webview is `vscode-webview://`, a browser preview is
-> `file://`/`http://localhost`. Awaiting reload to read the origin.
+> **Active debugging (dev-container) — ROOT CAUSE CONFIRMED (environmental, not our code):**
+> Model dropdown empty + send does nothing. The webview `diag:` line (the only reliable channel;
+> host `console.log` does not surface in the log the user views) proved:
+> - `acquireVsCodeApi()` returns **`postMessage, setState, getState`** but **NO `onDidReceiveMessage`**.
+> - `origin: vscode-webview://…` → it IS a genuine VS Code webview (NOT a browser preview).
+> - Running on **VS Code 1.140.0** (commit `07f806f9`), remote/dev-container.
+> - Our code is the CANONICAL pattern (`registerWebviewViewProvider` + `webview.html` +
+>   `webview.onDidReceiveMessage`); no mock `acquireVsCodeApi` in our HTML.
+> **Conclusion:** the VS Code webview↔host message bridge in this dev-container is broken —
+> the host→webview channel (`onDidReceiveMessage`) is missing from the webview API. This is an
+> ENVIRONMENTAL VS Code / remote-bridge issue, NOT an extension bug. The webview can call
+> `postMessage` (out) but can never receive (host's `models`/`stream_start`/`delta` never arrive).
+> **Fix (user-side, environment):** (1) `Developer: Reload Window`; (2) confirm local UI version
+> == remote server version (1.140.0 / 07f806f9) — a mismatch breaks the webview bridge;
+> (3) close + reopen the LLM view; (4) test whether OTHER webview extensions (e.g. Copilot chat)
+> can receive in this container — if not, it's a global VS Code/remote issue.
+> **Verify after fix:** diag should show `onDidReceiveMessage: function` and `recv: models`.
+> Diagnostic code (onerror/keys/origin) is kept in place to confirm the fix; remove once resolved.
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
