@@ -12,11 +12,17 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** all phases complete (1–5)
-- **Next step:** — (roadmap complete; no further steps defined)
+- **Current phase:** all phases complete (1–5); live-debugging runtime bug
+- **Next step:** — (roadmap complete; debugging empty Model dropdown + no-send in dev-container)
 - **Last updated:** 2026-10-09
-- **Last commit:** bug fix (chat: model dropdown + send error handling)
+- **Last commit:** diag rolling history (webview: rolling diag log + models count)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Active debugging (dev-container):** Model dropdown empty + send does nothing. Webview
+> `diag:` line is the ONLY reliable diagnostic channel (host `console.log` does not surface in
+> the log the user views). `diag: send posted: N chars` proves webview CAN postMessage to host.
+> Now: `diag` shows a rolling history (last 6 events) incl. every `recv:` + `models: N model(s)`,
+> so the full webview↔host round-trip is visible in one look.
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.

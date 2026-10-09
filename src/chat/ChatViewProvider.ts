@@ -86,7 +86,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * stream a chat completion (S9). Toolbar handling is added in S10.
    */
   private onMessage(msg: WebviewToHostMessage): void {
-    console.log(`[llm] onMessage: ${msg.type}`, JSON.stringify(msg).slice(0, 200));
+    console.log(
+      `[llm] onMessage: ${msg.type}`,
+      JSON.stringify(msg).slice(0, 200),
+    );
     switch (msg.type) {
       case "ready":
         // Round-trip: acknowledge the webview is up, sync the persisted
@@ -129,10 +132,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     try {
       const models = await this.client.listModels();
       const ids = models.data.map((m) => m.id);
-      console.log(`[llm] loadModels: got ${ids.length} model(s): ${ids.join(", ")}`);
+      console.log(
+        `[llm] loadModels: got ${ids.length} model(s): ${ids.join(", ")}`,
+      );
       this.postMessage({ type: "models", models: ids });
     } catch (err) {
-      console.log(`[llm] loadModels FAILED: ${err instanceof Error ? err.message : String(err)}`);
+      console.log(
+        `[llm] loadModels FAILED: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 

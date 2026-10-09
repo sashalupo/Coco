@@ -42,7 +42,7 @@ function escapeHtml(s: string): string {
  * webview or host changes so you can confirm which build is actually running
  * (a stale extension host shows the old marker).
  */
-const WEBVIEW_VERSION = 'v3 (host logging)';
+const WEBVIEW_VERSION = "v3 (host logging)";
 
 /**
  * Build the chat webview HTML.
@@ -165,11 +165,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	#diag {
 		padding: 4px 10px;
 		font-size: 11px;
+		line-height: 1.5;
 		color: var(--muted);
 		border-bottom: 1px solid var(--border);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		white-space: pre-wrap;
+		word-break: break-word;
+		max-height: 96px;
+		overflow-y: auto;
 	}
 	#build-version {
 		margin-left: 10px;
@@ -324,7 +326,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	(function () {
 		var vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
 		var diagEl = document.getElementById('diag');
-		function diag(m) { if (diagEl) { diagEl.textContent = 'diag: ' + m; } }
+		var diagLog = [];
+		function diag(m) {
+			diagLog.push(m);
+			if (diagLog.length > 6) { diagLog.shift(); }
+			if (diagEl) { diagEl.textContent = 'diag: ' + diagLog.join('  ·  '); }
+		}
 		diag('vscode api: ' + (vscode ? 'OK' : 'NULL') + ' | acquireVsCodeApi: ' + (typeof acquireVsCodeApi));
 		var modelSelect = document.getElementById('model-select');
 		var manualWrap = document.getElementById('model-manual-wrap');
@@ -498,6 +505,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				switch (msg.type) {
 					case 'models':
 						setModelOptions(msg.models);
+						diag('models: ' + (msg.models ? msg.models.length : 0) + ' model(s)');
 						break;
 					case 'toolbar':
 						setToolbar({
