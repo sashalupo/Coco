@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S4
+- **Next step:** S5
 - **Last updated:** 2026-10-09
-- **Last commit:** S3 (src/request.ts + src/presets.ts)
+- **Last commit:** S4 (src/client.ts part 1)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -106,6 +106,13 @@ src/
   `src/presets.ts`** (no `vscode`) so `request.ts` stays a pure module; `config.ts` now re-exports
   them (S2 API preserved). Verified under plain Node: build, estimator, and trim edge cases all pass.
   `npm run compile` passes; `request.js` loads with no `vscode` dependency.
+- **S4 — `src/client.ts` (part 1)** (2026-10-09): `LlmClient` takes a `SettingsProvider` (fresh
+  `baseUrl`/`apiKey` per call). `health()` → `GET /health` resolves a typed `HealthResult` on every
+  outcome (network failures resolve `ok:false` + `error`, never throw — safe for the status-bar poll).
+  `listModels()` → `GET /v1/models` resolves a typed `ModelListResult` or throws on non-2xx. Adds
+  `Authorization: Bearer …` only when `apiKey` is set. Uses Node 18+ global `fetch` (typed by
+  `@types/node` 20 `web-globals/fetch.d.ts`); no runtime deps, no `vscode` import. Verified under
+  plain Node with a stubbed `fetch`: health, models, no-key (no header), and failure paths all pass.
 
 ## Steps — Phase 1 (one per session)
 
@@ -122,7 +129,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S3 — `src/request.ts`.** `buildRequestBody(cfg, messages)` merging settings ← toolbar
       overrides; token estimator (`chars/3.5`); history-trim for the context budget.
       _Accept: compiles; pure module (no vscode import needed)._
-- [ ] **S4 — `src/client.ts` (part 1).** `LlmClient` with `health()` and `listModels()`
+- [x] **S4 — `src/client.ts` (part 1).** `LlmClient` with `health()` and `listModels()`
       (non-streaming `fetch`, optional `Authorization` header).
       _Accept: compiles; both methods return typed results._
 - [ ] **S5 — `src/client.ts` (part 2).** Add `chatStream()` — POST `/v1/chat/completions`
