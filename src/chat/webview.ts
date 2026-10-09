@@ -313,6 +313,46 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		padding: 4px 0;
 	}
 
+	/* Tool result card (Phase 8.3) */
+	.message.tool { margin: 4px 0; }
+	.tool-card {
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		background: var(--vscode-editorWidget-background, #252526);
+	}
+	.tool-card summary {
+		cursor: pointer;
+		padding: 4px 8px;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--vscode-descriptionForeground, #9d9d9d);
+		user-select: none;
+	}
+	.tool-card summary .tool-name {
+		font-family: var(--vscode-editor-font-family, monospace);
+	}
+	.tool-card[open] summary { border-bottom: 1px solid var(--border); }
+	.tool-args {
+		font-family: var(--vscode-editor-font-family, monospace);
+		font-size: 11px;
+		color: var(--muted);
+		padding: 4px 8px;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+	.tool-output {
+		font-family: var(--vscode-editor-font-family, monospace);
+		font-size: 11px;
+		margin: 0;
+		padding: 8px;
+		white-space: pre-wrap;
+		word-break: break-word;
+		background: var(--vscode-textCodeBlock-background, #1e1e1e);
+		border-top: 1px solid var(--border);
+		max-height: 320px;
+		overflow: auto;
+	}
+
 	/* Collapsible thinking block */
 	.thinking {
 		margin: 0;
@@ -984,6 +1024,29 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					rvEl.className = 'message revert-result';
 					rvEl.textContent = msg.message || '';
 					messagesEl.appendChild(rvEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'tool_result':
+					var tcEl = document.createElement('div');
+					tcEl.className = 'message tool';
+					var tcDetails = document.createElement('details');
+					tcDetails.className = 'tool-card';
+					var tcSummary = document.createElement('summary');
+					var tcName = document.createElement('span');
+					tcName.className = 'tool-name';
+					tcName.textContent = '⚙ ' + (msg.tool || 'tool');
+					tcSummary.appendChild(tcName);
+					tcDetails.appendChild(tcSummary);
+					var tcArgs = document.createElement('div');
+					tcArgs.className = 'tool-args';
+					tcArgs.textContent = msg.args || '';
+					tcDetails.appendChild(tcArgs);
+					var tcOut = document.createElement('pre');
+					tcOut.className = 'tool-output';
+					tcOut.textContent = msg.output || '';
+					tcDetails.appendChild(tcOut);
+					tcEl.appendChild(tcDetails);
+					messagesEl.appendChild(tcEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
 				default:

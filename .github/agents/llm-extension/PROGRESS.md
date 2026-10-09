@@ -12,12 +12,12 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** Phases 1–7 complete; **Phase 8 (harness: run & verify) in progress**
-- **Next step:** **8.3** — Show output in the webview: render command output + diagnostics in
-  the tool card (collapsible, themed)
+- **Current phase:** **Phase 8 (harness: run & verify) complete**; Phase 9 (harness UX) next
+- **Next step:** **9.1** — Tool-call cards: render each tool call (name + args) and its result
+  as a collapsible card in the chat, visually distinct from assistant text
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `e004bf3` — feat(llm): add run_command tool (Phase 8.1)
+- **Last commit:** `d98e0e9` — feat(llm): add get_diagnostics tool (Phase 8.2)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (143 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -698,6 +698,21 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   `DiagnosticSeverity`) returning a file's diagnostics (header + count, severity + 1-based
   position, message, source), the all-open-files header, a clean file ("No diagnostics"), and a
   path-traversal rejection.
+- **8.3 — Show tool output in the webview** (2026-10-09): render each tool call's output as a
+  collapsible, themed card in the chat panel. `ChatViewProvider.runStream()` now posts a
+  `tool_result` message (`{ tool, args, output }`) right after executing each tool call (in
+  addition to the existing `▸ name…` delta and the history push). `webview.ts` adds a
+  `case 'tool_result'` handler that builds a `.message.tool` wrapper containing a
+  `<details class="tool-card">` (collapsed by default) with a `<summary>` (⚙ + tool name), a
+  `.tool-args` block (the raw JSON args), and a `<pre class="tool-output">` (the result text).
+  All dynamic text is set via `textContent` (no `innerHTML`), so command output / diagnostics
+  with `<`, `>`, `&`, or quotes render safely with no escaping bugs. New CSS (`.tool-card`,
+  `.tool-args`, `.tool-output`) themes the card with VS Code variables: monospace output on a
+  code-block background, `max-height: 320px` + `overflow: auto` for long output, and a themed
+  border/summary. Compiles clean; the built inline webview script passes `node --check`, and a
+  functional test of the `tool_result` handler (minimal DOM stub) confirms the card is built with
+  the correct classes and text. Smoke test unchanged (143 assertions, all passing — the webview
+  is not exercised by the smoke test). **Phase 8 complete.**
 
 ## Steps — Phase 1 (one per session)
 

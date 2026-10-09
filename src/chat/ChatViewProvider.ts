@@ -489,6 +489,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           });
           const result = await this.toolExecutor.execute(call);
           this.history.push(toolResultMessage(call, result.content));
+          this.postMessage({
+            type: "tool_result",
+            tool: call.function.name,
+            args: call.function.arguments,
+            output: result.content,
+          });
         }
 
         // Rebuild the request body with the updated history (system +
