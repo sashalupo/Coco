@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 5 (in progress)
-- **Next step:** S27 (`src/codeaction.ts` — pure prompt builder + parser)
+- **Next step:** S28 (`src/codeaction/CodeActionProvider.ts` — vscode-specific provider)
 - **Last updated:** 2026-10-09
-- **Last commit:** S26 (tools smoke test)
+- **Last commit:** S27 (codeaction prompt builder + parser)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (64 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -326,6 +326,17 @@ src/
   `tool_choice=auto` when `toolsEnabled`, and that `chatStream` reassembles one `ToolCall`
   (`id=c1`, `name=read_file`, `arguments={"path":"a.ts"}`). Total assertions now 64 (was 41).
   Compiles clean; all 64 assertions pass.
+- **S27 — `src/codeaction.ts` (pure prompt builder + parser)** (2026-10-09): new pure module
+  (no `vscode` import, no network), mirroring `inline.ts`/`context.ts`. `CodeActionContext
+  {language, path, code, selection?: {startLine, endLine, text}, diagnostics?:
+  {line, column, severity, message}[]}`. `buildCodeActionPrompt(ctx)` emits a "Fix or refactor
+  the following <language> code." header, a "Return ONLY the full updated code" instruction, the
+  `File:` line (when path set), the `Code:` block, and — when present — the `Selected range`
+  (single-line `line N` / multi-line `lines N–M`) and `Diagnostics to address` sections, in a
+  stable order (code → selection → diagnostics). `parseCodeAction(text)` strips a surrounding
+  markdown code fence, trims, and returns `''` for empty/whitespace/fence-only input. Compiles
+  clean; verified under plain Node (20 checks: full/minimal/single-line prompts, stable order,
+  and all parser cases).
 
 ## Steps — Phase 1 (one per session)
 
@@ -462,7 +473,7 @@ a pure prompt-builder module, a vscode-specific provider, registration + a setti
 smoke test. The provider reuses `client.chatStream` (collect content) — no new non-streaming
 endpoint is added.
 
-- [ ] **S27 — `src/codeaction.ts` (pure prompt builder + parser).** New pure module (no
+- [x] **S27 — `src/codeaction.ts` (pure prompt builder + parser).** New pure module (no
       `vscode` import, no network). `CodeActionContext {language, path, code,
       selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
       `buildCodeActionPrompt(ctx): string` — a "fix/refactor this code" prompt: a header, an
