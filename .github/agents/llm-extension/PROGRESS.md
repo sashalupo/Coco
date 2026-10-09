@@ -12,11 +12,18 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** all phases complete (1–5); webview template-literal bug RESOLVED
-- **Next step:** — (roadmap complete; no further steps defined)
+- **Current phase:** Phases 1–5 complete; **Phase 6 (harness: targeted file editing) started**
+- **Next step:** **6.1** — add the `edit_file` tool schema to `CODE_TOOLS` in `src/tools.ts`
+  (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
 - **Last commit:** `9422f0e` — fix(llm): escape backslashes in webview inline JS template literal
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
+> coding-agent harness. The full step-by-step plan lives in
+> `.github/agents/llm-extension/PLAN.md` (Phases 6–10: targeted `edit_file`, safe writes &
+> review, run & verify, harness UX, git integration). The **Next step** pointer above points
+> into that plan; do one step per session and keep this file in sync.
 
 > **Bug fix — webview inline JS template-literal escaping (2026-10-09):**
 >
