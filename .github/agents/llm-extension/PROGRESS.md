@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 1 (not started)
-- **Next step:** S1
+- **Current phase:** 1 (in progress)
+- **Next step:** S2
 - **Last updated:** 2026-10-09
-- **Last commit:** (none yet)
-- **Build state:** not compiled
+- **Last commit:** S1 (package.json manifest)
+- **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
@@ -86,50 +86,54 @@ src/
 
 ## Done
 
-_(none yet)_
+- **S1 — `package.json` manifest** (2026-10-09): added all 19 `llm.*` settings, the 4 commands
+  (`llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.clearChat`), the activity bar
+  container `llm` + webview `llm.chat`, and lazy `activationEvents` (`onView:llm.chat`,
+  `onCommand:llm.testConnection`). Added `media/llm.svg` activity bar icon. Replaced the sample
+  `extension.helloWorld` command. `npm run compile` passes; manifest validated as well-formed JSON.
 
 ## Steps — Phase 1 (one per session)
 
 Each step is single-file, independently compilable and committable. Do them in order. Mark a
 step `[x]` when committed, and move the **Next step** pointer forward.
 
-- [ ] **S1 — `package.json` manifest.** Add `llm.*` configuration, commands
-  (`llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.clearChat`), the activity bar
-  view container + `llm.chat` view, and lazy `activationEvents`.
-  _Accept: `npm run compile` passes; manifest is valid (no vsce warnings about unknown keys)._
+- [x] **S1 — `package.json` manifest.** Add `llm.*` configuration, commands
+      (`llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.clearChat`), the activity bar
+      view container + `llm.chat` view, and lazy `activationEvents`.
+      _Accept: `npm run compile` passes; manifest is valid (no vsce warnings about unknown keys)._
 - [ ] **S2 — `src/config.ts`.** Settings access (read all `llm.*`) + toolbar override state
-  (Model/Thinking/Context) persisted in `Memento`. Export typed getters/setters.
-  _Accept: compiles; no runtime deps._
+      (Model/Thinking/Context) persisted in `Memento`. Export typed getters/setters.
+      _Accept: compiles; no runtime deps._
 - [ ] **S3 — `src/request.ts`.** `buildRequestBody(cfg, messages)` merging settings ← toolbar
-  overrides; token estimator (`chars/3.5`); history-trim for the context budget.
-  _Accept: compiles; pure module (no vscode import needed)._
+      overrides; token estimator (`chars/3.5`); history-trim for the context budget.
+      _Accept: compiles; pure module (no vscode import needed)._
 - [ ] **S4 — `src/client.ts` (part 1).** `LlmClient` with `health()` and `listModels()`
-  (non-streaming `fetch`, optional `Authorization` header).
-  _Accept: compiles; both methods return typed results._
+      (non-streaming `fetch`, optional `Authorization` header).
+      _Accept: compiles; both methods return typed results._
 - [ ] **S5 — `src/client.ts` (part 2).** Add `chatStream()` — POST `/v1/chat/completions`
-  with `stream:true`, hand-rolled SSE parser yielding `{reasoning, content, done, usage}`.
-  _Accept: compiles; parser handles `data:` lines, `[DONE]`, and `reasoning_content` vs `content`._
+      with `stream:true`, hand-rolled SSE parser yielding `{reasoning, content, done, usage}`.
+      _Accept: compiles; parser handles `data:` lines, `[DONE]`, and `reasoning_content` vs `content`._
 - [ ] **S6 — `src/chat/webview.ts`.** `buildWebviewHtml()` — static HTML/CSS/JS shell: message
-  list, input box, Model/Thinking/Context toolbar, collapsible thinking block. No logic yet.
-  _Accept: compiles; returns a string; no external assets._
+      list, input box, Model/Thinking/Context toolbar, collapsible thinking block. No logic yet.
+      _Accept: compiles; returns a string; no external assets._
 - [ ] **S7 — `src/chat/ChatViewProvider.ts`.** `WebviewViewProvider` that builds the webview and
-  round-trips a basic `hello`/`ready` message between webview and host.
-  _Accept: compiles; view renders and a message round-trips._
+      round-trips a basic `hello`/`ready` message between webview and host.
+      _Accept: compiles; view renders and a message round-trips._
 - [ ] **S8 — `src/extension.ts`.** `activate()`: register the view provider, the 4 commands, a
-  status bar item, and a `/health` poll. Wire `llm.testConnection`.
-  _Accept: compiles; extension activates; status bar reflects health._
+      status bar item, and a `/health` poll. Wire `llm.testConnection`.
+      _Accept: compiles; extension activates; status bar reflects health._
 - [ ] **S9 — wire chat send.** Connect webview "send" → `request.ts` → `client.chatStream()` →
-  stream deltas back to the webview for rendering.
-  _Accept: compiles; a real message streams into the panel._
+      stream deltas back to the webview for rendering.
+      _Accept: compiles; a real message streams into the panel._
 - [ ] **S10 — wire toolbar.** Model/Thinking/Context dropdowns update the override state and
-  feed `request.ts` (model list from `/v1/models`, thinking → `reasoning_effort`, context → budget).
-  _Accept: compiles; changing a dropdown changes the next request body._
+      feed `request.ts` (model list from `/v1/models`, thinking → `reasoning_effort`, context → budget).
+      _Accept: compiles; changing a dropdown changes the next request body._
 - [ ] **S11 — thinking + context UI.** Render `reasoning_content` as a collapsed thinking block;
-  show a "context trimmed" indicator when history was trimmed.
-  _Accept: compiles; thinking block collapses/expands; indicator appears on trim._
+      show a "context trimmed" indicator when history was trimmed.
+      _Accept: compiles; thinking block collapses/expands; indicator appears on trim._
 - [ ] **S12 — smoke test.** Manual test against the running ninfer engine: health, model list,
-  one streamed chat with thinking. Update Status to "Phase 1 complete".
-  _Accept: verified end-to-end; PROGRESS.md marked done._
+      one streamed chat with thinking. Update Status to "Phase 1 complete".
+      _Accept: verified end-to-end; PROGRESS.md marked done._
 
 ## Decisions
 
