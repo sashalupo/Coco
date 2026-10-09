@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 5 (in progress)
-- **Next step:** S28 (`src/codeaction/CodeActionProvider.ts` — vscode-specific provider)
+- **Next step:** S29 (register in `extension.ts` + `llm.codeAction.enabled` setting)
 - **Last updated:** 2026-10-09
-- **Last commit:** S27 (codeaction prompt builder + parser)
+- **Last commit:** S28 (CodeActionProvider)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (64 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -150,7 +150,7 @@ src/
 - **S9 — wire chat send** (2026-10-09): webview `doSend()` posts `{type:'send', text}` → host
   `ChatViewProvider.handleSend()` reads settings, prepends the system prompt, calls
   `buildRequestBody`, then `client.chatStream(body)`, streaming deltas back as `{type:'delta',
-  reasoning, content}` and `{type:'stream_start'}`/`{type:'stream_end'}`/`{type:'error'}`. The webview
+reasoning, content}` and `{type:'stream_start'}`/`{type:'stream_end'}`/`{type:'error'}`. The webview
   renders the user message, an assistant message (content + thinking block), and appends deltas
   live; errors render as a styled error message. History is kept in `ChatViewProvider.history`
   (assistant turns include `reasoning_content` when present). `clear()` resets history + webview.
@@ -227,7 +227,7 @@ src/
   `Complete the following <language> code.` header, an instruction to return ONLY the completion
   (no explanation / fences / repeated code), an optional `File: <path>` line, the code before the
   cursor in a fenced block, and (only when non-empty) the code after the cursor as context-only.
-  `parseCompletion(text)` trims, strips a surrounding markdown code fence (```` ```lang … ``` ````)
+  `parseCompletion(text)` trims, strips a surrounding markdown code fence (` ```lang … ``` `)
   if present, and returns the raw completion (empty string for empty/whitespace-only input or a
   bare fence). Verified under plain Node: prompt includes language/path/prefix/suffix and omits the
   File/suffix sections when empty; parseCompletion handles empty, whitespace, plain text, fenced
@@ -247,7 +247,7 @@ src/
   (boolean, default `false`) to `package.json` (now 23 settings). In `extension.ts`, `activate()`
   reads the setting at activation and, when enabled, constructs an `InlineCompletionProvider` and
   registers it via `vscode.languages.registerInlineCompletionItemProvider([{ pattern: '**' }],
-  provider)` (all file types). The setting is read once at activation, so toggling it requires a
+provider)` (all file types). The setting is read once at activation, so toggling it requires a
   reload (noted in the setting description). Ghost text is opt-in and off by default. Compiles
   clean; compiled `extension.js` verified to import the provider, read `llm.inline.enabled`, gate on
   it, and register with the `**` selector.
@@ -272,11 +272,11 @@ src/
   calling. `ChatMessage` now carries an optional `tool_calls?: ToolCall[]` (on assistant turns that
   request tool calls) in addition to the `role: 'tool'` + `tool_call_id` added in S21. `ChatCompletionRequest`
   gained `tools?: Tool[]` and `tool_choice?: string`. `buildRequestBody` now sets `tools: CODE_TOOLS`
-  + `tool_choice: 'auto'` when `settings.toolsEnabled` is true (omitted otherwise). Verified under
-  plain Node: `toolsEnabled=false` → no `tools`/`tool_choice` in the body; `toolsEnabled=true` →
-  `tools === CODE_TOOLS` (4 tools) + `tool_choice='auto'`; and an assistant turn with `tool_calls`
-  + a `role: 'tool'` result round-trips through the body with `tool_call_id` preserved. Existing
-  smoke test still passes.
+  - `tool_choice: 'auto'` when `settings.toolsEnabled` is true (omitted otherwise). Verified under
+    plain Node: `toolsEnabled=false` → no `tools`/`tool_choice` in the body; `toolsEnabled=true` →
+    `tools === CODE_TOOLS` (4 tools) + `tool_choice='auto'`; and an assistant turn with `tool_calls`
+  - a `role: 'tool'` result round-trips through the body with `tool_call_id` preserved. Existing
+    smoke test still passes.
 - **S23 — `src/client.ts` (tools)** (2026-10-09): extended the SSE client for function calling.
   New `ToolCallDelta` type (raw partial delta keyed by `index`) and `StreamChunk` gained
   `toolCallDeltas?` (raw per-chunk) + `toolCalls?` (accumulated). New pure exported helper
@@ -306,7 +306,7 @@ src/
   tracking the accumulated `toolCalls`), pushes the assistant turn (with `reasoning_content` and
   `tool_calls` when present) to history, and — when `settings.toolsEnabled` and the reply has
   `tool_calls` — executes each via `ToolExecutor.execute`, posts a `▸ <tool>…` delta, and appends the
-  `toolResultMessage` to history. The request body is rebuilt each iteration from the *current*
+  `toolResultMessage` to history. The request body is rebuilt each iteration from the _current_
   `this.history` (system-prefixed) so the new assistant/tool turns are included, then the loop
   re-sends. Stops when the model stops calling tools or `MAX_TOOL_ITERATIONS = 8` is hit (posts a
   `[stopped after N tool iterations]` note). New helpers: `streamOneTurn(body)` and
@@ -328,8 +328,8 @@ src/
   Compiles clean; all 64 assertions pass.
 - **S27 — `src/codeaction.ts` (pure prompt builder + parser)** (2026-10-09): new pure module
   (no `vscode` import, no network), mirroring `inline.ts`/`context.ts`. `CodeActionContext
-  {language, path, code, selection?: {startLine, endLine, text}, diagnostics?:
-  {line, column, severity, message}[]}`. `buildCodeActionPrompt(ctx)` emits a "Fix or refactor
+{language, path, code, selection?: {startLine, endLine, text}, diagnostics?:
+{line, column, severity, message}[]}`. `buildCodeActionPrompt(ctx)` emits a "Fix or refactor
   the following <language> code." header, a "Return ONLY the full updated code" instruction, the
   `File:` line (when path set), the `Code:` block, and — when present — the `Selected range`
   (single-line `line N` / multi-line `lines N–M`) and `Diagnostics to address` sections, in a
@@ -337,6 +337,24 @@ src/
   markdown code fence, trims, and returns `''` for empty/whitespace/fence-only input. Compiles
   clean; verified under plain Node (20 checks: full/minimal/single-line prompts, stable order,
   and all parser cases).
+- **S28 — `src/codeaction/CodeActionProvider.ts` (vscode-specific provider)** (2026-10-09):
+  new `CodeActionProvider implements vscode.CodeActionProvider` (constructed with `context` +
+  `LlmClient`, like `InlineCompletionProvider`). `provideCodeActions(document, range, context)`
+  always offers an "Ask LLM to fix/refactor" `CodeAction` (kind `RefactorRewrite`,
+  `isPreferred`) and — when diagnostics fall in the range — a "Fix with LLM" action (kind
+  `QuickFix`, with the matching `diagnostics`). Because `vscode.CodeAction` has no `range`
+  property, the range is carried on a local `RangeCodeAction` interface (`actionRange`) and read
+  back in `resolveCodeAction` (same object reference within the host). `resolveCodeAction`
+  gathers the file context (language, path, full code, selection = range text, diagnostics in
+  range via `getDiagnostics` + `intersection`), builds the prompt via `buildCodeActionPrompt`,
+  reuses the chat settings + toolbar (forcing `thinking: 'off'`), streams `client.chatStream`
+  (collect content, capped at `MAX_EDIT_CHARS = 20000`), parses via `parseCodeAction`, and
+  returns the action with a `WorkspaceEdit` replacing the range. Empty or failed result → the
+  action is returned without an edit (no crash). Bridges `CancellationToken` → `AbortController`
+  (disposed in `finally`). Compiles clean; compiled output verified to contain the provider,
+  both action labels/kinds, `buildCodeActionPrompt`, `chatStream` collect, `parseCodeAction`,
+  the `WorkspaceEdit` replace, `actionRange`, `diagnosticsInRange`, and the empty-result guard.
+  Existing smoke test still passes.
 
 ## Steps — Phase 1 (one per session)
 
@@ -475,7 +493,7 @@ endpoint is added.
 
 - [x] **S27 — `src/codeaction.ts` (pure prompt builder + parser).** New pure module (no
       `vscode` import, no network). `CodeActionContext {language, path, code,
-      selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
+    selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
       `buildCodeActionPrompt(ctx): string` — a "fix/refactor this code" prompt: a header, an
       instruction to return ONLY the full updated code (no explanation, no code fences), the file
       path, the code block, and — when present — the selected range and the diagnostics to
@@ -483,10 +501,10 @@ endpoint is added.
       strips a surrounding markdown code fence, trims, returns `''` for empty. _Accept: compiles;
       pure module loads under plain Node; prompt includes language/path/code/diagnostics; parser
       strips fences._
-- [ ] **S28 — `src/codeaction/CodeActionProvider.ts` (vscode-specific provider).**
+- [x] **S28 — `src/codeaction/CodeActionProvider.ts` (vscode-specific provider).**
       `CodeActionProvider implements vscode.CodeActionProvider` (constructed with `context` +
       `LlmClient`, like `InlineCompletionProvider`). `provideCodeActions(document, range,
-      context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
+    context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
       `needsResolve: true`) and — when diagnostics fall in the range — a "Fix with LLM" action
       (kind `quickfix`). `resolveCodeAction` gathers the file context (language, path, full code,
       selection = range text, diagnostics in range), builds the prompt via `buildCodeActionPrompt`,
@@ -499,7 +517,7 @@ endpoint is added.
       `llm.codeAction.enabled` (boolean, default `false`) to `package.json`
       `contributes.configuration`. In `activate()`, when enabled, register the provider via
       `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
-      providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
+    providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
       only when enabled._
 - [ ] **S30 — code action smoke test.** Extend `scripts/smoke-test.js` to assert
       `buildCodeActionPrompt` (language/path/code/diagnostics/selection present, stable order) and
