@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S3
+- **Next step:** S4
 - **Last updated:** 2026-10-09
-- **Last commit:** S2 (src/config.ts)
+- **Last commit:** S3 (src/request.ts + src/presets.ts)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -97,6 +97,15 @@ src/
   `setContext`, `reset`). Exported `ThinkingLevel`/`ContextLevel` types, `THINKING_TO_EFFORT`
   (`off→none … max→xhigh`), `CONTEXT_TO_TOKENS` (`auto→0 … 240k→240000`), and ordered preset lists.
   `npm run compile` passes; no runtime npm deps (only the host-provided `vscode` type import).
+- **S3 — `src/request.ts` (+ `src/presets.ts`)** (2026-10-09): `buildRequestBody(cfg, messages)`
+  merges `settings ← toolbar overrides` into a typed `ChatCompletionRequest` (model override wins,
+  thinking→`reasoning_effort` + `enable_thinking` when on, context→budget, conditional
+  `seed`/`stop`/`stream_options`/`response_format`/`chat_template_kwargs`). `estimateTokens`
+  (`chars/3.5`), `estimateMessageTokens`, `estimateMessagesTokens`, and `trimHistory` (keeps leading
+  system + latest turn, drops oldest first; `auto`/0 disables). **Split the pure presets/types into
+  `src/presets.ts`** (no `vscode`) so `request.ts` stays a pure module; `config.ts` now re-exports
+  them (S2 API preserved). Verified under plain Node: build, estimator, and trim edge cases all pass.
+  `npm run compile` passes; `request.js` loads with no `vscode` dependency.
 
 ## Steps — Phase 1 (one per session)
 
@@ -110,7 +119,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S2 — `src/config.ts`.** Settings access (read all `llm.*`) + toolbar override state
       (Model/Thinking/Context) persisted in `Memento`. Export typed getters/setters.
       _Accept: compiles; no runtime deps._
-- [ ] **S3 — `src/request.ts`.** `buildRequestBody(cfg, messages)` merging settings ← toolbar
+- [x] **S3 — `src/request.ts`.** `buildRequestBody(cfg, messages)` merging settings ← toolbar
       overrides; token estimator (`chars/3.5`); history-trim for the context budget.
       _Accept: compiles; pure module (no vscode import needed)._
 - [ ] **S4 — `src/client.ts` (part 1).** `LlmClient` with `health()` and `listModels()`

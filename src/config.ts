@@ -5,71 +5,27 @@
 // no network, no request building (that lives in request.ts).
 
 import * as vscode from 'vscode';
+import type {
+	ContextLevel,
+	LlmSettings,
+	ThinkingLevel,
+	ToolbarState,
+} from './presets';
 
-/** Thinking presets shown in the chat toolbar. */
-export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'max';
-
-/** Maps a toolbar thinking preset to the engine's `reasoning_effort`. */
-export const THINKING_TO_EFFORT: Record<ThinkingLevel, string> = {
-	off: 'none',
-	low: 'low',
-	medium: 'medium',
-	high: 'high',
-	max: 'xhigh',
-};
-
-/** Ordered list of thinking presets for the toolbar dropdown. */
-export const THINKING_LEVELS: readonly ThinkingLevel[] = [
-	'off',
-	'low',
-	'medium',
-	'high',
-	'max',
-];
-
-/** Context-budget presets shown in the chat toolbar. */
-export type ContextLevel = 'auto' | '32k' | '64k' | '128k' | '240k';
-
-/** Maps a context preset to a token budget (0 = auto / unbounded). */
-export const CONTEXT_TO_TOKENS: Record<ContextLevel, number> = {
-	auto: 0,
-	'32k': 32_000,
-	'64k': 64_000,
-	'128k': 128_000,
-	'240k': 240_000,
-};
-
-/** Ordered list of context presets for the toolbar dropdown. */
-export const CONTEXT_LEVELS: readonly ContextLevel[] = [
-	'auto',
-	'32k',
-	'64k',
-	'128k',
-	'240k',
-];
-
-/** All `llm.*` settings, read as a plain typed object. */
-export interface LlmSettings {
-	baseUrl: string;
-	apiKey: string;
-	model: string;
-	systemPrompt: string;
-	temperature: number;
-	topP: number;
-	topK: number;
-	minP: number;
-	presencePenalty: number;
-	frequencyPenalty: number;
-	seed: string;
-	stop: string[];
-	maxCompletionTokens: number;
-	preserveThinking: boolean;
-	stream: boolean;
-	includeUsage: boolean;
-	responseFormat: string;
-	chatTemplateKwargs: Record<string, unknown>;
-	toolsEnabled: boolean;
-}
+// Re-export the pure presets/types so existing importers of config.ts keep
+// working. (request.ts imports from ./presets directly to stay vscode-free.)
+export {
+	CONTEXT_LEVELS,
+	CONTEXT_TO_TOKENS,
+	THINKING_LEVELS,
+	THINKING_TO_EFFORT,
+} from './presets';
+export type {
+	ContextLevel,
+	LlmSettings,
+	ThinkingLevel,
+	ToolbarState,
+} from './presets';
 
 /**
  * Read all `llm.*` settings from the workspace configuration.
@@ -99,13 +55,6 @@ export function readSettings(): LlmSettings {
 		chatTemplateKwargs: c.get<Record<string, unknown>>('chatTemplateKwargs', {}),
 		toolsEnabled: c.get<boolean>('tools.enabled', false),
 	};
-}
-
-/** Toolbar override state. `model: null` means "use settings / first model". */
-export interface ToolbarState {
-	model: string | null;
-	thinking: ThinkingLevel;
-	context: ContextLevel;
 }
 
 const DEFAULT_TOOLBAR: ToolbarState = {
