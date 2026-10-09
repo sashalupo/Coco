@@ -11,7 +11,12 @@ import { LlmClient } from '../client';
 import { readSettings, ToolbarStateStore } from '../config';
 import { buildRequestBody, type ChatMessage } from '../request';
 import { buildContextBlock, type ContextInput } from '../context';
+import { toolResultMessage, type ToolCall } from '../tools';
+import { ToolExecutor } from '../tools/ToolExecutor';
 import type { ContextFlags, ContextLevel, ThinkingLevel, ToolbarState } from '../presets';
+
+/** Cap on the number of tool-call iterations in the agentic loop. */
+const MAX_TOOL_ITERATIONS = 8;
 
 /** Messages the webview sends to the host. */
 export interface WebviewToHostMessage {
@@ -37,11 +42,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	/** Persisted toolbar overrides (Model/Thinking/Context). */
 	private readonly toolbarStore: ToolbarStateStore;
 
+	/** Executes the workspace tools the engine calls (Phase 4). */
+	private readonly toolExecutor: ToolExecutor;
+
 	constructor(
 		private readonly context: vscode.ExtensionContext,
 		private readonly client: LlmClient
 	) {
 		this.toolbarStore = ToolbarStateStore.create(context.globalState);
+		this.toolExecutor = new ToolExecutor();
 	}
 
 	/**
@@ -141,40 +150,95 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 			? [{ role: 'system', content: systemPrompt }, ...this.history]
 			: [...this.history];
 
-		const { body, trimmed } = buildRequestBody({ settings, toolbar }, withSystem);
-		this.postMessage({ type: 'stream_start', trimmed });
+		const initial = buildRequestBody({ settings, toolbar }, withSystem);
+		let body = initial.body;
+		this.postMessage({ type: 'stream_start', trimmed: initial.trimmed });
 
-		let assistantContent = '';
-		let assistantReasoning = '';
 		try {
-			for await (const chunk of this.client.chatStream(body)) {
-				if (chunk.done) {
+			// Agentic loop: when tools are enabled, keep sending the request
+			// while the assistant replies with tool_calls — executing each via
+			// the ToolExecutor and feeding the results back — until the model
+			// stops calling tools or the iteration cap is hit.
+			let iterations = 0;
+			for (;;) {
+				const { content, reasoning, toolCalls } = await this.streamOneTurn(body);
+				this.history.push(this.assistantMessage(content, reasoning, toolCalls));
+
+				if (!settings.toolsEnabled || toolCalls.length === 0) {
 					break;
 				}
-				if (chunk.reasoning) {
-					assistantReasoning += chunk.reasoning;
-				}
-				if (chunk.content) {
-					assistantContent += chunk.content;
-				}
-				if (chunk.reasoning || chunk.content) {
+				if (++iterations >= MAX_TOOL_ITERATIONS) {
 					this.postMessage({
 						type: 'delta',
-						reasoning: chunk.reasoning,
-						content: chunk.content,
+						content: `\n\n[stopped after ${MAX_TOOL_ITERATIONS} tool iterations]`,
 					});
+					break;
 				}
+
+				// Execute each tool call and append the results to the history.
+				for (const call of toolCalls) {
+					this.postMessage({ type: 'delta', content: `\n\n▸ ${call.function.name}…` });
+					const result = await this.toolExecutor.execute(call);
+					this.history.push(toolResultMessage(call, result.content));
+				}
+
+				// Rebuild the request body with the updated history (system +
+				// the new assistant/tool turns) and loop.
+				const currentWithSystem = systemPrompt
+					? [{ role: 'system' as const, content: systemPrompt }, ...this.history]
+					: [...this.history];
+				const rebuilt = buildRequestBody({ settings, toolbar }, currentWithSystem);
+				body = rebuilt.body;
 			}
 			this.postMessage({ type: 'stream_end' });
-			const assistantMsg: ChatMessage = { role: 'assistant', content: assistantContent };
-			if (assistantReasoning) {
-				assistantMsg.reasoning_content = assistantReasoning;
-			}
-			this.history.push(assistantMsg);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			this.postMessage({ type: 'error', message });
 		}
+	}
+
+	/**
+	 * Stream a single assistant turn: collect content/reasoning deltas (posted
+	 * to the webview as they arrive) and the accumulated tool calls.
+	 */
+	private async streamOneTurn(body: import('../request').ChatCompletionRequest): Promise<{
+		content: string;
+		reasoning: string;
+		toolCalls: ToolCall[];
+	}> {
+		let content = '';
+		let reasoning = '';
+		let toolCalls: ToolCall[] = [];
+		for await (const chunk of this.client.chatStream(body)) {
+			if (chunk.done) {
+				break;
+			}
+			if (chunk.reasoning) {
+				reasoning += chunk.reasoning;
+			}
+			if (chunk.content) {
+				content += chunk.content;
+			}
+			if (chunk.toolCalls) {
+				toolCalls = chunk.toolCalls;
+			}
+			if (chunk.reasoning || chunk.content) {
+				this.postMessage({ type: 'delta', reasoning: chunk.reasoning, content: chunk.content });
+			}
+		}
+		return { content, reasoning, toolCalls };
+	}
+
+	/** Build an assistant `ChatMessage` from a streamed turn. */
+	private assistantMessage(content: string, reasoning: string, toolCalls: ToolCall[]): ChatMessage {
+		const msg: ChatMessage = { role: 'assistant', content };
+		if (reasoning) {
+			msg.reasoning_content = reasoning;
+		}
+		if (toolCalls.length > 0) {
+			msg.tool_calls = toolCalls;
+		}
+		return msg;
 	}
 
 	/**

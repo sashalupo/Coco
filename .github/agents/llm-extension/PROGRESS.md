@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 4 (in progress)
-- **Next step:** S25
+- **Next step:** S26
 - **Last updated:** 2026-10-09
-- **Last commit:** S24 (ToolExecutor)
+- **Last commit:** S25 (agentic loop)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -300,6 +300,20 @@ src/
   the failure, so the agentic loop can continue. Compiles clean; compiled output verified to contain
   all 4 tools, the traversal rejection, the no-workspace guard, invalid-JSON handling, and the
   error→result (not throw) behavior.
+- **S25 — agentic loop in `ChatViewProvider.handleSend`** (2026-10-09): rewrote the send path to
+  run an agentic tool loop. `handleSend` now builds the initial body, then loops: `streamOneTurn`
+  streams one assistant turn (posting content/reasoning deltas to the webview as they arrive and
+  tracking the accumulated `toolCalls`), pushes the assistant turn (with `reasoning_content` and
+  `tool_calls` when present) to history, and — when `settings.toolsEnabled` and the reply has
+  `tool_calls` — executes each via `ToolExecutor.execute`, posts a `▸ <tool>…` delta, and appends the
+  `toolResultMessage` to history. The request body is rebuilt each iteration from the *current*
+  `this.history` (system-prefixed) so the new assistant/tool turns are included, then the loop
+  re-sends. Stops when the model stops calling tools or `MAX_TOOL_ITERATIONS = 8` is hit (posts a
+  `[stopped after N tool iterations]` note). New helpers: `streamOneTurn(body)` and
+  `assistantMessage(content, reasoning, toolCalls)`. `body` is now a `let` (reassigned each
+  iteration). Compiles clean; compiled output verified to contain the loop, `toolExecutor` init,
+  `toolExecutor.execute`, `toolResultMessage`, the per-iteration rebuild, and the iteration cap.
+  Existing smoke test still passes.
 
 ## Steps — Phase 1 (one per session)
 
@@ -419,7 +433,7 @@ lives in `ToolExecutor`.
       `execute(call): Promise<ToolResult>` implementing `read_file` / `write_file` / `list_dir` /
       `search_files` against the workspace (safe path handling, error → result, not throw).
       _Accept: compiles; each tool returns a typed `ToolResult`._
-- [ ] **S25 — agentic loop.** In `ChatViewProvider.handleSend`, when `settings.toolsEnabled`, run
+- [x] **S25 — agentic loop.** In `ChatViewProvider.handleSend`, when `settings.toolsEnabled`, run
       the loop: send (with tools) → if the reply has `tool_calls`, execute them via `ToolExecutor`,
       append the assistant turn + tool results, and re-send → until no `tool_calls` or a max
       iteration cap. Stream content deltas to the webview as they arrive.
