@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 4 (in progress)
-- **Next step:** S23
+- **Next step:** S24
 - **Last updated:** 2026-10-09
-- **Last commit:** S22 (request.ts tools)
+- **Last commit:** S23 (client.ts tools)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -277,6 +277,18 @@ src/
   `tools === CODE_TOOLS` (4 tools) + `tool_choice='auto'`; and an assistant turn with `tool_calls`
   + a `role: 'tool'` result round-trips through the body with `tool_call_id` preserved. Existing
   smoke test still passes.
+- **S23 — `src/client.ts` (tools)** (2026-10-09): extended the SSE client for function calling.
+  New `ToolCallDelta` type (raw partial delta keyed by `index`) and `StreamChunk` gained
+  `toolCallDeltas?` (raw per-chunk) + `toolCalls?` (accumulated). New pure exported helper
+  `accumulateToolCalls(existing, deltas)` folds deltas into the accumulator by `index` (arguments
+  concatenated; id/name/type set when present). `parseSseLine` now extracts `delta.tool_calls` into
+  `toolCallDeltas`; `chatStream` keeps a running `toolCalls` accumulator, folds each chunk's deltas
+  via `accumulateToolCalls`, and attaches the accumulated calls to every yielded chunk (including the
+  synthetic terminal chunk). Verified under plain Node: `accumulateToolCalls` merges by index and
+  concatenates split arguments (2 calls, empty-deltas no-op); and a full `chatStream` against a mock
+  server reassembles a tool call whose arguments are split across two SSE chunks into one
+  `ToolCall` (`id=c1`, `name=read_file`, `arguments={"path":"a.ts"}`) alongside content. Existing
+  smoke test still passes.
 
 ## Steps — Phase 1 (one per session)
 
@@ -389,7 +401,7 @@ lives in `ToolExecutor`.
       and `role: 'tool'` + `tool_call_id`; add `tools`/`tool_choice` to `ChatCompletionRequest`;
       wire `settings.toolsEnabled` → `tools: CODE_TOOLS` in `buildRequestBody`.
       _Accept: compiles; with `toolsEnabled` the body carries `tools`._
-- [ ] **S23 — `src/client.ts` (tools).** Extend `StreamChunk` with `toolCalls?: ToolCall[]`; parse
+- [x] **S23 — `src/client.ts` (tools).** Extend `StreamChunk` with `toolCalls?: ToolCall[]`; parse
       `delta.tool_calls` (accumulate by index across chunks) in `parseSseLine`.
       _Accept: compiles; a streamed tool call reassembles into one `ToolCall`._
 - [ ] **S24 — `src/tools/ToolExecutor.ts`.** vscode-specific `ToolExecutor` with

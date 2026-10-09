@@ -6,6 +6,7 @@
 
 import type { LlmSettings } from './presets';
 import type { ChatCompletionRequest } from './request';
+import type { ToolCall } from './tools';
 
 /** A settings provider so the client always reads fresh baseUrl/apiKey. */
 export type SettingsProvider = () => LlmSettings;
@@ -42,6 +43,15 @@ export interface UsageInfo {
 	[key: string]: unknown;
 }
 
+/** A raw tool-call delta as it arrives in a stream chunk (may be partial). */
+export interface ToolCallDelta {
+	/** Position of this tool call in the assistant's `tool_calls` array. */
+	index: number;
+	id?: string;
+	type?: string;
+	function?: { name?: string; arguments?: string };
+}
+
 /** One streamed delta yielded by `chatStream()`. */
 export interface StreamChunk {
 	/** Incremental thinking text (`reasoning_content`). */
@@ -52,6 +62,39 @@ export interface StreamChunk {
 	done: boolean;
 	/** Usage stats, present on the final chunk when `include_usage` is set. */
 	usage?: UsageInfo;
+	/** Raw tool-call deltas present in this chunk (partial, keyed by index). */
+	toolCallDeltas?: ToolCallDelta[];
+	/** Accumulated complete tool calls so far (updated as the stream progresses). */
+	toolCalls?: ToolCall[];
+}
+
+/**
+ * Fold a batch of tool-call deltas into the running accumulator, merging by
+ * `index` (arguments are concatenated; id/name/type set when present). Pure
+ * and testable.
+ */
+export function accumulateToolCalls(existing: ToolCall[], deltas: ToolCallDelta[]): ToolCall[] {
+	const next: ToolCall[] = existing.map((tc) => ({ ...tc, function: { ...tc.function } }));
+	for (const d of deltas) {
+		let tc = next[d.index];
+		if (!tc) {
+			tc = { id: '', type: 'function', function: { name: '', arguments: '' } };
+			next[d.index] = tc;
+		}
+		if (d.id) {
+			tc.id = d.id;
+		}
+		if (d.type) {
+			tc.type = d.type as unknown as ToolCall['type'];
+		}
+		if (d.function?.name) {
+			tc.function.name = d.function.name;
+		}
+		if (d.function?.arguments) {
+			tc.function.arguments += d.function.arguments;
+		}
+	}
+	return next.filter((tc): tc is ToolCall => tc !== undefined);
 }
 
 export class LlmClient {
@@ -142,6 +185,18 @@ export class LlmClient {
 		const decoder = new TextDecoder();
 		let buffer = '';
 		let emittedDone = false;
+		let toolCalls: ToolCall[] = [];
+		// Fold a parsed chunk's tool-call deltas into the running accumulator
+		// and attach the accumulated calls to the chunk before yielding.
+		const withToolCalls = (chunk: StreamChunk): StreamChunk => {
+			if (chunk.toolCallDeltas && chunk.toolCallDeltas.length > 0) {
+				toolCalls = accumulateToolCalls(toolCalls, chunk.toolCallDeltas);
+			}
+			if (toolCalls.length > 0) {
+				chunk.toolCalls = toolCalls;
+			}
+			return chunk;
+		};
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
@@ -158,7 +213,7 @@ export class LlmClient {
 						if (chunk.done) {
 							emittedDone = true;
 						}
-						yield chunk;
+						yield withToolCalls(chunk);
 					}
 				}
 			}
@@ -170,11 +225,11 @@ export class LlmClient {
 					if (chunk.done) {
 						emittedDone = true;
 					}
-					yield chunk;
+					yield withToolCalls(chunk);
 				}
 			}
 			if (!emittedDone) {
-				yield { reasoning: '', content: '', done: true };
+				yield { reasoning: '', content: '', done: true, toolCalls: toolCalls.length ? toolCalls : undefined };
 			}
 		} finally {
 			reader.releaseLock();
@@ -204,6 +259,40 @@ export class LlmClient {
 		const reasoning = typeof delta.reasoning_content === 'string' ? delta.reasoning_content : '';
 		const content = typeof delta.content === 'string' ? delta.content : '';
 		const usage = parsed?.usage as UsageInfo | undefined;
-		return { reasoning, content, done: false, usage };
+
+		// Tool-call deltas (partial, keyed by index) — accumulated by chatStream.
+		const toolCallDeltas: ToolCallDelta[] = [];
+		if (Array.isArray(delta.tool_calls)) {
+			for (const tc of delta.tool_calls) {
+				if (tc && typeof tc.index === 'number') {
+					toolCallDeltas.push({
+						index: tc.index,
+						id: typeof tc.id === 'string' ? tc.id : undefined,
+						type: typeof tc.type === 'string' ? tc.type : undefined,
+						function:
+							tc.function && typeof tc.function === 'object'
+								? {
+										name:
+											typeof tc.function.name === 'string'
+												? tc.function.name
+												: undefined,
+										arguments:
+											typeof tc.function.arguments === 'string'
+												? tc.function.arguments
+												: undefined,
+									}
+								: undefined,
+					});
+				}
+			}
+		}
+
+		return {
+			reasoning,
+			content,
+			done: false,
+			usage,
+			toolCallDeltas: toolCallDeltas.length > 0 ? toolCallDeltas : undefined,
+		};
 	}
 }
