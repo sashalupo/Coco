@@ -12,12 +12,13 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** Phases 1–6 complete; **Phase 7 (harness: safe writes & review) in progress**
-- **Next step:** **7.3** — undo last edit: snapshot the file before each mutation; a "Revert last
-  change" action restores the previous content (see `.github/agents/llm-extension/PLAN.md`)
+- **Current phase:** Phases 1–7 complete; **Phase 8 (harness: run & verify) next**
+- **Next step:** **8.1** — `run_command` tool: run a shell command in the workspace root, capture
+  stdout+stderr, enforce a timeout (e.g. 60s) and an output cap, return exit code + output
+  (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `16510d1` — feat(llm): add unified diff preview for file mutations (Phase 7.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (119 assertions)
+- **Last commit:** `a986bad` — feat(llm): add tool approval gate (Phase 7.2)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (127 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -256,6 +257,7 @@ src/
 | 4     | Manage code via tools (agentic loop)            | complete |
 | 5     | Code actions / refactors                        | complete |
 | 6     | Targeted file editing (`edit_file`)             | complete |
+| 7     | Safe writes & review (diff, approval, undo)     | complete |
 
 ## Done
 
@@ -645,6 +647,23 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   `waitForApproval`, the `toolApproval` handler, and the approval card. Smoke test extended with
   6 `isMutatingTool` assertions (119 total, all passing). The live approve/reject round-trip needs
   the VS Code extension host (not covered by the plain-Node smoke test).
+- **7.3 — undo last edit** (2026-10-09): `ToolExecutor` now snapshots the file before each
+  mutation. New `lastSnapshot` field (`{relPath, oldContent, existed}`) is set in `writeFile`
+  (old content + whether the file existed) and `editFile` (pre-edit content). New public
+  `hasLastSnapshot` getter and `revertLast(): Promise<string>` — restores the pre-mutation
+  content, or deletes the file if it was newly created; clears the snapshot; returns a
+  human-readable message ("Reverted <path> (N chars restored)" / "Reverted: deleted <path> (was
+  newly created)" / "No changes to revert." / "Revert failed: …"). `ChatViewProvider` gained a
+  `revertLast` message handler → `revertLastChange()` which posts a `revert_result` message with
+  the outcome. The webview toolbar gained a "Revert" button (disabled while streaming) that posts
+  `{type:'revertLast'}`; a new `revert_result` host-message handler renders the outcome as a
+  muted `.message.revert-result` line. Compiles clean; compiled `out/tools/ToolExecutor.js` +
+  `out/chat/ChatViewProvider.js` + `out/chat/webview.js` verified to contain the snapshot,
+  `revertLast`, the `revertLast` handler, the Revert button, and the `revert_result` rendering.
+  Smoke test extended with 8 revert assertions (127 total, all passing): `hasLastSnapshot` after
+  an edit, `revertLast` restores the pre-edit content on disk, snapshot cleared after revert,
+  no-snapshot → "No changes to revert", and `write_file` (new file) + revert deletes the file.
+  **Phase 7 complete.**
 
 ## Steps — Phase 1 (one per session)
 

@@ -20,6 +20,45 @@ const MAX_READ_BYTES = 256 * 1024;
 const SKIP_DIRS = new Set(["node_modules", ".git", "out", "dist", ".vscode"]);
 
 export class ToolExecutor {
+  /** Snapshot of the last mutation (for undo / revert). */
+  private lastSnapshot: {
+    relPath: string;
+    oldContent: string;
+    existed: boolean;
+  } | null = null;
+
+  /** Whether there is a mutation to revert. */
+  public get hasLastSnapshot(): boolean {
+    return this.lastSnapshot !== null;
+  }
+
+  /**
+   * Revert the last mutation: restore the pre-mutation content (or delete
+   * the file if it was newly created). Returns a human-readable message.
+   */
+  public async revertLast(): Promise<string> {
+    if (!this.lastSnapshot) {
+      return "No changes to revert.";
+    }
+    const { relPath, oldContent, existed } = this.lastSnapshot;
+    this.lastSnapshot = null;
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return `Cannot revert: path not allowed (${relPath}).`;
+    }
+    try {
+      if (!existed) {
+        // The file was newly created — delete it.
+        await fs.promises.unlink(abs);
+        return `Reverted: deleted ${relPath} (was newly created).`;
+      }
+      await fs.promises.writeFile(abs, oldContent, "utf8");
+      return `Reverted ${relPath} (${oldContent.length} chars restored).`;
+    } catch (err) {
+      return `Revert failed: ${this.msg(err)}`;
+    }
+  }
+
   /**
    * Execute a tool call and return its result. Never throws: any error is
    * returned as a `ToolResult` whose `content` describes the failure.
@@ -130,13 +169,17 @@ export class ToolExecutor {
         `Path not allowed (outside workspace): ${relPath}`,
       );
     }
-    // Read the old content (if the file exists) for the diff preview.
+    // Read the old content (if the file exists) for the diff preview and
+    // the undo snapshot.
     let oldContent = "";
+    let existed = false;
     try {
       oldContent = await fs.promises.readFile(abs, "utf8");
+      existed = true;
     } catch {
       // File does not exist yet — old content is empty.
     }
+    this.lastSnapshot = { relPath, oldContent, existed };
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, content, "utf8");
     const diff = unifiedDiff(oldContent, content, relPath, relPath);
@@ -196,6 +239,7 @@ export class ToolExecutor {
     const replaced = replaceAll
       ? content.split(oldString).join(newString)
       : content.replace(oldString, newString);
+    this.lastSnapshot = { relPath, oldContent: content, existed: true };
     await fs.promises.writeFile(abs, replaced, "utf8");
     const n = replaceAll ? count : 1;
     const diff = unifiedDiff(content, replaced, relPath, relPath);

@@ -651,6 +651,47 @@ function assert(cond, label) {
     "edit: replace_all on-disk file changed",
   );
 
+  // 7c) revert last edit (Phase 7.3)
+  assert(executor.hasLastSnapshot, "revert: hasLastSnapshot after edit");
+  const revertMsg = await executor.revertLast();
+  assert(
+    revertMsg.includes("Reverted sample.txt"),
+    "revert: revertLast restores pre-edit content",
+  );
+  assert(
+    fs.readFileSync(samplePath, "utf8") === "x x x\n",
+    "revert: on-disk file restored to pre-edit content",
+  );
+  assert(!executor.hasLastSnapshot, "revert: snapshot cleared after revert");
+  const noRevert = await executor.revertLast();
+  assert(
+    noRevert.includes("No changes to revert"),
+    "revert: no snapshot -> 'No changes to revert'",
+  );
+  // write_file (new file) + revert (deletes the file).
+  const newFilePath = path.join(editRoot, "new.txt");
+  await executor.execute({
+    id: "w1",
+    type: "function",
+    function: {
+      name: "write_file",
+      arguments: '{"path":"new.txt","content":"hello"}',
+    },
+  });
+  assert(
+    fs.existsSync(newFilePath),
+    "revert: write_file created the file",
+  );
+  const revertNew = await executor.revertLast();
+  assert(
+    revertNew.includes("deleted new.txt"),
+    "revert: revertLast deletes newly created file",
+  );
+  assert(
+    !fs.existsSync(newFilePath),
+    "revert: newly created file deleted on revert",
+  );
+
   // Cleanup: restore Module._load and remove the temp dir.
   Module._load = originalLoad;
   fs.rmSync(editRoot, { recursive: true, force: true });

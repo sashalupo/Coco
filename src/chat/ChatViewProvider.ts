@@ -153,10 +153,29 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "toolApproval":
         this.pendingApproval?.(msg.approved === true);
         break;
+      case "revertLast":
+        void this.revertLastChange();
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
     }
+  }
+
+  /**
+   * Revert the last file mutation (write_file / edit_file). Posts the
+   * result as a `revert_result` message so the user sees what happened.
+   */
+  private async revertLastChange(): Promise<void> {
+    if (!this.toolExecutor.hasLastSnapshot) {
+      this.postMessage({
+        type: "revert_result",
+        message: "No changes to revert.",
+      });
+      return;
+    }
+    const message = await this.toolExecutor.revertLast();
+    this.postMessage({ type: "revert_result", message: `↩ ${message}` });
   }
 
   /**

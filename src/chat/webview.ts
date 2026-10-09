@@ -306,6 +306,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	.message.approval .status { font-size: 12px; color: var(--muted); }
 
+	/* Revert result (Phase 7.3) */
+	.message.revert-result {
+		font-size: 12px;
+		color: var(--muted);
+		padding: 4px 0;
+	}
+
 	/* Collapsible thinking block */
 	.thinking {
 		margin: 0;
@@ -473,6 +480,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<button id="conv-rename" title="Rename selected conversation">Rename</button>
 		<button id="conv-delete" title="Delete selected conversation">Delete</button>
 		<button id="export" title="Export conversation to Markdown">Export</button>
+		<button id="revert" title="Revert last file change">Revert</button>
 		<button id="new-chat" title="Start a new conversation">New Chat</button>
 	</div>
 
@@ -510,6 +518,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var convRename = document.getElementById('conv-rename');
 		var convDelete = document.getElementById('conv-delete');
 		var exportBtn = document.getElementById('export');
+		var revertBtn = document.getElementById('revert');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -552,6 +561,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		exportBtn.addEventListener('click', function () {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'export' }); }
+		});
+		revertBtn.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'revertLast' }); }
 		});
 
 		function postToolbar() {
@@ -964,6 +977,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					approveBtn.addEventListener('click', function () { decide(true); });
 					rejectBtn.addEventListener('click', function () { decide(false); });
 					messagesEl.appendChild(apEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'revert_result':
+					var rvEl = document.createElement('div');
+					rvEl.className = 'message revert-result';
+					rvEl.textContent = msg.message || '';
+					messagesEl.appendChild(rvEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
 				default:
