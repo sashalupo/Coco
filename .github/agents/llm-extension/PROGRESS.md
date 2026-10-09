@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S7
+- **Next step:** S8
 - **Last updated:** 2026-10-09
-- **Last commit:** S6 (src/chat/webview.ts)
+- **Last commit:** S7 (src/chat/ChatViewProvider.ts)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -131,6 +131,13 @@ src/
   `setStreaming`, `getToolbar`/`setToolbar`, and posts `{type:'ready'}` on load. Uses VS Code theme
   CSS variables with fallbacks. Verified under plain Node: returns a string, all elements present,
   model options injected, no external assets.
+- **S7 — `src/chat/ChatViewProvider.ts`** (2026-10-09): `ChatViewProvider` implements
+  `vscode.WebviewViewProvider` (viewType `llm.chat`). `resolveWebviewView` stores the webview ref,
+  sets `enableScripts`/`enableForms`, sets `html = buildWebviewHtml()`, and wires
+  `onDidReceiveMessage`. Round-trip: webview posts `{type:'ready'}` on load (S6) → host replies
+  `{type:'hello', message:'LLM chat panel ready'}` via `postMessage` (a stable seam for S9–S11 to
+  push streaming deltas / toolbar updates). Exported `WebviewToHostMessage` / `HostToWebviewMessage`
+  types. `npm run compile` passes; compiled output verified to contain the round-trip logic.
 
 ## Steps — Phase 1 (one per session)
 
@@ -156,7 +163,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S6 — `src/chat/webview.ts`.** `buildWebviewHtml()` — static HTML/CSS/JS shell: message
       list, input box, Model/Thinking/Context toolbar, collapsible thinking block. No logic yet.
       _Accept: compiles; returns a string; no external assets._
-- [ ] **S7 — `src/chat/ChatViewProvider.ts`.** `WebviewViewProvider` that builds the webview and
+- [x] **S7 — `src/chat/ChatViewProvider.ts`.** `WebviewViewProvider` that builds the webview and
       round-trips a basic `hello`/`ready` message between webview and host.
       _Accept: compiles; view renders and a message round-trips._
 - [ ] **S8 — `src/extension.ts`.** `activate()`: register the view provider, the 4 commands, a
