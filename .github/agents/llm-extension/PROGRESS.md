@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 3 (in progress)
-- **Next step:** S18
+- **Next step:** S19
 - **Last updated:** 2026-10-09
-- **Last commit:** S17 (inline.ts)
+- **Last commit:** S18 (InlineCompletionProvider)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (26 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -232,6 +232,17 @@ src/
   bare fence). Verified under plain Node: prompt includes language/path/prefix/suffix and omits the
   File/suffix sections when empty; parseCompletion handles empty, whitespace, plain text, fenced
   (with/without lang), fence-only, and multi-line cases — ALL INLINE TESTS PASSED.
+- **S18 — `src/inline/InlineCompletionProvider.ts`** (2026-10-09): new
+  `InlineCompletionItemProvider`. `provideInlineCompletionItems` gathers the code around the cursor
+  (bounded windows: `PREFIX_WINDOW=2000` before, `SUFFIX_WINDOW=500` after, via `offsetAt`), returns
+  `[]` when there is no code before the cursor, builds the prompt via `buildCompletionPrompt`, and
+  reuses the chat settings + toolbar (model/context) with `thinking` forced to `'off'` so ghost text
+  stays fast (reasoning discarded). It bridges the vscode `CancellationToken` to a fetch
+  `AbortController` (disposed in `finally`), streams `client.chatStream`, collects `content` (capped
+  at `MAX_COMPLETION_CHARS=2000`), parses via `parseCompletion`, and returns
+  `[new vscode.InlineCompletionItem(completion, new Range(position, position))]` — `[]` when the
+  result is empty or the engine fails (non-fatal). Compiles clean; compiled output verified to
+  contain the gathering, prompt, thinking-off, abort bridging, parse, and item-with-Range logic.
 
 ## Steps — Phase 1 (one per session)
 
@@ -310,7 +321,7 @@ vscode-specific gathering lives in the provider.
       (strip markdown code fences / leading whitespace, return the raw completion; empty when
       nothing usable).
       _Accept: compiles; pure module (no vscode import); verified under plain Node._
-- [ ] **S18 — `src/inline/InlineCompletionProvider.ts`.** `InlineCompletionItemProvider` whose
+- [x] **S18 — `src/inline/InlineCompletionProvider.ts`.** `InlineCompletionItemProvider` whose
       `provideInlineCompletionItems` gathers the prefix (text before the cursor) + suffix (text
       after), builds the prompt via `buildCompletionPrompt`, calls `client.chatStream` and collects
       the content, then returns `[new vscode.InlineCompletionItem(parseCompletion(text), position)]`
