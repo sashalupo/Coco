@@ -7,6 +7,7 @@ const http = require('http');
 const path = require('path');
 const { LlmClient } = require(path.join(__dirname, '..', 'out', 'client.js'));
 const { buildRequestBody } = require(path.join(__dirname, '..', 'out', 'request.js'));
+const { buildContextBlock } = require(path.join(__dirname, '..', 'out', 'context.js'));
 
 const PORT = 18099;
 
@@ -92,6 +93,39 @@ function assert(cond, label) {
 	assert(body.enable_thinking === true, 'request body enable_thinking = true');
 	assert(body.stream === true, 'request body stream = true');
 	assert(budgetTokens === 32000, 'context budget = 32000');
+
+	// 3b) buildContextBlock (Phase 2: editor context formatting)
+	assert(buildContextBlock({}) === '', 'context: empty input -> empty string');
+	assert(buildContextBlock({ file: undefined, selection: undefined, diagnostics: [] }) === '', 'context: empty sections -> empty string');
+
+	const fileOnly = buildContextBlock({ file: { path: 'src/a.ts', language: 'typescript', content: 'const x = 1;' } });
+	assert(fileOnly.includes('File: src/a.ts (typescript)'), 'context: file header with language');
+	assert(fileOnly.includes('const x = 1;'), 'context: file content included');
+
+	const fileNoLang = buildContextBlock({ file: { path: 'README.md', content: '# hi' } });
+	assert(fileNoLang.includes('File: README.md') && !fileNoLang.includes('('), 'context: file header without language');
+
+	const sel1 = buildContextBlock({ selection: { startLine: 3, startColumn: 5, endLine: 3, endColumn: 10, text: 'abc' } });
+	assert(sel1.includes('line 3, col 5-10'), 'context: single-line selection range');
+	assert(sel1.includes('abc'), 'context: selection text included');
+
+	const sel2 = buildContextBlock({ selection: { startLine: 3, startColumn: 1, endLine: 7, endColumn: 4, text: 'multi' } });
+	assert(sel2.includes('lines 3:1–7:4'), 'context: multi-line selection range');
+
+	const diag = buildContextBlock({ diagnostics: [
+		{ line: 1, column: 2, severity: 'error', message: 'cannot find name' },
+		{ line: 9, column: 1, severity: 'warning', message: 'unused var' },
+	] });
+	assert(diag.includes('[error] 1:2 — cannot find name'), 'context: diagnostic error line');
+	assert(diag.includes('[warning] 9:1 — unused var'), 'context: diagnostic warning line');
+
+	const all = buildContextBlock({
+		file: { path: 'f.ts', language: 'typescript', content: 'x' },
+		selection: { startLine: 1, startColumn: 1, endLine: 1, endColumn: 2, text: 'x' },
+		diagnostics: [{ line: 1, column: 1, severity: 'info', message: 'note' }],
+	});
+	const iFile = all.indexOf('File:'), iSel = all.indexOf('Selection'), iDiag = all.indexOf('Diagnostics:');
+	assert(iFile < iSel && iSel < iDiag, 'context: stable section order (file -> selection -> diagnostics)');
 
 	// 4) chatStream (SSE with reasoning_content + content + usage + [DONE])
 	let reasoning = '';

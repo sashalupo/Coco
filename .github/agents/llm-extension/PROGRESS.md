@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 2 (in progress)
-- **Next step:** S16
+- **Current phase:** 2 (complete)
+- **Next step:** Phase 3 (S17+)
 - **Last updated:** 2026-10-09
-- **Last commit:** S15 (context settings + toggle)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes
+- **Last commit:** S16 (context smoke test)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (26 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
@@ -79,7 +79,7 @@ src/
 | Phase | Capability                                      | Status      |
 | ----- | ----------------------------------------------- | ----------- |
 | 1     | Provider + parameters + chat                    | complete    |
-| 2     | Context-aware chat (file/selection/diagnostics) | not started |
+| 2     | Context-aware chat (file/selection/diagnostics) | complete    |
 | 3     | Inline completion (ghost text)                  | not started |
 | 4     | Manage code via tools (agentic loop)            | not started |
 | 5     | Code actions / refactors                        | not started |
@@ -215,6 +215,12 @@ src/
   `toolbar.contextFlags`, so toggling a checkbox changes what is injected on the next request.
   Verified: compiles clean; smoke test still passes; compiled webview + provider contain all the
   flag wiring (checkboxes, gating, persistence).
+- **S16 — context smoke test** (2026-10-09): extended `scripts/smoke-test.js` to import the real
+  compiled `out/context.js` and assert `buildContextBlock` end-to-end. 11 new assertions (26 total,
+  all passing): empty input → `""`; empty sections → `""`; file header with/without language +
+  content; single-line (`line 3, col 5-10`) and multi-line (`lines 3:1–7:4`) selection ranges +
+  text; diagnostic error/warning lines; and stable section order (file → selection → diagnostics).
+  Phase 2 marked complete.
 
 ## Steps — Phase 1 (one per session)
 
@@ -277,7 +283,7 @@ and the formatting pure (in `context.ts`) so it stays testable under plain Node.
       `includeDiagnostics` (default true) and a small "Context" toggle in the chat panel; respect
       the flags when gathering.
       _Accept: compiles; toggling a flag changes what is injected._
-- [ ] **S16 — context smoke test.** Extend `scripts/smoke-test.js` to assert `buildContextBlock`
+- [x] **S16 — context smoke test.** Extend `scripts/smoke-test.js` to assert `buildContextBlock`
       output for file/selection/diagnostics and that an empty input yields an empty string.
       _Accept: compiles; new assertions pass._
 
