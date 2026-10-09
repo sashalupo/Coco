@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** **Phase 11 (sessions side panel)** — new roadmap phase added to PLAN.md
-- **Next step:** **11.2** — Conversation list in the panel (see PLAN.md, Phase 11)
+- **Next step:** **11.3** — Move New Chat / Export / Delete / Rename into the panel (see PLAN.md, Phase 11)
 - **Last updated:** 2026-10-09
-- **Last commit:** `4b53d4e` — feat(llm): add git_status + git_diff tools (Phase 10.1)
+- **Last commit:** `5b6ceb8` — feat(llm): add sessions side-panel shell + toggle (Phase 11.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -812,6 +812,24 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   New/Export/Delete/Rename actions, and the quick new-conversation button arrive in 11.2–11.4.
   Compiles clean; the built inline webview script passes `node --check`; smoke test unchanged
   (173 assertions, all passing — the webview is not exercised by the smoke test).
+- **11.2 — Conversation list in the panel** (2026-10-09): render the conversations as a grouped
+  list inside the sessions panel body (replacing the toolbar dropdown as the primary UI). New
+  `renderConvList(conversations, activeId)` in `webview.ts` clears `#side-panel-body` and, when
+  empty, shows the "No sessions yet" placeholder; otherwise it renders a `.conv-group-header`
+  ("Conversations · N") followed by one `.conv-row` per conversation (a `.conv-title` span with
+  the title, `data-id` attribute, and an `.active` class on the current one). Clicking a row
+  (when not streaming) calls `selectConversation(id)`, which sets `convSelect.value`, reveals the
+  Rename/Delete buttons, and posts `{type:'switchConversation', id}`. The `restore` host-message
+  handler now calls `renderConvList(msg.conversations, msg.activeId)` after updating the
+  dropdown. The `#conv-select` dropdown is hidden via CSS (`display: none`) but **kept in the
+  DOM** as the selection source of truth — the existing `convSelect`-based Rename/Delete handlers
+  (and the `restore` dropdown population) keep working unchanged until 11.3 moves those buttons
+  into the panel. Per-row stats (line deltas / "failed" badge) are intentionally omitted: the
+  `Conversation` model only carries `{id, title, messages}`. All dynamic text set via
+  `textContent` (no `innerHTML`). Compiles clean; the built inline webview script passes
+  `node --check`; a functional DOM-stub test of the `restore` → `renderConvList` path confirms the
+  group header, two rows (correct titles + `data-id`), the active-row class, and the empty-list
+  placeholder (9 checks, all passing). Smoke test unchanged (173 assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -990,7 +1008,7 @@ out of the main toolbar into a collapsible "Sessions" side panel. See PLAN.md, P
       "Sessions" header and a toggle button in the main toolbar. Default state: collapsed. The
       panel body is an empty placeholder for now. _Accept: the toggle shows/hides the panel; the
       chat area reflows; compiles._
-- [ ] **11.2 — Conversation list in the panel.** Replace the `#conv-select` dropdown with a
+- [x] **11.2 — Conversation list in the panel.** Replace the `#conv-select` dropdown with a
       grouped list of conversations rendered inside the panel. Selecting a row makes it active and
       posts `switchConversation`. _Accept: the list is populated from the `restore`/`pushHistory`
       payload; clicking a row switches the active conversation; compiles._

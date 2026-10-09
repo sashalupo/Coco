@@ -516,6 +516,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		font-size: 11px;
 		max-width: 180px;
 		margin-left: auto;
+		display: none; /* replaced by the sessions panel list (Phase 11.2); kept in DOM as the selection source of truth */
 	}
 	#conv-select:focus { outline: 1px solid var(--focus); }
 	#conv-delete {
@@ -597,6 +598,40 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	#sessions-toggle:hover { color: var(--fg); border-color: var(--focus); }
 	#sessions-toggle.active { color: var(--fg); border-color: var(--focus); }
+
+	/* Conversation list in the sessions panel (Phase 11.2) */
+	.conv-group-header {
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--muted);
+		padding: 4px 4px 6px;
+		border-bottom: 1px solid var(--border);
+		margin-bottom: 4px;
+	}
+	.conv-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 6px;
+		border-radius: 4px;
+		cursor: pointer;
+		font-size: 12px;
+		color: var(--fg);
+		border: 1px solid transparent;
+	}
+	.conv-row:hover { background: var(--think-bg); }
+	.conv-row.active {
+		background: var(--user-bg);
+		border-color: var(--focus);
+	}
+	.conv-title {
+		flex: 1 1 auto;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 </style>
 </head>
 <body>
@@ -994,6 +1029,43 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			syncManual();
 		}
 
+		// --- Sessions panel: conversation list (Phase 11.2) ---
+		function renderConvList(conversations, activeId) {
+			var body = document.getElementById('side-panel-body');
+			body.innerHTML = '';
+			if (!conversations || !conversations.length) {
+				var ph = document.createElement('div');
+				ph.className = 'side-panel-placeholder';
+				ph.textContent = 'No sessions yet';
+				body.appendChild(ph);
+				return;
+			}
+			var header = document.createElement('div');
+			header.className = 'conv-group-header';
+			header.textContent = 'Conversations · ' + conversations.length;
+			body.appendChild(header);
+			conversations.forEach(function (c) {
+				var row = document.createElement('div');
+				row.className = 'conv-row' + (c.id === activeId ? ' active' : '');
+				row.setAttribute('data-id', c.id);
+				var title = document.createElement('span');
+				title.className = 'conv-title';
+				title.textContent = c.title || 'Untitled';
+				row.appendChild(title);
+				row.addEventListener('click', function () {
+					if (streaming) { return; }
+					selectConversation(c.id);
+				});
+				body.appendChild(row);
+			});
+		}
+		function selectConversation(id) {
+			convSelect.value = id;
+			convRename.style.display = 'inline-block';
+			convDelete.style.display = 'inline-block';
+			if (vscode) { vscode.postMessage({ type: 'switchConversation', id: id }); }
+		}
+
 		// --- Host → webview messages (S8: models/clear; S9: streaming; S10: toolbar) ---
 		// VS Code delivers host→webview messages via acquireVsCodeApi().onDidReceiveMessage in
 		// standard builds. In some builds (e.g. the current dev-container VS Code) the API
@@ -1053,6 +1125,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						var hasSel = !!convSelect.value;
 						convRename.style.display = hasSel ? 'inline-block' : 'none';
 						convDelete.style.display = hasSel ? 'inline-block' : 'none';
+						// Render the grouped conversation list in the sessions panel.
+						renderConvList(msg.conversations, msg.activeId);
 					}
 					// Refresh the Retry button visibility for the restored conversation.
 					stepIndicator.hidden = true;
