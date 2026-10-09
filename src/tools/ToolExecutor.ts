@@ -116,6 +116,11 @@ export class ToolExecutor {
             String(args.command ?? ""),
             typeof args.timeout_ms === "number" ? args.timeout_ms : undefined,
           );
+        case "get_diagnostics":
+          return this.getDiagnostics(
+            call,
+            args.path ? String(args.path) : undefined,
+          );
         default:
           return this.result(call, `Unknown tool: ${name}`);
       }
@@ -422,6 +427,76 @@ export class ToolExecutor {
         settle(parts.join("\n"));
       });
     });
+  }
+
+  /**
+   * Return compiler/linter diagnostics (errors and warnings) for a single
+   * file (by workspace-relative path) or for all open files when no path is
+   * given. Read-only: never mutates workspace state.
+   */
+  private getDiagnostics(
+    call: ToolCall,
+    relPath?: string,
+  ): ToolResult {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return this.result(call, "No workspace folder — cannot read diagnostics.");
+    }
+    const root = folders[0].uri.fsPath;
+
+    // Collect diagnostics: for a specific file (resolved to a URI) or for
+    // every open file.
+    let uris: vscode.Uri[];
+    if (relPath) {
+      const abs = path.resolve(root, relPath);
+      const rel = path.relative(root, abs);
+      if (rel.startsWith("..") || path.isAbsolute(rel)) {
+        return this.result(
+          call,
+          `Path not allowed (outside workspace): ${relPath}`,
+        );
+      }
+      uris = [vscode.Uri.file(abs)];
+    } else {
+      uris = vscode.workspace.textDocuments.map((d) => d.uri);
+    }
+
+    // Two overloads: getDiagnostics(uri) -> Diagnostic[] for one file, or
+    // getDiagnostics() -> [Uri, Diagnostic[]][] for every file.
+    const entries: [string, vscode.Diagnostic[]][] = relPath
+      ? [[uris[0].fsPath, vscode.languages.getDiagnostics(uris[0])]]
+      : vscode.languages.getDiagnostics().map(
+          ([uri, diags]) => [uri.fsPath, diags] as [string, vscode.Diagnostic[]],
+        );
+
+    const lines: string[] = [];
+    let total = 0;
+    for (const [fsPath, diags] of entries) {
+      if (diags.length === 0) {
+        continue;
+      }
+      const rel = this.toWorkspaceRelative(fsPath);
+      total += diags.length;
+      lines.push(`${rel}:`);
+      for (const d of diags) {
+        const sev = vscode.DiagnosticSeverity[d.severity];
+        const range = `${d.range.start.line + 1}:${d.range.start.character + 1}`;
+        const src = d.source ? ` [${d.source}]` : "";
+        lines.push(`  ${sev} ${range} — ${d.message}${src}`);
+      }
+    }
+
+    if (total === 0) {
+      const scope = relPath ? ` in ${relPath}` : " in open files";
+      return this.result(
+        call,
+        `No diagnostics${scope} (clean).`,
+      );
+    }
+    const header = relPath
+      ? `Diagnostics for ${relPath} (${total}):`
+      : `Diagnostics for open files (${total}):`;
+    return this.result(call, header + "\n" + lines.join("\n"));
   }
 
   // --- Helpers -----------------------------------------------------------

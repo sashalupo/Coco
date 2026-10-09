@@ -203,6 +203,27 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_diagnostics",
+      description:
+        "Return compiler/linter diagnostics (errors and warnings) for a file " +
+        "or for all open files. Use this to verify that your edits compile. " +
+        "Omit path to get diagnostics for every open file.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description:
+              "Optional workspace-relative file path. When omitted, returns " +
+              "diagnostics for all open files.",
+          },
+        },
+      },
+    },
+  },
 ];
 
 /**

@@ -403,10 +403,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 6, "tools: CODE_TOOLS has 6 tools");
+  assert(CODE_TOOLS.length === 7, "tools: CODE_TOOLS has 7 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics",
     "tools: tool names in order",
   );
   assert(
@@ -439,6 +439,10 @@ function assert(cond, label) {
   assert(
     byName.run_command.function.parameters.required.join(",") === "command",
     "tools: run_command required=[command]",
+  );
+  assert(
+    !byName.get_diagnostics.function.parameters.required,
+    "tools: get_diagnostics has no required params (path optional)",
   );
 
   // 5b) toolResultMessage
@@ -505,7 +509,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 6,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 7,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -543,12 +547,44 @@ function assert(cond, label) {
   const editRoot = fs.mkdtempSync(path.join(os.tmpdir(), "llm-edit-test-"));
   const samplePath = path.join(editRoot, "sample.txt");
   fs.writeFileSync(samplePath, "line1\nfoo\nline3\n", "utf8");
+  // A fake open document with diagnostics, for the get_diagnostics test.
+  const diagDocPath = path.join(editRoot, "diag.ts");
+  fs.writeFileSync(diagDocPath, "const x: number = 'oops';\n", "utf8");
+  const diagUri = { fsPath: diagDocPath, toString: () => "file://" + diagDocPath };
+  const fakeDiagnostics = [
+    {
+      severity: 0,
+      range: { start: { line: 0, character: 14 }, end: { line: 0, character: 20 } },
+      message: "Type 'string' is not assignable to type 'number'.",
+      source: "ts",
+    },
+  ];
   const originalLoad = Module._load;
   Module._load = function (request, parent, isMain) {
     if (request === "vscode") {
       return {
+        Uri: {
+          file: (p) => ({ fsPath: p, toString: () => "file://" + p }),
+        },
         workspace: {
           workspaceFolders: [{ uri: { fsPath: editRoot } }],
+          textDocuments: [{ uri: diagUri }],
+        },
+        languages: {
+          // Two overloads: getDiagnostics(uri) -> Diagnostic[] for one file,
+          // getDiagnostics() -> [Uri, Diagnostic[]][] for every file.
+          getDiagnostics: (uri) => {
+            if (uri === undefined) {
+              return [[diagUri, fakeDiagnostics]];
+            }
+            return uri.fsPath === diagDocPath ? fakeDiagnostics : [];
+          },
+        },
+        DiagnosticSeverity: {
+          0: "Error",
+          1: "Warning",
+          2: "Information",
+          3: "Hint",
         },
       };
     }
@@ -748,6 +784,69 @@ function assert(cond, label) {
     "run_command: empty command rejected",
   );
 
+  // 8b) get_diagnostics (Phase 8.2): real executor reads diagnostics for a
+  // specific file and for all open files.
+  const diagResult = await executor.execute({
+    id: "d1",
+    type: "function",
+    function: {
+      name: "get_diagnostics",
+      arguments: '{"path":"diag.ts"}',
+    },
+  });
+  assert(
+    diagResult.content.includes("Diagnostics for diag.ts (1)"),
+    "get_diagnostics: header with count for a file",
+  );
+  assert(
+    diagResult.content.includes("Error 1:15"),
+    "get_diagnostics: severity + 1-based position",
+  );
+  assert(
+    diagResult.content.includes("Type 'string' is not assignable"),
+    "get_diagnostics: message included",
+  );
+  assert(
+    diagResult.content.includes("[ts]"),
+    "get_diagnostics: source included",
+  );
+  const allDiagResult = await executor.execute({
+    id: "d2",
+    type: "function",
+    function: {
+      name: "get_diagnostics",
+      arguments: "{}",
+    },
+  });
+  assert(
+    allDiagResult.content.includes("Diagnostics for open files (1)"),
+    "get_diagnostics: all open files header",
+  );
+  const cleanDiagResult = await executor.execute({
+    id: "d3",
+    type: "function",
+    function: {
+      name: "get_diagnostics",
+      arguments: '{"path":"sample.txt"}',
+    },
+  });
+  assert(
+    cleanDiagResult.content.includes("No diagnostics"),
+    "get_diagnostics: clean file reports no diagnostics",
+  );
+  const badDiagResult = await executor.execute({
+    id: "d4",
+    type: "function",
+    function: {
+      name: "get_diagnostics",
+      arguments: '{"path":"../../etc/passwd"}',
+    },
+  });
+  assert(
+    badDiagResult.content.includes("Path not allowed"),
+    "get_diagnostics: path traversal rejected",
+  );
+
   // Cleanup: restore Module._load and remove the temp dir.
   Module._load = originalLoad;
   fs.rmSync(editRoot, { recursive: true, force: true });
@@ -852,6 +951,10 @@ function assert(cond, label) {
   assert(isMutatingTool("run_command"), "approval: run_command is mutating");
   assert(!isMutatingTool("read_file"), "approval: read_file is not mutating");
   assert(!isMutatingTool("list_dir"), "approval: list_dir is not mutating");
+  assert(
+    !isMutatingTool("get_diagnostics"),
+    "approval: get_diagnostics is not mutating",
+  );
   assert(
     !isMutatingTool("search_files"),
     "approval: search_files is not mutating",

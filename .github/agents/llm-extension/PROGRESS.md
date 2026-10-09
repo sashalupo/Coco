@@ -13,12 +13,12 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** Phases 1–7 complete; **Phase 8 (harness: run & verify) in progress**
-- **Next step:** **8.2** — `get_diagnostics` tool: return workspace diagnostics (errors/warnings)
-  for a given file (or all open files) so the model can verify its edits compile
+- **Next step:** **8.3** — Show output in the webview: render command output + diagnostics in
+  the tool card (collapsible, themed)
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `6109916` — feat(llm): add undo last edit (Phase 7.3)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (134 assertions)
+- **Last commit:** `e004bf3` — feat(llm): add run_command tool (Phase 8.1)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (143 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -681,6 +681,23 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   `toolBody.tools.length === 6`, `isMutatingTool("run_command")`, and the real executor running
   `echo` (exit 0 + stdout), `exit 3` (non-zero exit), `echo oops 1>&2` (stderr), and an empty
   command (rejected).
+- **8.2 — `get_diagnostics` tool** (2026-10-09): added the `get_diagnostics` tool to `CODE_TOOLS`
+  in `src/tools.ts` (params: `path` (optional, workspace-relative); no `required` — omitting it
+  returns diagnostics for all open files). Read-only, so it is **not** added to `isMutatingTool`
+  (no approval gate). Implemented `getDiagnostics` in `ToolExecutor.ts`: resolves `path` safely
+  (rejects traversal outside the workspace) and calls `vscode.languages.getDiagnostics(uri)` for a
+  single file, or `vscode.languages.getDiagnostics()` (the `[Uri, Diagnostic[]][]` overload) for
+  all open files. Groups by file, formats each as `<relPath>:` then
+  `  <Severity> <line>:<col> — <message> [<source>]` (1-based positions, severity via
+  `vscode.DiagnosticSeverity`). Returns `Diagnostics for <scope> (N):` + the grouped lines, or
+  `No diagnostics in <scope> (clean).` when there are none. Wired into the `execute()` switch
+  (`case "get_diagnostics"`). Compiles clean. Smoke test extended with 9 new assertions
+  (143 total, all passing): `CODE_TOOLS` now 7 tools (names + `get_diagnostics` has no required
+  params), `toolBody.tools.length === 7`, `isMutatingTool("get_diagnostics")` is false, and the
+  real executor (with a stubbed `vscode.languages.getDiagnostics` + `Uri.file` +
+  `DiagnosticSeverity`) returning a file's diagnostics (header + count, severity + 1-based
+  position, message, source), the all-open-files header, a clean file ("No diagnostics"), and a
+  path-traversal rejection.
 
 ## Steps — Phase 1 (one per session)
 
