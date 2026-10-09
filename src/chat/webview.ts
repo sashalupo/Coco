@@ -162,6 +162,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		cursor: pointer;
 	}
 	.ctx-toggles input { margin: 0; }
+	#diag {
+		padding: 4px 10px;
+		font-size: 11px;
+		color: var(--muted);
+		border-bottom: 1px solid var(--border);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 	#build-version {
 		margin-left: 10px;
 		font-size: 10px;
@@ -299,6 +308,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<span id="build-version" title="Webview build (bump to confirm the running extension host is up to date)">${WEBVIEW_VERSION}</span>
 	</div>
 
+	<div id="diag">diag: …</div>
+
 	<div id="messages" class="messages"></div>
 
 	<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
@@ -312,6 +323,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<script>
 	(function () {
 		var vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+		var diagEl = document.getElementById('diag');
+		function diag(m) { if (diagEl) { diagEl.textContent = 'diag: ' + m; } }
+		diag('vscode api: ' + (vscode ? 'OK' : 'NULL') + ' | acquireVsCodeApi: ' + (typeof acquireVsCodeApi));
 		var modelSelect = document.getElementById('model-select');
 		var manualWrap = document.getElementById('model-manual-wrap');
 		var manualInput = document.getElementById('model-manual');
@@ -361,7 +375,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			lastSentText = text;
 			inputEl.value = '';
 			inputEl.focus();
-			if (vscode) { vscode.postMessage({ type: 'send', text: text }); }
+			if (vscode) {
+				vscode.postMessage({ type: 'send', text: text });
+				diag('send posted: ' + text.length + ' chars');
+			} else {
+				diag('send BLOCKED: vscode api is NULL');
+			}
 		}
 		sendBtn.addEventListener('click', doSend);
 		inputEl.addEventListener('keydown', function (e) {
@@ -475,6 +494,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		// --- Host → webview messages (S8: models/clear; S9: streaming; S10: toolbar) ---
 		if (vscode) {
 			vscode.onDidReceiveMessage(function (msg) {
+				diag('recv: ' + msg.type);
 				switch (msg.type) {
 					case 'models':
 						setModelOptions(msg.models);
@@ -539,7 +559,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 
 		// Apply the initial toolbar state, then announce readiness to the host.
 		window.setToolbar(window.__llmInitial || {});
-		if (vscode) { vscode.postMessage({ type: 'ready' }); }
+		if (vscode) {
+			vscode.postMessage({ type: 'ready' });
+			diag('ready posted (vscode api OK)');
+		} else {
+			diag('ready BLOCKED: vscode api is NULL — host will never receive messages');
+		}
 	})();
 	</script>
 </body>
