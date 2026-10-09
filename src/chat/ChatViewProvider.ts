@@ -8,7 +8,12 @@
 import * as vscode from "vscode";
 import { buildWebviewHtml } from "./webview";
 import { LlmClient } from "../client";
-import { readSettings, ToolbarStateStore, HistoryStore } from "../config";
+import {
+  readSettings,
+  ToolbarStateStore,
+  ConversationStore,
+  type Conversation,
+} from "../config";
 import {
   buildRequestBody,
   type ChatCompletionRequest,
@@ -51,8 +56,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Persisted toolbar overrides (Model/Thinking/Context). */
   private readonly toolbarStore: ToolbarStateStore;
 
-  /** Persisted conversation history (survives VS Code restarts). */
-  private readonly historyStore: HistoryStore;
+  /** Persisted conversations (survive VS Code restarts). */
+  private readonly conversationStore: ConversationStore;
+
+  /** ID of the currently active conversation. */
+  private currentConvId: string;
 
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
@@ -62,8 +70,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     private readonly client: LlmClient,
   ) {
     this.toolbarStore = ToolbarStateStore.create(context.globalState);
-    this.historyStore = HistoryStore.create(context.globalState);
-    this.history = this.historyStore.get();
+    this.conversationStore = ConversationStore.create(context.globalState);
+    // Restore the most recent conversation (or start fresh).
+    const all = this.conversationStore.getAll();
+    if (all.length > 0) {
+      this.currentConvId = all[0].id;
+      this.history = all[0].messages;
+    } else {
+      this.currentConvId = this.generateId();
+      this.history = [];
+    }
     this.toolExecutor = new ToolExecutor();
   }
 
@@ -107,7 +123,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.applyToolbarMessage(msg);
         break;
       case "newChat":
-        this.clear();
+        this.startNewConversation();
+        break;
+      case "switchConversation":
+        this.switchConversation(String(msg.id ?? ""));
         break;
       default:
         // Unknown message types are ignored for now.
@@ -127,8 +146,67 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  /** Push the current history so the webview can render the conversation. */
+  /** Push the current history + conversation list so the webview can render. */
   private pushHistory(): void {
+    const all = this.conversationStore.getAll();
+    this.postMessage({
+      type: "restore",
+      messages: this.history,
+      conversations: all.map((c) => ({ id: c.id, title: c.title })),
+      activeId: this.currentConvId,
+    });
+  }
+
+  /** Generate a short unique id for a new conversation. */
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  /** Derive a short title from the first user message (or "New Chat"). */
+  private deriveTitle(messages: ChatMessage[]): string {
+    const firstUser = messages.find((m) => m.role === "user");
+    if (!firstUser) {
+      return "New Chat";
+    }
+    const text = firstUser.content.trim();
+    return text.length > 40 ? text.slice(0, 40) + "…" : text;
+  }
+
+  /** Save the current conversation to the store. */
+  private saveCurrentConversation(): void {
+    if (this.history.length === 0) {
+      return; // Nothing to save.
+    }
+    const conv: Conversation = {
+      id: this.currentConvId,
+      title: this.deriveTitle(this.history),
+      messages: this.history,
+    };
+    void this.conversationStore.upsert(conv);
+  }
+
+  /** Start a brand-new conversation (saves the current one first). */
+  private startNewConversation(): void {
+    this.saveCurrentConversation();
+    this.currentConvId = this.generateId();
+    this.history = [];
+    this.postMessage({ type: "clear" });
+    this.pushHistory();
+  }
+
+  /** Switch to a previously saved conversation by id. */
+  private switchConversation(id: string): void {
+    if (id === this.currentConvId) {
+      return;
+    }
+    // Save the current conversation before switching away.
+    this.saveCurrentConversation();
+    const target = this.conversationStore.getAll().find((c) => c.id === id);
+    if (!target) {
+      return;
+    }
+    this.currentConvId = id;
+    this.history = target.messages;
     this.postMessage({ type: "restore", messages: this.history });
   }
 
@@ -266,10 +344,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       const message = err instanceof Error ? err.message : String(err);
       this.postMessage({ type: "error", message });
     }
-    // Persist the updated history (user turn + any assistant/tool turns) so it
-    // survives a VS Code restart. Runs on both success and error paths so the
-    // user's message is never lost.
-    void this.historyStore.set(this.history);
+    // Persist the updated conversation so it survives a VS Code restart.
+    // Runs on both success and error paths so the user's message is never lost.
+    this.saveCurrentConversation();
   }
 
   /**
@@ -418,9 +495,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /** Reset the conversation history and clear the webview. */
   public clear(): void {
+    this.saveCurrentConversation();
+    this.currentConvId = this.generateId();
     this.history = [];
-    void this.historyStore.clear();
     this.postMessage({ type: "clear" });
+    this.pushHistory();
   }
 
   /** Send a message to the webview (no-op if the view is not resolved). */

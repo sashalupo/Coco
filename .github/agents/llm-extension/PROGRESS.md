@@ -15,8 +15,23 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `8755364` — feat(llm): persist chat history across VS Code restarts
+- **Last commit:** `cdaf498` — feat(llm): multiple conversations — switch between past sessions
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Multiple conversations (Memento):**
+> - `config.ts`: `HistoryStore` (single `llm.history`) replaced by `ConversationStore`
+>   (key `llm.conversations`, array of `{id, title, messages}`). API: `getAll` / `setAll` /
+>   `upsert` (replace by id, else prepend newest-first) / `remove` / `clear`.
+> - `ChatViewProvider`: tracks `currentConvId`; restores the most recent conversation on
+>   construct; `saveCurrentConversation()` upserts after each turn (success + error paths);
+>   `startNewConversation()` (New Chat) saves the current one then starts fresh;
+>   `switchConversation(id)` saves current, loads the target. `pushHistory()` now also sends
+>   the conversation list + active id so the webview can build its dropdown.
+> - `webview.ts`: new `#conv-select` dropdown in the toolbar (right-aligned, before New Chat).
+>   Populated from the `restore` message; selecting an id posts `{type:'switchConversation'}`.
+>   Disabled while streaming.
+> - Net effect: every chat is saved and retrievable via the History dropdown; New Chat
+>   archives the current conversation instead of destroying it.
 
 > **Chat history persistence (Memento):**
 > - `config.ts`: new `HistoryStore` (Memento-backed, key `llm.history`) — `get()` / `set()` / `clear()`.

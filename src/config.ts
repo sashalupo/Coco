@@ -129,33 +129,61 @@ export class ToolbarStateStore {
   }
 }
 
-const HISTORY_KEY = "llm.history";
+const CONVERSATIONS_KEY = "llm.conversations";
+
+/** A single saved conversation. */
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+}
 
 /**
- * Persists the chat conversation history in a Memento so it survives VS Code
+ * Persists multiple chat conversations in a Memento so they survive VS Code
  * restarts. Reads are synchronous (in-memory); writes are persisted
  * asynchronously by VS Code.
  */
-export class HistoryStore {
+export class ConversationStore {
   private constructor(private readonly memento: vscode.Memento) {}
 
   /** Create a store backed by the given Memento (usually `context.globalState`). */
-  static create(memento: vscode.Memento): HistoryStore {
-    return new HistoryStore(memento);
+  static create(memento: vscode.Memento): ConversationStore {
+    return new ConversationStore(memento);
   }
 
-  /** Read the persisted history (empty array if never set). */
-  get(): ChatMessage[] {
-    return this.memento.get<ChatMessage[]>(HISTORY_KEY, []);
+  /** Read all persisted conversations (empty array if never set). */
+  getAll(): Conversation[] {
+    return this.memento.get<Conversation[]>(CONVERSATIONS_KEY, []);
   }
 
-  /** Persist the full history. */
-  set(messages: ChatMessage[]): Thenable<void> {
-    return this.memento.update(HISTORY_KEY, messages);
+  /** Persist the full conversation list. */
+  setAll(conversations: Conversation[]): Thenable<void> {
+    return this.memento.update(CONVERSATIONS_KEY, conversations);
   }
 
-  /** Clear the persisted history. */
+  /**
+   * Save or update a single conversation. If the id already exists it is
+   * replaced; otherwise it is prepended (newest first).
+   */
+  upsert(conv: Conversation): Thenable<void> {
+    const all = this.getAll();
+    const idx = all.findIndex((c) => c.id === conv.id);
+    if (idx >= 0) {
+      all[idx] = conv;
+    } else {
+      all.unshift(conv);
+    }
+    return this.memento.update(CONVERSATIONS_KEY, all);
+  }
+
+  /** Remove a conversation by id. */
+  remove(id: string): Thenable<void> {
+    const all = this.getAll().filter((c) => c.id !== id);
+    return this.memento.update(CONVERSATIONS_KEY, all);
+  }
+
+  /** Clear all conversations. */
   clear(): Thenable<void> {
-    return this.memento.update(HISTORY_KEY, []);
+    return this.memento.update(CONVERSATIONS_KEY, []);
   }
 }

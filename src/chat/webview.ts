@@ -269,9 +269,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		padding: 2px 8px;
 		font-size: 11px;
 		cursor: pointer;
-		margin-left: auto;
 	}
 	#new-chat:hover { color: var(--fg); border-color: var(--focus); }
+	#conv-select {
+		background: var(--input-bg);
+		color: var(--fg);
+		border: 1px solid var(--input-border);
+		border-radius: 2px;
+		padding: 2px 4px;
+		font-size: 11px;
+		max-width: 180px;
+		margin-left: auto;
+	}
+	#conv-select:focus { outline: 1px solid var(--focus); }
 </style>
 </head>
 <body>
@@ -293,6 +303,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label><input type="checkbox" id="ctx-selection" checked>sel</label>
 			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 		</span>
+		<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
 		<button id="new-chat" title="Start a new conversation">New Chat</button>
 	</div>
 
@@ -322,6 +333,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var ctxSelection = document.getElementById('ctx-selection');
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
 		var newChatBtn = document.getElementById('new-chat');
+		var convSelect = document.getElementById('conv-select');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -339,6 +351,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		newChatBtn.addEventListener('click', function () {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'newChat' }); }
+		});
+		convSelect.addEventListener('change', function () {
+			if (streaming || !convSelect.value) { return; }
+			if (vscode) { vscode.postMessage({ type: 'switchConversation', id: convSelect.value }); }
 		});
 
 		function postToolbar() {
@@ -520,6 +536,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						}
 					});
 					messagesEl.scrollTop = messagesEl.scrollHeight;
+					// Update the conversation dropdown.
+					if (msg.conversations) {
+						var opts = ['<option value="">History…</option>'];
+						msg.conversations.forEach(function (c) {
+							var safe = String(c.title).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+							opts.push('<option value="' + c.id + '">' + safe + '</option>');
+						});
+						convSelect.innerHTML = opts.join('');
+						if (msg.activeId) { convSelect.value = msg.activeId; }
+					}
 					break;
 				case 'stream_start':
 					addUserMessage(lastSentText);
