@@ -567,11 +567,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			// Extract fenced code blocks first so their content is not processed.
 			var codeBlocks = [];
 			var BT = String.fromCharCode(96);
-			var fenceRe = new RegExp(BT + BT + BT + '(\\w*)\\n([\\s\\S]*?)' + BT + BT + BT, 'g');
+			var fenceRe = new RegExp(BT + BT + BT + '(\\\\w*)\\\\n([\\\\s\\\\S]*?)' + BT + BT + BT, 'g');
 			src = src.replace(fenceRe, function (_, lang, code) {
 				var idx = codeBlocks.length;
-				codeBlocks.push({ lang: lang, code: code.replace(/\n$/, '') });
-				return '\x00CODEBLOCK' + idx + '\x00';
+				codeBlocks.push({ lang: lang, code: code.replace(/\\n$/, '') });
+				return '\\x00CODEBLOCK' + idx + '\\x00';
 			});
 			// Escape HTML in the remaining text.
 			src = escapeHtml(src);
@@ -579,11 +579,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			var inlineCodeRe = new RegExp(BT + '([^' + BT + ']+)' + BT, 'g');
 			src = src.replace(inlineCodeRe, '<code>$1</code>');
 			// Bold.
-			src = src.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+			src = src.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
 			// Italic (single *).
-			src = src.replace(/\*(.+?)\*/g, '<em>$1</em>');
+			src = src.replace(/\\*(.+?)\\*/g, '<em>$1</em>');
 			// Links: [text](url).
-			src = src.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+			src = src.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2">$1</a>');
 			// Headings.
 			src = src.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
 			src = src.replace(/^### (.+)$/gm, '<h3>$1</h3>');
@@ -592,32 +592,32 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			// Blockquote.
 			src = src.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
 			// Unordered lists: consecutive lines starting with - or *.
-			src = src.replace(/^(?:[-*] .+\n?)+/gm, function (block) {
-				var items = block.trim().split('\n').map(function (l) {
+			src = src.replace(/^(?:[-*] .+\\n?)+/gm, function (block) {
+				var items = block.trim().split('\\n').map(function (l) {
 					return '<li>' + l.replace(/^[-*] /, '') + '</li>';
 				}).join('');
 				return '<ul>' + items + '</ul>';
 			});
 			// Ordered lists: consecutive lines starting with a number.
-			src = src.replace(/^(?:\d+\. .+\n?)+/gm, function (block) {
-				var items = block.trim().split('\n').map(function (l) {
-					return '<li>' + l.replace(/^\d+\. /, '') + '</li>';
+			src = src.replace(/^(?:\\d+\\. .+\\n?)+/gm, function (block) {
+				var items = block.trim().split('\\n').map(function (l) {
+					return '<li>' + l.replace(/^\\d+\\. /, '') + '</li>';
 				}).join('');
 				return '<ol>' + items + '</ol>';
 			});
 			// Paragraphs: split on double newlines, wrap non-block elements in <p>.
-			var blocks = src.split(/\n{2,}/);
+			var blocks = src.split(/\\n{2,}/);
 			src = blocks.map(function (b) {
 				b = b.trim();
 				if (!b) { return ''; }
 				// Already a block element? Leave as-is.
-				if (/^<(h[1-4]|ul|ol|pre|blockquote|\x00)/.test(b)) { return b; }
+				if (/^<(h[1-4]|ul|ol|pre|blockquote|\\x00)/.test(b)) { return b; }
 				// Single newline → <br>.
-				b = b.replace(/\n/g, '<br>');
+				b = b.replace(/\\n/g, '<br>');
 				return '<p>' + b + '</p>';
-			}).join('\n');
+			}).join('\\n');
 			// Restore code blocks.
-			src = src.replace(/\x00CODEBLOCK(\d+)\x00/g, function (_, idx) {
+			src = src.replace(/\\x00CODEBLOCK(\\d+)\\x00/g, function (_, idx) {
 				var cb = codeBlocks[parseInt(idx, 10)];
 				var langAttr = cb.lang ? ' class="lang-' + cb.lang + '"' : '';
 				return '<pre' + langAttr + '><code>' + escapeHtml(cb.code) + '</code></pre>';

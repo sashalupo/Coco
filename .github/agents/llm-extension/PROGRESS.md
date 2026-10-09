@@ -12,13 +12,35 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** all phases complete (1–5); runtime bug RESOLVED
+- **Current phase:** all phases complete (1–5); webview template-literal bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
 - **Last commit:** `ed34862` — feat(llm): rename a saved conversation
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
+> **Bug fix — webview inline JS template-literal escaping (2026-10-09):**
+>
+> Symptom: after the Markdown-rendering work, the panel no longer loaded models and Send did
+> nothing (the prompt stayed in the input box). Root cause: the inline `<script>` in
+> `webview.ts` lives inside a **TypeScript template literal**, so every `\n`, `\d`, `\*`,
+> `\x00`, … in the `renderMarkdown` regex literals / string escapes was processed as a JS
+> escape and became a literal newline/char in the generated HTML. That produced a hard
+> `SyntaxError: Invalid regular expression` that aborted the **entire IIFE** — so neither
+> `sendBtn.addEventListener('click', doSend)` nor the final `vscode.postMessage({type:'ready'})`
+> ever ran (→ no model load, prompt never cleared).
+>
+> Fix: doubled every backslash in the `renderMarkdown` regex literals and string escapes so the
+> template literal emits the intended single backslashes into the generated HTML. Also fixed a
+> latent second bug in the same function: the `fenceRe` string literal
+> `'(\\w*)\\n([\\s\\S]*?)'` was being string-parsed by `new RegExp()` (collapsing `\w`→`w`,
+> `\s`→`s`, `\S`→`S`), so fenced code blocks never matched — now `'\\\\w*\\\\n([\\\\s\\\\S]*?)'`
+> so the generated HTML carries the correct `\\w`/`\\n`/`\\s`/`\\S`.
+>
+> Verified: `node --check` on the generated inline script passes; a functional `renderMarkdown`
+> test (bold/italic/ul/ol/fenced-code/blockquote/link/inline-code) passes; full smoke test green.
+
 > **Rename conversation:**
+>
 > - `config.ts`: `ConversationStore.rename(id, title)` — finds the conversation by id,
 >   updates its title, persists. No-op (resolved promise) when the id is not found.
 > - `ChatViewProvider`: new `renameConversation(id, title)` — trims the title, no-op when
@@ -27,9 +49,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 > - `webview.ts`: new `#conv-rename` button in the toolbar (before Delete). Shown only when
 >   a conversation is selected (toggled on both `change` and `restore`). Clicking prompts
 >   `prompt('Rename conversation:', currentTitle)` and posts `{type:'renameConversation',
->   id, title}`. Cancel/empty is a no-op.
+id, title}`. Cancel/empty is a no-op.
 
 > **Regenerate last response:**
+>
 > - `ChatViewProvider`: extracted the request-build + streaming agentic loop out of
 >   `handleSend` into `runStream(settings, toolbar, skipUser)`. `handleSend` pushes the user
 >   message then calls `runStream(..., false)`. New `handleRegenerate()` finds the last user
@@ -43,6 +66,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 >   and `clear` call `setStreaming(false)` to refresh Retry visibility.
 
 > **Export to Markdown:**
+>
 > - `ChatViewProvider`: new `export` message handler → `exportConversation()`. Guards on
 >   empty history (info message). `buildMarkdown()` renders the history as a doc: `# title`,
 >   an `_Exported <ISO timestamp>_` line, then `## You` / `## Assistant` sections (assistant
@@ -54,6 +78,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 >   posts `{type:'export'}` (disabled while streaming). Styled like the other toolbar buttons.
 
 > **Delete conversation:**
+>
 > - `ChatViewProvider`: new `deleteConversation(id)` — calls `conversationStore.remove(id)`;
 >   if the deleted id is the active one, resets to a fresh empty conversation and posts
 >   `clear`; then `pushHistory()` refreshes the webview's dropdown. New `deleteConversation`
@@ -63,6 +88,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 >   `confirm()` and posts `{type:'deleteConversation', id}`. Styled muted, turns red on hover.
 
 > **Copy button (webview, no deps):**
+>
 > - `webview.ts`: assistant message role row is now a flex row with a right-aligned
 >   `.copy-btn` (hidden until the message is hovered). Clicking copies the message's
 >   `textContent` (raw, not HTML) via `navigator.clipboard.writeText`, with a
@@ -72,6 +98,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 >   `.copy-btn` is muted, fades in on hover, and turns green (`.copied`) on success.
 
 > **Token/usage display:**
+>
 > - `ChatViewProvider`: `streamOneTurn` now captures `chunk.usage` (already parsed by
 >   `client.chatStream`) and returns it. `handleSend` accumulates usage across the
 >   (possibly multi-turn) agentic loop via `accumulateUsage(total, turn)` and attaches the
@@ -82,6 +109,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 > - No new deps; usage comes from the engine's `stream_options.include_usage` (default on).
 
 > **Markdown rendering (webview, no deps):**
+>
 > - `webview.ts`: new `renderMarkdown(src)` — a lightweight inline renderer. Extracts
 >   fenced code blocks first (placeholder `\x00CODEBLOCKn\x00`), escapes HTML, then applies
 >   inline code, bold, italic, links, headings (h1–h4), blockquotes, ordered/unordered
@@ -95,9 +123,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 > - Verified: fence + inline-code regexes tested in isolation (correct lang/code capture).
 
 > **Stop generation (AbortController):**
+>
 > - `ChatViewProvider`: new `abortController` field (null when idle). `handleSend` creates
 >   one per request and passes its `signal` into `streamOneTurn` → `client.chatStream(body,
->   signal)`. The agentic loop checks `signal.aborted` between turns. On abort the catch
+signal)`. The agentic loop checks `signal.aborted` between turns. On abort the catch
 >   block detects `signal.aborted` and posts `stream_end` (not an error); `finally` clears
 >   the controller. New `stop` message handler calls `abortController?.abort()`.
 > - `webview.ts`: new `#stop` button in the input row (hidden by default). `setStreaming`
@@ -107,6 +136,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 >   kept in history and the conversation is saved.
 
 > **Multiple conversations (Memento):**
+>
 > - `config.ts`: `HistoryStore` (single `llm.history`) replaced by `ConversationStore`
 >   (key `llm.conversations`, array of `{id, title, messages}`). API: `getAll` / `setAll` /
 >   `upsert` (replace by id, else prepend newest-first) / `remove` / `clear`.
@@ -122,6 +152,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 >   archives the current conversation instead of destroying it.
 
 > **Chat history persistence (Memento):**
+>
 > - `config.ts`: new `HistoryStore` (Memento-backed, key `llm.history`) — `get()` / `set()` / `clear()`.
 > - `ChatViewProvider`: loads history from Memento in the constructor; saves after each
 >   completed turn (success AND error paths, so the user's message is never lost); clears
