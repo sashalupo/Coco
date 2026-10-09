@@ -17,8 +17,17 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
   compute a unified diff (old vs new) and include it in the tool result / post it to the webview
   as a tool card (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `ba9dca1` — feat(llm): add start_line/end_line to read_file tool
+- **Last commit:** `a470bec` — test(llm): add end-to-end edit_file smoke test (Phase 6.4)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (96 assertions)
+
+> **Tools enabled by default (2026-10-09, user request):** the user reported the LLM could read
+> the opened file (context injection, Phase 2) but could not edit or list files. Root cause: the
+> workspace tools (`read_file`, `write_file`, `edit_file`, `list_dir`, `search_files`) built in
+> Phases 4 & 6 were gated behind `llm.tools.enabled`, which defaulted to `false` — so the engine
+> never received the tool schemas and the agentic loop never ran. Fix: flipped the default to
+> `true` in both `package.json` (`llm.tools.enabled`) and `src/config.ts` (`readSettings`), and
+> updated the setting description. The LLM can now read, edit, write, list, and search files in
+> the workspace out of the box. Compiles clean; smoke test still passes (96 assertions).
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in

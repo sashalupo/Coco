@@ -59,7 +59,7 @@ export function readSettings(): LlmSettings {
       "chatTemplateKwargs",
       {},
     ),
-    toolsEnabled: c.get<boolean>("tools.enabled", false),
+    toolsEnabled: c.get<boolean>("tools.enabled", true),
     context: {
       includeFile: c.get<boolean>("context.includeFile", true),
       includeSelection: c.get<boolean>("context.includeSelection", true),
