@@ -8,6 +8,7 @@ const path = require('path');
 const { LlmClient } = require(path.join(__dirname, '..', 'out', 'client.js'));
 const { buildRequestBody } = require(path.join(__dirname, '..', 'out', 'request.js'));
 const { buildContextBlock } = require(path.join(__dirname, '..', 'out', 'context.js'));
+const { buildCompletionPrompt, parseCompletion } = require(path.join(__dirname, '..', 'out', 'inline.js'));
 
 const PORT = 18099;
 
@@ -126,6 +127,28 @@ function assert(cond, label) {
 	});
 	const iFile = all.indexOf('File:'), iSel = all.indexOf('Selection'), iDiag = all.indexOf('Diagnostics:');
 	assert(iFile < iSel && iSel < iDiag, 'context: stable section order (file -> selection -> diagnostics)');
+
+	// 3c) buildCompletionPrompt + parseCompletion (Phase 3: inline completion)
+	const cp = buildCompletionPrompt({ language: 'typescript', path: 'src/a.ts', prefix: 'const x = ', suffix: ';\nconsole.log(x);' });
+	assert(cp.includes('Complete the following typescript code.'), 'inline: prompt includes language');
+	assert(cp.includes('File: src/a.ts'), 'inline: prompt includes path');
+	assert(cp.includes('const x = '), 'inline: prompt includes prefix');
+	assert(cp.includes('console.log(x);'), 'inline: prompt includes suffix');
+	assert(cp.includes('ONLY the completion'), 'inline: prompt asks for completion only');
+
+	const cpNoSuffix = buildCompletionPrompt({ language: 'python', path: '', prefix: 'def f():', suffix: '' });
+	assert(cpNoSuffix.includes('python'), 'inline: prompt language (no path)');
+	assert(!cpNoSuffix.includes('File:'), 'inline: no File line when path empty');
+	assert(!cpNoSuffix.includes('Code after the cursor'), 'inline: no suffix section when empty');
+
+	assert(parseCompletion('') === '', 'inline: parse empty -> empty');
+	assert(parseCompletion('   \n  ') === '', 'inline: parse whitespace -> empty');
+	assert(parseCompletion('42') === '42', 'inline: parse plain passthrough');
+	assert(parseCompletion('  42  ') === '42', 'inline: parse trims whitespace');
+	assert(parseCompletion('```typescript\nconst y = 1;\n```') === 'const y = 1;', 'inline: parse strips fenced code');
+	assert(parseCompletion('```\nfoo\n```') === 'foo', 'inline: parse strips fence without lang');
+	assert(parseCompletion('```\n') === '', 'inline: parse fence only -> empty');
+	assert(parseCompletion('const a = 1;\nconst b = 2;') === 'const a = 1;\nconst b = 2;', 'inline: parse multi-line preserved');
 
 	// 4) chatStream (SSE with reasoning_content + content + usage + [DONE])
 	let reasoning = '';

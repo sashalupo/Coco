@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 3 (in progress)
-- **Next step:** S20
+- **Current phase:** 3 (complete)
+- **Next step:** Phase 4 (S21+)
 - **Last updated:** 2026-10-09
-- **Last commit:** S19 (register inline completion)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (26 assertions)
+- **Last commit:** S20 (inline smoke test)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
@@ -80,7 +80,7 @@ src/
 | ----- | ----------------------------------------------- | ----------- |
 | 1     | Provider + parameters + chat                    | complete    |
 | 2     | Context-aware chat (file/selection/diagnostics) | complete    |
-| 3     | Inline completion (ghost text)                  | not started |
+| 3     | Inline completion (ghost text)                  | complete    |
 | 4     | Manage code via tools (agentic loop)            | not started |
 | 5     | Code actions / refactors                        | not started |
 
@@ -251,6 +251,12 @@ src/
   reload (noted in the setting description). Ghost text is opt-in and off by default. Compiles
   clean; compiled `extension.js` verified to import the provider, read `llm.inline.enabled`, gate on
   it, and register with the `**` selector.
+- **S20 — inline smoke test** (2026-10-09): extended `scripts/smoke-test.js` to import the real
+  compiled `out/inline.js` and assert `buildCompletionPrompt` + `parseCompletion` end-to-end. 15 new
+  assertions (41 total, all passing): prompt includes language/path/prefix/suffix and the
+  "completion only" instruction; omits the File line and suffix section when empty; parseCompletion
+  handles empty, whitespace-only, plain passthrough, trim, fenced (with/without lang), fence-only,
+  and multi-line cases. Phase 3 marked complete.
 
 ## Steps — Phase 1 (one per session)
 
@@ -339,7 +345,7 @@ vscode-specific gathering lives in the provider.
       `registerInlineCompletionItemProvider` gated by a new `llm.inline.enabled` setting (default
       `false`) so ghost text is opt-in.
       _Accept: compiles; with the setting on the provider is registered._
-- [ ] **S20 — inline smoke test.** Extend `scripts/smoke-test.js` to assert `buildCompletionPrompt`
+- [x] **S20 — inline smoke test.** Extend `scripts/smoke-test.js` to assert `buildCompletionPrompt`
       (includes language + prefix + suffix) and `parseCompletion` (strips fences, trims, empty for
       empty input).
       _Accept: compiles; new assertions pass._
