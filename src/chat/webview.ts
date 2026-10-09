@@ -502,7 +502,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		}
 
 		// --- Host → webview messages (S8: models/clear; S9: streaming; S10: toolbar) ---
-		diag('onDidReceiveMessage: ' + (vscode ? typeof vscode.onDidReceiveMessage : 'n/a') + ' | keys: ' + (vscode ? Object.keys(vscode).join(',') : 'null'));
+		diag('onDidReceiveMessage: ' + (vscode ? typeof vscode.onDidReceiveMessage : 'n/a') + ' | keys: ' + (vscode ? Object.keys(vscode).join(',') : 'null') + ' | origin: ' + (window.location ? window.location.origin : '?') + ' | href: ' + (window.location ? String(window.location.href).slice(0, 50) : '?'));
 		if (vscode && typeof vscode.onDidReceiveMessage === 'function') {
 			vscode.onDidReceiveMessage(function (msg) {
 				diag('recv: ' + msg.type);
