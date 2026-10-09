@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S2
+- **Next step:** S3
 - **Last updated:** 2026-10-09
-- **Last commit:** S1 (package.json manifest)
+- **Last commit:** S2 (src/config.ts)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -91,6 +91,12 @@ src/
   container `llm` + webview `llm.chat`, and lazy `activationEvents` (`onView:llm.chat`,
   `onCommand:llm.testConnection`). Added `media/llm.svg` activity bar icon. Replaced the sample
   `extension.helloWorld` command. `npm run compile` passes; manifest validated as well-formed JSON.
+- **S2 — `src/config.ts`** (2026-10-09): `readSettings()` returns a typed `LlmSettings` for all 19
+  `llm.*` settings (defaults mirror the manifest). `ToolbarStateStore` (Memento-backed) persists the
+  Model/Thinking/Context overrides with typed getters/setters (`get`, `setModel`, `setThinking`,
+  `setContext`, `reset`). Exported `ThinkingLevel`/`ContextLevel` types, `THINKING_TO_EFFORT`
+  (`off→none … max→xhigh`), `CONTEXT_TO_TOKENS` (`auto→0 … 240k→240000`), and ordered preset lists.
+  `npm run compile` passes; no runtime npm deps (only the host-provided `vscode` type import).
 
 ## Steps — Phase 1 (one per session)
 
@@ -101,7 +107,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
       (`llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.clearChat`), the activity bar
       view container + `llm.chat` view, and lazy `activationEvents`.
       _Accept: `npm run compile` passes; manifest is valid (no vsce warnings about unknown keys)._
-- [ ] **S2 — `src/config.ts`.** Settings access (read all `llm.*`) + toolbar override state
+- [x] **S2 — `src/config.ts`.** Settings access (read all `llm.*`) + toolbar override state
       (Model/Thinking/Context) persisted in `Memento`. Export typed getters/setters.
       _Accept: compiles; no runtime deps._
 - [ ] **S3 — `src/request.ts`.** `buildRequestBody(cfg, messages)` merging settings ← toolbar
