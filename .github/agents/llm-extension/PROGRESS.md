@@ -12,13 +12,13 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** Phases 1–5 complete; **Phase 6 (harness: targeted file editing) in progress**
-- **Next step:** **6.4** — end-to-end verify + record: enable `llm.tools.enabled`, make a small
-  edit to a real file, confirm the on-disk change + agentic loop round-trip; update `PROGRESS.md`
-  (mark 6.1–6.4 Done, set Next step to 7.1) (see `.github/agents/llm-extension/PLAN.md`)
+- **Current phase:** Phases 1–6 complete; **Phase 7 (harness: safe writes & review) next**
+- **Next step:** **7.1** — diff preview for mutations: when `write_file` / `edit_file` runs,
+  compute a unified diff (old vs new) and include it in the tool result / post it to the webview
+  as a tool card (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `32cb07b` — feat(llm): implement edit_file execution in ToolExecutor
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+- **Last commit:** `ba9dca1` — feat(llm): add start_line/end_line to read_file tool
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (96 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -256,6 +256,7 @@ src/
 | 3     | Inline completion (ghost text)                  | complete |
 | 4     | Manage code via tools (agentic loop)            | complete |
 | 5     | Code actions / refactors                        | complete |
+| 6     | Targeted file editing (`edit_file`)             | complete |
 
 ## Done
 
@@ -598,6 +599,21 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   verified under plain Node (10 checks: no-range passthrough, full/middle/single-line ranges,
   start-only, end-only, end clamped, start-beyond-total error, start>end error, start clamped to 1
   — all pass).
+- **6.4 — end-to-end verify + record** (2026-10-09): extended `scripts/smoke-test.js` with a
+  genuine end-to-end `edit_file` verification (section 5e) that exercises the **real compiled
+  code** through the full agentic-loop round-trip. The mock server gained an `edit_file` branch
+  (triggered by an `EDIT_FILE_TEST` marker in the last user message) that streams an `edit_file`
+  tool call whose arguments are split across two SSE chunks. The test: (a) the real
+  `client.chatStream` reassembles the `edit_file` call (`id=e1`, `name=edit_file`,
+  `arguments={"path":"sample.txt","old_string":"foo","new_string":"bar"}`); (b) the real
+  `ToolExecutor` (loaded with a stubbed `vscode` module via `Module._load` interception, pointing
+  at a temp workspace) applies the edit to a **real file on disk** (`foo` → `bar`); (c)
+  `toolResultMessage` builds the `role: 'tool'` feedback for the loop; (d) error cases —
+  not-found, ambiguous (3 matches, not unique), and `replace_all` (3 occurrences) — all behave as
+  specified and the on-disk file reflects each change. Also updated the existing `CODE_TOOLS`
+  assertions (now 5 tools: `read_file,write_file,edit_file,list_dir,search_files`) and the
+  `toolBody.tools.length` assertion (5). Total assertions now 96 (was 84). Compiles clean; all 96
+  assertions pass. **Phase 6 complete.**
 
 ## Steps — Phase 1 (one per session)
 

@@ -63,6 +63,57 @@ const server = http.createServer((req, res) => {
       });
       const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
       if (Array.isArray(parsed.tools)) {
+        const lastUser = [...parsed.messages]
+          .reverse()
+          .find((m) => m.role === "user");
+        const isEditTest =
+          !!lastUser &&
+          typeof lastUser.content === "string" &&
+          lastUser.content.includes("EDIT_FILE_TEST");
+        if (isEditTest) {
+          // edit_file tool call, arguments split across two SSE chunks.
+          send({
+            choices: [
+              {
+                delta: {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      id: "e1",
+                      type: "function",
+                      function: {
+                        name: "edit_file",
+                        arguments:
+                          '{"path":"sample.txt","old_string":"foo","new_st',
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          });
+          send({
+            choices: [
+              {
+                delta: {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      function: { arguments: 'ring":"bar"}' },
+                    },
+                  ],
+                },
+              },
+            ],
+          });
+          send({
+            choices: [{ delta: {} }],
+            usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 },
+          });
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
         // Tool-calling reply: a single tool call whose arguments are split
         // across two SSE chunks (exercises parseSseLine + accumulateToolCalls
         // reassembly through the real chatStream pipeline).
@@ -351,10 +402,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 4, "tools: CODE_TOOLS has 4 tools");
+  assert(CODE_TOOLS.length === 5, "tools: CODE_TOOLS has 5 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,list_dir,search_files",
+      "read_file,write_file,edit_file,list_dir,search_files",
     "tools: tool names in order",
   );
   assert(
@@ -449,7 +500,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 4,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 5,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -476,6 +527,124 @@ function assert(cond, label) {
     finalToolCalls[0].function.arguments === '{"path":"a.ts"}',
     "tools: chatStream tool call arguments reassembled across chunks",
   );
+
+  // 5e) edit_file end-to-end (Phase 6.4): the real chatStream reassembles an
+  // edit_file tool call (args split across SSE chunks), the real ToolExecutor
+  // applies it to a real file on disk, and toolResultMessage builds the
+  // feedback. Exercises the full agentic-loop round-trip through compiled code.
+  const Module = require("module");
+  const fs = require("fs");
+  const os = require("os");
+  const editRoot = fs.mkdtempSync(path.join(os.tmpdir(), "llm-edit-test-"));
+  const samplePath = path.join(editRoot, "sample.txt");
+  fs.writeFileSync(samplePath, "line1\nfoo\nline3\n", "utf8");
+  const originalLoad = Module._load;
+  Module._load = function (request, parent, isMain) {
+    if (request === "vscode") {
+      return {
+        workspace: {
+          workspaceFolders: [{ uri: { fsPath: editRoot } }],
+        },
+      };
+    }
+    return originalLoad.apply(this, arguments);
+  };
+  const { ToolExecutor } = require(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+  );
+  const executor = new ToolExecutor();
+
+  // Full loop: engine streams an edit_file tool call -> real chatStream
+  // reassembles it -> real executor applies it to the file on disk.
+  const editBody = buildRequestBody(
+    { settings: toolSettings, toolbar },
+    [{ role: "user", content: "EDIT_FILE_TEST: change foo to bar" }],
+  ).body;
+  let editCalls = [];
+  let editDone = false;
+  for await (const chunk of client.chatStream(editBody)) {
+    if (chunk.toolCalls) editCalls = chunk.toolCalls;
+    if (chunk.done) editDone = true;
+  }
+  assert(editDone, "edit: chatStream terminal done chunk (edit reply)");
+  assert(editCalls.length === 1, "edit: chatStream reassembled 1 tool call");
+  assert(
+    editCalls[0].function.name === "edit_file",
+    "edit: chatStream tool call name=edit_file",
+  );
+  assert(
+    editCalls[0].function.arguments ===
+      '{"path":"sample.txt","old_string":"foo","new_string":"bar"}',
+    "edit: chatStream edit_file arguments reassembled across chunks",
+  );
+  const editResult = await executor.execute(editCalls[0]);
+  assert(
+    editResult.tool_call_id === editCalls[0].id,
+    "edit: result tool_call_id matches call id",
+  );
+  assert(
+    editResult.content.includes("Replaced 1 occurrence in sample.txt"),
+    "edit: result reports 1 occurrence replaced",
+  );
+  assert(
+    fs.readFileSync(samplePath, "utf8") === "line1\nbar\nline3\n",
+    "edit: on-disk file changed (foo -> bar)",
+  );
+  const editFeedback = toolResultMessage(editCalls[0], editResult.content);
+  assert(
+    editFeedback.role === "tool" &&
+      editFeedback.tool_call_id === editCalls[0].id,
+    "edit: toolResultMessage builds feedback for the loop",
+  );
+
+  // Error cases (real executor, real files).
+  const notFound = await executor.execute({
+    id: "e2",
+    type: "function",
+    function: {
+      name: "edit_file",
+      arguments: '{"path":"sample.txt","old_string":"zzz","new_string":"y"}',
+    },
+  });
+  assert(
+    notFound.content.includes("old_string not found"),
+    "edit: not-found error surfaced",
+  );
+  fs.writeFileSync(samplePath, "x x x\n", "utf8");
+  const ambiguous = await executor.execute({
+    id: "e3",
+    type: "function",
+    function: {
+      name: "edit_file",
+      arguments: '{"path":"sample.txt","old_string":"x","new_string":"y"}',
+    },
+  });
+  assert(
+    ambiguous.content.includes("not unique") &&
+      ambiguous.content.includes("3 matches"),
+    "edit: ambiguous (not unique) error surfaced",
+  );
+  const replaceAll = await executor.execute({
+    id: "e4",
+    type: "function",
+    function: {
+      name: "edit_file",
+      arguments:
+        '{"path":"sample.txt","old_string":"x","new_string":"y","replace_all":true}',
+    },
+  });
+  assert(
+    replaceAll.content.includes("Replaced 3 occurrences"),
+    "edit: replace_all replaces every occurrence",
+  );
+  assert(
+    fs.readFileSync(samplePath, "utf8") === "y y y\n",
+    "edit: replace_all on-disk file changed",
+  );
+
+  // Cleanup: restore Module._load and remove the temp dir.
+  Module._load = originalLoad;
+  fs.rmSync(editRoot, { recursive: true, force: true });
 
   // 6) code action: buildCodeActionPrompt + parseCodeAction (Phase 5)
   const ca = buildCodeActionPrompt({
