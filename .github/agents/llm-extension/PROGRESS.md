@@ -12,8 +12,8 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** Phases 1–5 complete; **Phase 6 (harness: targeted file editing) started**
-- **Next step:** **6.1** — add the `edit_file` tool schema to `CODE_TOOLS` in `src/tools.ts`
+- **Current phase:** Phases 1–5 complete; **Phase 6 (harness: targeted file editing) in progress**
+- **Next step:** **6.2** — implement `edit_file` execution in `src/tools/ToolExecutor.ts`
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
 - **Last commit:** `9422f0e` — fix(llm): escape backslashes in webview inline JS template literal
@@ -562,6 +562,15 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   clean; compiled output verified to contain `loadModels`, the `ready` → `loadModels` call, the
   setup `try/catch` posting `error`, and `stream_start` after setup. Existing smoke test still
   passes (84 assertions).
+- **6.1 — `edit_file` tool schema** (2026-10-09): added the `edit_file` tool to `CODE_TOOLS` in
+  `src/tools.ts` (placed after `write_file`, before `list_dir`). Params: `path` (workspace-relative),
+  `old_string` (exact text incl. whitespace/indent), `new_string` (replacement), `replace_all`
+  (bool, default `false`); `required: ["path", "old_string", "new_string"]`. The description tells
+  the model that `old_string` must match **exactly** and be **unique** in the file unless
+  `replace_all` is true, and to include surrounding context to disambiguate. `request.ts` picks it
+  up automatically (it already sets `body.tools = CODE_TOOLS`), so no change was needed there.
+  Compiles clean; compiled `out/tools.js` verified to contain the `edit_file` schema with all four
+  properties and the correct `required` array.
 
 ## Steps — Phase 1 (one per session)
 

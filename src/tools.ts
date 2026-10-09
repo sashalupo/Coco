@@ -87,6 +87,46 @@ export const CODE_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
+      name: "edit_file",
+      description:
+        "Make a targeted edit to a file by replacing an exact text match. " +
+        "old_string must match the file contents EXACTLY (including whitespace " +
+        "and indentation) and must be UNIQUE in the file unless replace_all is " +
+        "true. Include enough surrounding context (a few lines before and after) " +
+        "to make old_string unambiguous. If old_string is not found or is not " +
+        "unique, the edit fails — re-read the file and copy the exact text.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Workspace-relative file path.",
+          },
+          old_string: {
+            type: "string",
+            description:
+              "The exact text to replace, including surrounding context to make " +
+              "it unique. Must match the file byte-for-byte (whitespace and " +
+              "indentation included).",
+          },
+          new_string: {
+            type: "string",
+            description: "The replacement text.",
+          },
+          replace_all: {
+            type: "boolean",
+            description:
+              "When true, replace every occurrence of old_string. When false " +
+              "(default), old_string must be unique or the edit fails.",
+          },
+        },
+        required: ["path", "old_string", "new_string"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "list_dir",
       description:
         "List the files and subdirectories in a workspace directory.",
