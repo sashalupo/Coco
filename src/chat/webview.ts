@@ -502,71 +502,87 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		}
 
 		// --- Host → webview messages (S8: models/clear; S9: streaming; S10: toolbar) ---
-		diag('onDidReceiveMessage: ' + (vscode ? typeof vscode.onDidReceiveMessage : 'n/a') + ' | keys: ' + (vscode ? Object.keys(vscode).join(',') : 'null') + ' | origin: ' + (window.location ? window.location.origin : '?') + ' | href: ' + (window.location ? String(window.location.href).slice(0, 50) : '?'));
+		// VS Code delivers host→webview messages via acquireVsCodeApi().onDidReceiveMessage in
+		// standard builds. In some builds (e.g. the current dev-container VS Code) the API
+		// object only exposes postMessage/getState/setState and host messages arrive as a
+		// native DOM "message" event on window. Support BOTH: prefer onDidReceiveMessage,
+		// else fall back to a window "message" listener.
+		diag('onDidReceiveMessage: ' + (vscode ? typeof vscode.onDidReceiveMessage : 'n/a') + ' | keys: ' + (vscode ? Object.keys(vscode).join(',') : 'null') + ' | origin: ' + (window.location ? window.location.origin : '?'));
+
+		function handleHostMessage(msg) {
+			if (!msg || typeof msg !== 'object' || !msg.type) { return; }
+			diag('recv: ' + msg.type);
+			switch (msg.type) {
+				case 'models':
+					setModelOptions(msg.models);
+					diag('models: ' + (msg.models ? msg.models.length : 0) + ' model(s)');
+					break;
+				case 'toolbar':
+					setToolbar({
+						model: msg.model,
+						thinking: msg.thinking,
+						context: msg.context,
+						contextFlags: msg.contextFlags
+					});
+					break;
+				case 'clear':
+					messagesEl.innerHTML = '';
+					contextIndicator.hidden = true;
+					streaming = false;
+					currentAssistant = null;
+					setStreaming(false);
+					break;
+				case 'stream_start':
+					addUserMessage(lastSentText);
+					currentAssistant = addAssistantMessage();
+					setContextTrimmed(!!msg.trimmed);
+					streaming = true;
+					setStreaming(true);
+					break;
+				case 'delta':
+					if (!currentAssistant) { break; }
+					if (msg.reasoning) {
+						currentAssistant.thinking.textContent += msg.reasoning;
+						revealThinking(currentAssistant.thinkingBlock);
+					}
+					if (msg.content) {
+						currentAssistant.content.textContent += msg.content;
+					}
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'stream_end':
+					streaming = false;
+					if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
+					currentAssistant = null;
+					setStreaming(false);
+					inputEl.focus();
+					break;
+				case 'error':
+					streaming = false;
+					if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
+					currentAssistant = null;
+					setStreaming(false);
+					var errEl = document.createElement('div');
+					errEl.className = 'message error';
+					errEl.innerHTML = '<div class="role">Error</div><div class="content"></div>';
+					errEl.querySelector('.content').textContent = msg.message || 'Unknown error';
+					messagesEl.appendChild(errEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				default:
+					break;
+			}
+		}
+
 		if (vscode && typeof vscode.onDidReceiveMessage === 'function') {
-			vscode.onDidReceiveMessage(function (msg) {
-				diag('recv: ' + msg.type);
-				switch (msg.type) {
-					case 'models':
-						setModelOptions(msg.models);
-						diag('models: ' + (msg.models ? msg.models.length : 0) + ' model(s)');
-						break;
-					case 'toolbar':
-						setToolbar({
-							model: msg.model,
-							thinking: msg.thinking,
-							context: msg.context,
-							contextFlags: msg.contextFlags
-						});
-						break;
-					case 'clear':
-						messagesEl.innerHTML = '';
-						contextIndicator.hidden = true;
-						streaming = false;
-						currentAssistant = null;
-						setStreaming(false);
-						break;
-					case 'stream_start':
-						addUserMessage(lastSentText);
-						currentAssistant = addAssistantMessage();
-						setContextTrimmed(!!msg.trimmed);
-						streaming = true;
-						setStreaming(true);
-						break;
-					case 'delta':
-						if (!currentAssistant) { break; }
-						if (msg.reasoning) {
-							currentAssistant.thinking.textContent += msg.reasoning;
-							revealThinking(currentAssistant.thinkingBlock);
-						}
-						if (msg.content) {
-							currentAssistant.content.textContent += msg.content;
-						}
-						messagesEl.scrollTop = messagesEl.scrollHeight;
-						break;
-					case 'stream_end':
-						streaming = false;
-						if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
-						currentAssistant = null;
-						setStreaming(false);
-						inputEl.focus();
-						break;
-					case 'error':
-						streaming = false;
-						if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
-						currentAssistant = null;
-						setStreaming(false);
-						var errEl = document.createElement('div');
-						errEl.className = 'message error';
-						errEl.innerHTML = '<div class="role">Error</div><div class="content"></div>';
-						errEl.querySelector('.content').textContent = msg.message || 'Unknown error';
-						messagesEl.appendChild(errEl);
-						messagesEl.scrollTop = messagesEl.scrollHeight;
-						break;
-					default:
-						break;
-				}
+			vscode.onDidReceiveMessage(handleHostMessage);
+			diag('host→webview via onDidReceiveMessage');
+		} else {
+			// Fallback: host messages arrive as a native DOM "message" event.
+			window.addEventListener('message', function (event) {
+				handleHostMessage(event.data);
 			});
+			diag('host→webview via window message (onDidReceiveMessage absent)');
 		}
 
 		// Apply the initial toolbar state, then announce readiness to the host.

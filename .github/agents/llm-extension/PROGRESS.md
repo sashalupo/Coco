@@ -13,29 +13,37 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** all phases complete (1–5); live-debugging runtime bug
-- **Next step:** — (roadmap complete; debugging empty Model dropdown + no-send in dev-container)
+- **Next step:** — (roadmap complete; awaiting user reload to verify the webview message fix)
 - **Last updated:** 2026-10-09
-- **Last commit:** ROOT CAUSE = environmental (VS Code webview bridge missing onDidReceiveMessage)
+- **Last commit:** FIX — webview receives host msgs via window "message" fallback (onDidReceiveMessage absent)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
-> **Active debugging (dev-container) — ROOT CAUSE CONFIRMED (environmental, not our code):**
+> **Active debugging (dev-container) — ROOT CAUSE FOUND + FIXED (code-side, not environmental):**
 > Model dropdown empty + send does nothing. The webview `diag:` line (the only reliable channel;
 > host `console.log` does not surface in the log the user views) proved:
+>
 > - `acquireVsCodeApi()` returns **`postMessage, setState, getState`** but **NO `onDidReceiveMessage`**.
 > - `origin: vscode-webview://…` → it IS a genuine VS Code webview (NOT a browser preview).
 > - Running on **VS Code 1.140.0** (commit `07f806f9`), remote/dev-container.
-> - Our code is the CANONICAL pattern (`registerWebviewViewProvider` + `webview.html` +
->   `webview.onDidReceiveMessage`); no mock `acquireVsCodeApi` in our HTML.
-> **Conclusion:** the VS Code webview↔host message bridge in this dev-container is broken —
-> the host→webview channel (`onDidReceiveMessage`) is missing from the webview API. This is an
-> ENVIRONMENTAL VS Code / remote-bridge issue, NOT an extension bug. The webview can call
-> `postMessage` (out) but can never receive (host's `models`/`stream_start`/`delta` never arrive).
-> **Fix (user-side, environment):** (1) `Developer: Reload Window`; (2) confirm local UI version
-> == remote server version (1.140.0 / 07f806f9) — a mismatch breaks the webview bridge;
-> (3) close + reopen the LLM view; (4) test whether OTHER webview extensions (e.g. Copilot chat)
-> can receive in this container — if not, it's a global VS Code/remote issue.
-> **Verify after fix:** diag should show `onDidReceiveMessage: function` and `recv: models`.
-> Diagnostic code (onerror/keys/origin) is kept in place to confirm the fix; remove once resolved.
+>
+> **ROOT CAUSE (confirmed in VS Code source):** the current VS Code webview preload
+> (`src/vs/workbench/contrib/webview/browser/pre/index.html`, `getVsCodeApiScript`) defines
+> `acquireVsCodeApi()` to return **exactly** `Object.freeze({ postMessage, setState, getState })`
+> — NO `onDidReceiveMessage`. Host→webview messages are now delivered as a **native DOM
+> `message` event on `window`** (`contentWindow.postMessage(data.message, window.origin, …)`),
+> NOT via `acquireVsCodeApi().onDidReceiveMessage`. So webview→host (`postMessage`) still works
+> (host receives `ready`/`send`/`toolbar`), but host→webview (`models`/`stream_start`/`delta`)
+> arrived as `window` `message` events that our webview never listened for → dropped.
+>
+> **FIX (webview.ts):** extract the host→webview handler into `handleHostMessage(msg)`; register
+> it via `vscode.onDidReceiveMessage` when present (standard builds), ELSE via
+> `window.addEventListener('message', e => handleHostMessage(e.data))` (current dev-container
+> VS Code). `handleHostMessage` guards on `msg && msg.type` so unrelated `message` events are
+> ignored. Both paths share the same handler.
+>
+> **Verify after reload:** diag should show `host→webview via window message (onDidReceiveMessage
+> absent)` then `recv: models` + `models: N model(s)`; dropdown populates and send streams.
+> Diagnostic code (onerror/keys/origin) kept to confirm; strip in a cleanup step once verified.
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
