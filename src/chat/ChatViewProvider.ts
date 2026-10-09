@@ -131,6 +131,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "switchConversation":
         this.switchConversation(String(msg.id ?? ""));
         break;
+      case "deleteConversation":
+        this.deleteConversation(String(msg.id ?? ""));
+        break;
       case "stop":
         this.abortController?.abort();
         break;
@@ -214,6 +217,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.currentConvId = id;
     this.history = target.messages;
     this.postMessage({ type: "restore", messages: this.history });
+  }
+
+  /**
+   * Delete a saved conversation by id. If it is the active one, the current
+   * conversation is reset to a fresh (empty) state. The updated list is
+   * pushed so the webview's History dropdown refreshes.
+   */
+  private deleteConversation(id: string): void {
+    if (!id) {
+      return;
+    }
+    void this.conversationStore.remove(id);
+    if (id === this.currentConvId) {
+      // The active conversation was deleted — start fresh.
+      this.currentConvId = this.generateId();
+      this.history = [];
+      this.postMessage({ type: "clear" });
+    }
+    this.pushHistory();
   }
 
   /**

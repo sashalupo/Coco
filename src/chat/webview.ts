@@ -368,6 +368,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		margin-left: auto;
 	}
 	#conv-select:focus { outline: 1px solid var(--focus); }
+	#conv-delete {
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 2px;
+		color: var(--muted);
+		cursor: pointer;
+		padding: 2px 6px;
+		font-size: 11px;
+		display: none;
+	}
+	#conv-delete:hover { color: var(--vscode-errorForeground, #f48771); border-color: var(--vscode-errorForeground, #f48771); }
 </style>
 </head>
 <body>
@@ -390,6 +401,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 		</span>
 		<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
+		<button id="conv-delete" title="Delete selected conversation">Delete</button>
 		<button id="new-chat" title="Start a new conversation">New Chat</button>
 	</div>
 
@@ -422,6 +434,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
 		var newChatBtn = document.getElementById('new-chat');
 		var convSelect = document.getElementById('conv-select');
+		var convDelete = document.getElementById('conv-delete');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -441,8 +454,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (vscode) { vscode.postMessage({ type: 'newChat' }); }
 		});
 		convSelect.addEventListener('change', function () {
+			convDelete.style.display = convSelect.value ? 'inline-block' : 'none';
 			if (streaming || !convSelect.value) { return; }
 			if (vscode) { vscode.postMessage({ type: 'switchConversation', id: convSelect.value }); }
+		});
+		convDelete.addEventListener('click', function () {
+			if (streaming || !convSelect.value) { return; }
+			if (!confirm('Delete this conversation? This cannot be undone.')) { return; }
+			if (vscode) { vscode.postMessage({ type: 'deleteConversation', id: convSelect.value }); }
 		});
 
 		function postToolbar() {
@@ -742,6 +761,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						});
 						convSelect.innerHTML = opts.join('');
 						if (msg.activeId) { convSelect.value = msg.activeId; }
+						// Show the delete button only when a conversation is selected.
+						convDelete.style.display = convSelect.value ? 'inline-block' : 'none';
 					}
 					break;
 				case 'stream_start':

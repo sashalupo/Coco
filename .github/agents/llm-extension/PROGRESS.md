@@ -15,8 +15,17 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `458b91e` — feat(llm): copy button on assistant messages
+- **Last commit:** `feat(llm): delete a saved conversation from history`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Delete conversation:**
+> - `ChatViewProvider`: new `deleteConversation(id)` — calls `conversationStore.remove(id)`;
+>   if the deleted id is the active one, resets to a fresh empty conversation and posts
+>   `clear`; then `pushHistory()` refreshes the webview's dropdown. New `deleteConversation`
+>   message handler.
+> - `webview.ts`: new `#conv-delete` button next to the History dropdown (hidden unless a
+>   conversation is selected — toggled on both `change` and `restore`). Clicking prompts a
+>   `confirm()` and posts `{type:'deleteConversation', id}`. Styled muted, turns red on hover.
 
 > **Copy button (webview, no deps):**
 > - `webview.ts`: assistant message role row is now a flex row with a right-aligned
