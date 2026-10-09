@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 4 (in progress)
-- **Next step:** S26
+- **Current phase:** 5 (not started — needs step breakdown)
+- **Next step:** S27 (Phase 5 — Code actions / refactors via `CodeActionProvider`; break Phase 5 into steps first)
 - **Last updated:** 2026-10-09
-- **Last commit:** S25 (agentic loop)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
+- **Last commit:** S26 (tools smoke test)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (64 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
@@ -81,7 +81,7 @@ src/
 | 1     | Provider + parameters + chat                    | complete    |
 | 2     | Context-aware chat (file/selection/diagnostics) | complete    |
 | 3     | Inline completion (ghost text)                  | complete    |
-| 4     | Manage code via tools (agentic loop)            | not started |
+| 4     | Manage code via tools (agentic loop)            | complete    |
 | 5     | Code actions / refactors                        | not started |
 
 ## Done
@@ -314,6 +314,18 @@ src/
   iteration). Compiles clean; compiled output verified to contain the loop, `toolExecutor` init,
   `toolExecutor.execute`, `toolResultMessage`, the per-iteration rebuild, and the iteration cap.
   Existing smoke test still passes.
+- **S26 — tools smoke test** (2026-10-09): extended `scripts/smoke-test.js` with 23 new assertions
+  covering the tool pipeline. (a) `CODE_TOOLS` shape: 4 tools in order
+  (`read_file,write_file,list_dir,search_files`), all `type=function`, all
+  `parameters.type=object`, and the exact `required` arrays per tool. (b) `toolResultMessage`:
+  `role=tool`, `tool_call_id` matches `call.id`, `content` passthrough. (c) `accumulateToolCalls`
+  (pure): empty→empty, single delta, concatenating split arguments across two deltas, and two
+  calls keyed by index. (d) Full `chatStream` tool-call accumulation: the mock server now branches
+  on `Array.isArray(parsed.tools)` and streams a single `read_file` tool call whose arguments are
+  split across two SSE chunks; the test asserts the request body carries `tools` (4) and
+  `tool_choice=auto` when `toolsEnabled`, and that `chatStream` reassembles one `ToolCall`
+  (`id=c1`, `name=read_file`, `arguments={"path":"a.ts"}`). Total assertions now 64 (was 41).
+  Compiles clean; all 64 assertions pass.
 
 ## Steps — Phase 1 (one per session)
 
@@ -438,10 +450,19 @@ lives in `ToolExecutor`.
       append the assistant turn + tool results, and re-send → until no `tool_calls` or a max
       iteration cap. Stream content deltas to the webview as they arrive.
       _Accept: compiles; a tool-calling reply is executed and fed back._
-- [ ] **S26 — tools smoke test.** Extend `scripts/smoke-test.js` to assert `CODE_TOOLS` shape,
+- [x] **S26 — tools smoke test.** Extend `scripts/smoke-test.js` to assert `CODE_TOOLS` shape,
       `toolResultMessage`, and `parseSseLine` tool-call accumulation (mock SSE with `tool_calls`
       deltas).
       _Accept: compiles; new assertions pass._
+
+## Steps — Phase 5 (one per session)
+
+> **Not yet broken down.** Phase 4 is complete. The next session should split Phase 5
+> (Code actions / refactors via `CodeActionProvider`) into single-file, independently
+> compilable steps (S27+) before implementing the first one. Likely concerns: a
+> `CodeActionProvider` that offers an "Ask LLM to fix/refactor" action, a prompt builder for
+> the selected range + diagnostics, a non-streaming `chat` helper on `LlmClient` (or reuse
+> `chatStream`), applying the model's suggested edit to the document, and a smoke test.
 
 ## Decisions
 

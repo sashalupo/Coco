@@ -9,6 +9,8 @@ const { LlmClient } = require(path.join(__dirname, '..', 'out', 'client.js'));
 const { buildRequestBody } = require(path.join(__dirname, '..', 'out', 'request.js'));
 const { buildContextBlock } = require(path.join(__dirname, '..', 'out', 'context.js'));
 const { buildCompletionPrompt, parseCompletion } = require(path.join(__dirname, '..', 'out', 'inline.js'));
+const { CODE_TOOLS, toolResultMessage } = require(path.join(__dirname, '..', 'out', 'tools.js'));
+const { accumulateToolCalls } = require(path.join(__dirname, '..', 'out', 'client.js'));
 
 const PORT = 18099;
 
@@ -42,10 +44,21 @@ const server = http.createServer((req, res) => {
 				'Cache-Control': 'no-cache',
 				Connection: 'keep-alive',
 			});
+			const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+			if (Array.isArray(parsed.tools)) {
+				// Tool-calling reply: a single tool call whose arguments are split
+				// across two SSE chunks (exercises parseSseLine + accumulateToolCalls
+				// reassembly through the real chatStream pipeline).
+				send({ choices: [{ delta: { tool_calls: [{ index: 0, id: 'c1', type: 'function', function: { name: 'read_file', arguments: '{"pat' } }] } }] });
+				send({ choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: 'h":"a.ts"}' } }] } }] });
+				send({ choices: [{ delta: {} }], usage: { prompt_tokens: 5, completion_tokens: 5, total_tokens: 10 } });
+				res.write('data: [DONE]\n\n');
+				res.end();
+				return;
+			}
 			// Stream: reasoning_content chunks, then content chunks, then usage, then [DONE].
 			const reasoning = ['Let ', 'me ', 'think ', 'about ', 'this.'];
 			const content = ['The ', 'answer ', 'is ', '42.'];
-			const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 			reasoning.forEach((t) => send({ choices: [{ delta: { reasoning_content: t } }] }));
 			content.forEach((t) => send({ choices: [{ delta: { content: t } }] }));
 			send({ choices: [{ delta: {} }], usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 } });
@@ -167,6 +180,53 @@ function assert(cond, label) {
 	assert(usage && usage.total_tokens === 30, 'chatStream usage surfaced (total_tokens=30)');
 	assert(global.__lastRequest.stream === true, 'engine received stream:true');
 	assert(global.__lastRequest.reasoning_effort === 'high', 'engine received reasoning_effort=high');
+
+	// 5) tools: CODE_TOOLS shape
+	assert(CODE_TOOLS.length === 4, 'tools: CODE_TOOLS has 4 tools');
+	assert(CODE_TOOLS.map((t) => t.function.name).join(',') === 'read_file,write_file,list_dir,search_files', 'tools: tool names in order');
+	assert(CODE_TOOLS.every((t) => t.type === 'function'), 'tools: all type=function');
+	assert(CODE_TOOLS.every((t) => t.function.parameters.type === 'object'), 'tools: all parameters.type=object');
+	const byName = Object.fromEntries(CODE_TOOLS.map((t) => [t.function.name, t]));
+	assert(byName.read_file.function.parameters.required.join(',') === 'path', 'tools: read_file required=[path]');
+	assert(byName.write_file.function.parameters.required.join(',') === 'path,content', 'tools: write_file required=[path,content]');
+	assert(byName.list_dir.function.parameters.required.join(',') === 'path', 'tools: list_dir required=[path]');
+	assert(byName.search_files.function.parameters.required.join(',') === 'pattern', 'tools: search_files required=[pattern]');
+
+	// 5b) toolResultMessage
+	const tc = { id: 'call_123', type: 'function', function: { name: 'read_file', arguments: '{"path":"a.ts"}' } };
+	const trm = toolResultMessage(tc, 'file contents');
+	assert(trm.role === 'tool', 'tools: toolResultMessage role=tool');
+	assert(trm.tool_call_id === 'call_123', 'tools: toolResultMessage tool_call_id matches call.id');
+	assert(trm.content === 'file contents', 'tools: toolResultMessage content passthrough');
+
+	// 5c) accumulateToolCalls (pure)
+	assert(accumulateToolCalls([], []).length === 0, 'tools: accumulate empty -> empty');
+	const acc1 = accumulateToolCalls([], [{ index: 0, id: 'c1', type: 'function', function: { name: 'read_file', arguments: '{"pat' } }]);
+	assert(acc1.length === 1 && acc1[0].id === 'c1' && acc1[0].function.name === 'read_file', 'tools: accumulate single delta');
+	const acc2 = accumulateToolCalls(acc1, [{ index: 0, function: { arguments: 'h":"a.ts"}' } }]);
+	assert(acc2[0].function.arguments === '{"path":"a.ts"}', 'tools: accumulate concatenates split arguments');
+	const acc3 = accumulateToolCalls([], [
+		{ index: 0, id: 'a', function: { name: 'read_file', arguments: '{}' } },
+		{ index: 1, id: 'b', function: { name: 'list_dir', arguments: '{}' } },
+	]);
+	assert(acc3.length === 2 && acc3[0].id === 'a' && acc3[1].id === 'b', 'tools: accumulate two calls by index');
+
+	// 5d) chatStream tool-call accumulation (mock SSE with tool_calls deltas)
+	const toolSettings = { ...settings, toolsEnabled: true };
+	const toolBody = buildRequestBody({ settings: toolSettings, toolbar }, [{ role: 'user', content: 'read a.ts' }]).body;
+	assert(Array.isArray(toolBody.tools) && toolBody.tools.length === 4, 'tools: request body carries tools when enabled');
+	assert(toolBody.tool_choice === 'auto', 'tools: request body tool_choice=auto');
+	let finalToolCalls = [];
+	let toolDone = false;
+	for await (const chunk of client.chatStream(toolBody)) {
+		if (chunk.toolCalls) finalToolCalls = chunk.toolCalls;
+		if (chunk.done) toolDone = true;
+	}
+	assert(toolDone, 'tools: chatStream terminal done chunk (tool reply)');
+	assert(finalToolCalls.length === 1, 'tools: chatStream reassembled 1 tool call');
+	assert(finalToolCalls[0].id === 'c1', 'tools: chatStream tool call id=c1');
+	assert(finalToolCalls[0].function.name === 'read_file', 'tools: chatStream tool call name=read_file');
+	assert(finalToolCalls[0].function.arguments === '{"path":"a.ts"}', 'tools: chatStream tool call arguments reassembled across chunks');
 
 	console.log('\nALL SMOKE TESTS PASSED');
 	server.close();
