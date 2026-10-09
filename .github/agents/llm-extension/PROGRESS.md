@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 4 (in progress)
-- **Next step:** S24
+- **Next step:** S25
 - **Last updated:** 2026-10-09
-- **Last commit:** S23 (client.ts tools)
+- **Last commit:** S24 (ToolExecutor)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -289,6 +289,17 @@ src/
   server reassembles a tool call whose arguments are split across two SSE chunks into one
   `ToolCall` (`id=c1`, `name=read_file`, `arguments={"path":"a.ts"}`) alongside content. Existing
   smoke test still passes.
+- **S24 — `src/tools/ToolExecutor.ts`** (2026-10-09): new vscode-specific executor. `execute(call)`
+  parses the JSON arguments (invalid JSON → error result, not throw) and dispatches to `read_file`
+  (size-capped read), `write_file` (mkdir -p + write), `list_dir` (sorted, dirs suffixed `/`), and
+  `search_files` (regex with literal fallback, recursive walk skipping `node_modules`/`.git`/`out`/
+  `dist`/`.vscode`, capped at `MAX_SEARCH_MATCHES=50`, results as `relPath:line: text`). All paths go
+  through `resolveSafe`, which resolves against the first workspace folder and rejects any path that
+  escapes it (`path.relative` starts with `..` or is absolute → `null` → "Path not allowed"). Every
+  failure (unknown tool, bad path, I/O error) is returned as a `ToolResult` whose `content` describes
+  the failure, so the agentic loop can continue. Compiles clean; compiled output verified to contain
+  all 4 tools, the traversal rejection, the no-workspace guard, invalid-JSON handling, and the
+  error→result (not throw) behavior.
 
 ## Steps — Phase 1 (one per session)
 
@@ -404,7 +415,7 @@ lives in `ToolExecutor`.
 - [x] **S23 — `src/client.ts` (tools).** Extend `StreamChunk` with `toolCalls?: ToolCall[]`; parse
       `delta.tool_calls` (accumulate by index across chunks) in `parseSseLine`.
       _Accept: compiles; a streamed tool call reassembles into one `ToolCall`._
-- [ ] **S24 — `src/tools/ToolExecutor.ts`.** vscode-specific `ToolExecutor` with
+- [x] **S24 — `src/tools/ToolExecutor.ts`.** vscode-specific `ToolExecutor` with
       `execute(call): Promise<ToolResult>` implementing `read_file` / `write_file` / `list_dir` /
       `search_files` against the workspace (safe path handling, error → result, not throw).
       _Accept: compiles; each tool returns a typed `ToolResult`._
