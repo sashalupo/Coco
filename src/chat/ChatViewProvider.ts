@@ -8,9 +8,9 @@
 import * as vscode from 'vscode';
 import { buildWebviewHtml } from './webview';
 import { LlmClient } from '../client';
-import { readSettings } from '../config';
+import { readSettings, ToolbarStateStore } from '../config';
 import { buildRequestBody, type ChatMessage } from '../request';
-import type { ToolbarState } from '../presets';
+import type { ContextLevel, ThinkingLevel, ToolbarState } from '../presets';
 
 /** Messages the webview sends to the host. */
 export interface WebviewToHostMessage {
@@ -33,10 +33,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	/** Conversation history (user/assistant turns). */
 	private history: ChatMessage[] = [];
 
+	/** Persisted toolbar overrides (Model/Thinking/Context). */
+	private readonly toolbarStore: ToolbarStateStore;
+
 	constructor(
 		private readonly context: vscode.ExtensionContext,
 		private readonly client: LlmClient
-	) {}
+	) {
+		this.toolbarStore = ToolbarStateStore.create(context.globalState);
+	}
 
 	/**
 	 * Resolve the webview: set its HTML and wire the message handler.
@@ -63,11 +68,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	private onMessage(msg: WebviewToHostMessage): void {
 		switch (msg.type) {
 			case 'ready':
-				// Round-trip: acknowledge the webview is up.
+				// Round-trip: acknowledge the webview is up, then sync the
+				// persisted toolbar state into the dropdowns.
 				this.postMessage({ type: 'hello', message: 'LLM chat panel ready' });
+				this.pushToolbarState();
 				break;
 			case 'send':
 				void this.handleSend(String(msg.text ?? ''));
+				break;
+			case 'toolbar':
+				this.applyToolbarMessage(msg);
 				break;
 			default:
 				// Unknown message types are ignored for now.
@@ -75,17 +85,38 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
+	/** Push the persisted toolbar state to the webview (model `null` → `''`). */
+	private pushToolbarState(): void {
+		const t = this.toolbarStore.get();
+		this.postMessage({
+			type: 'toolbar',
+			model: t.model ?? '',
+			thinking: t.thinking,
+			context: t.context,
+		});
+	}
+
+	/** Persist a toolbar change posted by the webview. */
+	private applyToolbarMessage(msg: WebviewToHostMessage): void {
+		const rawModel = msg.model == null ? '' : String(msg.model);
+		const thinking = (String(msg.thinking ?? 'off')) as ThinkingLevel;
+		const context = (String(msg.context ?? 'auto')) as ContextLevel;
+		void this.toolbarStore.setModel(rawModel === '' ? null : rawModel);
+		void this.toolbarStore.setThinking(thinking);
+		void this.toolbarStore.setContext(context);
+	}
+
 	/**
 	 * Send a user message and stream the assistant's reply back to the webview.
-	 * S9 uses the settings + a default toolbar state; S10 feeds the live
-	 * toolbar overrides (model/thinking/context) from the webview.
+	 * Uses the settings + the persisted toolbar overrides (model/thinking/
+	 * context) so the dropdowns feed the next request body.
 	 */
 	private async handleSend(text: string): Promise<void> {
 		if (!text) {
 			return;
 		}
 		const settings = readSettings();
-		const toolbar: ToolbarState = { model: null, thinking: 'off', context: 'auto' };
+		const toolbar: ToolbarState = this.toolbarStore.get();
 
 		this.history.push({ role: 'user', content: text });
 

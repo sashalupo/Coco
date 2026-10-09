@@ -274,7 +274,24 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
 		}
-		modelSelect.addEventListener('change', syncManual);
+		modelSelect.addEventListener('change', function () {
+			syncManual();
+			postToolbar();
+		});
+		manualInput.addEventListener('change', postToolbar);
+		thinkingSelect.addEventListener('change', postToolbar);
+		contextSelect.addEventListener('change', postToolbar);
+
+		function postToolbar() {
+			if (!vscode) { return; }
+			var state = getToolbar();
+			vscode.postMessage({
+				type: 'toolbar',
+				model: state.model,
+				thinking: state.thinking,
+				context: state.context
+			});
+		}
 
 		var streaming = false;
 		var currentAssistant = null;
@@ -340,8 +357,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		window.setToolbar = function (state) {
 			if (!state) { return; }
 			if (state.model != null) {
-				modelSelect.value = state.model;
-				syncManual();
+				if (state.model === '__manual__') {
+					modelSelect.value = '__manual__';
+					syncManual();
+				} else {
+					modelSelect.value = state.model;
+					syncManual();
+				}
 			}
 			if (state.thinking != null) { thinkingSelect.value = state.thinking; }
 			if (state.context != null) { contextSelect.value = state.context; }
@@ -369,12 +391,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			syncManual();
 		}
 
-		// --- Host → webview messages (S8: models/clear; S9: streaming) ---
+		// --- Host → webview messages (S8: models/clear; S9: streaming; S10: toolbar) ---
 		if (vscode) {
 			vscode.onDidReceiveMessage(function (msg) {
 				switch (msg.type) {
 					case 'models':
 						setModelOptions(msg.models);
+						break;
+					case 'toolbar':
+						setToolbar({
+							model: msg.model,
+							thinking: msg.thinking,
+							context: msg.context
+						});
 						break;
 					case 'clear':
 						messagesEl.innerHTML = '';
