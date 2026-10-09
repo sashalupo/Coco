@@ -7,30 +7,34 @@
 // builders and host-messaging hooks are provided here so those steps can
 // build on a stable structure.
 
-import { CONTEXT_LEVELS, THINKING_LEVELS } from '../presets';
+import { CONTEXT_LEVELS, THINKING_LEVELS } from "../presets";
 
 /** Initial toolbar state passed into the webview (all optional). */
 export interface WebviewInit {
-	/** Model IDs from `GET /v1/models`. */
-	models: string[];
-	/** Selected model override (`''` = placeholder, `'__manual__'` = manual entry). */
-	model: string;
-	/** Selected thinking preset. */
-	thinking: string;
-	/** Selected context preset. */
-	context: string;
-	/** Which editor-context sections to inject (file/selection/diagnostics). */
-	contextFlags?: { includeFile: boolean; includeSelection: boolean; includeDiagnostics: boolean };
+  /** Model IDs from `GET /v1/models`. */
+  models: string[];
+  /** Selected model override (`''` = placeholder, `'__manual__'` = manual entry). */
+  model: string;
+  /** Selected thinking preset. */
+  thinking: string;
+  /** Selected context preset. */
+  context: string;
+  /** Which editor-context sections to inject (file/selection/diagnostics). */
+  contextFlags?: {
+    includeFile: boolean;
+    includeSelection: boolean;
+    includeDiagnostics: boolean;
+  };
 }
 
 /** Escape a string for safe inclusion in an HTML attribute/text node. */
 function escapeHtml(s: string): string {
-	return s
-		.replace(/&/g, '&amp;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;')
-		.replace(/"/g, '&quot;')
-		.replace(/'/g, '&#39;');
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -40,23 +44,33 @@ function escapeHtml(s: string): string {
  *             Defaults to an empty model list and the default presets.
  */
 export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
-	const models = init?.models ?? [];
-	const thinkingOptions = THINKING_LEVELS.map((l) => `<option value="${l}">${l}</option>`).join('');
-	const contextOptions = CONTEXT_LEVELS.map((l) => `<option value="${l}">${l}</option>`).join('');
-	const modelOptions = [
-		'<option value="">Select model…</option>',
-		...models.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`),
-		'<option value="__manual__">manual…</option>',
-	].join('');
+  const models = init?.models ?? [];
+  const thinkingOptions = THINKING_LEVELS.map(
+    (l) => `<option value="${l}">${l}</option>`,
+  ).join("");
+  const contextOptions = CONTEXT_LEVELS.map(
+    (l) => `<option value="${l}">${l}</option>`,
+  ).join("");
+  const modelOptions = [
+    '<option value="">Select model…</option>',
+    ...models.map(
+      (m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`,
+    ),
+    '<option value="__manual__">manual…</option>',
+  ].join("");
 
-	const initialState = {
-		model: init?.model ?? '',
-		thinking: init?.thinking ?? 'off',
-		context: init?.context ?? 'auto',
-		contextFlags: init?.contextFlags ?? { includeFile: true, includeSelection: true, includeDiagnostics: true },
-	};
+  const initialState = {
+    model: init?.model ?? "",
+    thinking: init?.thinking ?? "off",
+    context: init?.context ?? "auto",
+    contextFlags: init?.contextFlags ?? {
+      includeFile: true,
+      includeSelection: true,
+      includeDiagnostics: true,
+    },
+  };
 
-	return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">

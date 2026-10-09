@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5)
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** S30 (code action smoke test)
+- **Last commit:** bug fix (chat: model dropdown + send error handling)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -76,13 +76,13 @@ src/
 
 ## Roadmap
 
-| Phase | Capability                                      | Status      |
-| ----- | ----------------------------------------------- | ----------- |
-| 1     | Provider + parameters + chat                    | complete    |
-| 2     | Context-aware chat (file/selection/diagnostics) | complete    |
-| 3     | Inline completion (ghost text)                  | complete    |
-| 4     | Manage code via tools (agentic loop)            | complete    |
-| 5     | Code actions / refactors                        | complete    |
+| Phase | Capability                                      | Status   |
+| ----- | ----------------------------------------------- | -------- |
+| 1     | Provider + parameters + chat                    | complete |
+| 2     | Context-aware chat (file/selection/diagnostics) | complete |
+| 3     | Inline completion (ghost text)                  | complete |
+| 4     | Manage code via tools (agentic loop)            | complete |
+| 5     | Code actions / refactors                        | complete |
 
 ## Done
 
@@ -360,7 +360,7 @@ provider)` (all file types). The setting is read once at activation, so toggling
   `contributes.configuration` (next to `llm.inline.enabled`). In `activate()`, when enabled, the
   `CodeActionProvider` is registered via
   `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
-  providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the inline-completion
+providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the inline-completion
   registration (opt-in, read at activation, requires a reload to toggle). Compiles clean;
   `package.json` verified valid JSON with the setting present (boolean, default `false`); compiled
   `extension.js` verified to import the provider, read `codeAction.enabled`, gate on it, and call
@@ -376,6 +376,20 @@ provider)` (all file types). The setting is read once at activation, so toggling
   passthrough, trim, fence strip (with and without lang), fence-only → empty, and multi-line
   preserved. Total assertions now 84 (was 64). Compiles clean; all 84 assertions pass. **Phase 5
   complete.**
+- **Bug fix — chat: empty Model dropdown + silent send failure** (2026-10-09): two runtime bugs
+  found while the user tested the extension live. (1) The Model dropdown was empty because
+  `buildWebviewHtml()` was called with no `init` and models were only pushed by the
+  `llm.refreshModels` command (a no-op if the panel wasn't resolved yet). Fix: `ChatViewProvider`
+  now auto-loads the model list when the webview posts `ready` — new `loadModels()` calls
+  `client.listModels()` and posts `{type:'models'}` (silent on failure, so the manual entry still
+  works). (2) Sending a prompt did nothing because the request setup in `handleSend`
+  (`gatherContext` → `buildRequestBody`) ran OUTSIDE the `try/catch` (which only wrapped the
+  streaming loop); a setup throw became an unhandled rejection before `stream_start` was posted,
+  so no user message rendered and no error showed. Fix: the setup is now wrapped in its own
+  `try/catch` that posts `{type:'error'}` and returns, so failures surface in the panel. Compiles
+  clean; compiled output verified to contain `loadModels`, the `ready` → `loadModels` call, the
+  setup `try/catch` posting `error`, and `stream_start` after setup. Existing smoke test still
+  passes (84 assertions).
 
 ## Steps — Phase 1 (one per session)
 
@@ -514,7 +528,7 @@ endpoint is added.
 
 - [x] **S27 — `src/codeaction.ts` (pure prompt builder + parser).** New pure module (no
       `vscode` import, no network). `CodeActionContext {language, path, code,
-    selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
+  selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
       `buildCodeActionPrompt(ctx): string` — a "fix/refactor this code" prompt: a header, an
       instruction to return ONLY the full updated code (no explanation, no code fences), the file
       path, the code block, and — when present — the selected range and the diagnostics to
@@ -525,7 +539,7 @@ endpoint is added.
 - [x] **S28 — `src/codeaction/CodeActionProvider.ts` (vscode-specific provider).**
       `CodeActionProvider implements vscode.CodeActionProvider` (constructed with `context` +
       `LlmClient`, like `InlineCompletionProvider`). `provideCodeActions(document, range,
-    context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
+  context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
       `needsResolve: true`) and — when diagnostics fall in the range — a "Fix with LLM" action
       (kind `quickfix`). `resolveCodeAction` gathers the file context (language, path, full code,
       selection = range text, diagnostics in range), builds the prompt via `buildCodeActionPrompt`,
@@ -538,7 +552,7 @@ endpoint is added.
       `llm.codeAction.enabled` (boolean, default `false`) to `package.json`
       `contributes.configuration`. In `activate()`, when enabled, register the provider via
       `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
-    providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
+  providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
       only when enabled._
 - [x] **S30 — code action smoke test.** Extend `scripts/smoke-test.js` to assert
       `buildCodeActionPrompt` (language/path/code/diagnostics/selection present, stable order) and

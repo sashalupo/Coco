@@ -1,205 +1,205 @@
 {
-    "name": "vscode-extension-copilot",
-    "displayName": "LLM Chat",
-    "description": "Chat with any OpenAI-compatible local engine (ninfer, llama.cpp, vLLM, SGLang, LM Studio).",
-    "version": "0.0.1",
-    "engines": {
-        "vscode": "^1.90.0"
-    },
-    "categories": [
-        "Other"
+  "name": "vscode-extension-copilot",
+  "displayName": "LLM Chat",
+  "description": "Chat with any OpenAI-compatible local engine (ninfer, llama.cpp, vLLM, SGLang, LM Studio).",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:llm.chat",
+    "onCommand:llm.testConnection"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "llm.openChat",
+        "title": "LLM: Open Chat"
+      },
+      {
+        "command": "llm.testConnection",
+        "title": "LLM: Test Connection"
+      },
+      {
+        "command": "llm.refreshModels",
+        "title": "LLM: Refresh Models"
+      },
+      {
+        "command": "llm.clearChat",
+        "title": "LLM: Clear Chat"
+      }
     ],
-    "activationEvents": [
-        "onView:llm.chat",
-        "onCommand:llm.testConnection"
-    ],
-    "main": "./out/extension.js",
-    "contributes": {
-        "commands": [
-            {
-                "command": "llm.openChat",
-                "title": "LLM: Open Chat"
-            },
-            {
-                "command": "llm.testConnection",
-                "title": "LLM: Test Connection"
-            },
-            {
-                "command": "llm.refreshModels",
-                "title": "LLM: Refresh Models"
-            },
-            {
-                "command": "llm.clearChat",
-                "title": "LLM: Clear Chat"
-            }
-        ],
-        "viewsContainers": {
-            "activitybar": [
-                {
-                    "id": "llm",
-                    "title": "LLM",
-                    "icon": "media/llm.svg"
-                }
-            ]
-        },
-        "views": {
-            "llm": [
-                {
-                    "type": "webview",
-                    "id": "llm.chat",
-                    "name": "Chat"
-                }
-            ]
-        },
-        "configuration": {
-            "title": "LLM",
-            "properties": {
-                "llm.baseUrl": {
-                    "type": "string",
-                    "default": "http://localhost:8080",
-                    "description": "Base URL of the OpenAI-compatible engine (e.g. http://localhost:8080)."
-                },
-                "llm.apiKey": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Optional API key. Sent as 'Authorization: Bearer <key>' only when set."
-                },
-                "llm.model": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Model ID. Empty = first model from GET /v1/models."
-                },
-                "llm.systemPrompt": {
-                    "type": "string",
-                    "default": "",
-                    "description": "System prompt injected as the leading system message."
-                },
-                "llm.temperature": {
-                    "type": "number",
-                    "default": 1.0,
-                    "description": "Sampling temperature."
-                },
-                "llm.topP": {
-                    "type": "number",
-                    "default": 1.0,
-                    "description": "Nucleus sampling (top_p)."
-                },
-                "llm.topK": {
-                    "type": "number",
-                    "default": 20,
-                    "description": "Top-k sampling."
-                },
-                "llm.minP": {
-                    "type": "number",
-                    "default": 0.0,
-                    "description": "Minimum probability (min_p)."
-                },
-                "llm.presencePenalty": {
-                    "type": "number",
-                    "default": 0,
-                    "description": "Presence penalty."
-                },
-                "llm.frequencyPenalty": {
-                    "type": "number",
-                    "default": 0,
-                    "description": "Frequency penalty."
-                },
-                "llm.seed": {
-                    "type": "string",
-                    "default": "",
-                    "description": "Random seed. Empty = random."
-                },
-                "llm.stop": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "default": [],
-                    "description": "Stop sequences (max 4)."
-                },
-                "llm.maxCompletionTokens": {
-                    "type": "number",
-                    "default": 4096,
-                    "description": "Maximum completion tokens (max_completion_tokens)."
-                },
-                "llm.preserveThinking": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Preserve thinking content across turns (preserve_thinking)."
-                },
-                "llm.stream": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Stream the response (SSE)."
-                },
-                "llm.includeUsage": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Include usage in the final stream chunk (stream_options.include_usage)."
-                },
-                "llm.responseFormat": {
-                    "type": "string",
-                    "enum": [
-                        "text",
-                        "json_object"
-                    ],
-                    "default": "text",
-                    "description": "Response format (response_format)."
-                },
-                "llm.chatTemplateKwargs": {
-                    "type": "object",
-                    "default": {},
-                    "description": "Extra chat_template_kwargs passed to the engine."
-                },
-                "llm.tools.enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable tool calling (Phase 4)."
-                },
-                "llm.context.includeFile": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Inject the active file (path, language, contents) into the request."
-                },
-                "llm.context.includeSelection": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Inject the current selection (range + text) into the request."
-                },
-                "llm.context.includeDiagnostics": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Inject workspace diagnostics for the active file into the request."
-                },
-                "llm.inline.enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect."
-                },
-                "llm.codeAction.enabled": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable the 'Ask LLM to fix/refactor' code action. Opt-in; requires a reload to take effect."
-                }
-            }
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "llm",
+          "title": "LLM",
+          "icon": "media/llm.svg"
         }
+      ]
     },
-    "scripts": {
-        "vscode:prepublish": "npm run compile",
-        "compile": "tsc -p ./",
-        "watch": "tsc -watch -p ./",
-        "lint": "eslint src --ext ts",
-        "format": "prettier --write \"src/**/*.ts\"",
-        "package": "vsce package"
+    "views": {
+      "llm": [
+        {
+          "type": "webview",
+          "id": "llm.chat",
+          "name": "Chat"
+        }
+      ]
     },
-    "devDependencies": {
-        "@types/node": "^20.0.0",
-        "@types/vscode": "^1.90.0",
-        "@typescript-eslint/eslint-plugin": "^7.0.0",
-        "@typescript-eslint/parser": "^7.0.0",
-        "eslint": "^8.57.0",
-        "prettier": "^3.2.0",
-        "typescript": "^5.4.0",
-        "@vscode/vsce": "^2.24.0"
+    "configuration": {
+      "title": "LLM",
+      "properties": {
+        "llm.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Base URL of the OpenAI-compatible engine (e.g. http://localhost:8080)."
+        },
+        "llm.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Optional API key. Sent as 'Authorization: Bearer <key>' only when set."
+        },
+        "llm.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model ID. Empty = first model from GET /v1/models."
+        },
+        "llm.systemPrompt": {
+          "type": "string",
+          "default": "",
+          "description": "System prompt injected as the leading system message."
+        },
+        "llm.temperature": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Sampling temperature."
+        },
+        "llm.topP": {
+          "type": "number",
+          "default": 1.0,
+          "description": "Nucleus sampling (top_p)."
+        },
+        "llm.topK": {
+          "type": "number",
+          "default": 20,
+          "description": "Top-k sampling."
+        },
+        "llm.minP": {
+          "type": "number",
+          "default": 0.0,
+          "description": "Minimum probability (min_p)."
+        },
+        "llm.presencePenalty": {
+          "type": "number",
+          "default": 0,
+          "description": "Presence penalty."
+        },
+        "llm.frequencyPenalty": {
+          "type": "number",
+          "default": 0,
+          "description": "Frequency penalty."
+        },
+        "llm.seed": {
+          "type": "string",
+          "default": "",
+          "description": "Random seed. Empty = random."
+        },
+        "llm.stop": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Stop sequences (max 4)."
+        },
+        "llm.maxCompletionTokens": {
+          "type": "number",
+          "default": 4096,
+          "description": "Maximum completion tokens (max_completion_tokens)."
+        },
+        "llm.preserveThinking": {
+          "type": "boolean",
+          "default": false,
+          "description": "Preserve thinking content across turns (preserve_thinking)."
+        },
+        "llm.stream": {
+          "type": "boolean",
+          "default": true,
+          "description": "Stream the response (SSE)."
+        },
+        "llm.includeUsage": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include usage in the final stream chunk (stream_options.include_usage)."
+        },
+        "llm.responseFormat": {
+          "type": "string",
+          "enum": [
+            "text",
+            "json_object"
+          ],
+          "default": "text",
+          "description": "Response format (response_format)."
+        },
+        "llm.chatTemplateKwargs": {
+          "type": "object",
+          "default": {},
+          "description": "Extra chat_template_kwargs passed to the engine."
+        },
+        "llm.tools.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable tool calling (Phase 4)."
+        },
+        "llm.context.includeFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject the active file (path, language, contents) into the request."
+        },
+        "llm.context.includeSelection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject the current selection (range + text) into the request."
+        },
+        "llm.context.includeDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject workspace diagnostics for the active file into the request."
+        },
+        "llm.inline.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect."
+        },
+        "llm.codeAction.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the 'Ask LLM to fix/refactor' code action. Opt-in; requires a reload to take effect."
+        }
+      }
     }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0"
+  }
 }

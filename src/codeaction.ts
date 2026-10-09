@@ -9,35 +9,35 @@
 
 /** A single diagnostic (error/warning/info) to address. */
 export interface CodeActionDiagnostic {
-	/** 1-based line number the diagnostic starts on. */
-	line: number;
-	/** 1-based column the diagnostic starts on. */
-	column: number;
-	/** Severity label, e.g. "error" | "warning" | "info". */
-	severity: string;
-	/** The diagnostic message. */
-	message: string;
+  /** 1-based line number the diagnostic starts on. */
+  line: number;
+  /** 1-based column the diagnostic starts on. */
+  column: number;
+  /** Severity label, e.g. "error" | "warning" | "info". */
+  severity: string;
+  /** The diagnostic message. */
+  message: string;
 }
 
 /** The code context for a code action, gathered by the provider. */
 export interface CodeActionContext {
-	/** Language identifier, e.g. "typescript". */
-	language: string;
-	/** File path (workspace-relative when possible). */
-	path: string;
-	/** The full file contents (or the relevant excerpt to fix/refactor). */
-	code: string;
-	/** The selected range, if any (what the user is focused on). */
-	selection?: {
-		/** 1-based start line. */
-		startLine: number;
-		/** 1-based end line. */
-		endLine: number;
-		/** The selected text. */
-		text: string;
-	};
-	/** Diagnostics to address, if any. */
-	diagnostics?: CodeActionDiagnostic[];
+  /** Language identifier, e.g. "typescript". */
+  language: string;
+  /** File path (workspace-relative when possible). */
+  path: string;
+  /** The full file contents (or the relevant excerpt to fix/refactor). */
+  code: string;
+  /** The selected range, if any (what the user is focused on). */
+  selection?: {
+    /** 1-based start line. */
+    startLine: number;
+    /** 1-based end line. */
+    endLine: number;
+    /** The selected text. */
+    text: string;
+  };
+  /** Diagnostics to address, if any. */
+  diagnostics?: CodeActionDiagnostic[];
 }
 
 /**
@@ -50,37 +50,37 @@ export interface CodeActionContext {
  * code → selection → diagnostics.
  */
 export function buildCodeActionPrompt(ctx: CodeActionContext): string {
-	const parts: string[] = [];
+  const parts: string[] = [];
 
-	parts.push(`Fix or refactor the following ${ctx.language} code.`);
-	parts.push(
-		'Return ONLY the full updated code — no explanation, no code fences, ' +
-			'no partial diffs, no repeated unchanged boilerplate.',
-	);
+  parts.push(`Fix or refactor the following ${ctx.language} code.`);
+  parts.push(
+    "Return ONLY the full updated code — no explanation, no code fences, " +
+      "no partial diffs, no repeated unchanged boilerplate.",
+  );
 
-	if (ctx.path) {
-		parts.push(`File: ${ctx.path}`);
-	}
+  if (ctx.path) {
+    parts.push(`File: ${ctx.path}`);
+  }
 
-	parts.push('Code:\n```\n' + ctx.code + '\n```');
+  parts.push("Code:\n```\n" + ctx.code + "\n```");
 
-	if (ctx.selection) {
-		const s = ctx.selection;
-		const range =
-			s.startLine === s.endLine
-				? `line ${s.startLine}`
-				: `lines ${s.startLine}–${s.endLine}`;
-		parts.push(`Selected range (${range}):\n\`\`\`\n${s.text}\n\`\`\``);
-	}
+  if (ctx.selection) {
+    const s = ctx.selection;
+    const range =
+      s.startLine === s.endLine
+        ? `line ${s.startLine}`
+        : `lines ${s.startLine}–${s.endLine}`;
+    parts.push(`Selected range (${range}):\n\`\`\`\n${s.text}\n\`\`\``);
+  }
 
-	if (ctx.diagnostics && ctx.diagnostics.length > 0) {
-		const lines = ctx.diagnostics.map(
-			(d) => `- [${d.severity}] ${d.line}:${d.column} — ${d.message}`,
-		);
-		parts.push('Diagnostics to address:\n' + lines.join('\n'));
-	}
+  if (ctx.diagnostics && ctx.diagnostics.length > 0) {
+    const lines = ctx.diagnostics.map(
+      (d) => `- [${d.severity}] ${d.line}:${d.column} — ${d.message}`,
+    );
+    parts.push("Diagnostics to address:\n" + lines.join("\n"));
+  }
 
-	return parts.join('\n\n');
+  return parts.join("\n\n");
 }
 
 /**
@@ -91,18 +91,18 @@ export function buildCodeActionPrompt(ctx: CodeActionContext): string {
  * string when there is nothing usable (empty input, or only a fence).
  */
 export function parseCodeAction(text: string): string {
-	if (!text) {
-		return '';
-	}
-	let t = text.trim();
+  if (!text) {
+    return "";
+  }
+  let t = text.trim();
 
-	// Strip a leading markdown code fence (```lang … ```).
-	const fenceMatch = t.match(/^```[^\n]*\n([\s\S]*?)\n?```/);
-	if (fenceMatch) {
-		t = fenceMatch[1];
-	}
-	// Remove any trailing closing fence that was not matched above.
-	t = t.replace(/\n?```\s*$/, '');
+  // Strip a leading markdown code fence (```lang … ```).
+  const fenceMatch = t.match(/^```[^\n]*\n([\s\S]*?)\n?```/);
+  if (fenceMatch) {
+    t = fenceMatch[1];
+  }
+  // Remove any trailing closing fence that was not matched above.
+  t = t.replace(/\n?```\s*$/, "");
 
-	return t.trim();
+  return t.trim();
 }
