@@ -13,9 +13,13 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (not started)
+- **Next step:** S1
 - **Last updated:** 2026-10-09
 - **Last commit:** (none yet)
 - **Build state:** not compiled
+
+> **How to use this file (agent):** each session does ONLY the step named in **Next step**,
+> commits it, marks it Done, and sets **Next step** to the following step. One step per session.
 
 ## Architecture (agreed)
 
@@ -30,6 +34,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Zero runtime deps:** Node 18+ `fetch` + hand-rolled SSE parser. Lazy activation. One webview.
 
 ### Target file layout
+
 ```
 src/
   extension.ts            # activate(): view provider, commands, status bar, health poll
@@ -42,26 +47,28 @@ src/
 ```
 
 ### Settings (`llm.*`)
-| Setting | Default | Maps to |
-|---|---|---|
-| `llm.baseUrl` | `http://localhost:8080` | provider endpoint |
-| `llm.apiKey` | *(empty)* | optional `Authorization: Bearer` |
-| `llm.model` | *(empty = first from `/v1/models`)* | `model` fallback |
-| `llm.systemPrompt` | *(empty)* | injected `system` message |
-| `llm.temperature` | `1.0` | `temperature` |
-| `llm.topP` / `llm.topK` / `llm.minP` | `1.0` / `20` / `0.0` | sampling |
-| `llm.presencePenalty` / `llm.frequencyPenalty` | `0` | sampling |
-| `llm.seed` | *(empty = random)* | `seed` |
-| `llm.stop` | `[]` | `stop` (max 4) |
-| `llm.maxCompletionTokens` | `4096` | `max_completion_tokens` |
-| `llm.preserveThinking` | `false` | `preserve_thinking` |
-| `llm.stream` | `true` | `stream` |
-| `llm.includeUsage` | `true` | `stream_options.include_usage` |
-| `llm.responseFormat` | `text` | `response_format` |
-| `llm.chatTemplateKwargs` | `{}` | `chat_template_kwargs` |
-| `llm.tools.enabled` | `false` | gates tool-calling phase |
+
+| Setting                                        | Default                             | Maps to                          |
+| ---------------------------------------------- | ----------------------------------- | -------------------------------- |
+| `llm.baseUrl`                                  | `http://localhost:8080`             | provider endpoint                |
+| `llm.apiKey`                                   | _(empty)_                           | optional `Authorization: Bearer` |
+| `llm.model`                                    | _(empty = first from `/v1/models`)_ | `model` fallback                 |
+| `llm.systemPrompt`                             | _(empty)_                           | injected `system` message        |
+| `llm.temperature`                              | `1.0`                               | `temperature`                    |
+| `llm.topP` / `llm.topK` / `llm.minP`           | `1.0` / `20` / `0.0`                | sampling                         |
+| `llm.presencePenalty` / `llm.frequencyPenalty` | `0`                                 | sampling                         |
+| `llm.seed`                                     | _(empty = random)_                  | `seed`                           |
+| `llm.stop`                                     | `[]`                                | `stop` (max 4)                   |
+| `llm.maxCompletionTokens`                      | `4096`                              | `max_completion_tokens`          |
+| `llm.preserveThinking`                         | `false`                             | `preserve_thinking`              |
+| `llm.stream`                                   | `true`                              | `stream`                         |
+| `llm.includeUsage`                             | `true`                              | `stream_options.include_usage`   |
+| `llm.responseFormat`                           | `text`                              | `response_format`                |
+| `llm.chatTemplateKwargs`                       | `{}`                                | `chat_template_kwargs`           |
+| `llm.tools.enabled`                            | `false`                             | gates tool-calling phase         |
 
 ### `package.json` contributions
+
 - `configuration`: all `llm.*` settings.
 - `commands`: `llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.clearChat`.
 - `viewsContainers.activitybar` + `views.activitybar.llm`: the `llm.chat` view.
@@ -69,29 +76,60 @@ src/
 
 ## Roadmap
 
-| Phase | Capability | Status |
-|---|---|---|
-| 1 | Provider + parameters + chat | not started |
-| 2 | Context-aware chat (file/selection/diagnostics) | not started |
-| 3 | Inline completion (ghost text) | not started |
-| 4 | Manage code via tools (agentic loop) | not started |
-| 5 | Code actions / refactors | not started |
+| Phase | Capability                                      | Status      |
+| ----- | ----------------------------------------------- | ----------- |
+| 1     | Provider + parameters + chat                    | not started |
+| 2     | Context-aware chat (file/selection/diagnostics) | not started |
+| 3     | Inline completion (ghost text)                  | not started |
+| 4     | Manage code via tools (agentic loop)            | not started |
+| 5     | Code actions / refactors                        | not started |
 
 ## Done
 
 _(none yet)_
 
-## Todo — Phase 1
+## Steps — Phase 1 (one per session)
 
-- [ ] `package.json`: add `llm.*` configuration, commands, activity bar view, lazy activation events.
-- [ ] `src/config.ts`: settings access + toolbar override state (Memento).
-- [ ] `src/client.ts`: `LlmClient` — `health()`, `listModels()`, `chatStream()` (fetch + SSE parser).
-- [ ] `src/request.ts`: `buildRequestBody()` (merge settings ← overrides) + token estimator + history trim.
-- [ ] `src/chat/webview.ts`: `buildWebviewHtml()` — chat UI + Model/Thinking/Context toolbar + collapsible thinking block.
-- [ ] `src/chat/ChatViewProvider.ts`: `WebviewViewProvider` wiring webview ↔ extension host.
-- [ ] `src/extension.ts`: `activate()` — register view provider, commands, status bar, health poll.
-- [ ] `npm run compile` passes cleanly.
-- [ ] Manual smoke test against the running ninfer engine (health, models, one streamed chat).
+Each step is single-file, independently compilable and committable. Do them in order. Mark a
+step `[x]` when committed, and move the **Next step** pointer forward.
+
+- [ ] **S1 — `package.json` manifest.** Add `llm.*` configuration, commands
+  (`llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.clearChat`), the activity bar
+  view container + `llm.chat` view, and lazy `activationEvents`.
+  _Accept: `npm run compile` passes; manifest is valid (no vsce warnings about unknown keys)._
+- [ ] **S2 — `src/config.ts`.** Settings access (read all `llm.*`) + toolbar override state
+  (Model/Thinking/Context) persisted in `Memento`. Export typed getters/setters.
+  _Accept: compiles; no runtime deps._
+- [ ] **S3 — `src/request.ts`.** `buildRequestBody(cfg, messages)` merging settings ← toolbar
+  overrides; token estimator (`chars/3.5`); history-trim for the context budget.
+  _Accept: compiles; pure module (no vscode import needed)._
+- [ ] **S4 — `src/client.ts` (part 1).** `LlmClient` with `health()` and `listModels()`
+  (non-streaming `fetch`, optional `Authorization` header).
+  _Accept: compiles; both methods return typed results._
+- [ ] **S5 — `src/client.ts` (part 2).** Add `chatStream()` — POST `/v1/chat/completions`
+  with `stream:true`, hand-rolled SSE parser yielding `{reasoning, content, done, usage}`.
+  _Accept: compiles; parser handles `data:` lines, `[DONE]`, and `reasoning_content` vs `content`._
+- [ ] **S6 — `src/chat/webview.ts`.** `buildWebviewHtml()` — static HTML/CSS/JS shell: message
+  list, input box, Model/Thinking/Context toolbar, collapsible thinking block. No logic yet.
+  _Accept: compiles; returns a string; no external assets._
+- [ ] **S7 — `src/chat/ChatViewProvider.ts`.** `WebviewViewProvider` that builds the webview and
+  round-trips a basic `hello`/`ready` message between webview and host.
+  _Accept: compiles; view renders and a message round-trips._
+- [ ] **S8 — `src/extension.ts`.** `activate()`: register the view provider, the 4 commands, a
+  status bar item, and a `/health` poll. Wire `llm.testConnection`.
+  _Accept: compiles; extension activates; status bar reflects health._
+- [ ] **S9 — wire chat send.** Connect webview "send" → `request.ts` → `client.chatStream()` →
+  stream deltas back to the webview for rendering.
+  _Accept: compiles; a real message streams into the panel._
+- [ ] **S10 — wire toolbar.** Model/Thinking/Context dropdowns update the override state and
+  feed `request.ts` (model list from `/v1/models`, thinking → `reasoning_effort`, context → budget).
+  _Accept: compiles; changing a dropdown changes the next request body._
+- [ ] **S11 — thinking + context UI.** Render `reasoning_content` as a collapsed thinking block;
+  show a "context trimmed" indicator when history was trimmed.
+  _Accept: compiles; thinking block collapses/expands; indicator appears on trim._
+- [ ] **S12 — smoke test.** Manual test against the running ninfer engine: health, model list,
+  one streamed chat with thinking. Update Status to "Phase 1 complete".
+  _Accept: verified end-to-end; PROGRESS.md marked done._
 
 ## Decisions
 

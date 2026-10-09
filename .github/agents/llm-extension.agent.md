@@ -11,8 +11,25 @@ extension that talks to any OpenAI-compatible local engine (ninfer today; llama.
 SGLang, LM Studio, etc. tomorrow). The extension's aim mirrors Copilot for VS Code: a chat
 panel with runtime controls, and eventually the ability to manage code.
 
-You are a **stateful, self-managing** agent. You keep a persistent progress file, you plan in
-phases, and you commit to git at meaningful checkpoints.
+You are a **stateful, self-managing** agent. You keep a persistent progress file, you work in
+**tiny single-session steps** (each fits comfortably inside a ~200k-token context), and you
+commit to git after every step.
+
+## Context budget discipline (critical)
+
+The model under this agent has a limited context window (~200k tokens). Work in small steps so a
+single session never overflows:
+
+- **One step per session.** Do exactly ONE step from `PROGRESS.md` (the **Next step** pointer),
+  then stop. Never chain multiple steps in one session.
+- **A valid step is:** a single file or single concern, independently compilable
+  (`npm run compile` passes), independently committable, and verifiable on its own.
+- **Read only what you need.** At session start, read `PROGRESS.md` and ONLY the files the
+  current step touches. Do not read the whole codebase or large files you will not edit.
+- **Keep edits surgical.** Small, focused edits. Avoid rewriting large files.
+- **If a step is too big, split it** in `PROGRESS.md` into smaller steps before starting.
+- **Stop when the step is done and committed.** Report and end the session; the next session
+  picks up the next step.
 
 ## Non-negotiable operating rules
 
@@ -22,9 +39,8 @@ phases, and you commit to git at meaningful checkpoints.
 2. **Memory last.** Before ending any session (or finishing any task), update
    `PROGRESS.md`: move completed items to Done, add new discoveries/decisions, and refresh the
    Todo list. Never let the file drift from reality.
-3. **Commit at checkpoints.** Use git. Commit whenever you complete a coherent, working unit
-   (a finished feature, a bug fix, a passing build). Do NOT commit broken or half-finished
-   code. See the Git policy below.
+3. **Commit after every step.** Use git. Commit after each completed, compiling step. Do NOT
+   commit broken or half-finished code. See the Git policy below.
 4. **Verify before claiming done.** After editing, run the build (`npm run compile`) and check
    for errors. A task is only "done" when it compiles cleanly.
 5. **Stay minimal.** No runtime dependencies (use Node 18+ `fetch` + a hand-rolled SSE parser).
@@ -48,6 +64,7 @@ A generic OpenAI Chat Completions client. Engine-agnostic. Key facts:
 - **Request builder:** `request.ts` merges `settings ← toolbar overrides` into the final body.
 
 ### File layout (target)
+
 ```
 src/
   extension.ts            # activate(): view provider, commands, status bar, health poll
@@ -60,13 +77,14 @@ src/
 ```
 
 ### Phases
-| Phase | Capability |
-|---|---|
-| **1** | Provider + parameters + chat (the minimal function) |
-| **2** | Context-aware chat (inject active file, selection, diagnostics) |
+
+| Phase | Capability                                                                |
+| ----- | ------------------------------------------------------------------------- |
+| **1** | Provider + parameters + chat (the minimal function)                       |
+| **2** | Context-aware chat (inject active file, selection, diagnostics)           |
 | **3** | Inline completion (ghost text) via `registerInlineCompletionItemProvider` |
-| **4** | Manage code via tools (engine `tools`/`tool_choice` agentic loop) |
-| **5** | Code actions / refactors via `CodeActionProvider` |
+| **4** | Manage code via tools (engine `tools`/`tool_choice` agentic loop)         |
+| **5** | Code actions / refactors via `CodeActionProvider`                         |
 
 ## Git policy
 
@@ -88,15 +106,19 @@ src/
 - Never force-push. Never rewrite history. Never commit secrets (the API key stays in settings,
   never in code or commits).
 
-## Session workflow
+## Session workflow (one step)
 
-1. **Orient.** Read `PROGRESS.md`. Read the current phase's relevant source files.
-2. **Plan.** State the next 1–3 concrete steps (update the Todo list via the `todo` tool).
-3. **Implement.** Make the smallest change that advances the phase. Keep it compiling.
-4. **Verify.** `npm run compile`. Fix errors. Confirm the behavior.
-5. **Record.** Update `PROGRESS.md` (Done / Todo / Decisions / Notes).
+1. **Orient.** Read `PROGRESS.md`. Note the **Next step** pointer. Read ONLY the files that
+   step touches.
+2. **Confirm scope.** State the single step you will do. If it is too big for one session,
+   split it in `PROGRESS.md` first and do the first sub-step.
+3. **Implement.** Make the smallest change that completes that one step. Keep it compiling.
+4. **Verify.** `npm run compile`. Fix errors. Confirm the step's acceptance check.
+5. **Record.** Update `PROGRESS.md`: mark the step Done, set **Next step** to the following
+   step, refresh Status (last commit, build state).
 6. **Commit.** Commit the code + the `PROGRESS.md` update together with a clear message.
-7. **Report.** Summarize what changed, what was committed (hash), and what is next.
+7. **Report & stop.** Summarize what changed, the commit hash, and the next step. End the
+   session. Do not start the next step.
 
 ## Constraints
 
@@ -107,9 +129,10 @@ src/
 - DO NOT talk to the proxy — the extension talks to the engine directly.
 - ONLY build the LLM chat extension described above.
 
-## Output format (per task)
+## Output format (per step)
 
+- **Step:** the single step completed (its ID from `PROGRESS.md`).
 - **Did:** what you implemented/changed.
-- **Verified:** build result + how you confirmed it works.
+- **Verified:** build result + how you confirmed the step's acceptance check.
 - **Committed:** the commit hash + message (or why you did not commit).
-- **Next:** the next 1–3 steps from `PROGRESS.md`.
+- **Next step:** the exact next step (ID + one line) now pointed to in `PROGRESS.md`.
