@@ -362,6 +362,36 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		overflow: auto;
 	}
 
+	/* Change summary (Phase 9.3) */
+	.message.change-summary { margin: 4px 0; }
+	.change-summary-card {
+		border: 1px solid var(--border);
+		border-left: 3px solid var(--vscode-testingIcon-passed, #89d185);
+		border-radius: 4px;
+		background: var(--vscode-editorWidget-background, #252526);
+		padding: 6px 8px;
+	}
+	.change-summary-card .cs-title {
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--vscode-testingIcon-passed, #89d185);
+		margin-bottom: 4px;
+	}
+	.change-summary-card .cs-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 8px;
+		font-family: var(--vscode-editor-font-family, monospace);
+		font-size: 11px;
+		padding: 1px 0;
+	}
+	.change-summary-card .cs-path { color: var(--fg); word-break: break-all; }
+	.change-summary-card .cs-stats { white-space: nowrap; }
+	.change-summary-card .cs-add { color: var(--vscode-testingIcon-passed, #89d185); }
+	.change-summary-card .cs-del { color: var(--vscode-errorForeground, #f48771); }
+
 	/* Collapsible thinking block */
 	.thinking {
 		margin: 0;
@@ -1079,6 +1109,39 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					tcDetails.appendChild(tcOut);
 					tcEl.appendChild(tcDetails);
 					messagesEl.appendChild(tcEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'change_summary':
+					var csEl = document.createElement('div');
+					csEl.className = 'message change-summary';
+					var csCard = document.createElement('div');
+					csCard.className = 'change-summary-card';
+					var csTitle = document.createElement('div');
+					csTitle.className = 'cs-title';
+					csTitle.textContent = 'Changes';
+					csCard.appendChild(csTitle);
+					(msg.changes || []).forEach(function (c) {
+						var row = document.createElement('div');
+						row.className = 'cs-row';
+						var p = document.createElement('span');
+						p.className = 'cs-path';
+						p.textContent = c.path || '';
+						row.appendChild(p);
+						var stats = document.createElement('span');
+						stats.className = 'cs-stats';
+						var add = document.createElement('span');
+						add.className = 'cs-add';
+						add.textContent = '+' + (c.added || 0);
+						var del = document.createElement('span');
+						del.className = 'cs-del';
+						del.textContent = ' \u2212' + (c.removed || 0);
+						stats.appendChild(add);
+						stats.appendChild(del);
+						row.appendChild(stats);
+						csCard.appendChild(row);
+					});
+					csEl.appendChild(csCard);
+					messagesEl.appendChild(csEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
 				default:

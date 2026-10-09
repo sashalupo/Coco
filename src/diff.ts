@@ -43,6 +43,34 @@ function splitLines(text: string): string[] {
   return text.split(/\r?\n/);
 }
 
+/** Line-change counts for a diff (added = inserted, removed = deleted). */
+export interface DiffStats {
+  added: number;
+  removed: number;
+}
+
+/**
+ * Count the added/removed lines between two texts. Reuses the same LCS line
+ * diff as `unifiedDiff`, so the counts match the diff preview. Returns
+ * `{ added: 0, removed: 0 }` when the texts are identical.
+ */
+export function diffStats(oldText: string, newText: string): DiffStats {
+  if (oldText === newText) {
+    return { added: 0, removed: 0 };
+  }
+  const ops = diffLines(splitLines(oldText), splitLines(newText));
+  let added = 0;
+  let removed = 0;
+  for (const op of ops) {
+    if (op.type === "ins") {
+      added++;
+    } else if (op.type === "del") {
+      removed++;
+    }
+  }
+  return { added, removed };
+}
+
 /**
  * Compute the line operations (equal/del/ins) that turn `a` into `b` using
  * an LCS dynamic program. Falls back to a full-replace diff when the DP
@@ -103,11 +131,7 @@ function diffLines(a: string[], b: string[]): Op[] {
  * Format operations as a unified diff, grouping changes into hunks with
  * `CONTEXT` lines of surrounding context.
  */
-function formatUnified(
-  ops: Op[],
-  oldLabel: string,
-  newLabel: string,
-): string {
+function formatUnified(ops: Op[], oldLabel: string, newLabel: string): string {
   const n = ops.length;
   // Mark which ops fall within a hunk (a change plus its context).
   const include = new Array<boolean>(n).fill(false);

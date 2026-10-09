@@ -423,6 +423,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     this.postMessage({ type: "stream_start", trimmed, skipUser });
 
+    // Reset the per-run change summary (Phase 9.3) so it only reflects the
+    // files mutated during this run.
+    this.toolExecutor.clearChangeSummary();
+
     // Create an AbortController so the user can cancel mid-stream.
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
@@ -520,6 +524,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           currentWithSystem,
         );
         body = rebuilt.body;
+      }
+      // Post the per-run change summary (Phase 9.3): files changed with their
+      // net +/- lines. Only shown when at least one file was mutated.
+      const changes = this.toolExecutor.getChangeSummary();
+      if (changes.length > 0) {
+        this.postMessage({ type: "change_summary", changes });
       }
       this.postMessage({ type: "stream_end", usage });
     } catch (err) {

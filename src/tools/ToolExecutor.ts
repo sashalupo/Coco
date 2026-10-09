@@ -11,7 +11,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
 import type { ToolCall, ToolResult } from "../tools";
-import { unifiedDiff } from "../diff";
+import { unifiedDiff, diffStats } from "../diff";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -37,6 +37,46 @@ export class ToolExecutor {
   /** Whether there is a mutation to revert. */
   public get hasLastSnapshot(): boolean {
     return this.lastSnapshot !== null;
+  }
+
+  /**
+   * Per-run change summary (Phase 9.3): the net added/removed lines per file
+   * for the current agentic run. Keyed by workspace-relative path; a file
+   * edited multiple times in one run accumulates its net change. Cleared at
+   * the start of each run via `clearChangeSummary()`.
+   */
+  private runChanges: Map<string, { added: number; removed: number }> =
+    new Map();
+
+  /** Clear the per-run change summary (call at the start of a run). */
+  public clearChangeSummary(): void {
+    this.runChanges = new Map();
+  }
+
+  /**
+   * The per-run change summary: one entry per mutated file with its net
+   * added/removed lines. Empty when no files were mutated this run.
+   */
+  public getChangeSummary(): {
+    path: string;
+    added: number;
+    removed: number;
+  }[] {
+    return Array.from(this.runChanges.entries()).map(([path, s]) => ({
+      path,
+      added: s.added,
+      removed: s.removed,
+    }));
+  }
+
+  /** Record a file mutation in the per-run change summary. */
+  private recordChange(relPath: string, oldContent: string, newContent: string): void {
+    const { added, removed } = diffStats(oldContent, newContent);
+    const prev = this.runChanges.get(relPath) ?? { added: 0, removed: 0 };
+    this.runChanges.set(relPath, {
+      added: prev.added + added,
+      removed: prev.removed + removed,
+    });
   }
 
   /**
@@ -200,6 +240,7 @@ export class ToolExecutor {
     this.lastSnapshot = { relPath, oldContent, existed };
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, content, "utf8");
+    this.recordChange(relPath, oldContent, content);
     const diff = unifiedDiff(oldContent, content, relPath, relPath);
     const diffBlock = diff ? `\n\nDiff:\n${diff}` : "";
     return this.result(
@@ -259,6 +300,7 @@ export class ToolExecutor {
       : content.replace(oldString, newString);
     this.lastSnapshot = { relPath, oldContent: content, existed: true };
     await fs.promises.writeFile(abs, replaced, "utf8");
+    this.recordChange(relPath, content, replaced);
     const n = replaceAll ? count : 1;
     const diff = unifiedDiff(content, replaced, relPath, relPath);
     const diffBlock = diff ? `\n\nDiff:\n${diff}` : "";
@@ -434,13 +476,13 @@ export class ToolExecutor {
    * file (by workspace-relative path) or for all open files when no path is
    * given. Read-only: never mutates workspace state.
    */
-  private getDiagnostics(
-    call: ToolCall,
-    relPath?: string,
-  ): ToolResult {
+  private getDiagnostics(call: ToolCall, relPath?: string): ToolResult {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
-      return this.result(call, "No workspace folder — cannot read diagnostics.");
+      return this.result(
+        call,
+        "No workspace folder — cannot read diagnostics.",
+      );
     }
     const root = folders[0].uri.fsPath;
 
@@ -465,9 +507,12 @@ export class ToolExecutor {
     // getDiagnostics() -> [Uri, Diagnostic[]][] for every file.
     const entries: [string, vscode.Diagnostic[]][] = relPath
       ? [[uris[0].fsPath, vscode.languages.getDiagnostics(uris[0])]]
-      : vscode.languages.getDiagnostics().map(
-          ([uri, diags]) => [uri.fsPath, diags] as [string, vscode.Diagnostic[]],
-        );
+      : vscode.languages
+          .getDiagnostics()
+          .map(
+            ([uri, diags]) =>
+              [uri.fsPath, diags] as [string, vscode.Diagnostic[]],
+          );
 
     const lines: string[] = [];
     let total = 0;
@@ -488,10 +533,7 @@ export class ToolExecutor {
 
     if (total === 0) {
       const scope = relPath ? ` in ${relPath}` : " in open files";
-      return this.result(
-        call,
-        `No diagnostics${scope} (clean).`,
-      );
+      return this.result(call, `No diagnostics${scope} (clean).`);
     }
     const header = relPath
       ? `Diagnostics for ${relPath} (${total}):`

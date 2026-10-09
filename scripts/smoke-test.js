@@ -24,7 +24,9 @@ const { accumulateToolCalls } = require(
 const { buildCodeActionPrompt, parseCodeAction } = require(
   path.join(__dirname, "..", "out", "codeaction.js"),
 );
-const { unifiedDiff } = require(path.join(__dirname, "..", "out", "diff.js"));
+const { unifiedDiff, diffStats } = require(
+  path.join(__dirname, "..", "out", "diff.js"),
+);
 
 const PORT = 18099;
 
@@ -550,11 +552,17 @@ function assert(cond, label) {
   // A fake open document with diagnostics, for the get_diagnostics test.
   const diagDocPath = path.join(editRoot, "diag.ts");
   fs.writeFileSync(diagDocPath, "const x: number = 'oops';\n", "utf8");
-  const diagUri = { fsPath: diagDocPath, toString: () => "file://" + diagDocPath };
+  const diagUri = {
+    fsPath: diagDocPath,
+    toString: () => "file://" + diagDocPath,
+  };
   const fakeDiagnostics = [
     {
       severity: 0,
-      range: { start: { line: 0, character: 14 }, end: { line: 0, character: 20 } },
+      range: {
+        start: { line: 0, character: 14 },
+        end: { line: 0, character: 20 },
+      },
       message: "Type 'string' is not assignable to type 'number'.",
       source: "ts",
     },
@@ -847,6 +855,49 @@ function assert(cond, label) {
     "get_diagnostics: path traversal rejected",
   );
 
+  // 8c) change summary (Phase 9.3): real executor tracks per-run mutations.
+  executor.clearChangeSummary();
+  assert(
+    executor.getChangeSummary().length === 0,
+    "changes: empty after clear",
+  );
+  const sumPath = path.join(editRoot, "sum.txt");
+  fs.writeFileSync(sumPath, "one\ntwo\nthree\n", "utf8");
+  await executor.execute({
+    id: "s1",
+    type: "function",
+    function: {
+      name: "write_file",
+      arguments:
+        '{"path":"sum.txt","content":"one\\nTWO\\nthree\\nfour\\n"}',
+    },
+  });
+  const summary = executor.getChangeSummary();
+  assert(summary.length === 1, "changes: one file tracked");
+  assert(summary[0].path === "sum.txt", "changes: path is workspace-relative");
+  // "two" -> "TWO" (1 del + 1 ins) and "four" added (1 ins) => 2 added, 1 removed.
+  assert(
+    summary[0].added === 2 && summary[0].removed === 1,
+    "changes: net added/removed lines correct",
+  );
+  // A second edit to the same file accumulates into the same entry.
+  await executor.execute({
+    id: "s2",
+    type: "function",
+    function: {
+      name: "edit_file",
+      arguments:
+        '{"path":"sum.txt","old_string":"four","new_string":"five\\nsix"}',
+    },
+  });
+  const summary2 = executor.getChangeSummary();
+  assert(summary2.length === 1, "changes: same file not duplicated");
+  // "four" -> "five\nsix" (1 del + 2 ins) => +2 added, +1 removed on top.
+  assert(
+    summary2[0].added === 4 && summary2[0].removed === 2,
+    "changes: repeated edits accumulate",
+  );
+
   // Cleanup: restore Module._load and remove the temp dir.
   Module._load = originalLoad;
   fs.rmSync(editRoot, { recursive: true, force: true });
@@ -987,6 +1038,33 @@ function assert(cond, label) {
   const d4 = unifiedDiff("old\nline", "", "f.txt", "f.txt");
   assert(d4.includes("-old"), "diff: deleted file has -old");
   assert(d4.includes("-line"), "diff: deleted file has -line");
+
+  // 7b) diffStats (Phase 9.3): added/removed line counts
+  const s0 = diffStats("a\nb\nc", "a\nb\nc");
+  assert(
+    s0.added === 0 && s0.removed === 0,
+    "diffStats: identical -> 0/0",
+  );
+  const s1 = diffStats("foo", "bar");
+  assert(
+    s1.added === 1 && s1.removed === 1,
+    "diffStats: single-line replace -> 1/1",
+  );
+  const s2 = diffStats("a\nb\nc", "a\nX\nc");
+  assert(
+    s2.added === 1 && s2.removed === 1,
+    "diffStats: middle change -> 1/1",
+  );
+  const s3 = diffStats("", "new\nline");
+  assert(
+    s3.added === 2 && s3.removed === 0,
+    "diffStats: new file -> 2/0",
+  );
+  const s4 = diffStats("old\nline", "");
+  assert(
+    s4.added === 0 && s4.removed === 2,
+    "diffStats: deleted file -> 0/2",
+  );
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

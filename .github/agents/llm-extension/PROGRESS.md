@@ -12,13 +12,12 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 9 (harness UX) in progress**
-- **Next step:** **9.3** — Change summary: at the end of a run, summarize files changed
-  (path + +/- lines)
+- **Current phase:** **Phase 9 (harness UX) complete**; Phase 10 (git integration) next
+- **Next step:** **10.1** — `git_status` + `git_diff` tools (read-only)
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `ef0630c` — feat(llm): make tool-call card visually distinct (Phase 9.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (143 assertions)
+- **Last commit:** `0c1f19a` — feat(llm): show step i/N budget during agentic loop (Phase 9.2)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (154 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -741,6 +740,26 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   the `step` handler (minimal DOM stub) confirms the text is `Step 3 / 8` and the indicator is
   revealed. Smoke test unchanged (143 assertions, all passing — the webview is not exercised by
   the smoke test).
+- **9.3 — Change summary** (2026-10-09): at the end of a run, summarize files changed (path +
+  +/- lines). `diff.ts` gains a pure `diffStats(oldText, newText)` → `{ added, removed }` that
+  reuses the same LCS line diff as `unifiedDiff` (so the counts match the diff preview); returns
+  `{0,0}` when identical. `ToolExecutor` now tracks a per-run change summary in a `runChanges`
+  map (keyed by workspace-relative path): `writeFile`/`editFile` call `recordChange(relPath,
+  old, new)` which accumulates the net added/removed lines per file (a file edited multiple times
+  in one run accumulates). New public `clearChangeSummary()` (reset at run start) and
+  `getChangeSummary()` (returns `[{ path, added, removed }]`). `ChatViewProvider.runStream()`
+  calls `clearChangeSummary()` right after `stream_start` and, after the agentic loop, posts a
+  `change_summary` message (`{ changes }`) only when at least one file was mutated. `webview.ts`
+  adds a `case 'change_summary'` handler that renders a `.change-summary-card` (a green-accented
+  card, distinct from the blue tool-call card) with a "CHANGES" title and one `.cs-row` per file:
+  the monospace path on the left and `+added` (green) / `−removed` (red) on the right. All dynamic
+  text set via `textContent`. Compiles clean; the built inline webview script passes `node
+  --check`, and a functional test of the `change_summary` handler (minimal DOM stub) confirms the
+  card is built with the correct classes, title, path, and `+5`/`−2` stats. Smoke test extended
+  with 11 new assertions (154 total, all passing): `diffStats` (identical 0/0, single-line 1/1,
+  middle change 1/1, new file 2/0, deleted file 0/2) and the real executor's `getChangeSummary`
+  (empty after clear, one file tracked with workspace-relative path, correct net 2/1 after a
+  write, repeated edits accumulate to 4/2 without duplicating the file). **Phase 9 complete.**
 
 ## Steps — Phase 1 (one per session)
 
