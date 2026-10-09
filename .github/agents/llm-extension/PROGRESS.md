@@ -13,12 +13,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** Phases 1–6 complete; **Phase 7 (harness: safe writes & review) in progress**
-- **Next step:** **7.2** — approval gate: new setting `llm.tools.requireApproval` (bool, default
-  `false`). When `true`, mutating tools are held: the loop posts a pending card with Approve/Reject
-  and awaits the user's decision before applying (see `.github/agents/llm-extension/PLAN.md`)
+- **Next step:** **7.3** — undo last edit: snapshot the file before each mutation; a "Revert last
+  change" action restores the previous content (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `a470bec` — test(llm): add end-to-end edit_file smoke test (Phase 6.4)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (113 assertions)
+- **Last commit:** `16510d1` — feat(llm): add unified diff preview for file mutations (Phase 7.1)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (119 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -629,6 +628,23 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   single-line change (headers + `-foo`/`+bar`), middle-line change with context lines, new-file
   (all `+`), deleted-file (all `-`); and the real `edit_file` tool result now includes a `Diff:`
   block showing `-foo`/`+bar`.
+- **7.2 — approval gate** (2026-10-09): new setting `llm.tools.requireApproval` (bool, default
+  `false`) added to `package.json`, the `LlmSettings` interface (`presets.ts`), and
+  `readSettings()` (`config.ts`). New pure helper `isMutatingTool(name)` in `tools.ts` (returns
+  `true` for `write_file` / `edit_file`, `false` otherwise) so the mutating-tool check stays
+  testable under plain Node. In `ChatViewProvider.runStream`, when `settings.requireApproval` is
+  on and a tool call is mutating, the loop posts `{type:'approval_request', id, tool, args}` to
+  the webview and awaits the user's decision via a new `waitForApproval(signal)` helper (a
+  Promise resolved by the `toolApproval` message handler; resolves `false` if the stream is
+  aborted while waiting). On rejection (or abort) a "User rejected the … operation" tool result is
+  fed back to the model so it can adapt; on approval the tool executes normally. The webview
+  gained an approval card (`.message.approval`) with the tool name, the JSON args, and
+  Approve/Reject buttons that post `{type:'toolApproval', id, approved}`; the buttons disable and
+  show an "Approved"/"Rejected" status after the decision. Compiles clean; compiled
+  `out/chat/ChatViewProvider.js` + `out/chat/webview.js` verified to contain the gate,
+  `waitForApproval`, the `toolApproval` handler, and the approval card. Smoke test extended with
+  6 `isMutatingTool` assertions (119 total, all passing). The live approve/reject round-trip needs
+  the VS Code extension host (not covered by the plain-Node smoke test).
 
 ## Steps — Phase 1 (one per session)
 

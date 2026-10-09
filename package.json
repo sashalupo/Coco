@@ -153,8 +153,13 @@
         },
         "llm.tools.enabled": {
           "type": "boolean",
-          "default": true,
-          "description": "Enable tool calling so the LLM can read, edit, write, list, and search files in the workspace."
+          "default": false,
+          "description": "Enable tool calling (Phase 4)."
+        },
+        "llm.tools.requireApproval": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require user approval before mutating tools (write_file, edit_file) are applied."
         },
         "llm.context.includeFile": {
           "type": "boolean",

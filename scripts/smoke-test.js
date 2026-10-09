@@ -15,7 +15,7 @@ const { buildContextBlock } = require(
 const { buildCompletionPrompt, parseCompletion } = require(
   path.join(__dirname, "..", "out", "inline.js"),
 );
-const { CODE_TOOLS, toolResultMessage } = require(
+const { CODE_TOOLS, toolResultMessage, isMutatingTool } = require(
   path.join(__dirname, "..", "out", "tools.js"),
 );
 const { accumulateToolCalls } = require(
@@ -747,6 +747,17 @@ function assert(cond, label) {
     parseCodeAction("const a = 1;\nconst b = 2;") ===
       "const a = 1;\nconst b = 2;",
     "codeaction: parse multi-line preserved",
+  );
+
+  // 7b) isMutatingTool (Phase 7.2: approval gate)
+  assert(isMutatingTool("write_file"), "approval: write_file is mutating");
+  assert(isMutatingTool("edit_file"), "approval: edit_file is mutating");
+  assert(!isMutatingTool("read_file"), "approval: read_file is not mutating");
+  assert(!isMutatingTool("list_dir"), "approval: list_dir is not mutating");
+  assert(!isMutatingTool("search_files"), "approval: search_files is not mutating");
+  assert(
+    !isMutatingTool("unknown_tool"),
+    "approval: unknown tool is not mutating",
   );
 
   // 7) diff: unifiedDiff (Phase 7.1)

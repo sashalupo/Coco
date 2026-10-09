@@ -193,3 +193,12 @@ export function toolResultMessage(
     content,
   };
 }
+
+/**
+ * Whether a tool call mutates workspace state (and therefore may require
+ * user approval when `llm.tools.requireApproval` is on). Read-only tools
+ * (`read_file`, `list_dir`, `search_files`) never mutate.
+ */
+export function isMutatingTool(name: string): boolean {
+  return name === "write_file" || name === "edit_file";
+}

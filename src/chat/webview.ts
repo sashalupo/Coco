@@ -269,6 +269,43 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		color: var(--vscode-errorForeground, #f48771);
 	}
 
+	/* Approval card (Phase 7.2) */
+	.message.approval {
+		border: 1px solid var(--vscode-focusBorder, #007fd4);
+		border-radius: 4px;
+		padding: 8px;
+		background: var(--vscode-editorWidget-background, #252526);
+	}
+	.message.approval .role {
+		color: var(--vscode-focusBorder, #007fd4);
+		font-weight: 600;
+	}
+	.message.approval .args {
+		font-family: var(--vscode-editor-font-family, monospace);
+		font-size: 11px;
+		color: var(--muted);
+		margin: 4px 0 8px;
+		white-space: pre-wrap;
+		word-break: break-all;
+	}
+	.message.approval .actions { display: flex; gap: 8px; }
+	.message.approval .actions button {
+		padding: 4px 12px;
+		border: none;
+		border-radius: 3px;
+		cursor: pointer;
+		font-size: 12px;
+	}
+	.message.approval .approve {
+		background: var(--vscode-button-background, #0e639c);
+		color: var(--vscode-button-foreground, #fff);
+	}
+	.message.approval .reject {
+		background: var(--vscode-button-secondaryBackground, #3a3d41);
+		color: var(--vscode-button-secondaryForeground, #fff);
+	}
+	.message.approval .status { font-size: 12px; color: var(--muted); }
+
 	/* Collapsible thinking block */
 	.thinking {
 		margin: 0;
@@ -898,6 +935,35 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					errEl.innerHTML = '<div class="role">Error</div><div class="content"></div>';
 					errEl.querySelector('.content').textContent = msg.message || 'Unknown error';
 					messagesEl.appendChild(errEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'approval_request':
+					var apEl = document.createElement('div');
+					apEl.className = 'message approval';
+					apEl.innerHTML =
+						'<div class="role"></div>' +
+						'<div class="args"></div>' +
+						'<div class="actions">' +
+						'<button class="approve">Approve</button>' +
+						'<button class="reject">Reject</button>' +
+						'</div>' +
+						'<div class="status" style="display:none"></div>';
+					apEl.querySelector('.role').textContent = 'Approve ' + (msg.tool || 'tool') + '?';
+					apEl.querySelector('.args').textContent = msg.args || '';
+					var approveBtn = apEl.querySelector('.approve');
+					var rejectBtn = apEl.querySelector('.reject');
+					var statusEl = apEl.querySelector('.status');
+					function decide(approved) {
+						if (approveBtn.disabled) { return; }
+						approveBtn.disabled = true;
+						rejectBtn.disabled = true;
+						statusEl.textContent = approved ? 'Approved' : 'Rejected';
+						statusEl.style.display = 'inline';
+						vscode.postMessage({ type: 'toolApproval', id: msg.id, approved: approved });
+					}
+					approveBtn.addEventListener('click', function () { decide(true); });
+					rejectBtn.addEventListener('click', function () { decide(false); });
+					messagesEl.appendChild(apEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
 				default:

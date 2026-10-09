@@ -82,6 +82,7 @@ export interface LlmSettings {
   responseFormat: string;
   chatTemplateKwargs: Record<string, unknown>;
   toolsEnabled: boolean;
+  requireApproval: boolean;
   context: ContextFlags;
 }
 

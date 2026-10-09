@@ -20,7 +20,7 @@ import {
   type ChatMessage,
 } from "../request";
 import { buildContextBlock, type ContextInput } from "../context";
-import { toolResultMessage, type ToolCall } from "../tools";
+import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
 import type {
   ContextFlags,
@@ -65,6 +65,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /** Abort controller for the in-flight stream (null when idle). */
   private abortController: AbortController | null = null;
+
+  /** Resolver for the pending tool approval (null when no approval is pending). */
+  private pendingApproval: ((approved: boolean) => void) | null = null;
 
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
@@ -147,10 +150,36 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "stop":
         this.abortController?.abort();
         break;
+      case "toolApproval":
+        this.pendingApproval?.(msg.approved === true);
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
     }
+  }
+
+  /**
+   * Wait for the user to approve or reject a pending tool call. Resolves
+   * `false` if the stream is aborted while waiting.
+   */
+  private waitForApproval(signal: AbortSignal): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      if (signal.aborted) {
+        resolve(false);
+        return;
+      }
+      const onAbort = () => {
+        this.pendingApproval = null;
+        resolve(false);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      this.pendingApproval = (approved: boolean) => {
+        signal.removeEventListener("abort", onAbort);
+        this.pendingApproval = null;
+        resolve(approved);
+      };
+    });
   }
 
   /** Push the persisted toolbar state to the webview (model `null` → `''`). */
@@ -392,8 +421,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (signal.aborted) {
           break;
         }
-        const { content, reasoning, toolCalls, usage: turnUsage } =
-          await this.streamOneTurn(body, signal);
+        const {
+          content,
+          reasoning,
+          toolCalls,
+          usage: turnUsage,
+        } = await this.streamOneTurn(body, signal);
         this.accumulateUsage(usage, turnUsage);
         this.history.push(this.assistantMessage(content, reasoning, toolCalls));
 
@@ -409,7 +442,28 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
 
         // Execute each tool call and append the results to the history.
+        // When requireApproval is on, mutating tools (write_file, edit_file)
+        // are held: post an approval card and await the user's decision.
         for (const call of toolCalls) {
+          const isMutating = isMutatingTool(call.function.name);
+          if (settings.requireApproval && isMutating) {
+            this.postMessage({
+              type: "approval_request",
+              id: call.id,
+              tool: call.function.name,
+              args: call.function.arguments,
+            });
+            const approved = await this.waitForApproval(signal);
+            if (!approved) {
+              // User rejected (or aborted): feed a "user rejected" result
+              // back to the model so it can adapt.
+              const rejectContent =
+                `User rejected the ${call.function.name} operation. ` +
+                `Do not retry the same change; ask the user what to do instead.`;
+              this.history.push(toolResultMessage(call, rejectContent));
+              continue;
+            }
+          }
           this.postMessage({
             type: "delta",
             content: `\n\n▸ ${call.function.name}…`,
@@ -623,15 +677,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    */
   private async exportConversation(): Promise<void> {
     if (this.history.length === 0) {
-      vscode.window.showInformationMessage("Nothing to export — the conversation is empty.");
+      vscode.window.showInformationMessage(
+        "Nothing to export — the conversation is empty.",
+      );
       return;
     }
     const md = this.buildMarkdown();
     const title = this.deriveTitle(this.history);
-    const safeTitle = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "chat";
+    const safeTitle =
+      title
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "")
+        .toLowerCase() || "chat";
     const target = await vscode.window.showSaveDialog({
       defaultUri: vscode.Uri.file(`${safeTitle}.md`),
-      filters: { "Markdown": ["md"] },
+      filters: { Markdown: ["md"] },
       title: "Export conversation",
     });
     if (!target) {
@@ -639,10 +699,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
     try {
       await vscode.workspace.fs.writeFile(target, Buffer.from(md, "utf8"));
-      vscode.window.showInformationMessage(`Conversation exported to ${target.fsPath}`);
+      vscode.window.showInformationMessage(
+        `Conversation exported to ${target.fsPath}`,
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      vscode.window.showErrorMessage(`Failed to export conversation: ${message}`);
+      vscode.window.showErrorMessage(
+        `Failed to export conversation: ${message}`,
+      );
     }
   }
 
