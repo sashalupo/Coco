@@ -42,7 +42,7 @@ function escapeHtml(s: string): string {
  * webview or host changes so you can confirm which build is actually running
  * (a stale extension host shows the old marker).
  */
-const WEBVIEW_VERSION = 'v2 (auto-models + send errors)';
+const WEBVIEW_VERSION = 'v3 (host logging)';
 
 /**
  * Build the chat webview HTML.

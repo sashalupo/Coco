@@ -12,6 +12,7 @@ import { CodeActionProvider } from "./codeaction/CodeActionProvider";
 const HEALTH_POLL_INTERVAL_MS = 5000;
 
 export function activate(context: vscode.ExtensionContext): void {
+  console.log("[llm] activate() — host build v3 (host logging)");
   const client = new LlmClient(readSettings);
   const provider = new ChatViewProvider(context, client);
 

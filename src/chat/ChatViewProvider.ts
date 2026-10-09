@@ -68,6 +68,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * hidden so chat history is not lost.
    */
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
+    console.log("[llm] resolveWebviewView — wiring webview message handler");
     this.webview = webviewView.webview;
     webviewView.webview.options = {
       enableScripts: true,
