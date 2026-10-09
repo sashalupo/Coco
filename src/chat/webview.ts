@@ -395,6 +395,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		background: var(--think-bg);
 	}
 
+	/* Step/iteration budget indicator (Phase 9.2) */
+	.step-indicator {
+		padding: 4px 12px;
+		font-size: 11px;
+		color: var(--vscode-focusBorder, #007fd4);
+		border-top: 1px solid var(--border);
+		background: var(--think-bg);
+	}
+
 	/* Input row */
 	.input-row {
 		display: flex;
@@ -536,6 +545,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<div id="messages" class="messages"></div>
 
 	<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
+	<div id="step-indicator" class="step-indicator" hidden></div>
 
 	<div class="input-row">
 		<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
@@ -559,6 +569,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var stopBtn = document.getElementById('stop');
 		var retryBtn = document.getElementById('retry');
 		var contextIndicator = document.getElementById('context-indicator');
+		var stepIndicator = document.getElementById('step-indicator');
 		var ctxFile = document.getElementById('ctx-file');
 		var ctxSelection = document.getElementById('ctx-selection');
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
@@ -904,6 +915,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				case 'clear':
 					messagesEl.innerHTML = '';
 					contextIndicator.hidden = true;
+					stepIndicator.hidden = true;
 					streaming = false;
 					currentAssistant = null;
 					setStreaming(false);
@@ -940,6 +952,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						convDelete.style.display = hasSel ? 'inline-block' : 'none';
 					}
 					// Refresh the Retry button visibility for the restored conversation.
+					stepIndicator.hidden = true;
 					setStreaming(false);
 					break;
 				case 'stream_start':
@@ -967,6 +980,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					}
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
+				case 'step':
+					stepIndicator.textContent = 'Step ' + msg.step + ' / ' + msg.max;
+					stepIndicator.hidden = false;
+					break;
 				case 'stream_end':
 					streaming = false;
 					if (currentAssistant) {
@@ -984,6 +1001,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						}
 					}
 					currentAssistant = null;
+					stepIndicator.hidden = true;
 					setStreaming(false);
 					inputEl.focus();
 					break;
@@ -991,6 +1009,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					streaming = false;
 					if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
 					currentAssistant = null;
+					stepIndicator.hidden = true;
 					setStreaming(false);
 					var errEl = document.createElement('div');
 					errEl.className = 'message error';

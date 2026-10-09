@@ -13,11 +13,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** **Phase 9 (harness UX) in progress**
-- **Next step:** **9.2** — Step/iteration budget: show "step i/N" during the loop and allow
-  stopping it
+- **Next step:** **9.3** — Change summary: at the end of a run, summarize files changed
+  (path + +/- lines)
   (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `35c8e9a` — feat(llm): render tool output as collapsible card (Phase 8.3)
+- **Last commit:** `ef0630c` — feat(llm): make tool-call card visually distinct (Phase 9.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (143 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -727,6 +727,20 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   the summary now has two children (`.tool-label` = "Tool call", `.tool-name` = the tool name)
   plus the `.tool-args` and `.tool-output` blocks. Smoke test unchanged (143 assertions, all
   passing — the webview is not exercised by the smoke test).
+- **9.2 — Step/iteration budget** (2026-10-09): show "step i/N" during the agentic loop and let
+  the user stop it. `ChatViewProvider.runStream()` now posts a `step` message
+  (`{ step: iterations + 1, max: MAX_TOOL_ITERATIONS }`) at the top of each loop iteration, but
+  only when `settings.toolsEnabled` (so a plain single-turn chat shows no step counter). The
+  existing Stop button already aborts the in-flight stream via the `AbortController`, which
+  satisfies "allow stopping it" — the loop checks `signal.aborted` at the top of each iteration
+  and `streamOneTurn`/`waitForApproval` both honor the signal. `webview.ts` adds a
+  `#step-indicator` element (a `.step-indicator` bar styled like the context-trimmed indicator,
+  in the focus-border color) just above the input row, a `case 'step'` handler that sets its text
+  to `Step i / N` and reveals it, and hides it on `clear`, `restore`, `stream_end`, and `error`.
+  Compiles clean; the built inline webview script passes `node --check`, and a functional test of
+  the `step` handler (minimal DOM stub) confirms the text is `Step 3 / 8` and the indicator is
+  revealed. Smoke test unchanged (143 assertions, all passing — the webview is not exercised by
+  the smoke test).
 
 ## Steps — Phase 1 (one per session)
 

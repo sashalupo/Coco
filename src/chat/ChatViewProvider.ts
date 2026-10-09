@@ -440,6 +440,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (signal.aborted) {
           break;
         }
+        // Show the step/iteration budget (Phase 9.2) so the user can see how
+        // far the agentic loop has progressed and stop it (the Stop button
+        // aborts the stream).
+        if (settings.toolsEnabled) {
+          this.postMessage({
+            type: "step",
+            step: iterations + 1,
+            max: MAX_TOOL_ITERATIONS,
+          });
+        }
         const {
           content,
           reasoning,
