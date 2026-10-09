@@ -12,13 +12,12 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 10 (git integration) in progress**
-- **Next step:** **10.2** — "Commit changes" command: stage + commit with a model-generated
-  message, gated by approval. Secrets are never committed.
-  (see `.github/agents/llm-extension/PLAN.md`)
+- **Current phase:** **Phase 10 (git integration) complete** — all of PLAN.md (Phases 6–10) done
+- **Next step:** **none** — the PLAN.md roadmap (Phases 6–10) is complete. Await further
+  direction from the user before starting new work.
 - **Last updated:** 2026-10-09
-- **Last commit:** `46adad3` — feat(llm): show per-run change summary (Phase 9.3)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (163 assertions)
+- **Last commit:** `4b53d4e` — feat(llm): add git_status + git_diff tools (Phase 10.1)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -778,6 +777,29 @@ old, new)` which accumulates the net added/removed lines per file (a file edited
   (in a temp git repo at the stubbed workspace root) running `git_status` (lists a modified
   tracked file + an untracked file), `git_diff` (shows the added `+line3` and names the changed
   file), and a scoped `git_diff` to the untracked file (excludes the other file's diff).
+- **10.2 — "Commit changes" command** (2026-10-09): let the harness commit its own changes with a
+  model-generated message, gated by approval, and never commit secrets. New pure module
+  `src/secrets.ts` (`scanForSecrets(text) -> SecretMatch[]`): a best-effort, line-by-line
+  heuristic over high-signal patterns (OpenAI `sk-…`, AWS `AKIA…`, GitHub `gh[pousr]_…`,
+  `-----BEGIN … PRIVATE KEY-----` blocks, `Bearer …` tokens, and credential assignments like
+  `password/api_key/… = "…"` with a quoted value ≥ 8 chars). `ToolExecutor.ts` gains
+  `gitStatusText()` (`git status --short`, `""` when clean), `gitStagedDiff()`
+  (`git diff --staged`), and `gitCommit(message)`: trims the message (empty → error), stages via
+  `git add -A`, reads the staged diff (empty → "No changes to commit"), runs `scanForSecrets` on
+  it (any match → "Refusing to commit: …" with the line/pattern/match list, **nothing committed**),
+  else commits via `git commit -m <msg>` (message passed as a single argv element, never shell
+  text). `ChatViewProvider.ts` gains `commitChanges()` (no-op info when the tree is clean,
+  generates a message, shows a **modal** Commit/Cancel confirmation, then commits and reports
+  success/error), `generateCommitMessage(status, diff)` (a minimal non-tool `chatStream` call —
+  model from `toolbar.model || settings.model`, temperature 0.2, `max_completion_tokens` 300 —
+  fed the status + staged diff), and `cleanCommitMessage(raw)` (strips code fences + whitespace).
+  Registered the `llm.commitChanges` command in `extension.ts` and `package.json`
+  ("LLM: Commit Changes"). Compiles clean. Smoke test extended with 10 new assertions (173 total,
+  all passing): `scanForSecrets` (detects OpenAI key, AWS key, private-key block, credential
+  assignment; clean text → `[]`) and the real executor's `gitCommit` (a normal commit succeeds and
+  echoes the message, a clean tree reports "No changes to commit", and a staged file containing a
+  secret is refused with "Refusing to commit" and is **not** recorded in `git log`). **Phase 10
+  complete — the full PLAN.md roadmap (Phases 6–10) is done.**
 
 ## Steps — Phase 1 (one per session)
 

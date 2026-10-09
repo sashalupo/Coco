@@ -31,6 +31,10 @@
       {
         "command": "llm.clearChat",
         "title": "LLM: Clear Chat"
+      },
+      {
+        "command": "llm.commitChanges",
+        "title": "LLM: Commit Changes"
       }
     ],
     "viewsContainers": {

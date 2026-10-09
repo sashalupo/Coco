@@ -114,6 +114,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llm.clearChat", () => {
       provider.clear();
     }),
+    vscode.commands.registerCommand("llm.commitChanges", () => {
+      void provider.commitChanges();
+    }),
   );
 }
 

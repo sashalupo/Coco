@@ -27,6 +27,9 @@ const { buildCodeActionPrompt, parseCodeAction } = require(
 const { unifiedDiff, diffStats } = require(
   path.join(__dirname, "..", "out", "diff.js"),
 );
+const { scanForSecrets } = require(
+  path.join(__dirname, "..", "out", "secrets.js"),
+);
 
 const PORT = 18099;
 
@@ -955,6 +958,68 @@ function assert(cond, label) {
   assert(
     !gitDiffScoped.content.includes("+line3"),
     "git_diff: scoped diff excludes other files",
+  );
+
+  // 8e) scanForSecrets (Phase 10.2): pure secret scanner.
+  assert(
+    scanForSecrets("openai_key = sk-abc123def456ghi789jkl012").length > 0,
+    "secrets: detects OpenAI key",
+  );
+  assert(
+    scanForSecrets("aws_access_key_id = AKIAIOSFODNN7EXAMPLE").length > 0,
+    "secrets: detects AWS access key",
+  );
+  assert(
+    scanForSecrets(
+      "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA\n-----END RSA PRIVATE KEY-----",
+    ).length > 0,
+    "secrets: detects private key block",
+  );
+  assert(
+    scanForSecrets('password = "supersecretvalue123"').length > 0,
+    "secrets: detects credential assignment",
+  );
+  assert(
+    scanForSecrets("const x = 1;\nconsole.log(x);").length === 0,
+    "secrets: clean text returns no matches",
+  );
+
+  // 8f) gitCommit (Phase 10.2): real executor stages + commits in the temp repo.
+  // The repo currently has a modified tracked.txt and an untracked.txt.
+  const commitOk = await executor.gitCommit("test: add line3");
+  assert(
+    commitOk.startsWith("Committed:"),
+    "gitCommit: successful commit reports Committed:",
+  );
+  assert(
+    commitOk.includes("test: add line3"),
+    "gitCommit: echoes the commit message",
+  );
+  // Nothing left to commit now.
+  const commitEmpty = await executor.gitCommit("again");
+  assert(
+    commitEmpty.startsWith("No changes to commit"),
+    "gitCommit: reports no changes when clean",
+  );
+  // Stage a file containing a secret -> commit must be refused.
+  fs.writeFileSync(
+    path.join(editRoot, "creds.txt"),
+    'api_key = "sk-abc123def456ghi789jkl012"\n',
+    "utf8",
+  );
+  const commitSecret = await executor.gitCommit("oops: add creds");
+  assert(
+    commitSecret.startsWith("Refusing to commit"),
+    "gitCommit: refuses to commit a secret",
+  );
+  // The secret file must NOT have been committed.
+  const logAfter = execSync("git log --oneline -1", {
+    cwd: editRoot,
+    encoding: "utf8",
+  });
+  assert(
+    !logAfter.includes("oops: add creds"),
+    "gitCommit: refused commit is not recorded in history",
   );
 
   // Cleanup: restore Module._load and remove the temp dir.

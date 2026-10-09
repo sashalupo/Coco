@@ -788,6 +788,108 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     return lines.join("\n");
   }
 
+  /**
+   * "Commit changes" (Phase 10.2): stage all changes, generate a commit
+   * message via the engine, ask the user to approve (modal), then commit.
+   * The ToolExecutor's secrets guard refuses to commit if the staged diff
+   * looks like it contains credentials.
+   */
+  public async commitChanges(): Promise<void> {
+    const status = await this.toolExecutor.gitStatusText();
+    if (!status) {
+      vscode.window.showInformationMessage("LLM: no changes to commit.");
+      return;
+    }
+    const diff = await this.toolExecutor.gitStagedDiff();
+    // Generate a commit message from the status + diff.
+    let message: string;
+    try {
+      message = await this.generateCommitMessage(status, diff);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`LLM: failed to generate commit message: ${msg}`);
+      return;
+    }
+    if (!message) {
+      vscode.window.showWarningMessage("LLM: the engine returned an empty commit message.");
+      return;
+    }
+    // Approval gate: show the proposed message + the changed files.
+    const approve = "Commit";
+    const cancel = "Cancel";
+    const choice = await vscode.window.showWarningMessage(
+      `Commit these changes?\n\n${message}\n\n${status}`,
+      { modal: true },
+      approve,
+      cancel,
+    );
+    if (choice !== approve) {
+      return; // User cancelled — nothing is committed.
+    }
+    const result = await this.toolExecutor.gitCommit(message);
+    if (result.startsWith("Refusing to commit")) {
+      vscode.window.showErrorMessage(result);
+    } else if (result.startsWith("Commit failed") || result.startsWith("Failed to stage")) {
+      vscode.window.showErrorMessage(result);
+    } else {
+      vscode.window.showInformationMessage(result.split("\n")[0]);
+    }
+  }
+
+  /**
+   * Ask the engine to write a concise git commit message from the status and
+   * diff. Returns the trimmed message (or `""` when the engine returns
+   * nothing). Uses a minimal, non-tool request so the reply is plain text.
+   */
+  private async generateCommitMessage(
+    status: string,
+    diff: string,
+  ): Promise<string> {
+    const settings = readSettings();
+    const toolbar = this.toolbarStore.get();
+    const model = toolbar.model || settings.model;
+    const prompt =
+      "Write a concise git commit message (imperative mood, ≤ 72-char subject, " +
+      "optional short body) for the following changes. Return ONLY the commit " +
+      "message — no code fences, no commentary.\n\n" +
+      `git status:\n${status}\n\ngit diff --staged:\n${diff}`;
+    const body: ChatCompletionRequest = {
+      model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You write clear, conventional git commit messages. Reply with the " +
+            "message text only.",
+        },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.2,
+      max_completion_tokens: 300,
+    };
+    let content = "";
+    for await (const chunk of this.client.chatStream(body)) {
+      if (chunk.done) {
+        break;
+      }
+      if (chunk.content) {
+        content += chunk.content;
+      }
+    }
+    return this.cleanCommitMessage(content);
+  }
+
+  /** Strip code fences / surrounding whitespace from a generated message. */
+  private cleanCommitMessage(raw: string): string {
+    let s = raw.trim();
+    // Strip a leading/trailing fenced code block if the model added one.
+    const fence = s.match(/^```[a-zA-Z]*\n([\s\S]*?)\n?```$/);
+    if (fence) {
+      s = fence[1];
+    }
+    return s.trim();
+  }
+
   /** Reset the conversation history and clear the webview. */
   public clear(): void {
     this.saveCurrentConversation();

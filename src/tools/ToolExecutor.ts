@@ -12,6 +12,7 @@ import * as path from "path";
 import { spawn } from "child_process";
 import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff, diffStats } from "../diff";
+import { scanForSecrets } from "../secrets";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -555,22 +556,20 @@ export class ToolExecutor {
   }
 
   /**
-   * Run a read-only `git` command in the workspace root and return its
-   * output. `args` are the git subcommand + flags (never user-controlled
-   * shell text — they are passed as a fixed argv array, so there is no
-   * shell injection). Enforces a short timeout and an output cap.
+   * Run a `git` command in the workspace root and return its raw output.
+   * `args` are the git subcommand + flags (never user-controlled shell text —
+   * they are passed as a fixed argv array, so there is no shell injection).
+   * Enforces a short timeout and an output cap. Returns the trimmed stdout on
+   * success, or a `git exited with code N` report on failure.
    */
-  private async runGit(
-    call: ToolCall,
-    args: string[],
-  ): Promise<ToolResult> {
+  private async runGitRaw(args: string[]): Promise<string> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
-      return this.result(call, "No workspace folder — cannot run git.");
+      return "No workspace folder — cannot run git.";
     }
     const cwd = folders[0].uri.fsPath;
 
-    return new Promise<ToolResult>((resolve) => {
+    return new Promise<string>((resolve) => {
       const child = spawn("git", args, {
         cwd,
         stdio: ["ignore", "pipe", "pipe"],
@@ -583,7 +582,7 @@ export class ToolExecutor {
       const settle = (content: string) => {
         if (settled) return;
         settled = true;
-        resolve(this.result(call, content));
+        resolve(content);
       };
 
       child.stdout.on("data", (chunk: Buffer) => {
@@ -623,6 +622,11 @@ export class ToolExecutor {
     });
   }
 
+  /** Wrap a raw git result as a `ToolResult` for the given call. */
+  private async runGit(call: ToolCall, args: string[]): Promise<ToolResult> {
+    return this.result(call, await this.runGitRaw(args));
+  }
+
   /** `git status` (read-only): show which files are modified/untracked. */
   private async gitStatus(call: ToolCall): Promise<ToolResult> {
     return this.runGit(call, ["status", "--short", "--branch"]);
@@ -637,6 +641,66 @@ export class ToolExecutor {
       args.push("--", relPath);
     }
     return this.runGit(call, args);
+  }
+
+  /**
+   * `git status --short` (read-only). Returns the raw status text, or `""`
+   * when the working tree is clean (nothing to commit).
+   */
+  public async gitStatusText(): Promise<string> {
+    const out = await this.runGitRaw(["status", "--short"]);
+    // A clean tree yields no output (or only the "(no output)" sentinel).
+    return out === "(no output)" ? "" : out;
+  }
+
+  /**
+   * `git diff --staged` (read-only): the staged diff, used to scan for
+   * secrets before committing.
+   */
+  public async gitStagedDiff(): Promise<string> {
+    return this.runGitRaw(["diff", "--staged"]);
+  }
+
+  /**
+   * Stage all changes and commit them with the given message (Phase 10.2).
+   * Before committing, the staged diff is scanned for secret-like patterns;
+   * if any are found the commit is refused (nothing is committed) and the
+   * matches are reported. Returns a human-readable result string.
+   */
+  public async gitCommit(message: string): Promise<string> {
+    const msg = message.trim();
+    if (!msg) {
+      return "Commit message is empty — nothing to commit.";
+    }
+    // Stage everything (tracked + untracked) in the workspace.
+    const addOut = await this.runGitRaw(["add", "-A"]);
+    if (addOut.startsWith("git exited with code")) {
+      return `Failed to stage changes:\n${addOut}`;
+    }
+    // Nothing staged? (e.g. only ignored files.)
+    const staged = await this.gitStagedDiff();
+    if (staged === "(no output)" || staged.trim() === "") {
+      return "No changes to commit (working tree is clean).";
+    }
+    // Secrets guard: refuse to commit credentials.
+    const secrets = scanForSecrets(staged);
+    if (secrets.length > 0) {
+      const lines = secrets
+        .map((s) => `  line ${s.line}: ${s.pattern} (${s.match})`)
+        .join("\n");
+      return (
+        `Refusing to commit: the staged changes appear to contain secrets.\n` +
+        `${lines}\n` +
+        `Remove the secrets and try again. Nothing was committed.`
+      );
+    }
+    // Commit. The message is passed as a single argv element (after -m), so
+    // it is never interpreted as a git flag or shell text.
+    const commitOut = await this.runGitRaw(["commit", "-m", msg]);
+    if (commitOut.startsWith("git exited with code")) {
+      return `Commit failed:\n${commitOut}`;
+    }
+    return `Committed: ${msg}\n${commitOut}`;
   }
 
   // --- Helpers -----------------------------------------------------------
