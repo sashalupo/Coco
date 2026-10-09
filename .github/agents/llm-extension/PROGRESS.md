@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 4 (in progress)
-- **Next step:** S22
+- **Next step:** S23
 - **Last updated:** 2026-10-09
-- **Last commit:** S21 (tools.ts)
+- **Last commit:** S22 (request.ts tools)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -268,6 +268,15 @@ src/
   `role: 'tool'` message with the matching `tool_call_id`. Verified under plain Node: 4 tools with
   correct names/required fields, and `toolResultMessage` produces a `role: 'tool'` message with the
   right `tool_call_id` + content — ALL TOOLS TESTS PASSED.
+- **S22 — `src/request.ts` (tools)** (2026-10-09): extended the request builder for function
+  calling. `ChatMessage` now carries an optional `tool_calls?: ToolCall[]` (on assistant turns that
+  request tool calls) in addition to the `role: 'tool'` + `tool_call_id` added in S21. `ChatCompletionRequest`
+  gained `tools?: Tool[]` and `tool_choice?: string`. `buildRequestBody` now sets `tools: CODE_TOOLS`
+  + `tool_choice: 'auto'` when `settings.toolsEnabled` is true (omitted otherwise). Verified under
+  plain Node: `toolsEnabled=false` → no `tools`/`tool_choice` in the body; `toolsEnabled=true` →
+  `tools === CODE_TOOLS` (4 tools) + `tool_choice='auto'`; and an assistant turn with `tool_calls`
+  + a `role: 'tool'` result round-trips through the body with `tool_call_id` preserved. Existing
+  smoke test still passes.
 
 ## Steps — Phase 1 (one per session)
 
@@ -376,7 +385,7 @@ lives in `ToolExecutor`.
       `list_dir`, `search_files`. `toolResultMessage(call, content): ChatMessage` — builds the
       `role: 'tool'` message.
       _Accept: compiles; pure module (no vscode import); verified under plain Node._
-- [ ] **S22 — `src/request.ts` (tools).** Extend `ChatMessage` to support assistant `tool_calls`
+- [x] **S22 — `src/request.ts` (tools).** Extend `ChatMessage` to support assistant `tool_calls`
       and `role: 'tool'` + `tool_call_id`; add `tools`/`tool_choice` to `ChatCompletionRequest`;
       wire `settings.toolsEnabled` → `tools: CODE_TOOLS` in `buildRequestBody`.
       _Accept: compiles; with `toolsEnabled` the body carries `tools`._

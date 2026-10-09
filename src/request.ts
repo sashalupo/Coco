@@ -10,6 +10,7 @@ import {
 	type LlmSettings,
 	type ToolbarState,
 } from './presets';
+import { CODE_TOOLS, type Tool, type ToolCall } from './tools';
 
 /** A single chat message. `reasoning_content` carries the thinking block. */
 export interface ChatMessage {
@@ -18,6 +19,8 @@ export interface ChatMessage {
 	reasoning_content?: string;
 	/** Present on `role: 'tool'` messages: the id of the tool call being answered. */
 	tool_call_id?: string;
+	/** Present on `role: 'assistant'` messages that request tool calls. */
+	tool_calls?: ToolCall[];
 }
 
 /** The merged configuration: base settings + runtime toolbar overrides. */
@@ -46,6 +49,10 @@ export interface ChatCompletionRequest {
 	chat_template_kwargs?: Record<string, unknown>;
 	reasoning_effort?: string;
 	enable_thinking?: boolean;
+	/** Function-calling tools the model may invoke (Phase 4). */
+	tools?: Tool[];
+	/** Tool-choice hint (`auto` / `none` / a specific function name). */
+	tool_choice?: string;
 }
 
 /** Result of building a request: the body + whether history was trimmed. */
@@ -204,6 +211,12 @@ export function buildRequestBody(
 	body.reasoning_effort = THINKING_TO_EFFORT[toolbar.thinking];
 	if (toolbar.thinking !== 'off') {
 		body.enable_thinking = true;
+	}
+
+	// Tools: expose the workspace tools when tool calling is enabled.
+	if (settings.toolsEnabled) {
+		body.tools = CODE_TOOLS;
+		body.tool_choice = 'auto';
 	}
 
 	return { body, trimmed, budgetTokens };
