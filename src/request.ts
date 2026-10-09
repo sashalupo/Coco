@@ -13,9 +13,11 @@ import {
 
 /** A single chat message. `reasoning_content` carries the thinking block. */
 export interface ChatMessage {
-	role: 'system' | 'user' | 'assistant';
+	role: 'system' | 'user' | 'assistant' | 'tool';
 	content: string;
 	reasoning_content?: string;
+	/** Present on `role: 'tool'` messages: the id of the tool call being answered. */
+	tool_call_id?: string;
 }
 
 /** The merged configuration: base settings + runtime toolbar overrides. */

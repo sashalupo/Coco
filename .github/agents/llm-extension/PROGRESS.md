@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 3 (complete)
-- **Next step:** Phase 4 (S21+)
+- **Current phase:** 4 (in progress)
+- **Next step:** S22
 - **Last updated:** 2026-10-09
-- **Last commit:** S20 (inline smoke test)
+- **Last commit:** S21 (tools.ts)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (41 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -257,6 +257,17 @@ src/
   "completion only" instruction; omits the File line and suffix section when empty; parseCompletion
   handles empty, whitespace-only, plain passthrough, trim, fenced (with/without lang), fence-only,
   and multi-line cases. Phase 3 marked complete.
+- **S21 — `src/tools.ts`** (2026-10-09): new pure module (imports only the `ChatMessage` type from
+  `./request`). Types `Tool` (OpenAI function-calling schema), `ToolCall` (`id`, `type`,
+  `function.name`, `function.arguments`), `ToolResult` (`tool_call_id`, `content`). `CODE_TOOLS`
+  defines 4 workspace tools — `read_file` (required `path`), `write_file` (required `path`,
+  `content`), `list_dir` (required `path`), `search_files` (required `pattern`, optional `path`) —
+  each with a `type: 'function'` envelope, description, and JSON-schema `parameters`. Also extended
+  `ChatMessage` in `request.ts` to support `role: 'tool'` + `tool_call_id` (needed so
+  `toolResultMessage` returns a valid `ChatMessage`). `toolResultMessage(call, content)` builds the
+  `role: 'tool'` message with the matching `tool_call_id`. Verified under plain Node: 4 tools with
+  correct names/required fields, and `toolResultMessage` produces a `role: 'tool'` message with the
+  right `tool_call_id` + content — ALL TOOLS TESTS PASSED.
 
 ## Steps — Phase 1 (one per session)
 
@@ -348,6 +359,42 @@ vscode-specific gathering lives in the provider.
 - [x] **S20 — inline smoke test.** Extend `scripts/smoke-test.js` to assert `buildCompletionPrompt`
       (includes language + prefix + suffix) and `parseCompletion` (strips fences, trims, empty for
       empty input).
+      _Accept: compiles; new assertions pass._
+
+## Steps — Phase 4 (one per session)
+
+Manage code via tools: the engine's `tools`/`tool_choice` function-calling API drives an agentic
+loop. The extension exposes a small set of workspace tools (`read_file`, `write_file`, `list_dir`,
+`search_files`); the model calls them, the extension executes them against the workspace, feeds the
+results back, and repeats until the model stops calling tools. Keep the tool schemas + message
+shaping pure (in `tools.ts`) so they stay testable under plain Node; the vscode-specific execution
+lives in `ToolExecutor`.
+
+- [x] **S21 — `src/tools.ts`.** Pure module (no vscode). Types `Tool` (OpenAI function-calling
+      schema), `ToolCall` (`id`, `function.name`, `function.arguments`), `ToolResult`
+      (`tool_call_id`, `content`). `CODE_TOOLS: Tool[]` — schemas for `read_file`, `write_file`,
+      `list_dir`, `search_files`. `toolResultMessage(call, content): ChatMessage` — builds the
+      `role: 'tool'` message.
+      _Accept: compiles; pure module (no vscode import); verified under plain Node._
+- [ ] **S22 — `src/request.ts` (tools).** Extend `ChatMessage` to support assistant `tool_calls`
+      and `role: 'tool'` + `tool_call_id`; add `tools`/`tool_choice` to `ChatCompletionRequest`;
+      wire `settings.toolsEnabled` → `tools: CODE_TOOLS` in `buildRequestBody`.
+      _Accept: compiles; with `toolsEnabled` the body carries `tools`._
+- [ ] **S23 — `src/client.ts` (tools).** Extend `StreamChunk` with `toolCalls?: ToolCall[]`; parse
+      `delta.tool_calls` (accumulate by index across chunks) in `parseSseLine`.
+      _Accept: compiles; a streamed tool call reassembles into one `ToolCall`._
+- [ ] **S24 — `src/tools/ToolExecutor.ts`.** vscode-specific `ToolExecutor` with
+      `execute(call): Promise<ToolResult>` implementing `read_file` / `write_file` / `list_dir` /
+      `search_files` against the workspace (safe path handling, error → result, not throw).
+      _Accept: compiles; each tool returns a typed `ToolResult`._
+- [ ] **S25 — agentic loop.** In `ChatViewProvider.handleSend`, when `settings.toolsEnabled`, run
+      the loop: send (with tools) → if the reply has `tool_calls`, execute them via `ToolExecutor`,
+      append the assistant turn + tool results, and re-send → until no `tool_calls` or a max
+      iteration cap. Stream content deltas to the webview as they arrive.
+      _Accept: compiles; a tool-calling reply is executed and fed back._
+- [ ] **S26 — tools smoke test.** Extend `scripts/smoke-test.js` to assert `CODE_TOOLS` shape,
+      `toolResultMessage`, and `parseSseLine` tool-call accumulation (mock SSE with `tool_calls`
+      deltas).
       _Accept: compiles; new assertions pass._
 
 ## Decisions
