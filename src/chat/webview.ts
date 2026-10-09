@@ -670,6 +670,69 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		cursor: pointer;
 	}
 	#quick-new-chat:hover { color: var(--fg); border-color: var(--focus); }
+
+	/* In-webview modal (VS Code webviews disable window.prompt/confirm) */
+	.modal-overlay {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.45);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+	.modal-box {
+		background: var(--vscode-input-background, #3c3c3c);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 14px 16px;
+		width: 320px;
+		max-width: 90%;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+	}
+	.modal-title {
+		font-size: 13px;
+		font-weight: 600;
+		margin-bottom: 6px;
+	}
+	.modal-message {
+		font-size: 12px;
+		color: var(--muted);
+		margin-bottom: 10px;
+		line-height: 1.4;
+	}
+	.modal-input {
+		width: 100%;
+		background: var(--input-bg);
+		color: var(--fg);
+		border: 1px solid var(--input-border);
+		border-radius: 4px;
+		padding: 5px 8px;
+		font-size: 13px;
+		margin-bottom: 12px;
+	}
+	.modal-input:focus { outline: 1px solid var(--focus); }
+	.modal-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+	}
+	.modal-actions button {
+		padding: 5px 14px;
+		border: none;
+		border-radius: 4px;
+		font-size: 12px;
+		cursor: pointer;
+	}
+	.modal-cancel {
+		background: var(--vscode-button-secondaryBackground, #3a3d41);
+		color: var(--vscode-button-secondaryForeground, #fff);
+	}
+	.modal-ok {
+		background: var(--btn-bg);
+		color: var(--btn-fg);
+	}
+	.modal-ok:hover { filter: brightness(1.1); }
 </style>
 </head>
 <body>
@@ -780,19 +843,88 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (streaming || !convSelect.value) { return; }
 			if (vscode) { vscode.postMessage({ type: 'switchConversation', id: convSelect.value }); }
 		});
+		// In-webview modal. VS Code webviews disable window.prompt/confirm (they
+		// return null/false), so native dialogs never work here. This builds a
+		// themed overlay with an optional text input and OK/Cancel buttons.
+		// opts: { title, message, input?, okLabel?, onOk(value) }
+		function showModal(opts) {
+			var overlay = document.createElement('div');
+			overlay.className = 'modal-overlay';
+			var box = document.createElement('div');
+			box.className = 'modal-box';
+			var title = document.createElement('div');
+			title.className = 'modal-title';
+			title.textContent = opts.title || '';
+			box.appendChild(title);
+			var msg = document.createElement('div');
+			msg.className = 'modal-message';
+			msg.textContent = opts.message || '';
+			box.appendChild(msg);
+			var input = null;
+			if (opts.input !== undefined) {
+				input = document.createElement('input');
+				input.type = 'text';
+				input.className = 'modal-input';
+				input.value = opts.input;
+				input.spellcheck = false;
+				box.appendChild(input);
+			}
+			var actions = document.createElement('div');
+			actions.className = 'modal-actions';
+			var cancelBtn = document.createElement('button');
+			cancelBtn.className = 'modal-cancel';
+			cancelBtn.textContent = 'Cancel';
+			var okBtn = document.createElement('button');
+			okBtn.className = 'modal-ok';
+			okBtn.textContent = opts.okLabel || 'OK';
+			actions.appendChild(cancelBtn);
+			actions.appendChild(okBtn);
+			box.appendChild(actions);
+			overlay.appendChild(box);
+			document.body.appendChild(overlay);
+			function close() {
+				if (overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
+				document.removeEventListener('keydown', onKey);
+			}
+			function onKey(e) {
+				if (e.key === 'Escape') { close(); }
+				else if (e.key === 'Enter' && input) { okBtn.click(); }
+			}
+			cancelBtn.addEventListener('click', close);
+			okBtn.addEventListener('click', function () {
+				var value = input ? input.value : true;
+				close();
+				if (opts.onOk) { opts.onOk(value); }
+			});
+			document.addEventListener('keydown', onKey);
+			if (input) { input.focus(); input.select(); }
+			else { okBtn.focus(); }
+		}
 		convRename.addEventListener('click', function () {
 			if (streaming || !convSelect.value) { return; }
 			var current = convSelect.options[convSelect.selectedIndex].text;
-			var next = prompt('Rename conversation:', current);
-			if (next === null) { return; }
-			next = next.trim();
-			if (!next) { return; }
-			if (vscode) { vscode.postMessage({ type: 'renameConversation', id: convSelect.value, title: next }); }
+			showModal({
+				title: 'Rename conversation',
+				message: 'Enter a new title for this conversation.',
+				input: current,
+				okLabel: 'Rename',
+				onOk: function (value) {
+					var next = String(value).trim();
+					if (!next) { return; }
+					if (vscode) { vscode.postMessage({ type: 'renameConversation', id: convSelect.value, title: next }); }
+				}
+			});
 		});
 		convDelete.addEventListener('click', function () {
 			if (streaming || !convSelect.value) { return; }
-			if (!confirm('Delete this conversation? This cannot be undone.')) { return; }
-			if (vscode) { vscode.postMessage({ type: 'deleteConversation', id: convSelect.value }); }
+			showModal({
+				title: 'Delete conversation',
+				message: 'Delete this conversation? This cannot be undone.',
+				okLabel: 'Delete',
+				onOk: function () {
+					if (vscode) { vscode.postMessage({ type: 'deleteConversation', id: convSelect.value }); }
+				}
+			});
 		});
 		exportBtn.addEventListener('click', function () {
 			if (streaming) { return; }

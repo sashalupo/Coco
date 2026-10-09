@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 11 complete** — the full PLAN.md roadmap (Phases 6–11) is done
 - **Next step:** **none** — all planned phases (1–11) are complete; awaiting new direction
 - **Last updated:** 2026-10-09
-- **Last commit:** `2fb5e5f` — feat(llm): add quick new-conversation button when panel collapsed (Phase 11.4)
+- **Last commit:** `e106e40` — chore(llm): polish sessions panel + record Phase 11 complete (Phase 11.5)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -878,6 +878,26 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   padding, the 220px panel width, the group header, and the quick-new-chat button are all present
   (6 checks, all passing). Smoke test green (173 assertions). **Phase 11 complete — the full
   PLAN.md roadmap (Phases 6–11) is done.**
+- **Bug fix — Delete / Rename buttons never worked (2026-10-09):** the `#conv-delete` and
+  `#conv-rename` handlers used the native `window.confirm()` and `window.prompt()`. In VS Code
+  webviews these are **disabled no-ops** — `confirm()` always returns `false` and `prompt()`
+  always returns `null` — so the handlers bailed out immediately (`if (!confirm(...)) return;` /
+  `if (next === null) return;`) and never posted a message. Fix: replaced both with an in-webview
+  **modal dialog** (`showModal(opts)` in `webview.ts`). The modal builds a themed `.modal-overlay`
+  (fixed, centered, `z-index: 1000`) with a `.modal-box` (title, message, optional text input, and
+  OK/Cancel buttons). `showModal` supports an optional `input` (prefilled, focused + selected),
+  an `okLabel`, and an `onOk(value)` callback; it closes on Cancel, on OK, or on `Escape`, and
+  submits on `Enter` when an input is present. The `#conv-rename` handler now opens a modal with
+  the current title prefilled and posts `{type:'renameConversation', id, title}` on OK (trimmed,
+  no-op when empty); the `#conv-delete` handler opens a confirm-style modal and posts
+  `{type:'deleteConversation', id}` on OK. No host-side changes were needed — the existing
+  `renameConversation` / `deleteConversation` handlers in `ChatViewProvider` are unchanged. New
+  CSS themes the modal with VS Code variables. Compiles clean; the built inline webview script
+  passes `node --check`; a structural test confirms `prompt(`/`confirm(` are gone and both
+  handlers use `showModal` (8 checks), and a functional DOM-stub test confirms the full round-trip:
+  Delete → modal → OK posts `deleteConversation` + closes; Rename → modal (input prefilled with the
+  current title) → OK posts `renameConversation` with the new title + closes; Cancel posts nothing
+  + closes (12 checks, all passing). Smoke test unchanged (173 assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
