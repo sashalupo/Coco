@@ -13,10 +13,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** Phases 1–5 complete; **Phase 6 (harness: targeted file editing) in progress**
-- **Next step:** **6.2** — implement `edit_file` execution in `src/tools/ToolExecutor.ts`
-  (see `.github/agents/llm-extension/PLAN.md`)
+- **Next step:** **6.3** — extend `read_file` with optional `start_line` / `end_line`
+  (1-based, inclusive) in `src/tools/ToolExecutor.ts` (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
-- **Last commit:** `9422f0e` — fix(llm): escape backslashes in webview inline JS template literal
+- **Last commit:** `aaa3c47` — feat(llm): add edit_file tool schema to CODE_TOOLS
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -571,6 +571,19 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   up automatically (it already sets `body.tools = CODE_TOOLS`), so no change was needed there.
   Compiles clean; compiled `out/tools.js` verified to contain the `edit_file` schema with all four
   properties and the correct `required` array.
+- **6.2 — `edit_file` execution** (2026-10-09): implemented `edit_file` in
+  `src/tools/ToolExecutor.ts`. New `editFile(call, relPath, oldString, newString, replaceAll)`
+  reuses `resolveSafe` + the `MAX_READ_BYTES` size cap (rejects non-files / oversized files), reads
+  the file, and counts non-overlapping occurrences of `old_string` via a new `countOccurrences`
+  helper. Behavior: empty `old_string` → error; `0` matches → "old_string not found — re-read the
+  file and copy the exact text"; `>1` matches and `!replace_all` → "old_string is not unique (N
+  matches) — add more surrounding context, or set replace_all=true"; otherwise replace (first
+  occurrence via `String.replace`, or all via `split().join()` when `replace_all`) and write back.
+  Returns `Replaced N occurrence(s) in <path> (A chars → B chars)`. Wired into the `execute()`
+  switch (`case "edit_file"`). Compiles clean; compiled `out/tools/ToolExecutor.js` verified to
+  contain the dispatch, `editFile`, `countOccurrences`, and all four result branches. Core logic
+  verified under plain Node (10 checks: unique match, no-match, ambiguous-match, replace_all,
+  empty old_string, and `countOccurrences` edge cases — all pass).
 
 ## Steps — Phase 1 (one per session)
 

@@ -42,6 +42,14 @@ export class ToolExecutor {
             String(args.path ?? ""),
             String(args.content ?? ""),
           );
+        case "edit_file":
+          return await this.editFile(
+            call,
+            String(args.path ?? ""),
+            String(args.old_string ?? ""),
+            String(args.new_string ?? ""),
+            args.replace_all === true,
+          );
         case "list_dir":
           return await this.listDir(call, String(args.path ?? ""));
         case "search_files":
@@ -99,6 +107,64 @@ export class ToolExecutor {
     return this.result(
       call,
       `Wrote ${content.length} characters to ${relPath}`,
+    );
+  }
+
+  private async editFile(
+    call: ToolCall,
+    relPath: string,
+    oldString: string,
+    newString: string,
+    replaceAll: boolean,
+  ): Promise<ToolResult> {
+    if (oldString === "") {
+      return this.result(
+        call,
+        "old_string is empty — provide the exact text to replace.",
+      );
+    }
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return this.result(
+        call,
+        `Path not allowed (outside workspace): ${relPath}`,
+      );
+    }
+    const stat = await fs.promises.stat(abs);
+    if (!stat.isFile()) {
+      return this.result(call, `Not a file: ${relPath}`);
+    }
+    if (stat.size > MAX_READ_BYTES) {
+      return this.result(
+        call,
+        `File too large to edit (${stat.size} bytes): ${relPath}`,
+      );
+    }
+    const content = await fs.promises.readFile(abs, "utf8");
+    const count = this.countOccurrences(content, oldString);
+    if (count === 0) {
+      return this.result(
+        call,
+        `old_string not found in ${relPath} — re-read the file and copy the ` +
+          `exact text (including whitespace and indentation).`,
+      );
+    }
+    if (count > 1 && !replaceAll) {
+      return this.result(
+        call,
+        `old_string is not unique in ${relPath} (${count} matches) — add more ` +
+          `surrounding context to make it unique, or set replace_all=true.`,
+      );
+    }
+    const replaced = replaceAll
+      ? content.split(oldString).join(newString)
+      : content.replace(oldString, newString);
+    await fs.promises.writeFile(abs, replaced, "utf8");
+    const n = replaceAll ? count : 1;
+    return this.result(
+      call,
+      `Replaced ${n} occurrence${n === 1 ? "" : "s"} in ${relPath} ` +
+        `(${oldString.length} chars → ${newString.length} chars)`,
     );
   }
 
@@ -228,6 +294,20 @@ export class ToolExecutor {
     const root = folders[0].uri.fsPath;
     const rel = path.relative(root, abs);
     return rel.startsWith("..") ? abs : rel;
+  }
+
+  /** Count non-overlapping occurrences of `needle` in `haystack`. */
+  private countOccurrences(haystack: string, needle: string): number {
+    if (needle === "") {
+      return 0;
+    }
+    let count = 0;
+    let idx = haystack.indexOf(needle);
+    while (idx !== -1) {
+      count++;
+      idx = haystack.indexOf(needle, idx + needle.length);
+    }
+    return count;
   }
 
   /** Build a `ToolResult` for the given call. */
