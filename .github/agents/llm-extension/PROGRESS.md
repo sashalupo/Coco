@@ -12,8 +12,8 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** 5 (not started — needs step breakdown)
-- **Next step:** S27 (Phase 5 — Code actions / refactors via `CodeActionProvider`; break Phase 5 into steps first)
+- **Current phase:** 5 (in progress)
+- **Next step:** S27 (`src/codeaction.ts` — pure prompt builder + parser)
 - **Last updated:** 2026-10-09
 - **Last commit:** S26 (tools smoke test)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (64 assertions)
@@ -457,12 +457,43 @@ lives in `ToolExecutor`.
 
 ## Steps — Phase 5 (one per session)
 
-> **Not yet broken down.** Phase 4 is complete. The next session should split Phase 5
-> (Code actions / refactors via `CodeActionProvider`) into single-file, independently
-> compilable steps (S27+) before implementing the first one. Likely concerns: a
-> `CodeActionProvider` that offers an "Ask LLM to fix/refactor" action, a prompt builder for
-> the selected range + diagnostics, a non-streaming `chat` helper on `LlmClient` (or reuse
-> `chatStream`), applying the model's suggested edit to the document, and a smoke test.
+Phase 5 = Code actions / refactors via `CodeActionProvider`. Mirrors the Phase 3 pattern:
+a pure prompt-builder module, a vscode-specific provider, registration + a setting, then a
+smoke test. The provider reuses `client.chatStream` (collect content) — no new non-streaming
+endpoint is added.
+
+- [ ] **S27 — `src/codeaction.ts` (pure prompt builder + parser).** New pure module (no
+      `vscode` import, no network). `CodeActionContext {language, path, code,
+      selection?: {startLine, endLine, text}, diagnostics?: {line, column, severity, message}[]}`.
+      `buildCodeActionPrompt(ctx): string` — a "fix/refactor this code" prompt: a header, an
+      instruction to return ONLY the full updated code (no explanation, no code fences), the file
+      path, the code block, and — when present — the selected range and the diagnostics to
+      address (stable order: code → selection → diagnostics). `parseCodeAction(text): string` —
+      strips a surrounding markdown code fence, trims, returns `''` for empty. _Accept: compiles;
+      pure module loads under plain Node; prompt includes language/path/code/diagnostics; parser
+      strips fences._
+- [ ] **S28 — `src/codeaction/CodeActionProvider.ts` (vscode-specific provider).**
+      `CodeActionProvider implements vscode.CodeActionProvider` (constructed with `context` +
+      `LlmClient`, like `InlineCompletionProvider`). `provideCodeActions(document, range,
+      context)` returns an "Ask LLM to fix/refactor" `CodeAction` (kind `refactor.rewrite`,
+      `needsResolve: true`) and — when diagnostics fall in the range — a "Fix with LLM" action
+      (kind `quickfix`). `resolveCodeAction` gathers the file context (language, path, full code,
+      selection = range text, diagnostics in range), builds the prompt via `buildCodeActionPrompt`,
+      streams `client.chatStream` (collect content, capped), parses via `parseCodeAction`, and
+      returns the action with a `WorkspaceEdit` replacing `range` with the parsed code. Empty or
+      failed result → the action is returned without an edit (no crash). _Accept: compiles;
+      compiled output contains the provider, prompt build, `chatStream` collect, `parseCodeAction`,
+      and the `WorkspaceEdit` replace._
+- [ ] **S29 — register in `extension.ts` + `llm.codeAction.enabled` setting.** Add
+      `llm.codeAction.enabled` (boolean, default `false`) to `package.json`
+      `contributes.configuration`. In `activate()`, when enabled, register the provider via
+      `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
+      providedCodeActionKinds: [...] })`. _Accept: compiles; setting present; provider registered
+      only when enabled._
+- [ ] **S30 — code action smoke test.** Extend `scripts/smoke-test.js` to assert
+      `buildCodeActionPrompt` (language/path/code/diagnostics/selection present, stable order) and
+      `parseCodeAction` (plain passthrough, fence strip, empty). _Accept: compiles; new assertions
+      pass._
 
 ## Decisions
 
