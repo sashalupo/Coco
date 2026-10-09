@@ -38,13 +38,6 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Build version marker shown in the chat panel toolbar. Bump this whenever the
- * webview or host changes so you can confirm which build is actually running
- * (a stale extension host shows the old marker).
- */
-const WEBVIEW_VERSION = "v3 (host logging)";
-
-/**
  * Build the chat webview HTML.
  *
  * @param init Optional initial toolbar state (models + selected values).
@@ -162,24 +155,6 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		cursor: pointer;
 	}
 	.ctx-toggles input { margin: 0; }
-	#diag {
-		padding: 4px 10px;
-		font-size: 11px;
-		line-height: 1.5;
-		color: var(--muted);
-		border-bottom: 1px solid var(--border);
-		white-space: pre-wrap;
-		word-break: break-word;
-		max-height: 96px;
-		overflow-y: auto;
-	}
-	#build-version {
-		margin-left: 10px;
-		font-size: 10px;
-		color: var(--muted);
-		opacity: 0.7;
-		white-space: nowrap;
-	}
 
 	/* Messages */
 	.messages {
@@ -307,10 +282,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label><input type="checkbox" id="ctx-selection" checked>sel</label>
 			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 		</span>
-		<span id="build-version" title="Webview build (bump to confirm the running extension host is up to date)">${WEBVIEW_VERSION}</span>
 	</div>
-
-	<div id="diag">diag: …</div>
 
 	<div id="messages" class="messages"></div>
 
@@ -325,17 +297,6 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<script>
 	(function () {
 		var vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
-		var diagEl = document.getElementById('diag');
-		var diagLog = [];
-		function diag(m) {
-			diagLog.push(m);
-			if (diagLog.length > 6) { diagLog.shift(); }
-			if (diagEl) { diagEl.textContent = 'diag: ' + diagLog.join('  ·  '); }
-		}
-		window.onerror = function (msg, src, line, col) {
-			diag('ERROR: ' + msg + ' @line ' + line + ':' + col);
-		};
-		diag('vscode api: ' + (vscode ? 'OK' : 'NULL') + ' | acquireVsCodeApi: ' + (typeof acquireVsCodeApi));
 		var modelSelect = document.getElementById('model-select');
 		var manualWrap = document.getElementById('model-manual-wrap');
 		var manualInput = document.getElementById('model-manual');
@@ -387,9 +348,6 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			inputEl.focus();
 			if (vscode) {
 				vscode.postMessage({ type: 'send', text: text });
-				diag('send posted: ' + text.length + ' chars');
-			} else {
-				diag('send BLOCKED: vscode api is NULL');
 			}
 		}
 		sendBtn.addEventListener('click', doSend);
@@ -507,15 +465,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		// object only exposes postMessage/getState/setState and host messages arrive as a
 		// native DOM "message" event on window. Support BOTH: prefer onDidReceiveMessage,
 		// else fall back to a window "message" listener.
-		diag('onDidReceiveMessage: ' + (vscode ? typeof vscode.onDidReceiveMessage : 'n/a') + ' | keys: ' + (vscode ? Object.keys(vscode).join(',') : 'null') + ' | origin: ' + (window.location ? window.location.origin : '?'));
 
 		function handleHostMessage(msg) {
 			if (!msg || typeof msg !== 'object' || !msg.type) { return; }
-			diag('recv: ' + msg.type);
 			switch (msg.type) {
 				case 'models':
 					setModelOptions(msg.models);
-					diag('models: ' + (msg.models ? msg.models.length : 0) + ' model(s)');
 					break;
 				case 'toolbar':
 					setToolbar({
@@ -576,22 +531,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 
 		if (vscode && typeof vscode.onDidReceiveMessage === 'function') {
 			vscode.onDidReceiveMessage(handleHostMessage);
-			diag('host→webview via onDidReceiveMessage');
 		} else {
 			// Fallback: host messages arrive as a native DOM "message" event.
 			window.addEventListener('message', function (event) {
 				handleHostMessage(event.data);
 			});
-			diag('host→webview via window message (onDidReceiveMessage absent)');
 		}
 
 		// Apply the initial toolbar state, then announce readiness to the host.
 		window.setToolbar(window.__llmInitial || {});
 		if (vscode) {
 			vscode.postMessage({ type: 'ready' });
-			diag('ready posted (vscode api OK)');
-		} else {
-			diag('ready BLOCKED: vscode api is NULL — host will never receive messages');
 		}
 	})();
 	</script>

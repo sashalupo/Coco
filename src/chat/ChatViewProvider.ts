@@ -68,7 +68,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * hidden so chat history is not lost.
    */
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
-    console.log("[llm] resolveWebviewView — wiring webview message handler");
     this.webview = webviewView.webview;
     webviewView.webview.options = {
       enableScripts: true,
@@ -86,10 +85,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * stream a chat completion (S9). Toolbar handling is added in S10.
    */
   private onMessage(msg: WebviewToHostMessage): void {
-    console.log(
-      `[llm] onMessage: ${msg.type}`,
-      JSON.stringify(msg).slice(0, 200),
-    );
     switch (msg.type) {
       case "ready":
         // Round-trip: acknowledge the webview is up, sync the persisted
@@ -132,14 +127,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     try {
       const models = await this.client.listModels();
       const ids = models.data.map((m) => m.id);
-      console.log(
-        `[llm] loadModels: got ${ids.length} model(s): ${ids.join(", ")}`,
-      );
       this.postMessage({ type: "models", models: ids });
-    } catch (err) {
-      console.log(
-        `[llm] loadModels FAILED: ${err instanceof Error ? err.message : String(err)}`,
-      );
+    } catch {
+      // Engine unreachable — the dropdown simply stays as-is; the manual
+      // entry still works. Failures are intentionally silent.
     }
   }
 
@@ -167,7 +158,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * context) so the dropdowns feed the next request body.
    */
   private async handleSend(text: string): Promise<void> {
-    console.log(`[llm] handleSend called, text length=${text.length}`);
     if (!text) {
       return;
     }
@@ -416,9 +406,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /** Send a message to the webview (no-op if the view is not resolved). */
   public postMessage(message: HostToWebviewMessage): void {
-    console.log(
-      `[llm] postMessage -> webview: ${message.type} (webview ${this.webview ? "set" : "UNSET"})`,
-    );
     this.webview?.postMessage(message);
   }
 }

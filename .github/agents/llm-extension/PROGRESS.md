@@ -12,38 +12,32 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** all phases complete (1–5); live-debugging runtime bug
-- **Next step:** — (roadmap complete; awaiting user reload to verify the webview message fix)
+- **Current phase:** all phases complete (1–5); runtime bug RESOLVED
+- **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** FIX — webview receives host msgs via window "message" fallback (onDidReceiveMessage absent)
+- **Last commit:** cleanup — strip debug scaffolding (diag line, onerror, keys/origin, version badge, host console.log)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
 
-> **Active debugging (dev-container) — ROOT CAUSE FOUND + FIXED (code-side, not environmental):**
-> Model dropdown empty + send does nothing. The webview `diag:` line (the only reliable channel;
-> host `console.log` does not surface in the log the user views) proved:
->
-> - `acquireVsCodeApi()` returns **`postMessage, setState, getState`** but **NO `onDidReceiveMessage`**.
-> - `origin: vscode-webview://…` → it IS a genuine VS Code webview (NOT a browser preview).
-> - Running on **VS Code 1.140.0** (commit `07f806f9`), remote/dev-container.
->
-> **ROOT CAUSE (confirmed in VS Code source):** the current VS Code webview preload
+> **RESOLVED (dev-container) — empty Model dropdown + no-send:**
+> **Symptom:** Model dropdown empty; sending a prompt did nothing.
+> **Root cause (confirmed in VS Code source):** the current VS Code webview preload
 > (`src/vs/workbench/contrib/webview/browser/pre/index.html`, `getVsCodeApiScript`) defines
 > `acquireVsCodeApi()` to return **exactly** `Object.freeze({ postMessage, setState, getState })`
-> — NO `onDidReceiveMessage`. Host→webview messages are now delivered as a **native DOM
-> `message` event on `window`** (`contentWindow.postMessage(data.message, window.origin, …)`),
-> NOT via `acquireVsCodeApi().onDidReceiveMessage`. So webview→host (`postMessage`) still works
-> (host receives `ready`/`send`/`toolbar`), but host→webview (`models`/`stream_start`/`delta`)
-> arrived as `window` `message` events that our webview never listened for → dropped.
->
-> **FIX (webview.ts):** extract the host→webview handler into `handleHostMessage(msg)`; register
-> it via `vscode.onDidReceiveMessage` when present (standard builds), ELSE via
-> `window.addEventListener('message', e => handleHostMessage(e.data))` (current dev-container
-> VS Code). `handleHostMessage` guards on `msg && msg.type` so unrelated `message` events are
-> ignored. Both paths share the same handler.
->
-> **Verify after reload:** diag should show `host→webview via window message (onDidReceiveMessage
-> absent)` then `recv: models` + `models: N model(s)`; dropdown populates and send streams.
-> Diagnostic code (onerror/keys/origin) kept to confirm; strip in a cleanup step once verified.
+> — NO `onDidReceiveMessage`. Host→webview messages are delivered as a **native DOM `message`
+> event on `window`** (`contentWindow.postMessage(data.message, window.origin, …)`), NOT via
+> `acquireVsCodeApi().onDidReceiveMessage`. So webview→host (`postMessage`) worked (host got
+> `ready`/`send`/`toolbar`), but host→webview (`models`/`stream_start`/`delta`) arrived as
+> `window` `message` events the webview never listened for → dropped.
+> **Fix (webview.ts):** host→webview handler extracted into `handleHostMessage(msg)`; registered
+> via `vscode.onDidReceiveMessage` when present (standard builds), ELSE via
+> `window.addEventListener('message', e => handleHostMessage(e.data))` (this VS Code build).
+> `handleHostMessage` guards on `msg && msg.type` so unrelated `message` events are ignored.
+> Works on standard AND this VS Code build.
+> **Verified by user:** diag showed `ready posted → recv: hello → recv: toolbar → recv: models →
+> models: 1 model(s)`; dropdown populated and send streamed.
+> **Cleanup done:** removed all debug scaffolding (webview `diag` line + `window.onerror` +
+> keys/origin dumps + `WEBVIEW_VERSION` badge; host `console.log` in ChatViewProvider/extension).
+> The `window` `message` fallback (the actual fix) is retained.
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
 > commits it, marks it Done, and sets **Next step** to the following step. One step per session.
