@@ -34,7 +34,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 > `handleHostMessage` guards on `msg && msg.type` so unrelated `message` events are ignored.
 > Works on standard AND this VS Code build.
 > **Verified by user:** diag showed `ready posted → recv: hello → recv: toolbar → recv: models →
-> models: 1 model(s)`; dropdown populated and send streamed.
+models: 1 model(s)`; dropdown populated and send streamed.
 > **Cleanup done:** removed all debug scaffolding (webview `diag` line + `window.onerror` +
 > keys/origin dumps + `WEBVIEW_VERSION` badge; host `console.log` in ChatViewProvider/extension).
 > The `window` `message` fallback (the actual fix) is retained.

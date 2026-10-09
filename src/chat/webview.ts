@@ -261,6 +261,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	#send:hover { filter: brightness(1.1); }
 	#send:disabled { opacity: 0.5; cursor: default; }
+	#new-chat {
+		background: transparent;
+		color: var(--muted);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 2px 8px;
+		font-size: 11px;
+		cursor: pointer;
+		margin-left: auto;
+	}
+	#new-chat:hover { color: var(--fg); border-color: var(--focus); }
 </style>
 </head>
 <body>
@@ -282,6 +293,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label><input type="checkbox" id="ctx-selection" checked>sel</label>
 			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 		</span>
+		<button id="new-chat" title="Start a new conversation">New Chat</button>
 	</div>
 
 	<div id="messages" class="messages"></div>
@@ -309,6 +321,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var ctxFile = document.getElementById('ctx-file');
 		var ctxSelection = document.getElementById('ctx-selection');
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
+		var newChatBtn = document.getElementById('new-chat');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -323,6 +336,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		ctxFile.addEventListener('change', postToolbar);
 		ctxSelection.addEventListener('change', postToolbar);
 		ctxDiagnostics.addEventListener('change', postToolbar);
+		newChatBtn.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'newChat' }); }
+		});
 
 		function postToolbar() {
 			if (!vscode) { return; }

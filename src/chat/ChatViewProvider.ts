@@ -100,6 +100,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "toolbar":
         this.applyToolbarMessage(msg);
         break;
+      case "newChat":
+        this.clear();
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
