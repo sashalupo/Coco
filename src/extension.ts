@@ -6,6 +6,7 @@ import { LlmClient } from './client';
 import { readSettings } from './config';
 import { ChatViewProvider } from './chat/ChatViewProvider';
 import { InlineCompletionProvider } from './inline/InlineCompletionProvider';
+import { CodeActionProvider } from './codeaction/CodeActionProvider';
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -30,6 +31,22 @@ export function activate(context: vscode.ExtensionContext): void {
 			vscode.languages.registerInlineCompletionItemProvider(
 				[{ pattern: '**' }],
 				inlineProvider
+			)
+		);
+	}
+
+	// Register the LLM code action (fix/refactor), opt-in via `llm.codeAction.enabled`.
+	// The setting is read at activation, so toggling it requires a reload.
+	const codeActionEnabled = vscode.workspace
+		.getConfiguration('llm')
+		.get<boolean>('codeAction.enabled', false);
+	if (codeActionEnabled) {
+		const codeActionProvider = new CodeActionProvider(context, client);
+		context.subscriptions.push(
+			vscode.languages.registerCodeActionsProvider(
+				[{ pattern: '**' }],
+				codeActionProvider,
+				{ providedCodeActionKinds: CodeActionProvider.providedKinds }
 			)
 		);
 	}

@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 5 (in progress)
-- **Next step:** S29 (register in `extension.ts` + `llm.codeAction.enabled` setting)
+- **Next step:** S30 (code action smoke test)
 - **Last updated:** 2026-10-09
-- **Last commit:** S28 (CodeActionProvider)
+- **Last commit:** S29 (register code action + setting)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (64 assertions)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -355,6 +355,17 @@ provider)` (all file types). The setting is read once at activation, so toggling
   both action labels/kinds, `buildCodeActionPrompt`, `chatStream` collect, `parseCodeAction`,
   the `WorkspaceEdit` replace, `actionRange`, `diagnosticsInRange`, and the empty-result guard.
   Existing smoke test still passes.
+- **S29 — register code action + `llm.codeAction.enabled` setting** (2026-10-09): added the
+  `llm.codeAction.enabled` setting (boolean, default `false`) to `package.json`
+  `contributes.configuration` (next to `llm.inline.enabled`). In `activate()`, when enabled, the
+  `CodeActionProvider` is registered via
+  `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {
+  providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the inline-completion
+  registration (opt-in, read at activation, requires a reload to toggle). Compiles clean;
+  `package.json` verified valid JSON with the setting present (boolean, default `false`); compiled
+  `extension.js` verified to import the provider, read `codeAction.enabled`, gate on it, and call
+  `registerCodeActionsProvider` with `providedCodeActionKinds` and the `**` pattern. Existing smoke
+  test still passes.
 
 ## Steps — Phase 1 (one per session)
 
@@ -513,7 +524,7 @@ endpoint is added.
       failed result → the action is returned without an edit (no crash). _Accept: compiles;
       compiled output contains the provider, prompt build, `chatStream` collect, `parseCodeAction`,
       and the `WorkspaceEdit` replace._
-- [ ] **S29 — register in `extension.ts` + `llm.codeAction.enabled` setting.** Add
+- [x] **S29 — register in `extension.ts` + `llm.codeAction.enabled` setting.** Add
       `llm.codeAction.enabled` (boolean, default `false`) to `package.json`
       `contributes.configuration`. In `activate()`, when enabled, register the provider via
       `vscode.languages.registerCodeActionsProvider([{ pattern: '**' }], provider, {

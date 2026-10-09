@@ -175,6 +175,11 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect."
+                },
+                "llm.codeAction.enabled": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable the 'Ask LLM to fix/refactor' code action. Opt-in; requires a reload to take effect."
                 }
             }
         }
