@@ -187,6 +187,56 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		border-left: 2px solid var(--border);
 		padding-left: 8px;
 	}
+	/* Markdown rendering (assistant content) */
+	.message.assistant .content { white-space: normal; }
+	.message.assistant .content p { margin: 0 0 8px; }
+	.message.assistant .content p:last-child { margin-bottom: 0; }
+	.message.assistant .content pre {
+		background: var(--think-bg);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 8px;
+		overflow-x: auto;
+		margin: 8px 0;
+		font-size: 12px;
+		line-height: 1.4;
+	}
+	.message.assistant .content code {
+		background: var(--think-bg);
+		border-radius: 3px;
+		padding: 1px 4px;
+		font-size: 12px;
+		font-family: var(--vscode-editor-font-family, monospace);
+	}
+	.message.assistant .content pre code {
+		background: none;
+		padding: 0;
+		border-radius: 0;
+	}
+	.message.assistant .content h1, .message.assistant .content h2,
+	.message.assistant .content h3, .message.assistant .content h4 {
+		margin: 12px 0 6px;
+		font-weight: 600;
+	}
+	.message.assistant .content h1 { font-size: 1.3em; }
+	.message.assistant .content h2 { font-size: 1.15em; }
+	.message.assistant .content h3 { font-size: 1.05em; }
+	.message.assistant .content ul, .message.assistant .content ol {
+		margin: 4px 0;
+		padding-left: 20px;
+	}
+	.message.assistant .content li { margin: 2px 0; }
+	.message.assistant .content a {
+		color: var(--vscode-textLink-foreground, #3794ff);
+		text-decoration: none;
+	}
+	.message.assistant .content a:hover { text-decoration: underline; }
+	.message.assistant .content blockquote {
+		border-left: 3px solid var(--border);
+		padding-left: 10px;
+		margin: 8px 0;
+		color: var(--muted);
+	}
 	.message.error .role { color: var(--vscode-errorForeground, #f48771); }
 	.message.error .content {
 		border-left: 2px solid var(--vscode-errorForeground, #f48771);
@@ -407,6 +457,73 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			}
 		});
 
+		// --- Lightweight Markdown renderer (no external deps) ---
+		function escapeHtml(s) {
+			return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+		}
+		function renderMarkdown(src) {
+			if (!src) { return ''; }
+			// Extract fenced code blocks first so their content is not processed.
+			var codeBlocks = [];
+			var BT = String.fromCharCode(96);
+			var fenceRe = new RegExp(BT + BT + BT + '(\\w*)\\n([\\s\\S]*?)' + BT + BT + BT, 'g');
+			src = src.replace(fenceRe, function (_, lang, code) {
+				var idx = codeBlocks.length;
+				codeBlocks.push({ lang: lang, code: code.replace(/\n$/, '') });
+				return '\x00CODEBLOCK' + idx + '\x00';
+			});
+			// Escape HTML in the remaining text.
+			src = escapeHtml(src);
+			// Inline code.
+			var inlineCodeRe = new RegExp(BT + '([^' + BT + ']+)' + BT, 'g');
+			src = src.replace(inlineCodeRe, '<code>$1</code>');
+			// Bold.
+			src = src.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+			// Italic (single *).
+			src = src.replace(/\*(.+?)\*/g, '<em>$1</em>');
+			// Links: [text](url).
+			src = src.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+			// Headings.
+			src = src.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+			src = src.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+			src = src.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+			src = src.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+			// Blockquote.
+			src = src.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+			// Unordered lists: consecutive lines starting with - or *.
+			src = src.replace(/^(?:[-*] .+\n?)+/gm, function (block) {
+				var items = block.trim().split('\n').map(function (l) {
+					return '<li>' + l.replace(/^[-*] /, '') + '</li>';
+				}).join('');
+				return '<ul>' + items + '</ul>';
+			});
+			// Ordered lists: consecutive lines starting with a number.
+			src = src.replace(/^(?:\d+\. .+\n?)+/gm, function (block) {
+				var items = block.trim().split('\n').map(function (l) {
+					return '<li>' + l.replace(/^\d+\. /, '') + '</li>';
+				}).join('');
+				return '<ol>' + items + '</ol>';
+			});
+			// Paragraphs: split on double newlines, wrap non-block elements in <p>.
+			var blocks = src.split(/\n{2,}/);
+			src = blocks.map(function (b) {
+				b = b.trim();
+				if (!b) { return ''; }
+				// Already a block element? Leave as-is.
+				if (/^<(h[1-4]|ul|ol|pre|blockquote|\x00)/.test(b)) { return b; }
+				// Single newline → <br>.
+				b = b.replace(/\n/g, '<br>');
+				return '<p>' + b + '</p>';
+			}).join('\n');
+			// Restore code blocks.
+			src = src.replace(/\x00CODEBLOCK(\d+)\x00/g, function (_, idx) {
+				var cb = codeBlocks[parseInt(idx, 10)];
+				var langAttr = cb.lang ? ' class="lang-' + cb.lang + '"' : '';
+				return '<pre' + langAttr + '><code>' + escapeHtml(cb.code) + '</code></pre>';
+			});
+			return src;
+		}
+
 		// --- DOM builders (used by S9/S11) ---
 		window.addUserMessage = function (text) {
 			var el = document.createElement('div');
@@ -430,7 +547,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				el: el,
 				content: el.querySelector('.content'),
 				thinking: el.querySelector('.thinking-content'),
-				thinkingBlock: el.querySelector('.thinking')
+				thinkingBlock: el.querySelector('.thinking'),
+				rawContent: ''
 			};
 		};
 		// Reveal + open the thinking block the first time reasoning arrives.
@@ -544,7 +662,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							addUserMessage(m.content);
 						} else if (m.role === 'assistant') {
 							var a = addAssistantMessage();
-							a.content.textContent = m.content;
+						a.rawContent = m.content;
+						a.content.innerHTML = renderMarkdown(m.content);
 							if (m.reasoning_content) {
 								a.thinking.textContent = m.reasoning_content;
 								a.thinkingBlock.hidden = false;
@@ -578,7 +697,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						revealThinking(currentAssistant.thinkingBlock);
 					}
 					if (msg.content) {
-						currentAssistant.content.textContent += msg.content;
+						currentAssistant.rawContent += msg.content;
+						currentAssistant.content.innerHTML = renderMarkdown(currentAssistant.rawContent);
 					}
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;

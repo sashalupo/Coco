@@ -15,8 +15,21 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `7b9f045` — feat(llm): stop generation — cancel an in-flight stream
+- **Last commit:** `feat(llm): render assistant replies as Markdown`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Markdown rendering (webview, no deps):**
+> - `webview.ts`: new `renderMarkdown(src)` — a lightweight inline renderer. Extracts
+>   fenced code blocks first (placeholder `\x00CODEBLOCKn\x00`), escapes HTML, then applies
+>   inline code, bold, italic, links, headings (h1–h4), blockquotes, ordered/unordered
+>   lists, and paragraph wrapping. Code-block backticks are built via
+>   `String.fromCharCode(96)` so the regex never collides with the template literal.
+> - Assistant content now accumulates raw text in `currentAssistant.rawContent` and is
+>   re-rendered to HTML on every `delta` (and on `restore` for saved messages). User
+>   messages stay plain text.
+> - CSS: `.message.assistant .content` switches to `white-space: normal` with styles for
+>   `pre`/`code`/headings/lists/links/blockquotes, themed via VS Code CSS variables.
+> - Verified: fence + inline-code regexes tested in isolation (correct lang/code capture).
 
 > **Stop generation (AbortController):**
 > - `ChatViewProvider`: new `abortController` field (null when idle). `handleSend` creates
