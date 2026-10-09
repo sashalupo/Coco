@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 1 (in progress)
-- **Next step:** S6
+- **Next step:** S7
 - **Last updated:** 2026-10-09
-- **Last commit:** S5 (src/client.ts part 2)
+- **Last commit:** S6 (src/chat/webview.ts)
 - **Build state:** compiles clean (`npm run compile`)
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -122,6 +122,15 @@ src/
   non-2xx / missing body. Added `StreamChunk` + `UsageInfo` types. Verified under plain Node with a
   stubbed streaming `fetch`: a line split across chunk boundaries reassembles correctly, reasoning vs
   content are separated, exactly one `done` chunk, `usage` surfaced, `stream:true` sent.
+- **S6 — `src/chat/webview.ts`** (2026-10-09): `buildWebviewHtml(init?)` returns a single self-contained
+  HTML document (inline CSS + JS, no external assets). Static shell: Model/Thinking/Context toolbar
+  (dropdowns built from `THINKING_LEVELS`/`CONTEXT_LEVELS` + model list + `manual…` entry), message
+  list, input box (Enter to send / Shift+Enter newline), collapsible `<details>` thinking block, and a
+  hidden context-trimmed indicator. Exposes DOM/host hooks for later steps: `addUserMessage`,
+  `addAssistantMessage` (returns content/thinking/thinkingBlock refs), `setContextTrimmed`,
+  `setStreaming`, `getToolbar`/`setToolbar`, and posts `{type:'ready'}` on load. Uses VS Code theme
+  CSS variables with fallbacks. Verified under plain Node: returns a string, all elements present,
+  model options injected, no external assets.
 
 ## Steps — Phase 1 (one per session)
 
@@ -144,7 +153,7 @@ step `[x]` when committed, and move the **Next step** pointer forward.
 - [x] **S5 — `src/client.ts` (part 2).** Add `chatStream()` — POST `/v1/chat/completions`
       with `stream:true`, hand-rolled SSE parser yielding `{reasoning, content, done, usage}`.
       _Accept: compiles; parser handles `data:` lines, `[DONE]`, and `reasoning_content` vs `content`._
-- [ ] **S6 — `src/chat/webview.ts`.** `buildWebviewHtml()` — static HTML/CSS/JS shell: message
+- [x] **S6 — `src/chat/webview.ts`.** `buildWebviewHtml()` — static HTML/CSS/JS shell: message
       list, input box, Model/Thinking/Context toolbar, collapsible thinking block. No logic yet.
       _Accept: compiles; returns a string; no external assets._
 - [ ] **S7 — `src/chat/ChatViewProvider.ts`.** `WebviewViewProvider` that builds the webview and
