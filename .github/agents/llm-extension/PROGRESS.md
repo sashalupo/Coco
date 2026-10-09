@@ -15,8 +15,19 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `9658643` — feat(llm): delete a saved conversation from history
+- **Last commit:** `feat(llm): export conversation to a Markdown file`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Export to Markdown:**
+> - `ChatViewProvider`: new `export` message handler → `exportConversation()`. Guards on
+>   empty history (info message). `buildMarkdown()` renders the history as a doc: `# title`,
+>   an `_Exported <ISO timestamp>_` line, then `## You` / `## Assistant` sections (assistant
+>   thinking wrapped in a `<details>` block). Tool/system turns are omitted for readability.
+>   Filename is derived from the title (slugified); the user picks the location via
+>   `showSaveDialog` (`.md` filter) and it is written with `workspace.fs.writeFile`. Success /
+>   failure surface as info / error toasts.
+> - `webview.ts`: new `#export` button in the toolbar (between Delete and New Chat). Clicking
+>   posts `{type:'export'}` (disabled while streaming). Styled like the other toolbar buttons.
 
 > **Delete conversation:**
 > - `ChatViewProvider`: new `deleteConversation(id)` — calls `conversationStore.remove(id)`;

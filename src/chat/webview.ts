@@ -379,6 +379,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		display: none;
 	}
 	#conv-delete:hover { color: var(--vscode-errorForeground, #f48771); border-color: var(--vscode-errorForeground, #f48771); }
+	#export {
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		color: var(--muted);
+		cursor: pointer;
+		padding: 2px 8px;
+		font-size: 11px;
+	}
+	#export:hover { color: var(--fg); border-color: var(--focus); }
 </style>
 </head>
 <body>
@@ -402,6 +412,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		</span>
 		<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
 		<button id="conv-delete" title="Delete selected conversation">Delete</button>
+		<button id="export" title="Export conversation to Markdown">Export</button>
 		<button id="new-chat" title="Start a new conversation">New Chat</button>
 	</div>
 
@@ -435,6 +446,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var newChatBtn = document.getElementById('new-chat');
 		var convSelect = document.getElementById('conv-select');
 		var convDelete = document.getElementById('conv-delete');
+		var exportBtn = document.getElementById('export');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -462,6 +474,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (streaming || !convSelect.value) { return; }
 			if (!confirm('Delete this conversation? This cannot be undone.')) { return; }
 			if (vscode) { vscode.postMessage({ type: 'deleteConversation', id: convSelect.value }); }
+		});
+		exportBtn.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'export' }); }
 		});
 
 		function postToolbar() {

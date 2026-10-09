@@ -134,6 +134,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "deleteConversation":
         this.deleteConversation(String(msg.id ?? ""));
         break;
+      case "export":
+        void this.exportConversation();
+        break;
       case "stop":
         this.abortController?.abort();
         break;
@@ -560,6 +563,69 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return `${systemPrompt}\n\n${contextBlock}`;
     }
     return systemPrompt || contextBlock;
+  }
+
+  /**
+   * Export the current conversation to a Markdown file. Builds a document
+   * from the history (user/assistant turns, with thinking blocks) and lets
+   * the user pick a save location via a file dialog. No-op when empty.
+   */
+  private async exportConversation(): Promise<void> {
+    if (this.history.length === 0) {
+      vscode.window.showInformationMessage("Nothing to export — the conversation is empty.");
+      return;
+    }
+    const md = this.buildMarkdown();
+    const title = this.deriveTitle(this.history);
+    const safeTitle = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "chat";
+    const target = await vscode.window.showSaveDialog({
+      defaultUri: vscode.Uri.file(`${safeTitle}.md`),
+      filters: { "Markdown": ["md"] },
+      title: "Export conversation",
+    });
+    if (!target) {
+      return; // User cancelled.
+    }
+    try {
+      await vscode.workspace.fs.writeFile(target, Buffer.from(md, "utf8"));
+      vscode.window.showInformationMessage(`Conversation exported to ${target.fsPath}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Failed to export conversation: ${message}`);
+    }
+  }
+
+  /** Build a Markdown document from the current conversation history. */
+  private buildMarkdown(): string {
+    const lines: string[] = [];
+    lines.push(`# ${this.deriveTitle(this.history)}`);
+    lines.push("");
+    lines.push(`_Exported ${new Date().toISOString()}_`);
+    lines.push("");
+    for (const m of this.history) {
+      if (m.role === "user") {
+        lines.push("## You");
+        lines.push("");
+        lines.push(m.content);
+        lines.push("");
+      } else if (m.role === "assistant") {
+        lines.push("## Assistant");
+        lines.push("");
+        if (m.reasoning_content) {
+          lines.push("<details>");
+          lines.push("<summary>Thinking</summary>");
+          lines.push("");
+          lines.push(m.reasoning_content);
+          lines.push("");
+          lines.push("</details>");
+          lines.push("");
+        }
+        lines.push(m.content);
+        lines.push("");
+      }
+      // Tool / system turns are omitted from the export for readability.
+    }
+    return lines.join("\n");
   }
 
   /** Reset the conversation history and clear the webview. */
