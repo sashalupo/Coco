@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** **Phase 11 (sessions side panel)** — new roadmap phase added to PLAN.md
-- **Next step:** **11.3** — Move New Chat / Export / Delete / Rename into the panel (see PLAN.md, Phase 11)
+- **Next step:** **11.4** — Quick "new conversation" button when collapsed (see PLAN.md, Phase 11)
 - **Last updated:** 2026-10-09
-- **Last commit:** `5b6ceb8` — feat(llm): add sessions side-panel shell + toggle (Phase 11.1)
+- **Last commit:** `1f837dc` — feat(llm): render conversation list in sessions panel (Phase 11.2)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -830,6 +830,21 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   `node --check`; a functional DOM-stub test of the `restore` → `renderConvList` path confirms the
   group header, two rows (correct titles + `data-id`), the active-row class, and the empty-list
   placeholder (9 checks, all passing). Smoke test unchanged (173 assertions, all passing).
+- **11.3 — Move New Chat / Export / Delete / Rename into the panel** (2026-10-09): removed the
+  `#new-chat`, `#export`, `#conv-delete`, and `#conv-rename` buttons from the main toolbar and
+  placed them in the sessions panel — a "New Session" button (`#new-chat`, relabeled) in a new
+  `.side-panel-actions` row at the top of the panel (below the header), and Rename / Delete /
+  Export in a new `.side-panel-footer` row at the bottom (above the conversation list). The
+  element **ids are unchanged**, so the existing JS handlers (`newChatBtn` → `newChat`,
+  `exportBtn` → `export`, `convDelete` → `deleteConversation`, `convRename` → `renameConversation`)
+  and the `restore`/`selectConversation` show/hide logic work **unchanged** — no handler edits were
+  needed. The `#revert` button and the (hidden) `#conv-select` dropdown remain in the toolbar. New
+  CSS: `.side-panel-actions` (full-width New Session button, bottom border), `.side-panel-footer`
+  (flex row of equal-width buttons, top border). Compiles clean; the built inline webview script
+  passes `node --check`; a structural test of the generated HTML confirms all four buttons are in
+  the panel and absent from the toolbar, the toolbar still has `#revert` + `#conv-select`, the
+  "New Session" label is present, and all four message handlers are intact (11 checks, all
+  passing). Smoke test unchanged (173 assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1012,7 +1027,7 @@ out of the main toolbar into a collapsible "Sessions" side panel. See PLAN.md, P
       grouped list of conversations rendered inside the panel. Selecting a row makes it active and
       posts `switchConversation`. _Accept: the list is populated from the `restore`/`pushHistory`
       payload; clicking a row switches the active conversation; compiles._
-- [ ] **11.3 — Move New Chat / Export / Delete / Rename into the panel.** Remove the `#new-chat`,
+- [x] **11.3 — Move New Chat / Export / Delete / Rename into the panel.** Remove the `#new-chat`,
       `#export`, `#conv-delete`, and `#conv-rename` buttons from the main toolbar. Place a "New
       Session" button at the top of the panel and Export / Delete / Rename actions for the
       selected conversation. Reuse the existing message handlers unchanged. _Accept: all four

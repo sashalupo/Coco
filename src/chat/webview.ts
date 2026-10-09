@@ -632,6 +632,22 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
+	.side-panel-actions {
+		padding: 8px;
+		border-bottom: 1px solid var(--border);
+	}
+	.side-panel-actions #new-chat {
+		width: 100%;
+	}
+	.side-panel-footer {
+		display: flex;
+		gap: 6px;
+		padding: 8px;
+		border-top: 1px solid var(--border);
+	}
+	.side-panel-footer button {
+		flex: 1 1 auto;
+	}
 </style>
 </head>
 <body>
@@ -639,8 +655,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<div class="side-panel-header">
 			<span class="side-panel-title">Sessions</span>
 		</div>
+		<div class="side-panel-actions">
+			<button id="new-chat" title="Start a new conversation">New Session</button>
+		</div>
 		<div class="side-panel-body" id="side-panel-body">
 			<div class="side-panel-placeholder">No sessions yet</div>
+		</div>
+		<div class="side-panel-footer">
+			<button id="conv-rename" title="Rename selected conversation">Rename</button>
+			<button id="conv-delete" title="Delete selected conversation">Delete</button>
+			<button id="export" title="Export conversation to Markdown">Export</button>
 		</div>
 	</div>
 
@@ -665,11 +689,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 			</span>
 			<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
-			<button id="conv-rename" title="Rename selected conversation">Rename</button>
-			<button id="conv-delete" title="Delete selected conversation">Delete</button>
-			<button id="export" title="Export conversation to Markdown">Export</button>
 			<button id="revert" title="Revert last file change">Revert</button>
-			<button id="new-chat" title="Start a new conversation">New Chat</button>
 		</div>
 
 		<div id="messages" class="messages"></div>
