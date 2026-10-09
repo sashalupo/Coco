@@ -7,7 +7,7 @@
 
 import * as vscode from "vscode";
 import { buildWebviewHtml } from "./webview";
-import { LlmClient } from "../client";
+import { LlmClient, type UsageInfo } from "../client";
 import {
   readSettings,
   ToolbarStateStore,
@@ -303,6 +303,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
 
+    // Accumulate token usage across the (possibly multi-turn) agentic loop.
+    const usage: UsageInfo = {};
+
     try {
       // Agentic loop: when tools are enabled, keep sending the request
       // while the assistant replies with tool_calls — executing each via
@@ -313,8 +316,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         if (signal.aborted) {
           break;
         }
-        const { content, reasoning, toolCalls } =
+        const { content, reasoning, toolCalls, usage: turnUsage } =
           await this.streamOneTurn(body, signal);
+        this.accumulateUsage(usage, turnUsage);
         this.history.push(this.assistantMessage(content, reasoning, toolCalls));
 
         if (!settings.toolsEnabled || toolCalls.length === 0) {
@@ -352,11 +356,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         );
         body = rebuilt.body;
       }
-      this.postMessage({ type: "stream_end" });
+      this.postMessage({ type: "stream_end", usage });
     } catch (err) {
       if (signal.aborted) {
         // User-initiated stop — not an error.
-        this.postMessage({ type: "stream_end" });
+        this.postMessage({ type: "stream_end", usage });
       } else {
         const message = err instanceof Error ? err.message : String(err);
         this.postMessage({ type: "error", message });
@@ -380,10 +384,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     content: string;
     reasoning: string;
     toolCalls: ToolCall[];
+    usage?: UsageInfo;
   }> {
     let content = "";
     let reasoning = "";
     let toolCalls: ToolCall[] = [];
+    let usage: UsageInfo | undefined;
     for await (const chunk of this.client.chatStream(body, signal)) {
       if (chunk.done) {
         break;
@@ -397,6 +403,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       if (chunk.toolCalls) {
         toolCalls = chunk.toolCalls;
       }
+      if (chunk.usage) {
+        usage = chunk.usage;
+      }
       if (chunk.reasoning || chunk.content) {
         this.postMessage({
           type: "delta",
@@ -405,7 +414,24 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         });
       }
     }
-    return { content, reasoning, toolCalls };
+    return { content, reasoning, toolCalls, usage };
+  }
+
+  /** Add one turn's usage into a running total (ignores undefined fields). */
+  private accumulateUsage(total: UsageInfo, turn?: UsageInfo): void {
+    if (!turn) {
+      return;
+    }
+    if (typeof turn.prompt_tokens === "number") {
+      total.prompt_tokens = (total.prompt_tokens ?? 0) + turn.prompt_tokens;
+    }
+    if (typeof turn.completion_tokens === "number") {
+      total.completion_tokens =
+        (total.completion_tokens ?? 0) + turn.completion_tokens;
+    }
+    if (typeof turn.total_tokens === "number") {
+      total.total_tokens = (total.total_tokens ?? 0) + turn.total_tokens;
+    }
   }
 
   /** Build an assistant `ChatMessage` from a streamed turn. */

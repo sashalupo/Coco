@@ -237,6 +237,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		margin: 8px 0;
 		color: var(--muted);
 	}
+	.usage-badge {
+		margin-top: 6px;
+		font-size: 10px;
+		color: var(--muted);
+		letter-spacing: 0.02em;
+	}
 	.message.error .role { color: var(--vscode-errorForeground, #f48771); }
 	.message.error .content {
 		border-left: 2px solid var(--vscode-errorForeground, #f48771);
@@ -540,7 +546,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			el.innerHTML =
 				'<div class="role">Assistant</div>' +
 				'<details class="thinking" hidden><summary>Thinking</summary><div class="thinking-content"></div></details>' +
-				'<div class="content"></div>';
+				'<div class="content"></div>' +
+				'<div class="usage-badge" hidden></div>';
 			messagesEl.appendChild(el);
 			messagesEl.scrollTop = messagesEl.scrollHeight;
 			return {
@@ -548,6 +555,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				content: el.querySelector('.content'),
 				thinking: el.querySelector('.thinking-content'),
 				thinkingBlock: el.querySelector('.thinking'),
+				usage: el.querySelector('.usage-badge'),
 				rawContent: ''
 			};
 		};
@@ -704,7 +712,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					break;
 				case 'stream_end':
 					streaming = false;
-					if (currentAssistant) { collapseThinking(currentAssistant.thinkingBlock); }
+					if (currentAssistant) {
+						collapseThinking(currentAssistant.thinkingBlock);
+						if (msg.usage && currentAssistant.usage) {
+							var u = msg.usage;
+							var parts = [];
+							if (u.prompt_tokens != null) { parts.push(u.prompt_tokens + ' in'); }
+							if (u.completion_tokens != null) { parts.push(u.completion_tokens + ' out'); }
+							if (u.total_tokens != null) { parts.push(u.total_tokens + ' total'); }
+							if (parts.length) {
+								currentAssistant.usage.textContent = '⚡ ' + parts.join(' · ');
+								currentAssistant.usage.hidden = false;
+							}
+						}
+					}
 					currentAssistant = null;
 					setStreaming(false);
 					inputEl.focus();

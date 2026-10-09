@@ -15,8 +15,18 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `e08886a` — feat(llm): render assistant replies as Markdown
+- **Last commit:** `feat(llm): show token usage per assistant reply`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Token/usage display:**
+> - `ChatViewProvider`: `streamOneTurn` now captures `chunk.usage` (already parsed by
+>   `client.chatStream`) and returns it. `handleSend` accumulates usage across the
+>   (possibly multi-turn) agentic loop via `accumulateUsage(total, turn)` and attaches the
+>   total to the `stream_end` message (both the normal and aborted paths).
+> - `webview.ts`: each assistant message gets a hidden `.usage-badge` element. On
+>   `stream_end`, if `msg.usage` is present the badge shows `⚡ N in · M out · T total`
+>   (only the fields the engine reported). Badge is muted, 10px, below the content.
+> - No new deps; usage comes from the engine's `stream_options.include_usage` (default on).
 
 > **Markdown rendering (webview, no deps):**
 > - `webview.ts`: new `renderMarkdown(src)` — a lightweight inline renderer. Extracts
