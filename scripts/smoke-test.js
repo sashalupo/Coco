@@ -24,6 +24,7 @@ const { accumulateToolCalls } = require(
 const { buildCodeActionPrompt, parseCodeAction } = require(
   path.join(__dirname, "..", "out", "codeaction.js"),
 );
+const { unifiedDiff } = require(path.join(__dirname, "..", "out", "diff.js"));
 
 const PORT = 18099;
 
@@ -556,10 +557,9 @@ function assert(cond, label) {
 
   // Full loop: engine streams an edit_file tool call -> real chatStream
   // reassembles it -> real executor applies it to the file on disk.
-  const editBody = buildRequestBody(
-    { settings: toolSettings, toolbar },
-    [{ role: "user", content: "EDIT_FILE_TEST: change foo to bar" }],
-  ).body;
+  const editBody = buildRequestBody({ settings: toolSettings, toolbar }, [
+    { role: "user", content: "EDIT_FILE_TEST: change foo to bar" },
+  ]).body;
   let editCalls = [];
   let editDone = false;
   for await (const chunk of client.chatStream(editBody)) {
@@ -585,6 +585,15 @@ function assert(cond, label) {
   assert(
     editResult.content.includes("Replaced 1 occurrence in sample.txt"),
     "edit: result reports 1 occurrence replaced",
+  );
+  assert(
+    editResult.content.includes("Diff:"),
+    "edit: result includes diff preview",
+  );
+  assert(
+    editResult.content.includes("-foo") &&
+      editResult.content.includes("+bar"),
+    "edit: diff shows -foo and +bar",
   );
   assert(
     fs.readFileSync(samplePath, "utf8") === "line1\nbar\nline3\n",
@@ -739,6 +748,30 @@ function assert(cond, label) {
       "const a = 1;\nconst b = 2;",
     "codeaction: parse multi-line preserved",
   );
+
+  // 7) diff: unifiedDiff (Phase 7.1)
+  assert(unifiedDiff("", "") === "", "diff: identical -> empty");
+  assert(
+    unifiedDiff("a\nb\nc", "a\nb\nc") === "",
+    "diff: identical multi-line -> empty",
+  );
+  const d1 = unifiedDiff("foo", "bar", "f.txt", "f.txt");
+  assert(d1.includes("--- f.txt"), "diff: has --- header");
+  assert(d1.includes("+++ f.txt"), "diff: has +++ header");
+  assert(d1.includes("@@"), "diff: has hunk header");
+  assert(d1.includes("-foo"), "diff: has -foo");
+  assert(d1.includes("+bar"), "diff: has +bar");
+  const d2 = unifiedDiff("a\nb\nc", "a\nX\nc", "f.txt", "f.txt");
+  assert(d2.includes("-b"), "diff: middle change has -b");
+  assert(d2.includes("+X"), "diff: middle change has +X");
+  assert(d2.includes(" a"), "diff: context line a");
+  assert(d2.includes(" c"), "diff: context line c");
+  const d3 = unifiedDiff("", "new\nline", "f.txt", "f.txt");
+  assert(d3.includes("+new"), "diff: new file has +new");
+  assert(d3.includes("+line"), "diff: new file has +line");
+  const d4 = unifiedDiff("old\nline", "", "f.txt", "f.txt");
+  assert(d4.includes("-old"), "diff: deleted file has -old");
+  assert(d4.includes("-line"), "diff: deleted file has -line");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

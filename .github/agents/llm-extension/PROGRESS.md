@@ -12,22 +12,13 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** Phases 1–6 complete; **Phase 7 (harness: safe writes & review) next**
-- **Next step:** **7.1** — diff preview for mutations: when `write_file` / `edit_file` runs,
-  compute a unified diff (old vs new) and include it in the tool result / post it to the webview
-  as a tool card (see `.github/agents/llm-extension/PLAN.md`)
+- **Current phase:** Phases 1–6 complete; **Phase 7 (harness: safe writes & review) in progress**
+- **Next step:** **7.2** — approval gate: new setting `llm.tools.requireApproval` (bool, default
+  `false`). When `true`, mutating tools are held: the loop posts a pending card with Approve/Reject
+  and awaits the user's decision before applying (see `.github/agents/llm-extension/PLAN.md`)
 - **Last updated:** 2026-10-09
 - **Last commit:** `a470bec` — test(llm): add end-to-end edit_file smoke test (Phase 6.4)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (96 assertions)
-
-> **Tools enabled by default (2026-10-09, user request):** the user reported the LLM could read
-> the opened file (context injection, Phase 2) but could not edit or list files. Root cause: the
-> workspace tools (`read_file`, `write_file`, `edit_file`, `list_dir`, `search_files`) built in
-> Phases 4 & 6 were gated behind `llm.tools.enabled`, which defaulted to `false` — so the engine
-> never received the tool schemas and the agentic loop never ran. Fix: flipped the default to
-> `true` in both `package.json` (`llm.tools.enabled`) and `src/config.ts` (`readSettings`), and
-> updated the setting description. The LLM can now read, edit, write, list, and search files in
-> the workspace out of the box. Compiles clean; smoke test still passes (96 assertions).
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (113 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -623,6 +614,21 @@ providedCodeActionKinds: CodeActionProvider.providedKinds })` — mirroring the 
   assertions (now 5 tools: `read_file,write_file,edit_file,list_dir,search_files`) and the
   `toolBody.tools.length` assertion (5). Total assertions now 96 (was 84). Compiles clean; all 96
   assertions pass. **Phase 6 complete.**
+- **7.1 — diff preview for mutations** (2026-10-09): new pure module `src/diff.ts` (no vscode,
+  no deps) with `unifiedDiff(oldText, newText, oldLabel?, newLabel?): string` — a hand-rolled
+  unified diff. Splits on `\r?\n`, computes an LCS dynamic program (falls back to a full-replace
+  diff when the DP table would exceed `MAX_DIFF_CELLS = 1_000_000`), backtracks to emit
+  equal/del/ins ops, and formats them into `---`/`+++`/`@@` hunks with `CONTEXT = 3` lines of
+  surrounding context. Returns `""` when the texts are identical. Wired into `ToolExecutor`:
+  `writeFile` now reads the old content (empty when the file is new) before writing and appends a
+  `Diff:` block to the result; `editFile` appends a `Diff:` block (old file content vs the
+  replaced content) to its result. The diff is included in the tool result the engine reads (the
+  webview tool-card rendering is a later step, 9.1). Compiles clean; compiled `out/diff.js` +
+  `out/tools/ToolExecutor.js` verified to contain the diff logic and the `Diff:` wiring. Smoke
+  test extended with 17 new assertions (113 total, all passing): `unifiedDiff` identical → empty,
+  single-line change (headers + `-foo`/`+bar`), middle-line change with context lines, new-file
+  (all `+`), deleted-file (all `-`); and the real `edit_file` tool result now includes a `Diff:`
+  block showing `-foo`/`+bar`.
 
 ## Steps — Phase 1 (one per session)
 

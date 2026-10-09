@@ -10,6 +10,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import type { ToolCall, ToolResult } from "../tools";
+import { unifiedDiff } from "../diff";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -129,11 +130,20 @@ export class ToolExecutor {
         `Path not allowed (outside workspace): ${relPath}`,
       );
     }
+    // Read the old content (if the file exists) for the diff preview.
+    let oldContent = "";
+    try {
+      oldContent = await fs.promises.readFile(abs, "utf8");
+    } catch {
+      // File does not exist yet — old content is empty.
+    }
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, content, "utf8");
+    const diff = unifiedDiff(oldContent, content, relPath, relPath);
+    const diffBlock = diff ? `\n\nDiff:\n${diff}` : "";
     return this.result(
       call,
-      `Wrote ${content.length} characters to ${relPath}`,
+      `Wrote ${content.length} characters to ${relPath}${diffBlock}`,
     );
   }
 
@@ -188,10 +198,12 @@ export class ToolExecutor {
       : content.replace(oldString, newString);
     await fs.promises.writeFile(abs, replaced, "utf8");
     const n = replaceAll ? count : 1;
+    const diff = unifiedDiff(content, replaced, relPath, relPath);
+    const diffBlock = diff ? `\n\nDiff:\n${diff}` : "";
     return this.result(
       call,
       `Replaced ${n} occurrence${n === 1 ? "" : "s"} in ${relPath} ` +
-        `(${oldString.length} chars → ${newString.length} chars)`,
+        `(${oldString.length} chars → ${newString.length} chars)${diffBlock}`,
     );
   }
 
