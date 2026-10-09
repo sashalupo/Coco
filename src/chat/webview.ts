@@ -638,7 +638,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	.side-panel-actions #new-chat {
 		width: 100%;
+		background: var(--btn-bg);
+		color: var(--btn-fg);
+		border: none;
+		border-radius: 4px;
+		padding: 6px 10px;
+		font-size: 12px;
+		font-weight: 600;
+		cursor: pointer;
 	}
+	.side-panel-actions #new-chat:hover { filter: brightness(1.1); }
 	.side-panel-footer {
 		display: flex;
 		gap: 6px;
@@ -647,6 +656,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	.side-panel-footer button {
 		flex: 1 1 auto;
+		padding: 4px 6px;
+		font-size: 11px;
+		white-space: nowrap;
 	}
 	#quick-new-chat {
 		background: transparent;

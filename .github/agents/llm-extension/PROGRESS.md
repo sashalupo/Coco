@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 11 (sessions side panel)** — new roadmap phase added to PLAN.md
-- **Next step:** **11.5** — Polish + verify + `PROGRESS.md` sync (see PLAN.md, Phase 11)
+- **Current phase:** **Phase 11 complete** — the full PLAN.md roadmap (Phases 6–11) is done
+- **Next step:** **none** — all planned phases (1–11) are complete; awaiting new direction
 - **Last updated:** 2026-10-09
-- **Last commit:** `715e522` — feat(llm): move New/Export/Delete/Rename into sessions panel (Phase 11.3)
+- **Last commit:** `2fb5e5f` — feat(llm): add quick new-conversation button when panel collapsed (Phase 11.4)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -256,6 +256,10 @@ src/
 | 5     | Code actions / refactors                        | complete |
 | 6     | Targeted file editing (`edit_file`)             | complete |
 | 7     | Safe writes & review (diff, approval, undo)     | complete |
+| 8     | Run & verify (`run_command`, `get_diagnostics`) | complete |
+| 9     | Harness UX (tool cards, step budget, summary)   | complete |
+| 10    | Git integration (status/diff, commit)           | complete |
+| 11    | Sessions side panel (conversation management)   | complete |
 
 ## Done
 
@@ -860,6 +864,20 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   is visible when collapsed, hidden when the panel is open, re-shown when collapsed again, and
   posts `newChat` on click (6 checks, all passing). Smoke test unchanged (173 assertions, all
   passing).
+- **11.5 — Polish + verify + record** (2026-10-09): final polish pass on the sessions panel to
+  match the reference layout. The "New Session" button (`.side-panel-actions #new-chat`) is now a
+  **primary filled button** (`--btn-bg`/`--btn-fg`, no border, `font-weight: 600`, `padding: 6px
+  10px`, brightness on hover) so it reads as the clear primary action at the top of the panel. The
+  footer action buttons (`.side-panel-footer button`) gained consistent `padding: 4px 6px` +
+  `font-size: 11px` + `white-space: nowrap` so Rename / Delete / Export line up evenly. The panel
+  keeps its `220px` fixed width (usable at the webview's narrow width) with the header row
+  ("Sessions" title), the primary New Session button, the grouped conversation list ("Conversations
+  · N" header + one row per conversation, active row highlighted), and the muted footer actions.
+  No functional changes — styling only. Compiles clean; the built inline webview script passes
+  `node --check`; a structural test confirms the primary New Session styling, the footer button
+  padding, the 220px panel width, the group header, and the quick-new-chat button are all present
+  (6 checks, all passing). Smoke test green (173 assertions). **Phase 11 complete — the full
+  PLAN.md roadmap (Phases 6–11) is done.**
 
 ## Steps — Phase 1 (one per session)
 
@@ -1051,7 +1069,7 @@ out of the main toolbar into a collapsible "Sessions" side panel. See PLAN.md, P
       button to the main toolbar visible only while the side panel is collapsed. _Accept: the
       quick button is visible when collapsed and hidden when the panel is open; it starts a new
       conversation; compiles._
-- [ ] **11.5 — Polish + verify + record.** Match the reference UI styling, keep the panel usable
+- [x] **11.5 — Polish + verify + record.** Match the reference UI styling, keep the panel usable
       at the webview's narrow width, run the smoke test, and update `PROGRESS.md`. _Accept: the
       panel matches the reference layout; smoke test green; `PROGRESS.md` in sync; committed._
 
