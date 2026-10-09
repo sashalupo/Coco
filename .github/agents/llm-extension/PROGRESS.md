@@ -15,8 +15,21 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** all phases complete (1–5); runtime bug RESOLVED
 - **Next step:** — (roadmap complete; no further steps defined)
 - **Last updated:** 2026-10-09
-- **Last commit:** `112f089` — feat(llm): export conversation to a Markdown file
+- **Last commit:** `feat(llm): regenerate last response (Retry button)`
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (84 assertions)
+
+> **Regenerate last response:**
+> - `ChatViewProvider`: extracted the request-build + streaming agentic loop out of
+>   `handleSend` into `runStream(settings, toolbar, skipUser)`. `handleSend` pushes the user
+>   message then calls `runStream(..., false)`. New `handleRegenerate()` finds the last user
+>   message, truncates history to it (dropping the prior assistant/tool turns), and calls
+>   `runStream(..., true)`. `stream_start` now carries a `skipUser` flag. New `regenerate`
+>   message handler.
+> - `webview.ts`: new `#retry` button in the input row (between Send and Stop). Visible only
+>   when not streaming AND an assistant message exists (checked in `setStreaming`). Clicking
+>   posts `{type:'regenerate'}`. On `stream_start` with `skipUser`, `removeLastAssistant()`
+>   drops the previous assistant reply from the DOM before streaming the fresh one. `restore`
+>   and `clear` call `setStreaming(false)` to refresh Retry visibility.
 
 > **Export to Markdown:**
 > - `ChatViewProvider`: new `export` message handler → `exportConversation()`. Guards on

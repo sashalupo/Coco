@@ -347,6 +347,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		display: none;
 	}
 	#stop:hover { filter: brightness(1.15); }
+	#retry {
+		background: transparent;
+		color: var(--muted);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 6px 12px;
+		font-size: 12px;
+		cursor: pointer;
+		display: none;
+	}
+	#retry:hover { color: var(--fg); border-color: var(--focus); }
 	#new-chat {
 		background: transparent;
 		color: var(--muted);
@@ -423,6 +434,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<div class="input-row">
 		<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
 		<button id="send">Send</button>
+		<button id="retry" title="Regenerate last response">Retry</button>
 		<button id="stop" title="Stop generating">Stop</button>
 	</div>
 
@@ -439,6 +451,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var inputEl = document.getElementById('input');
 		var sendBtn = document.getElementById('send');
 		var stopBtn = document.getElementById('stop');
+		var retryBtn = document.getElementById('retry');
 		var contextIndicator = document.getElementById('context-indicator');
 		var ctxFile = document.getElementById('ctx-file');
 		var ctxSelection = document.getElementById('ctx-selection');
@@ -509,6 +522,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		sendBtn.addEventListener('click', doSend);
 		stopBtn.addEventListener('click', function () {
 			if (vscode) { vscode.postMessage({ type: 'stop' }); }
+		});
+		retryBtn.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'regenerate' }); }
 		});
 		inputEl.addEventListener('keydown', function (e) {
 			if (e.key === 'Enter' && !e.shiftKey) {
@@ -666,7 +683,24 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		window.setStreaming = function (streaming) {
 			sendBtn.disabled = !!streaming;
 			stopBtn.style.display = streaming ? 'inline-block' : 'none';
+			// Retry is only useful when there is an assistant reply to regenerate.
+			var hasAssistant = false;
+			var kids = messagesEl.children;
+			for (var i = 0; i < kids.length; i++) {
+				if (kids[i].classList.contains('assistant')) { hasAssistant = true; break; }
+			}
+			retryBtn.style.display = (!streaming && hasAssistant) ? 'inline-block' : 'none';
 		};
+		// Remove the last assistant message from the DOM (used on regenerate).
+		function removeLastAssistant() {
+			var kids = messagesEl.children;
+			for (var i = kids.length - 1; i >= 0; i--) {
+				if (kids[i].classList.contains('assistant')) {
+					messagesEl.removeChild(kids[i]);
+					return;
+				}
+			}
+		}
 
 		// --- Toolbar state access (used by S10) ---
 		window.getToolbar = function () {
@@ -780,9 +814,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						// Show the delete button only when a conversation is selected.
 						convDelete.style.display = convSelect.value ? 'inline-block' : 'none';
 					}
+					// Refresh the Retry button visibility for the restored conversation.
+					setStreaming(false);
 					break;
 				case 'stream_start':
-					addUserMessage(lastSentText);
+					if (msg.skipUser) {
+						// Regenerate: the user message is already in the panel;
+						// drop the previous assistant reply and stream a fresh one.
+						removeLastAssistant();
+					} else {
+						addUserMessage(lastSentText);
+					}
 					currentAssistant = addAssistantMessage();
 					setContextTrimmed(!!msg.trimmed);
 					streaming = true;

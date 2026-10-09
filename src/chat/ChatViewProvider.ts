@@ -25,6 +25,7 @@ import { ToolExecutor } from "../tools/ToolExecutor";
 import type {
   ContextFlags,
   ContextLevel,
+  LlmSettings,
   ThinkingLevel,
   ToolbarState,
 } from "../presets";
@@ -136,6 +137,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "export":
         void this.exportConversation();
+        break;
+      case "regenerate":
+        void this.handleRegenerate();
         break;
       case "stop":
         this.abortController?.abort();
@@ -284,11 +288,45 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     if (!text) {
       return;
     }
-    const settings = readSettings();
-    const toolbar: ToolbarState = this.toolbarStore.get();
-
     this.history.push({ role: "user", content: text });
+    await this.runStream(readSettings(), this.toolbarStore.get(), false);
+  }
 
+  /**
+   * Regenerate the last assistant reply: drop the trailing assistant/tool
+   * turns (keeping the last user message) and re-run the stream. No-op when
+   * there is no user message to regenerate from.
+   */
+  private async handleRegenerate(): Promise<void> {
+    // Find the last user message; everything after it (assistant + tool turns)
+    // is the previous reply to discard.
+    let lastUserIdx = -1;
+    for (let i = this.history.length - 1; i >= 0; i--) {
+      if (this.history[i].role === "user") {
+        lastUserIdx = i;
+        break;
+      }
+    }
+    if (lastUserIdx === -1) {
+      return;
+    }
+    // Truncate to the last user message (inclusive).
+    this.history = this.history.slice(0, lastUserIdx + 1);
+    // skipUser=true: the user message is already in the panel; the webview
+    // drops the previous assistant reply and streams a fresh one.
+    await this.runStream(readSettings(), this.toolbarStore.get(), true);
+  }
+
+  /**
+   * Build the request body from the current history and run the (possibly
+   * multi-turn) streaming agentic loop, posting deltas to the webview. Shared
+   * by `handleSend` and `handleRegenerate`. Persists the conversation on exit.
+   */
+  private async runStream(
+    settings: LlmSettings,
+    toolbar: ToolbarState,
+    skipUser: boolean,
+  ): Promise<void> {
     // Build the request body. This is wrapped in its own try/catch (separate
     // from the streaming loop below) so a setup failure — context gathering or
     // request building — surfaces as an error in the panel instead of failing
@@ -322,7 +360,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    this.postMessage({ type: "stream_start", trimmed });
+    this.postMessage({ type: "stream_start", trimmed, skipUser });
 
     // Create an AbortController so the user can cancel mid-stream.
     this.abortController = new AbortController();
