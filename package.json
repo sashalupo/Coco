@@ -155,6 +155,21 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Enable tool calling (Phase 4)."
+                },
+                "llm.context.includeFile": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Inject the active file (path, language, contents) into the request."
+                },
+                "llm.context.includeSelection": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Inject the current selection (range + text) into the request."
+                },
+                "llm.context.includeDiagnostics": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Inject workspace diagnostics for the active file into the request."
                 }
             }
         }

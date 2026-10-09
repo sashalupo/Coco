@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** 2 (in progress)
-- **Next step:** S15
+- **Next step:** S16
 - **Last updated:** 2026-10-09
-- **Last commit:** S14 (gather + inject context)
+- **Last commit:** S15 (context settings + toggle)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes
 
 > **How to use this file (agent):** each session does ONLY the step named in **Next step**,
@@ -203,6 +203,18 @@ src/
   `system` message, so with an open file the request body carries the context block. No active
   editor → empty `ContextInput` → empty block → no system message (unchanged behavior). Compiles
   clean.
+- **S15 — context settings + toggle** (2026-10-09): added three settings
+  `llm.context.includeFile` / `includeSelection` / `includeDiagnostics` (all default `true`) to
+  `package.json` (now 22 settings) and read them in `readSettings()` as a `context: ContextFlags`
+  field on `LlmSettings`. New pure `ContextFlags` type + `DEFAULT_CONTEXT_FLAGS` in `presets.ts`.
+  The runtime override lives in the toolbar: `ToolbarState.contextFlags` (persisted via a new
+  `ToolbarStateStore.setContextFlags()`; `get()` backfills defaults for pre-S15 Memento state). The
+  chat panel gained three checkboxes (`ctx-file` / `ctx-selection` / `ctx-diagnostics`) in the
+  toolbar; `getToolbar`/`setToolbar`/`postToolbar` and the host `toolbar` message now carry
+  `contextFlags`. `gatherContext(flags)` gates each section on its flag, and `handleSend` passes
+  `toolbar.contextFlags`, so toggling a checkbox changes what is injected on the next request.
+  Verified: compiles clean; smoke test still passes; compiled webview + provider contain all the
+  flag wiring (checkboxes, gating, persistence).
 
 ## Steps — Phase 1 (one per session)
 
@@ -261,7 +273,7 @@ and the formatting pure (in `context.ts`) so it stays testable under plain Node.
       language, selection range + text) and workspace diagnostics, build the context block via
       `buildContextBlock`, and inject it into the request (prepended to the system prompt).
       _Accept: compiles; with an open file the request body carries the context block._
-- [ ] **S15 — context settings + toggle.** Add `llm.context.includeFile` / `includeSelection` /
+- [x] **S15 — context settings + toggle.** Add `llm.context.includeFile` / `includeSelection` /
       `includeDiagnostics` (default true) and a small "Context" toggle in the chat panel; respect
       the flags when gathering.
       _Accept: compiles; toggling a flag changes what is injected._

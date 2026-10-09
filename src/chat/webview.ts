@@ -19,6 +19,8 @@ export interface WebviewInit {
 	thinking: string;
 	/** Selected context preset. */
 	context: string;
+	/** Which editor-context sections to inject (file/selection/diagnostics). */
+	contextFlags?: { includeFile: boolean; includeSelection: boolean; includeDiagnostics: boolean };
 }
 
 /** Escape a string for safe inclusion in an HTML attribute/text node. */
@@ -51,6 +53,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		model: init?.model ?? '',
 		thinking: init?.thinking ?? 'off',
 		context: init?.context ?? 'auto',
+		contextFlags: init?.contextFlags ?? { includeFile: true, includeSelection: true, includeDiagnostics: true },
 	};
 
 	return `<!DOCTYPE html>
@@ -124,6 +127,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		width: 140px;
 	}
 	#model-manual:focus { outline: 1px solid var(--focus); }
+	.ctx-toggles {
+		display: flex;
+		gap: 6px;
+		margin-left: auto;
+	}
+	.ctx-toggles label {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		font-size: 11px;
+		color: var(--muted);
+		cursor: pointer;
+	}
+	.ctx-toggles input { margin: 0; }
 
 	/* Messages */
 	.messages {
@@ -246,6 +263,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<label>Context
 			<select id="context-select">${contextOptions}</select>
 		</label>
+		<span class="ctx-toggles" title="Editor context injected into the request">
+			<label><input type="checkbox" id="ctx-file" checked>file</label>
+			<label><input type="checkbox" id="ctx-selection" checked>sel</label>
+			<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
+		</span>
 	</div>
 
 	<div id="messages" class="messages"></div>
@@ -270,6 +292,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var inputEl = document.getElementById('input');
 		var sendBtn = document.getElementById('send');
 		var contextIndicator = document.getElementById('context-indicator');
+		var ctxFile = document.getElementById('ctx-file');
+		var ctxSelection = document.getElementById('ctx-selection');
+		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -281,6 +306,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		manualInput.addEventListener('change', postToolbar);
 		thinkingSelect.addEventListener('change', postToolbar);
 		contextSelect.addEventListener('change', postToolbar);
+		ctxFile.addEventListener('change', postToolbar);
+		ctxSelection.addEventListener('change', postToolbar);
+		ctxDiagnostics.addEventListener('change', postToolbar);
 
 		function postToolbar() {
 			if (!vscode) { return; }
@@ -289,7 +317,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				type: 'toolbar',
 				model: state.model,
 				thinking: state.thinking,
-				context: state.context
+				context: state.context,
+				contextFlags: state.contextFlags
 			});
 		}
 
@@ -364,7 +393,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			return {
 				model: (modelSelect.value === '__manual__') ? manualInput.value : modelSelect.value,
 				thinking: thinkingSelect.value,
-				context: contextSelect.value
+				context: contextSelect.value,
+				contextFlags: {
+					includeFile: ctxFile.checked,
+					includeSelection: ctxSelection.checked,
+					includeDiagnostics: ctxDiagnostics.checked
+				}
 			};
 		};
 		window.setToolbar = function (state) {
@@ -380,6 +414,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			}
 			if (state.thinking != null) { thinkingSelect.value = state.thinking; }
 			if (state.context != null) { contextSelect.value = state.context; }
+			if (state.contextFlags) {
+				ctxFile.checked = state.contextFlags.includeFile !== false;
+				ctxSelection.checked = state.contextFlags.includeSelection !== false;
+				ctxDiagnostics.checked = state.contextFlags.includeDiagnostics !== false;
+			}
 		};
 
 		// Rebuild the model dropdown from a fresh list (keeps the manual entry).
@@ -415,7 +454,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						setToolbar({
 							model: msg.model,
 							thinking: msg.thinking,
-							context: msg.context
+							context: msg.context,
+							contextFlags: msg.contextFlags
 						});
 						break;
 					case 'clear':

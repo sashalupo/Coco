@@ -6,11 +6,13 @@
 
 import * as vscode from 'vscode';
 import type {
+	ContextFlags,
 	ContextLevel,
 	LlmSettings,
 	ThinkingLevel,
 	ToolbarState,
 } from './presets';
+import { DEFAULT_CONTEXT_FLAGS } from './presets';
 
 // Re-export the pure presets/types so existing importers of config.ts keep
 // working. (request.ts imports from ./presets directly to stay vscode-free.)
@@ -54,6 +56,11 @@ export function readSettings(): LlmSettings {
 		responseFormat: c.get<string>('responseFormat', 'text'),
 		chatTemplateKwargs: c.get<Record<string, unknown>>('chatTemplateKwargs', {}),
 		toolsEnabled: c.get<boolean>('tools.enabled', false),
+		context: {
+			includeFile: c.get<boolean>('context.includeFile', true),
+			includeSelection: c.get<boolean>('context.includeSelection', true),
+			includeDiagnostics: c.get<boolean>('context.includeDiagnostics', true),
+		},
 	};
 }
 
@@ -61,6 +68,7 @@ const DEFAULT_TOOLBAR: ToolbarState = {
 	model: null,
 	thinking: 'off',
 	context: 'auto',
+	contextFlags: { ...DEFAULT_CONTEXT_FLAGS },
 };
 
 const TOOLBAR_KEY = 'llm.toolbar';
@@ -80,7 +88,9 @@ export class ToolbarStateStore {
 
 	/** Read the current toolbar state (defaults if never set). */
 	get(): ToolbarState {
-		return this.memento.get<ToolbarState>(TOOLBAR_KEY, DEFAULT_TOOLBAR);
+		const state = this.memento.get<ToolbarState>(TOOLBAR_KEY, DEFAULT_TOOLBAR);
+		// Backfill `contextFlags` for state saved before S15 introduced it.
+		return { ...state, contextFlags: { ...DEFAULT_CONTEXT_FLAGS, ...state.contextFlags } };
 	}
 
 	/** Override the model. Pass `null` to clear the override. */
@@ -96,6 +106,11 @@ export class ToolbarStateStore {
 	/** Override the context budget. */
 	setContext(context: ContextLevel): Thenable<void> {
 		return this.memento.update(TOOLBAR_KEY, { ...this.get(), context });
+	}
+
+	/** Override which editor-context sections to inject. */
+	setContextFlags(flags: ContextFlags): Thenable<void> {
+		return this.memento.update(TOOLBAR_KEY, { ...this.get(), contextFlags: flags });
 	}
 
 	/** Reset all overrides back to defaults. */

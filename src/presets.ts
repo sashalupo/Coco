@@ -47,6 +47,20 @@ export const CONTEXT_LEVELS: readonly ContextLevel[] = [
 	'240k',
 ];
 
+/** Which editor-context sections to inject into the request. */
+export interface ContextFlags {
+	includeFile: boolean;
+	includeSelection: boolean;
+	includeDiagnostics: boolean;
+}
+
+/** Default context flags: include everything. */
+export const DEFAULT_CONTEXT_FLAGS: ContextFlags = {
+	includeFile: true,
+	includeSelection: true,
+	includeDiagnostics: true,
+};
+
 /** All `llm.*` settings, read as a plain typed object. */
 export interface LlmSettings {
 	baseUrl: string;
@@ -68,6 +82,7 @@ export interface LlmSettings {
 	responseFormat: string;
 	chatTemplateKwargs: Record<string, unknown>;
 	toolsEnabled: boolean;
+	context: ContextFlags;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */
@@ -75,4 +90,5 @@ export interface ToolbarState {
 	model: string | null;
 	thinking: ThinkingLevel;
 	context: ContextLevel;
+	contextFlags: ContextFlags;
 }

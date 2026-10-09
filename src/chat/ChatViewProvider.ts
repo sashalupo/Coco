@@ -11,7 +11,7 @@ import { LlmClient } from '../client';
 import { readSettings, ToolbarStateStore } from '../config';
 import { buildRequestBody, type ChatMessage } from '../request';
 import { buildContextBlock, type ContextInput } from '../context';
-import type { ContextLevel, ThinkingLevel, ToolbarState } from '../presets';
+import type { ContextFlags, ContextLevel, ThinkingLevel, ToolbarState } from '../presets';
 
 /** Messages the webview sends to the host. */
 export interface WebviewToHostMessage {
@@ -94,6 +94,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 			model: t.model ?? '',
 			thinking: t.thinking,
 			context: t.context,
+			contextFlags: t.contextFlags,
 		});
 	}
 
@@ -105,6 +106,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 		void this.toolbarStore.setModel(rawModel === '' ? null : rawModel);
 		void this.toolbarStore.setThinking(thinking);
 		void this.toolbarStore.setContext(context);
+		if (msg.contextFlags) {
+			const f = msg.contextFlags as Partial<ContextFlags>;
+			void this.toolbarStore.setContextFlags({
+				includeFile: f.includeFile !== false,
+				includeSelection: f.includeSelection !== false,
+				includeDiagnostics: f.includeDiagnostics !== false,
+			});
+		}
 	}
 
 	/**
@@ -123,8 +132,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
 		// Gather editor context (active file, selection, diagnostics) and fold
 		// it into the system prompt so the model can see what the user is
-		// looking at. Empty context is a no-op.
-		const contextBlock = buildContextBlock(this.gatherContext());
+		// looking at. Each section is gated by the toolbar's context flags.
+		// Empty context is a no-op.
+		const contextBlock = buildContextBlock(this.gatherContext(toolbar.contextFlags));
 		const systemPrompt = this.composeSystemPrompt(settings.systemPrompt, contextBlock);
 
 		const withSystem: ChatMessage[] = systemPrompt
@@ -170,50 +180,58 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 	/**
 	 * Gather the current editor context: the active file (path, language,
 	 * contents), the current selection (range + text), and workspace
-	 * diagnostics. Returns an empty `ContextInput` when there is no active
-	 * text editor, so `buildContextBlock` yields an empty string.
+	 * diagnostics. Each section is gated by the `ContextFlags` so the user can
+	 * opt out of any of them. Returns an empty `ContextInput` when there is no
+	 * active text editor (or every flag is off), so `buildContextBlock` yields
+	 * an empty string.
 	 */
-	private gatherContext(): ContextInput {
+	private gatherContext(flags: ContextFlags): ContextInput {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
 			return {};
 		}
 
 		const input: ContextInput = {};
+		const doc = editor.document;
 
 		// Active file: path (workspace-relative when possible), language, contents.
-		const doc = editor.document;
-		const wsFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
-		const path = wsFolder
-			? vscode.workspace.asRelativePath(doc.uri)
-			: doc.uri.fsPath;
-		input.file = {
-			path,
-			language: doc.languageId,
-			content: doc.getText(),
-		};
-
-		// Selection: only when the user has actually selected something.
-		const sel = editor.selection;
-		if (!sel.isEmpty) {
-			input.selection = {
-				startLine: sel.start.line + 1,
-				startColumn: sel.start.character + 1,
-				endLine: sel.end.line + 1,
-				endColumn: sel.end.character + 1,
-				text: doc.getText(sel),
+		if (flags.includeFile) {
+			const wsFolder = vscode.workspace.getWorkspaceFolder(doc.uri);
+			const path = wsFolder
+				? vscode.workspace.asRelativePath(doc.uri)
+				: doc.uri.fsPath;
+			input.file = {
+				path,
+				language: doc.languageId,
+				content: doc.getText(),
 			};
 		}
 
+		// Selection: only when the user has actually selected something.
+		if (flags.includeSelection) {
+			const sel = editor.selection;
+			if (!sel.isEmpty) {
+				input.selection = {
+					startLine: sel.start.line + 1,
+					startColumn: sel.start.character + 1,
+					endLine: sel.end.line + 1,
+					endColumn: sel.end.character + 1,
+					text: doc.getText(sel),
+				};
+			}
+		}
+
 		// Diagnostics for the active file (errors/warnings/info).
-		const diags = vscode.languages.getDiagnostics(doc.uri);
-		if (diags.length > 0) {
-			input.diagnostics = diags.map((d) => ({
-				line: d.range.start.line + 1,
-				column: d.range.start.character + 1,
-				severity: this.severityLabel(d.severity),
-				message: d.message,
-			}));
+		if (flags.includeDiagnostics) {
+			const diags = vscode.languages.getDiagnostics(doc.uri);
+			if (diags.length > 0) {
+				input.diagnostics = diags.map((d) => ({
+					line: d.range.start.line + 1,
+					column: d.range.start.character + 1,
+					severity: this.severityLabel(d.severity),
+					message: d.message,
+				}));
+			}
 		}
 
 		return input;
