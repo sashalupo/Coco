@@ -648,6 +648,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	.side-panel-footer button {
 		flex: 1 1 auto;
 	}
+	#quick-new-chat {
+		background: transparent;
+		color: var(--muted);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 2px 8px;
+		font-size: 11px;
+		cursor: pointer;
+	}
+	#quick-new-chat:hover { color: var(--fg); border-color: var(--focus); }
 </style>
 </head>
 <body>
@@ -671,6 +681,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<div class="main">
 		<div class="toolbar">
 			<button id="sessions-toggle" title="Toggle sessions panel" aria-expanded="false">☰</button>
+			<button id="quick-new-chat" title="Start a new conversation">+ New</button>
 			<label>Model
 				<select id="model-select">${modelOptions}</select>
 			</label>
@@ -731,6 +742,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var revertBtn = document.getElementById('revert');
 		var sidePanel = document.getElementById('side-panel');
 		var sessionsToggle = document.getElementById('sessions-toggle');
+		var quickNewChat = document.getElementById('quick-new-chat');
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';
@@ -778,12 +790,23 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'revertLast' }); }
 		});
+		// The quick new-conversation button is only useful while the panel is
+		// collapsed (the panel has its own New Session button when open).
+		function syncQuickNewChat() {
+			quickNewChat.style.display = sidePanel.hidden ? 'inline-block' : 'none';
+		}
+		quickNewChat.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'newChat' }); }
+		});
 		sessionsToggle.addEventListener('click', function () {
 			var open = sidePanel.hidden;
 			sidePanel.hidden = !open;
 			sessionsToggle.classList.toggle('active', open);
 			sessionsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+			syncQuickNewChat();
 		});
+		syncQuickNewChat();
 
 		function postToolbar() {
 			if (!vscode) { return; }

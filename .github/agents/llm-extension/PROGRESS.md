@@ -13,9 +13,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 ## Status
 
 - **Current phase:** **Phase 11 (sessions side panel)** — new roadmap phase added to PLAN.md
-- **Next step:** **11.4** — Quick "new conversation" button when collapsed (see PLAN.md, Phase 11)
+- **Next step:** **11.5** — Polish + verify + `PROGRESS.md` sync (see PLAN.md, Phase 11)
 - **Last updated:** 2026-10-09
-- **Last commit:** `1f837dc` — feat(llm): render conversation list in sessions panel (Phase 11.2)
+- **Last commit:** `715e522` — feat(llm): move New/Export/Delete/Rename into sessions panel (Phase 11.3)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -845,6 +845,21 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   the panel and absent from the toolbar, the toolbar still has `#revert` + `#conv-select`, the
   "New Session" label is present, and all four message handlers are intact (11 checks, all
   passing). Smoke test unchanged (173 assertions, all passing).
+- **11.4 — Quick "new conversation" button when collapsed** (2026-10-09): added a compact
+  `#quick-new-chat` button ("+ New") to the main toolbar, immediately after the `#sessions-toggle`
+  button. It is visible **only while the sessions panel is collapsed** and hidden whenever the
+  panel is open (the panel has its own "New Session" button when open). New `syncQuickNewChat()`
+  helper sets `quickNewChat.style.display` based on `sidePanel.hidden`; it is called once at
+  startup (panel starts collapsed → button visible) and on every `#sessions-toggle` click (after
+  the panel's `hidden` state flips). Clicking the button (when not streaming) posts
+  `{type:'newChat'}` — the same message the panel's New Session button posts, so the existing
+  `newChat` handler in `ChatViewProvider` is reused unchanged. New CSS themes the button like the
+  other muted toolbar buttons. Compiles clean; the built inline webview script passes
+  `node --check`; a structural test confirms the button is in the toolbar with the "+ New" label
+  and the handler posts `newChat` (5 checks), and a functional DOM-stub test confirms the button
+  is visible when collapsed, hidden when the panel is open, re-shown when collapsed again, and
+  posts `newChat` on click (6 checks, all passing). Smoke test unchanged (173 assertions, all
+  passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1032,7 +1047,7 @@ out of the main toolbar into a collapsible "Sessions" side panel. See PLAN.md, P
       Session" button at the top of the panel and Export / Delete / Rename actions for the
       selected conversation. Reuse the existing message handlers unchanged. _Accept: all four
       actions work from the panel; the old toolbar buttons are removed; compiles._
-- [ ] **11.4 — Quick "new conversation" button when collapsed.** Add a compact "new conversation"
+- [x] **11.4 — Quick "new conversation" button when collapsed.** Add a compact "new conversation"
       button to the main toolbar visible only while the side panel is collapsed. _Accept: the
       quick button is visible when collapsed and hidden when the panel is open; it starts a new
       conversation; compiles._
