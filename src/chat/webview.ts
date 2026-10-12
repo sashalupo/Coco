@@ -1414,6 +1414,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					messagesEl.innerHTML = '';
 					contextIndicator.hidden = true;
 					stepIndicator.hidden = true;
+					hideChangeFooter();
 					streaming = false;
 					currentAssistant = null;
 					setStreaming(false);
@@ -1453,9 +1454,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					}
 					// Refresh the Retry button visibility for the restored conversation.
 					stepIndicator.hidden = true;
+					hideChangeFooter();
 					setStreaming(false);
 					break;
 				case 'stream_start':
+					// A new run starts — clear any pending change footer from a
+					// previous run (Phase 12).
+					hideChangeFooter();
 					if (msg.skipUser) {
 						// Regenerate: the user message is already in the panel;
 						// drop the previous assistant reply and stream a fresh one.
@@ -1613,6 +1618,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					csEl.appendChild(csCard);
 					messagesEl.appendChild(csEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'change_footer':
+					// Change toolbox footer bar (Phase 12): show the persistent
+					// footer with the files changed this run + their +/- totals.
+					renderChangeFooter(msg.files || [], msg.totalAdded || 0, msg.totalRemoved || 0);
+					showChangeFooter();
 					break;
 				default:
 					break;

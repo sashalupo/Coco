@@ -525,11 +525,18 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         );
         body = rebuilt.body;
       }
-      // Post the per-run change summary (Phase 9.3): files changed with their
-      // net +/- lines. Only shown when at least one file was mutated.
+      // Post the per-run change footer (Phase 12): files changed with their
+      // net +/- lines + totals. Only shown when at least one file was mutated.
       const changes = this.toolExecutor.getChangeSummary();
       if (changes.length > 0) {
-        this.postMessage({ type: "change_summary", changes });
+        const totalAdded = changes.reduce((s, c) => s + c.added, 0);
+        const totalRemoved = changes.reduce((s, c) => s + c.removed, 0);
+        this.postMessage({
+          type: "change_footer",
+          files: changes,
+          totalAdded,
+          totalRemoved,
+        });
       }
       this.postMessage({ type: "stream_end", usage });
     } catch (err) {

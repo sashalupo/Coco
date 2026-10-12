@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.2 done)
-- **Next step:** **12.3** — `change_footer` host→webview message in `ChatViewProvider`
+- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.3 done)
+- **Next step:** **12.4** — `keepChanges` / `undoChanges` webview→host in `ChatViewProvider`
 - **Last updated:** 2026-10-12
-- **Last commit:** `2103187` — feat(llm): add multi-file snapshot + revertAll() to ToolExecutor (Phase 12.1)
+- **Last commit:** `903f188` — feat(llm): add change toolbox footer bar DOM + CSS to webview (Phase 12.2)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -247,19 +247,19 @@ src/
 
 ## Roadmap
 
-| Phase | Capability                                      | Status   |
-| ----- | ----------------------------------------------- | -------- |
-| 1     | Provider + parameters + chat                    | complete |
-| 2     | Context-aware chat (file/selection/diagnostics) | complete |
-| 3     | Inline completion (ghost text)                  | complete |
-| 4     | Manage code via tools (agentic loop)            | complete |
-| 5     | Code actions / refactors                        | complete |
-| 6     | Targeted file editing (`edit_file`)             | complete |
-| 7     | Safe writes & review (diff, approval, undo)     | complete |
-| 8     | Run & verify (`run_command`, `get_diagnostics`) | complete |
-| 9     | Harness UX (tool cards, step budget, summary)   | complete |
-| 10    | Git integration (status/diff, commit)           | complete |
-| 11    | Sessions side panel (conversation management)   | complete |
+| Phase | Capability                                      | Status      |
+| ----- | ----------------------------------------------- | ----------- |
+| 1     | Provider + parameters + chat                    | complete    |
+| 2     | Context-aware chat (file/selection/diagnostics) | complete    |
+| 3     | Inline completion (ghost text)                  | complete    |
+| 4     | Manage code via tools (agentic loop)            | complete    |
+| 5     | Code actions / refactors                        | complete    |
+| 6     | Targeted file editing (`edit_file`)             | complete    |
+| 7     | Safe writes & review (diff, approval, undo)     | complete    |
+| 8     | Run & verify (`run_command`, `get_diagnostics`) | complete    |
+| 9     | Harness UX (tool cards, step budget, summary)   | complete    |
+| 10    | Git integration (status/diff, commit)           | complete    |
+| 11    | Sessions side panel (conversation management)   | complete    |
 | 12    | Change toolbox footer bar                       | in progress |
 
 ## Done
@@ -935,6 +935,25 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   test confirms all footer elements + CSS are present, the bar sits between the step indicator and
   the input row, and the chevron toggles expand/collapse with the correct glyph (16 checks, all
   passing). Smoke test unchanged (173 assertions, all passing).
+- **12.3 — `change_footer` host→webview message** (2026-10-12): replaced the inline
+  `change_summary` post in `ChatViewProvider.runStream()` with a `change_footer` message. After the
+  agentic loop, when at least one file was mutated, the host now posts
+  `{ type: "change_footer", files, totalAdded, totalRemoved }` where `files` is the
+  `getChangeSummary()` array (`[{ path, added, removed }]`) and the totals are the sums of the
+  per-file `added` / `removed` (computed via `reduce`). The webview gained a `case 'change_footer'`
+  handler that calls `renderChangeFooter(msg.files, msg.totalAdded, msg.totalRemoved)` then
+  `showChangeFooter()`, so the persistent footer bar (12.2) appears after a run with file mutations.
+  The bar is hidden at the start of a new run: `hideChangeFooter()` is now called in the
+  `stream_start`, `clear`, and `restore` host-message handlers (so a fresh run / New Chat / reload
+  clears any pending footer). The old `change_summary` webview case + its `.change-summary-card` /
+  `.cs-*` CSS are intentionally left in place until 12.5 removes them (the host no longer posts
+  `change_summary`, so the old case is dead code). Compiles clean; compiled `out/chat/ChatViewProvider.js`
+  + `out/chat/webview.js` verified to contain the `change_footer` post (with `totalAdded` /
+  `totalRemoved`), the `change_footer` webview case, and `hideChangeFooter()` in all three
+  handlers. A functional vm-based DOM-stub test confirms the footer is shown + populated on
+  `change_footer` (2 file rows, correct paths, summary `2 files changed` / `+6` / `-2`), hidden on
+  `stream_start`, re-shown on a second `change_footer`, and hidden on `clear` (12 checks, all
+  passing). Smoke test unchanged (173 assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1146,7 +1165,7 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
       (`N file(s) changed  +X -Y`) + Keep / Undo buttons. Expanded: header row + one `.cf-file-row`
       per file (monospace path + `+added` green / `-removed` red). Toggle on chevron click.
       _Accept: the bar renders with correct counts and file list; compiles._
-- [ ] **12.3 — `change_footer` host→webview message.** Replace the `change_summary` post in
+- [x] **12.3 — `change_footer` host→webview message.** Replace the `change_summary` post in
       `ChatViewProvider` with a `change_footer` message carrying `files`, `totalAdded`,
       `totalRemoved`. Webview shows the bar on `change_footer`, hides it on a new run / Keep.
       _Accept: the bar appears after a run with file mutations; compiles._
