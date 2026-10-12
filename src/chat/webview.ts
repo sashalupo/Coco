@@ -1070,6 +1070,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'revertLast' }); }
 		});
+		// Change toolbox footer bar (Phase 12): Keep dismisses the bar (host
+		// clears the snapshots); Undo reverts all changed files (host calls
+		// revertAll() and posts a revert_result confirmation).
+		cfKeep.addEventListener('click', function () {
+			if (streaming) { return; }
+			hideChangeFooter();
+			if (vscode) { vscode.postMessage({ type: 'keepChanges' }); }
+		});
+		cfUndo.addEventListener('click', function () {
+			if (streaming) { return; }
+			hideChangeFooter();
+			if (vscode) { vscode.postMessage({ type: 'undoChanges' }); }
+		});
 		// The quick new-conversation button is only useful while the panel is
 		// collapsed (the panel has its own New Session button when open).
 		function syncQuickNewChat() {

@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.3 done)
-- **Next step:** **12.4** — `keepChanges` / `undoChanges` webview→host in `ChatViewProvider`
+- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.4 done)
+- **Next step:** **12.5** — Remove old inline change summary (webview case + CSS + host post)
 - **Last updated:** 2026-10-12
-- **Last commit:** `903f188` — feat(llm): add change toolbox footer bar DOM + CSS to webview (Phase 12.2)
+- **Last commit:** `2100cdf` — feat(llm): post change_footer message + show/hide footer bar (Phase 12.3)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -954,6 +954,23 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   `change_footer` (2 file rows, correct paths, summary `2 files changed` / `+6` / `-2`), hidden on
   `stream_start`, re-shown on a second `change_footer`, and hidden on `clear` (12 checks, all
   passing). Smoke test unchanged (173 assertions, all passing).
+- **12.4 — `keepChanges` / `undoChanges` webview→host** (2026-10-12): wired the Keep and Undo
+  buttons in the change toolbox footer bar (12.2) to the host. `webview.ts`: `#cf-keep` click →
+  `hideChangeFooter()` + post `{ type: 'keepChanges' }`; `#cf-undo` click → `hideChangeFooter()` +
+  post `{ type: 'undoChanges' }` (both no-op while streaming, mirroring the other toolbar buttons).
+  `ChatViewProvider.onMessage`: new `case "keepChanges"` calls `toolExecutor.clearChangeSummary()`
+  (accepts the changes — clears the per-run snapshots + change summary so a subsequent run starts
+  fresh); new `case "undoChanges"` calls the new `undoAllChanges()` helper, which awaits
+  `toolExecutor.revertAll()` (restores each snapshotted file or deletes newly-created ones and
+  clears the snapshots + change summary) and posts the outcome as a `revert_result` message
+  (`↩ <summary>`), which the existing `revert_result` webview handler renders as a muted line. The
+  webview hides the bar immediately on both actions (optimistic), and the Undo confirmation arrives
+  via the `revert_result` round-trip. Compiles clean; compiled `out/chat/ChatViewProvider.js` +
+  `out/chat/webview.js` verified to contain the `keepChanges` / `undoChanges` cases, the
+  `undoAllChanges` helper, and the `cfKeep` / `cfUndo` click handlers. A functional vm-based
+  DOM-stub test confirms the footer is shown on `change_footer`, then Keep hides it + posts
+  `keepChanges`, and (after re-showing) Undo hides it + posts `undoChanges` (7 checks, all
+  passing). Smoke test unchanged (173 assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1169,7 +1186,7 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
       `ChatViewProvider` with a `change_footer` message carrying `files`, `totalAdded`,
       `totalRemoved`. Webview shows the bar on `change_footer`, hides it on a new run / Keep.
       _Accept: the bar appears after a run with file mutations; compiles._
-- [ ] **12.4 — `keepChanges` / `undoChanges` webview→host.** Wire the Keep and Undo buttons:
+- [x] **12.4 — `keepChanges` / `undoChanges` webview→host.** Wire the Keep and Undo buttons:
       Keep posts `keepChanges` (host clears snapshots, webview hides the bar); Undo posts
       `undoChanges` (host calls `revertAll()`, posts `revert_result`, clears snapshots, webview
       hides the bar). Add both cases to the `onMessage` switch. _Accept: Keep dismisses the bar;

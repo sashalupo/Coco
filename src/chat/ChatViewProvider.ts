@@ -156,6 +156,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "revertLast":
         void this.revertLastChange();
         break;
+      case "keepChanges":
+        // Keep (Phase 12): accept the changes — clear the per-run snapshots
+        // and change summary so a subsequent run starts fresh.
+        this.toolExecutor.clearChangeSummary();
+        break;
+      case "undoChanges":
+        // Undo (Phase 12): revert all files changed this run and report the
+        // outcome as a revert_result message.
+        void this.undoAllChanges();
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
@@ -175,6 +185,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const message = await this.toolExecutor.revertLast();
+    this.postMessage({ type: "revert_result", message: `↩ ${message}` });
+  }
+
+  /**
+   * Revert all files changed in the current run (Phase 12). Calls
+   * `revertAll()` on the ToolExecutor (which restores each snapshotted file
+   * or deletes newly-created ones and clears the snapshots + change summary)
+   * and posts the outcome as a `revert_result` message.
+   */
+  private async undoAllChanges(): Promise<void> {
+    const message = await this.toolExecutor.revertAll();
     this.postMessage({ type: "revert_result", message: `↩ ${message}` });
   }
 
