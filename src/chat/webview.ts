@@ -399,6 +399,70 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	.change-summary-card .cs-add { color: var(--vscode-testingIcon-passed, #89d185); }
 	.change-summary-card .cs-del { color: var(--vscode-errorForeground, #f48771); }
 
+	/* Change toolbox footer bar (Phase 12) */
+	.change-footer {
+		border-top: 1px solid var(--border);
+		background: var(--vscode-editorWidget-background, #252526);
+		font-size: 11px;
+	}
+	.change-footer .cf-header {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+	}
+	.change-footer .cf-chevron {
+		cursor: pointer;
+		color: var(--muted);
+		user-select: none;
+		font-size: 10px;
+		line-height: 1;
+	}
+	.change-footer .cf-summary {
+		flex: 1 1 auto;
+		color: var(--fg);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.change-footer .cf-summary .cf-add { color: var(--vscode-testingIcon-passed, #89d185); }
+	.change-footer .cf-summary .cf-del { color: var(--vscode-errorForeground, #f48771); }
+	.change-footer .cf-actions {
+		display: flex;
+		gap: 4px;
+		flex: 0 0 auto;
+	}
+	.change-footer .cf-btn {
+		background: transparent;
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 3px;
+		padding: 2px 8px;
+		font-size: 11px;
+		cursor: pointer;
+	}
+	.change-footer .cf-btn:hover { background: var(--think-bg); }
+	.change-footer .cf-file-list {
+		display: none;
+		border-top: 1px solid var(--border);
+		padding: 4px 8px;
+		max-height: 160px;
+		overflow: auto;
+	}
+	.change-footer.expanded .cf-file-list { display: block; }
+	.change-footer .cf-file-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 8px;
+		font-family: var(--vscode-editor-font-family, monospace);
+		font-size: 11px;
+		padding: 1px 0;
+	}
+	.change-footer .cf-file-row .cf-path { color: var(--fg); word-break: break-all; }
+	.change-footer .cf-file-row .cf-stats { white-space: nowrap; }
+	.change-footer .cf-file-row .cf-add { color: var(--vscode-testingIcon-passed, #89d185); }
+	.change-footer .cf-file-row .cf-del { color: var(--vscode-errorForeground, #f48771); }
+
 	/* Collapsible thinking block */
 	.thinking {
 		margin: 0;
@@ -783,6 +847,18 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
 		<div id="step-indicator" class="step-indicator" hidden></div>
 
+		<div id="change-footer" class="change-footer" hidden>
+			<div class="cf-header">
+				<span id="cf-chevron" class="cf-chevron" title="Expand/collapse changed files">▾</span>
+				<span id="cf-summary" class="cf-summary"></span>
+				<span class="cf-actions">
+					<button id="cf-keep" class="cf-btn" title="Keep changes">Keep</button>
+					<button id="cf-undo" class="cf-btn" title="Undo all changes">Undo</button>
+				</span>
+			</div>
+			<div id="cf-file-list" class="cf-file-list"></div>
+		</div>
+
 		<div class="input-row">
 			<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
 			<button id="send">Send</button>
@@ -806,6 +882,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var retryBtn = document.getElementById('retry');
 		var contextIndicator = document.getElementById('context-indicator');
 		var stepIndicator = document.getElementById('step-indicator');
+		var changeFooter = document.getElementById('change-footer');
+		var cfChevron = document.getElementById('cf-chevron');
+		var cfSummary = document.getElementById('cf-summary');
+		var cfFileList = document.getElementById('cf-file-list');
+		var cfKeep = document.getElementById('cf-keep');
+		var cfUndo = document.getElementById('cf-undo');
 		var ctxFile = document.getElementById('ctx-file');
 		var ctxSelection = document.getElementById('ctx-selection');
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
@@ -818,6 +900,60 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var sidePanel = document.getElementById('side-panel');
 		var sessionsToggle = document.getElementById('sessions-toggle');
 		var quickNewChat = document.getElementById('quick-new-chat');
+
+		// Change toolbox footer bar (Phase 12): chevron toggles the file list.
+		cfChevron.addEventListener('click', function () {
+			var expanded = changeFooter.classList.toggle('expanded');
+			cfChevron.textContent = expanded ? '▴' : '▾';
+		});
+
+		// Populate the footer summary + per-file rows from a change list.
+		function renderChangeFooter(files, totalAdded, totalRemoved) {
+			var n = files.length;
+			cfSummary.textContent = '';
+			var label = document.createElement('span');
+			label.textContent = n + ' file' + (n === 1 ? '' : 's') + ' changed';
+			cfSummary.appendChild(label);
+			var addSpan = document.createElement('span');
+			addSpan.className = 'cf-add';
+			addSpan.textContent = '  +' + totalAdded;
+			cfSummary.appendChild(addSpan);
+			var delSpan = document.createElement('span');
+			delSpan.className = 'cf-del';
+			delSpan.textContent = ' -' + totalRemoved;
+			cfSummary.appendChild(delSpan);
+			cfFileList.textContent = '';
+			files.forEach(function (f) {
+				var row = document.createElement('div');
+				row.className = 'cf-file-row';
+				var p = document.createElement('span');
+				p.className = 'cf-path';
+				p.textContent = f.path;
+				row.appendChild(p);
+				var stats = document.createElement('span');
+				stats.className = 'cf-stats';
+				var a = document.createElement('span');
+				a.className = 'cf-add';
+				a.textContent = '+' + f.added;
+				stats.appendChild(a);
+				var d = document.createElement('span');
+				d.className = 'cf-del';
+				d.textContent = ' -' + f.removed;
+				stats.appendChild(d);
+				row.appendChild(stats);
+				cfFileList.appendChild(row);
+			});
+		}
+
+		function showChangeFooter() {
+			changeFooter.hidden = false;
+		}
+
+		function hideChangeFooter() {
+			changeFooter.hidden = true;
+			changeFooter.classList.remove('expanded');
+			cfChevron.textContent = '▾';
+		}
 
 		function syncManual() {
 			manualWrap.style.display = (modelSelect.value === '__manual__') ? 'inline' : 'none';

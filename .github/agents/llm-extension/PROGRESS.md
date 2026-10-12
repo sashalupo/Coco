@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1 done)
-- **Next step:** **12.2** — Change toolbox footer bar (DOM + CSS) in `webview.ts`
+- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.2 done)
+- **Next step:** **12.3** — `change_footer` host→webview message in `ChatViewProvider`
 - **Last updated:** 2026-10-12
-- **Last commit:** `e106e40` — chore(llm): polish sessions panel + record Phase 11 complete (Phase 11.5)
+- **Last commit:** `2103187` — feat(llm): add multi-file snapshot + revertAll() to ToolExecutor (Phase 12.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -916,6 +916,25 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   `out/tools/ToolExecutor.js` verified to contain `runSnapshots`, `recordSnapshot`, `revertAll`, and
   the `recordSnapshot` calls in both `writeFile` and `editFile`. Smoke test unchanged (173
   assertions, all passing).
+- **12.2 — Change toolbox footer bar (DOM + CSS)** (2026-10-12): added a persistent, interactive
+  footer bar to the webview that will replace the inline change-summary message (Phase 9.3). New
+  `#change-footer` element (`.change-footer`, `hidden` by default) placed between the
+  `#step-indicator` and the `.input-row`. It has a `.cf-header` row — a `#cf-chevron` toggle
+  (`▾`/`▴`), a `#cf-summary` span (the `N file(s) changed  +X -Y` text), and a `.cf-actions` span
+  with `#cf-keep` ("Keep") and `#cf-undo` ("Undo") buttons — plus a `#cf-file-list` container
+  (`.cf-file-list`, hidden until the bar is `.expanded`) that holds one `.cf-file-row` per file
+  (monospace `.cf-path` + `.cf-stats` with green `.cf-add` `+added` / red `.cf-del` `-removed`).
+  New CSS themes the bar with VS Code variables (dark widget background, `border-top`, green/red
+  accents via `--vscode-testingIcon-passed` / `--vscode-errorForeground`, monospace file paths,
+  `max-height: 160px` + `overflow: auto` on the file list). JS: the chevron click toggles the
+  `.expanded` class and flips the glyph; `renderChangeFooter(files, totalAdded, totalRemoved)`
+  populates the summary + per-file rows (all dynamic text via `textContent`, no `innerHTML`);
+  `showChangeFooter()` / `hideChangeFooter()` reveal/hide the bar (hide also resets the expanded
+  state). The Keep/Undo buttons and the `change_footer` host message are wired in 12.3/12.4. Compiles
+  clean; the built inline webview script passes `node --check`; a structural + functional DOM-stub
+  test confirms all footer elements + CSS are present, the bar sits between the step indicator and
+  the input row, and the chevron toggles expand/collapse with the correct glyph (16 checks, all
+  passing). Smoke test unchanged (173 assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1122,7 +1141,7 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
       file, clear it in `clearChangeSummary()`, and add `revertAll()` that restores all snapshotted
       files (or deletes newly-created ones). Keep the single-file `lastSnapshot` / `revertLast()`
       for backward compatibility. _Accept: `revertAll()` restores all snapshotted files; compiles._
-- [ ] **12.2 — Change toolbox footer bar (DOM + CSS).** Add a `.change-footer` element between the
+- [x] **12.2 — Change toolbox footer bar (DOM + CSS).** Add a `.change-footer` element between the
       message list and the input row (hidden by default). Collapsed: chevron + summary text
       (`N file(s) changed  +X -Y`) + Keep / Undo buttons. Expanded: header row + one `.cf-file-row`
       per file (monospace path + `+added` green / `-removed` red). Toggle on chevron click.
