@@ -51,9 +51,22 @@ export class ToolExecutor {
   private runChanges: Map<string, { added: number; removed: number }> =
     new Map();
 
-  /** Clear the per-run change summary (call at the start of a run). */
+  /**
+   * Per-run snapshots (Phase 12.1): the pre-mutation content of every file
+   * mutated in the current agentic run, keyed by workspace-relative path.
+   * Only the FIRST mutation of a file is recorded, so `revertAll()` restores
+   * the original pre-run content even if the file is edited multiple times.
+   * Cleared at the start of each run via `clearChangeSummary()`.
+   */
+  private runSnapshots: Map<
+    string,
+    { relPath: string; oldContent: string; existed: boolean }
+  > = new Map();
+
+  /** Clear the per-run change summary + snapshots (call at the start of a run). */
   public clearChangeSummary(): void {
     this.runChanges = new Map();
+    this.runSnapshots = new Map();
   }
 
   /**
@@ -84,6 +97,64 @@ export class ToolExecutor {
       added: prev.added + added,
       removed: prev.removed + removed,
     });
+  }
+
+  /**
+   * Store the pre-mutation snapshot for a file in the per-run snapshot map.
+   * Only the FIRST mutation of a file in a run is recorded, so `revertAll()`
+   * restores the original pre-run content even when the file is edited
+   * multiple times in the same run.
+   */
+  private recordSnapshot(
+    relPath: string,
+    oldContent: string,
+    existed: boolean,
+  ): void {
+    if (!this.runSnapshots.has(relPath)) {
+      this.runSnapshots.set(relPath, { relPath, oldContent, existed });
+    }
+  }
+
+  /**
+   * Revert all mutations made in the current run: restore each snapshotted
+   * file to its pre-run content (or delete it if it was newly created).
+   * Returns a human-readable summary. Clears the snapshot + change maps.
+   */
+  public async revertAll(): Promise<string> {
+    if (this.runSnapshots.size === 0) {
+      return "No changes to revert.";
+    }
+    const reverted: string[] = [];
+    const failed: string[] = [];
+    for (const snap of this.runSnapshots.values()) {
+      const abs = await this.resolveSafe(snap.relPath);
+      if (!abs) {
+        failed.push(snap.relPath);
+        continue;
+      }
+      try {
+        if (!snap.existed) {
+          // The file was newly created this run — delete it.
+          await fs.promises.unlink(abs);
+        } else {
+          await fs.promises.writeFile(abs, snap.oldContent, "utf8");
+        }
+        reverted.push(snap.relPath);
+      } catch {
+        failed.push(snap.relPath);
+      }
+    }
+    this.runSnapshots = new Map();
+    this.runChanges = new Map();
+    if (reverted.length === 0) {
+      return `Revert failed for: ${failed.join(", ")}.`;
+    }
+    const summary =
+      `Reverted ${reverted.length} file${reverted.length === 1 ? "" : "s"}: ` +
+      `${reverted.join(", ")}`;
+    return failed.length > 0
+      ? `${summary} (failed: ${failed.join(", ")}).`
+      : summary;
   }
 
   /**
@@ -249,6 +320,7 @@ export class ToolExecutor {
       // File does not exist yet — old content is empty.
     }
     this.lastSnapshot = { relPath, oldContent, existed };
+    this.recordSnapshot(relPath, oldContent, existed);
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, content, "utf8");
     this.recordChange(relPath, oldContent, content);
@@ -310,6 +382,7 @@ export class ToolExecutor {
       ? content.split(oldString).join(newString)
       : content.replace(oldString, newString);
     this.lastSnapshot = { relPath, oldContent: content, existed: true };
+    this.recordSnapshot(relPath, content, true);
     await fs.promises.writeFile(abs, replaced, "utf8");
     this.recordChange(relPath, content, replaced);
     const n = replaceAll ? count : 1;

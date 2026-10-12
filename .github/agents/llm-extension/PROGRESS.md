@@ -12,9 +12,9 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 11 complete** — the full PLAN.md roadmap (Phases 6–11) is done
-- **Next step:** **none** — all planned phases (1–11) are complete; awaiting new direction
-- **Last updated:** 2026-10-09
+- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1 done)
+- **Next step:** **12.2** — Change toolbox footer bar (DOM + CSS) in `webview.ts`
+- **Last updated:** 2026-10-12
 - **Last commit:** `e106e40` — chore(llm): polish sessions panel + record Phase 11 complete (Phase 11.5)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
@@ -260,6 +260,7 @@ src/
 | 9     | Harness UX (tool cards, step budget, summary)   | complete |
 | 10    | Git integration (status/diff, commit)           | complete |
 | 11    | Sessions side panel (conversation management)   | complete |
+| 12    | Change toolbox footer bar                       | in progress |
 
 ## Done
 
@@ -867,7 +868,7 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
 - **11.5 — Polish + verify + record** (2026-10-09): final polish pass on the sessions panel to
   match the reference layout. The "New Session" button (`.side-panel-actions #new-chat`) is now a
   **primary filled button** (`--btn-bg`/`--btn-fg`, no border, `font-weight: 600`, `padding: 6px
-  10px`, brightness on hover) so it reads as the clear primary action at the top of the panel. The
+10px`, brightness on hover) so it reads as the clear primary action at the top of the panel. The
   footer action buttons (`.side-panel-footer button`) gained consistent `padding: 4px 6px` +
   `font-size: 11px` + `white-space: nowrap` so Rename / Delete / Export line up evenly. The panel
   keeps its `220px` fixed width (usable at the webview's narrow width) with the header row
@@ -897,7 +898,24 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   handlers use `showModal` (8 checks), and a functional DOM-stub test confirms the full round-trip:
   Delete → modal → OK posts `deleteConversation` + closes; Rename → modal (input prefilled with the
   current title) → OK posts `renameConversation` with the new title + closes; Cancel posts nothing
-  + closes (12 checks, all passing). Smoke test unchanged (173 assertions, all passing).
+  - closes (12 checks, all passing). Smoke test unchanged (173 assertions, all passing).
+- **12.1 — Multi-file snapshot + `revertAll()`** (2026-10-12): extended `ToolExecutor` to store a
+  snapshot for **every** file mutated in the current run, not just the last one. New
+  `runSnapshots: Map<string, { relPath, oldContent, existed }>` alongside the existing
+  `runChanges`. New private `recordSnapshot(relPath, oldContent, existed)` stores the pre-mutation
+  content but only on the **first** mutation of a file in a run (guarded by
+  `!this.runSnapshots.has(relPath)`), so `revertAll()` restores the original pre-run content even
+  when a file is edited multiple times. `writeFile` and `editFile` now call `recordSnapshot` right
+  after setting `lastSnapshot`. `clearChangeSummary()` now also resets `runSnapshots`. New public
+  `revertAll(): Promise<string>` iterates `runSnapshots`, restores each file (or deletes it when
+  `existed === false`), collects reverted/failed paths, clears both `runSnapshots` and
+  `runChanges`, and returns a summary like `"Reverted 2 files: example.py, utils.py"` (with a
+  `(failed: …)` suffix when some paths could not be restored, or `"Revert failed for: …"` when none
+  succeeded). The existing single-file `lastSnapshot` / `revertLast()` is kept unchanged for
+  backward compatibility (the toolbar "Revert" button still works). Compiles clean; compiled
+  `out/tools/ToolExecutor.js` verified to contain `runSnapshots`, `recordSnapshot`, `revertAll`, and
+  the `recordSnapshot` calls in both `writeFile` and `editFile`. Smoke test unchanged (173
+  assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1092,6 +1110,38 @@ out of the main toolbar into a collapsible "Sessions" side panel. See PLAN.md, P
 - [x] **11.5 — Polish + verify + record.** Match the reference UI styling, keep the panel usable
       at the webview's narrow width, run the smoke test, and update `PROGRESS.md`. _Accept: the
       panel matches the reference layout; smoke test green; `PROGRESS.md` in sync; committed._
+
+## Steps — Phase 12 (one per session)
+
+Change toolbox footer bar: replace the inline change-summary message (Phase 9.3) with a persistent,
+interactive footer bar above the input box showing every file changed during the current agentic
+run, with Keep / Undo actions. See PLAN.md, Phase 12.
+
+- [x] **12.1 — Multi-file snapshot + `revertAll()`.** Extend `ToolExecutor` to store a snapshot for
+      every file mutated in the current run (`runSnapshots`), record the first-mutation snapshot per
+      file, clear it in `clearChangeSummary()`, and add `revertAll()` that restores all snapshotted
+      files (or deletes newly-created ones). Keep the single-file `lastSnapshot` / `revertLast()`
+      for backward compatibility. _Accept: `revertAll()` restores all snapshotted files; compiles._
+- [ ] **12.2 — Change toolbox footer bar (DOM + CSS).** Add a `.change-footer` element between the
+      message list and the input row (hidden by default). Collapsed: chevron + summary text
+      (`N file(s) changed  +X -Y`) + Keep / Undo buttons. Expanded: header row + one `.cf-file-row`
+      per file (monospace path + `+added` green / `-removed` red). Toggle on chevron click.
+      _Accept: the bar renders with correct counts and file list; compiles._
+- [ ] **12.3 — `change_footer` host→webview message.** Replace the `change_summary` post in
+      `ChatViewProvider` with a `change_footer` message carrying `files`, `totalAdded`,
+      `totalRemoved`. Webview shows the bar on `change_footer`, hides it on a new run / Keep.
+      _Accept: the bar appears after a run with file mutations; compiles._
+- [ ] **12.4 — `keepChanges` / `undoChanges` webview→host.** Wire the Keep and Undo buttons:
+      Keep posts `keepChanges` (host clears snapshots, webview hides the bar); Undo posts
+      `undoChanges` (host calls `revertAll()`, posts `revert_result`, clears snapshots, webview
+      hides the bar). Add both cases to the `onMessage` switch. _Accept: Keep dismisses the bar;
+      Undo reverts all files and shows a confirmation; compiles._
+- [ ] **12.5 — Remove old inline change summary.** Remove the `change_summary` webview case + the
+      `.change-summary-card` / `.cs-*` CSS, and the `change_summary` post from `ChatViewProvider`
+      (replaced by `change_footer`). _Accept: no duplicate change display; compiles._
+- [ ] **12.6 — Polish + verify + record.** Match the reference UI styling, run the smoke test,
+      update `PROGRESS.md`. _Accept: the footer bar matches the reference layout; smoke test green;
+      `PROGRESS.md` in sync; committed._
 
 ## Decisions
 

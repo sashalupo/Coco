@@ -138,6 +138,92 @@ toolbar so the user can start a fresh chat while the panel is collapsed.
   - _Acceptance:_ the panel matches the reference layout; smoke test green; `PROGRESS.md` in
     sync; committed.
 
+## Phase 12 — Change toolbox footer bar
+
+Goal: replace the inline change-summary message (Phase 9.3) with a **persistent,
+interactive footer bar** that sits above the input box and shows every file changed
+during the current agentic run. The bar is expandable (file list with per-file
+`+added -removed` counts) and carries **Keep** (accept / dismiss) and **Undo**
+(revert all changed files) actions. Only model-made changes (`write_file` /
+`edit_file`) are tracked; user-edited files are out of scope.
+
+Reference UI (from screenshots):
+
+- Collapsed: `▾ 1 file changed  +21 -1` with **Keep** and **Undo** buttons on the right.
+- Expanded: the same header row plus one row per file (`example.py  +21 -1`).
+- The bar is a sticky footer between the message list and the input row; it is
+  hidden when there are no pending changes.
+
+- **12.1 — Multi-file snapshot in `ToolExecutor`.**
+  Extend `ToolExecutor` to store a snapshot for **every** file mutated in the
+  current run, not just the last one.
+  - Add `runSnapshots: Map<string, { relPath: string; oldContent: string; existed: boolean }>`
+    alongside the existing `runChanges`.
+  - In `recordChange()` (or wherever mutations are recorded), also store the
+    pre-mutation content in `runSnapshots`.
+  - Clear `runSnapshots` in `clearChangeSummary()`.
+  - Add `revertAll(): Promise<string>` that iterates `runSnapshots` and restores
+    each file (or deletes it if `existed === false`). Returns a summary string
+    like `"Reverted 2 files: example.py, utils.py"`.
+  - Keep the existing single-file `lastSnapshot` / `revertLast()` for backward
+    compatibility (the toolbar "Revert" button still works).
+  - _Acceptance:_ `revertAll()` restores all snapshotted files; compiles.
+
+- **12.2 — Footer bar DOM + CSS in `webview.ts`.**
+  Add a `.change-footer` element between the message list (`#messages`) and the
+  input row (`.input-row`). Hidden by default (`display: none`).
+  - **Collapsed state:** a single row with a chevron (`▾`/`▸`), the summary text
+    (`N file(s) changed  +X -Y`), and **Keep** / **Undo** buttons right-aligned.
+  - **Expanded state:** the same header row plus a `.cf-file-list` container with
+    one `.cf-file-row` per file (monospace path + `+added` in green, `-removed`
+    in red).
+  - Styling: match the reference (dark background, subtle border-top, green/red
+    accent colors, monospace file paths, small font). Reuse existing CSS
+    variables (`--vscode-testingIcon-passed`, `--vscode-errorForeground`, etc.).
+  - Toggle expand/collapse on chevron click.
+  - _Acceptance:_ the bar renders with correct counts and file list; compiles.
+
+- **12.3 — Host→webview: `change_footer` message.**
+  Replace the existing `change_summary` post in `ChatViewProvider` with a new
+  `change_footer` message:
+
+  ```ts
+  this.postMessage({
+    type: "change_footer",
+    files: changes, // [{ path, added, removed }]
+    totalAdded: sum(added),
+    totalRemoved: sum(removed),
+  });
+  ```
+  - The webview shows the footer bar when `change_footer` arrives and hides it
+    when a new run starts (on `send`) or when Keep is clicked.
+  - _Acceptance:_ the bar appears after a run with file mutations; compiles.
+
+- **12.4 — Webview→host: `keepChanges` and `undoChanges`.**
+  Wire the Keep and Undo buttons in the footer bar:
+  - **Keep** → posts `{ type: "keepChanges" }`. Host clears `runSnapshots` (and
+    `runChanges`). Webview hides the bar.
+  - **Undo** → posts `{ type: "undoChanges" }`. Host calls
+    `toolExecutor.revertAll()`, posts a `revert_result` message with the summary,
+    and clears the snapshots. Webview hides the bar.
+  - Add both cases to the `onMessage` switch in `ChatViewProvider`.
+  - _Acceptance:_ Keep dismisses the bar; Undo reverts all files and shows a
+    confirmation; compiles.
+
+- **12.5 — Remove old inline change summary.**
+  - Remove the `change_summary` case from the webview's message handler and the
+    `.change-summary-card` / `.cs-*` CSS rules (replaced by the footer bar).
+  - Remove the `change_summary` post from `ChatViewProvider` (replaced by
+    `change_footer` in 12.3).
+  - _Acceptance:_ no duplicate change display; compiles.
+
+- **12.6 — Polish + verify + record.**
+  Match the reference UI styling (dark theme, green/red +/- colors, monospace
+  file paths, chevron expand/collapse, button styling). Run the smoke test.
+  Update `PROGRESS.md` (mark 12.1–12.6 Done, set Next step).
+  - _Acceptance:_ the footer bar matches the reference layout; smoke test green;
+    `PROGRESS.md` in sync; committed.
+
 ## Constraints (all phases)
 
 - **No runtime npm dependencies** (Node 18+ `fetch`, hand-rolled helpers).
@@ -169,3 +255,9 @@ toolbar so the user can start a fresh chat while the panel is collapsed.
 | 11.3 | Move New/Export/Delete/Rename into the panel |
 | 11.4 | Quick "new conversation" button (collapsed)  |
 | 11.5 | Polish + verify + `PROGRESS.md` sync         |
+| 12.1 | Multi-file snapshot + `revertAll()`          |
+| 12.2 | Change toolbox footer bar (DOM + CSS)        |
+| 12.3 | `change_footer` host→webview message         |
+| 12.4 | `keepChanges` / `undoChanges` webview→host   |
+| 12.5 | Remove old inline change summary             |
+| 12.6 | Polish + verify + `PROGRESS.md` sync         |
