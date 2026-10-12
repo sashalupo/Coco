@@ -210,19 +210,45 @@ Reference UI (from screenshots):
   - _Acceptance:_ Keep dismisses the bar; Undo reverts all files and shows a
     confirmation; compiles.
 
-- **12.5 — Remove old inline change summary.**
+- **12.5 — Clickable file rows + change highlighting in the editor.**
+  Make each file row in the expanded footer bar a clickable link that opens the
+  file in the editor and highlights the lines the agent changed/created.
+  - **Webview:** render each `.cf-file-row` path as a clickable element
+    (`cursor: pointer`, hover underline). Clicking posts
+    `{ type: "openFile", path: <workspace-relative path> }` to the host.
+  - **Host:** add an `openFile` case to `onMessage` in `ChatViewProvider`:
+    - Resolve the path safely (reuse `resolveSafe` / workspace-root guard).
+    - `vscode.workspace.openTextDocument(uri)` then
+      `vscode.window.showTextDocument(doc, { preview: true })`.
+    - **Highlight the changes:** compute the changed line ranges from the
+      snapshot stored in 12.1.
+      - For an **edited** file: run `unifiedDiff(oldContent, newContent)` (or
+        reuse the `diffLines` op list) to find the line numbers (in the _new_
+        file) that were inserted or modified.
+      - For a **created** file (`existed === false`): highlight the whole file.
+    - Apply the highlight with a **decorations provider** (or a one-shot
+      `TextEditor.setDecorations`) using a themed class
+      (e.g. `--vscode-editorWidget-background` / a subtle green tint for
+      additions, red tint for deletions). Decorations are cleared when the
+      document is closed or a new `openFile` is issued.
+    - _No new deps_ — use the built-in `vscode.window.createTextEditorDecorationType`.
+  - _Acceptance:_ clicking a file row opens it and the changed/created lines are
+    visually highlighted; compiles.
+
+- **12.6 — Remove old inline change summary.**
   - Remove the `change_summary` case from the webview's message handler and the
     `.change-summary-card` / `.cs-*` CSS rules (replaced by the footer bar).
   - Remove the `change_summary` post from `ChatViewProvider` (replaced by
     `change_footer` in 12.3).
   - _Acceptance:_ no duplicate change display; compiles.
 
-- **12.6 — Polish + verify + record.**
+- **12.7 — Polish + verify + record.**
   Match the reference UI styling (dark theme, green/red +/- colors, monospace
-  file paths, chevron expand/collapse, button styling). Run the smoke test.
-  Update `PROGRESS.md` (mark 12.1–12.6 Done, set Next step).
-  - _Acceptance:_ the footer bar matches the reference layout; smoke test green;
-    `PROGRESS.md` in sync; committed.
+  file paths, chevron expand/collapse, button styling, clickable-row hover).
+  Run the smoke test. Update `PROGRESS.md` (mark 12.1–12.7 Done, set Next step).
+  - _Acceptance:_ the footer bar matches the reference layout; clicking a file
+    opens it with highlighted changes; smoke test green; `PROGRESS.md` in sync;
+    committed.
 
 ## Constraints (all phases)
 
@@ -233,31 +259,32 @@ Reference UI (from screenshots):
 
 ## Step index (for the `Next step` pointer)
 
-| Step | One line                                     |
-| ---- | -------------------------------------------- |
-| 6.1  | `edit_file` tool schema in `tools.ts`        |
-| 6.2  | `edit_file` execution in `ToolExecutor.ts`   |
-| 6.3  | `read_file` line-range support               |
-| 6.4  | End-to-end edit verify + `PROGRESS.md` sync  |
-| 7.1  | Diff preview for mutations                   |
-| 7.2  | `llm.tools.requireApproval` approval gate    |
-| 7.3  | Undo last edit                               |
-| 8.1  | `run_command` tool                           |
-| 8.2  | `get_diagnostics` tool                       |
-| 8.3  | Show command/diagnostic output in webview    |
-| 9.1  | Tool-call cards in the chat                  |
-| 9.2  | Step/iteration budget + stop                 |
-| 9.3  | Change summary                               |
-| 10.1 | `git_status` + `git_diff` tools              |
-| 10.2 | "Commit changes" command                     |
-| 11.1 | Sessions side-panel shell + toggle           |
-| 11.2 | Conversation list in the panel               |
-| 11.3 | Move New/Export/Delete/Rename into the panel |
-| 11.4 | Quick "new conversation" button (collapsed)  |
-| 11.5 | Polish + verify + `PROGRESS.md` sync         |
-| 12.1 | Multi-file snapshot + `revertAll()`          |
-| 12.2 | Change toolbox footer bar (DOM + CSS)        |
-| 12.3 | `change_footer` host→webview message         |
-| 12.4 | `keepChanges` / `undoChanges` webview→host   |
-| 12.5 | Remove old inline change summary             |
-| 12.6 | Polish + verify + `PROGRESS.md` sync         |
+| Step | One line                                      |
+| ---- | --------------------------------------------- |
+| 6.1  | `edit_file` tool schema in `tools.ts`         |
+| 6.2  | `edit_file` execution in `ToolExecutor.ts`    |
+| 6.3  | `read_file` line-range support                |
+| 6.4  | End-to-end edit verify + `PROGRESS.md` sync   |
+| 7.1  | Diff preview for mutations                    |
+| 7.2  | `llm.tools.requireApproval` approval gate     |
+| 7.3  | Undo last edit                                |
+| 8.1  | `run_command` tool                            |
+| 8.2  | `get_diagnostics` tool                        |
+| 8.3  | Show command/diagnostic output in webview     |
+| 9.1  | Tool-call cards in the chat                   |
+| 9.2  | Step/iteration budget + stop                  |
+| 9.3  | Change summary                                |
+| 10.1 | `git_status` + `git_diff` tools               |
+| 10.2 | "Commit changes" command                      |
+| 11.1 | Sessions side-panel shell + toggle            |
+| 11.2 | Conversation list in the panel                |
+| 11.3 | Move New/Export/Delete/Rename into the panel  |
+| 11.4 | Quick "new conversation" button (collapsed)   |
+| 11.5 | Polish + verify + `PROGRESS.md` sync          |
+| 12.1 | Multi-file snapshot + `revertAll()`           |
+| 12.2 | Change toolbox footer bar (DOM + CSS)         |
+| 12.3 | `change_footer` host→webview message          |
+| 12.4 | `keepChanges` / `undoChanges` webview→host    |
+| 12.5 | Clickable file rows + editor change highlight |
+| 12.6 | Remove old inline change summary              |
+| 12.7 | Polish + verify + `PROGRESS.md` sync          |

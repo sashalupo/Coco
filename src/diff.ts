@@ -72,6 +72,32 @@ export function diffStats(oldText: string, newText: string): DiffStats {
 }
 
 /**
+ * The 1-based line numbers in the NEW text that were inserted or modified.
+ * Walks the same LCS line diff as `diffStats`/`unifiedDiff`, tracking the
+ * running new-file line number; every `ins` op is a changed line in the new
+ * file. Returns `[]` when the texts are identical. Used to highlight the
+ * lines an agent changed/created in the editor (Phase 12.5).
+ */
+export function changedNewLines(oldText: string, newText: string): number[] {
+  if (oldText === newText) {
+    return [];
+  }
+  const ops = diffLines(splitLines(oldText), splitLines(newText));
+  const lines: number[] = [];
+  let newNo = 1;
+  for (const op of ops) {
+    if (op.type === "equal") {
+      newNo++;
+    } else if (op.type === "ins") {
+      lines.push(newNo);
+      newNo++;
+    }
+    // `del` ops belong to the old file — they do not advance the new line no.
+  }
+  return lines;
+}
+
+/**
  * Compute the line operations (equal/del/ins) that turn `a` into `b` using
  * an LCS dynamic program. Falls back to a full-replace diff when the DP
  * table would be too large.

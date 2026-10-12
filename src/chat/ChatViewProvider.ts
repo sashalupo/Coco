@@ -22,6 +22,7 @@ import {
 import { buildContextBlock, type ContextInput } from "../context";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
+import { changedNewLines } from "../diff";
 import type {
   ContextFlags,
   ContextLevel,
@@ -166,6 +167,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // outcome as a revert_result message.
         void this.undoAllChanges();
         break;
+      case "openFile":
+        // Open a file from the change footer and highlight the lines the
+        // agent changed/created (Phase 12.5).
+        void this.openChangedFile(String(msg.path ?? ""));
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
@@ -197,6 +203,131 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private async undoAllChanges(): Promise<void> {
     const message = await this.toolExecutor.revertAll();
     this.postMessage({ type: "revert_result", message: `↩ ${message}` });
+  }
+
+  /**
+   * Decoration types for highlighting the lines an agent changed/created
+   * when a change-footer file row is opened (Phase 12.5). Created lazily on
+   * first use and disposed in `dispose()`.
+   */
+  private changeDecorations: {
+    added: vscode.TextEditorDecorationType;
+    created: vscode.TextEditorDecorationType;
+  } | null = null;
+
+  /** The document currently carrying change decorations (cleared on close). */
+  private decoratedDoc: vscode.TextDocument | null = null;
+
+  /**
+   * Open a file from the change footer and highlight the lines the agent
+   * changed/created (Phase 12.5). The path is guarded by the same
+   * workspace-root check the tools use. For an edited file the changed lines
+   * are computed from the pre-run snapshot via `changedNewLines`; for a
+   * newly-created file the whole file is highlighted.
+   */
+  private async openChangedFile(relPath: string): Promise<void> {
+    if (!relPath) {
+      return;
+    }
+    const abs = await this.toolExecutor.resolveSafe(relPath);
+    if (!abs) {
+      vscode.window.showErrorMessage(
+        `LLM: cannot open "${relPath}" (outside the workspace).`,
+      );
+      return;
+    }
+    const uri = vscode.Uri.file(abs);
+    let doc: vscode.TextDocument;
+    try {
+      doc = await vscode.workspace.openTextDocument(uri);
+    } catch {
+      vscode.window.showErrorMessage(
+        `LLM: could not open "${relPath}" (file may have been deleted).`,
+      );
+      return;
+    }
+    const editor = await vscode.window.showTextDocument(doc, {
+      preview: true,
+      preserveFocus: false,
+    });
+
+    // Compute the changed line numbers (1-based) in the new file.
+    const snap = this.toolExecutor.getSnapshot(relPath);
+    let lines: number[];
+    let created: boolean;
+    if (snap && !snap.existed) {
+      // Newly created this run — highlight the whole file.
+      created = true;
+      lines = Array.from({ length: doc.lineCount }, (_, i) => i + 1);
+    } else if (snap) {
+      // Edited this run — highlight the inserted/modified lines.
+      created = false;
+      lines = changedNewLines(snap.oldContent, doc.getText());
+    } else {
+      // No snapshot (e.g. after Keep/Undo) — open without highlighting.
+      created = false;
+      lines = [];
+    }
+
+    // Clear any previous decorations (a new openFile supersedes them).
+    this.clearChangeDecorations();
+
+    if (lines.length === 0) {
+      return;
+    }
+
+    const types = this.ensureChangeDecorations();
+    const type = created ? types.created : types.added;
+    const decorations: vscode.DecorationOptions[] = lines.map((lineNo) => {
+      const line = Math.min(lineNo, doc.lineCount);
+      const range = new vscode.Range(line - 1, 0, line - 1, 0);
+      return { range, hoverMessage: created ? "Created by LLM" : "Changed by LLM" };
+    });
+    editor.setDecorations(type, decorations);
+    this.decoratedDoc = doc;
+  }
+
+  /** Create the change-decoration types on first use. */
+  private ensureChangeDecorations() {
+    if (this.changeDecorations) {
+      return this.changeDecorations;
+    }
+    this.changeDecorations = {
+      added: vscode.window.createTextEditorDecorationType({
+        backgroundColor: "rgba(137, 209, 133, 0.18)",
+        outline: "1px solid rgba(137, 209, 133, 0.5)",
+      }),
+      created: vscode.window.createTextEditorDecorationType({
+        backgroundColor: "rgba(137, 209, 133, 0.30)",
+        outline: "1px solid rgba(137, 209, 133, 0.7)",
+      }),
+    };
+    return this.changeDecorations;
+  }
+
+  /** Remove the change decorations from the currently decorated document. */
+  private clearChangeDecorations(): void {
+    if (this.decoratedDoc && this.changeDecorations) {
+      const editors = vscode.window
+        .visibleTextEditors
+        .filter((e: vscode.TextEditor) => e.document === this.decoratedDoc);
+      for (const e of editors) {
+        e.setDecorations(this.changeDecorations.added, []);
+        e.setDecorations(this.changeDecorations.created, []);
+      }
+    }
+    this.decoratedDoc = null;
+  }
+
+  /**
+   * Dispose the change-decoration types (called by VS Code when the
+   * extension deactivates, via `context.subscriptions`).
+   */
+  public dispose(): void {
+    this.clearChangeDecorations();
+    this.changeDecorations?.added.dispose();
+    this.changeDecorations?.created.dispose();
+    this.changeDecorations = null;
   }
 
   /**

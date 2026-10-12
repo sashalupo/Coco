@@ -12,11 +12,16 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 complete** — Change toolbox footer bar (12.1–12.6 done)
+- **Current phase:** **Phase 12 complete** — Change toolbox footer bar (12.1–12.7 done, incl. the previously-skipped 12.5)
 - **Next step:** **none** — all planned phases (1–12) are complete; awaiting new direction
 - **Last updated:** 2026-10-12
-- **Last commit:** `f704d07` — refactor(llm): remove old inline change summary (Phase 12.5)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
+- **Last commit:** `2cd1b38` — feat(llm): clickable change-footer file rows + editor change highlight (Phase 12.5)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); `changedNewLines` unit-checked
+
+> **Numbering note (2026-10-12):** the previous session skipped PLAN.md **12.5**
+> (clickable file rows + editor change highlight) and recorded PLAN 12.6/12.7 as
+> "12.5"/"12.6". This session implements the real PLAN 12.5. The historical Done
+> entries keep their original labels; the new entry below is tagged **12.5 (PLAN)**.
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
 > coding-agent harness. The full step-by-step plan lives in
@@ -247,20 +252,20 @@ src/
 
 ## Roadmap
 
-| Phase | Capability                                      | Status      |
-| ----- | ----------------------------------------------- | ----------- |
-| 1     | Provider + parameters + chat                    | complete    |
-| 2     | Context-aware chat (file/selection/diagnostics) | complete    |
-| 3     | Inline completion (ghost text)                  | complete    |
-| 4     | Manage code via tools (agentic loop)            | complete    |
-| 5     | Code actions / refactors                        | complete    |
-| 6     | Targeted file editing (`edit_file`)             | complete    |
-| 7     | Safe writes & review (diff, approval, undo)     | complete    |
-| 8     | Run & verify (`run_command`, `get_diagnostics`) | complete    |
-| 9     | Harness UX (tool cards, step budget, summary)   | complete    |
-| 10    | Git integration (status/diff, commit)           | complete    |
-| 11    | Sessions side panel (conversation management)   | complete    |
-| 12    | Change toolbox footer bar                       | complete   |
+| Phase | Capability                                      | Status   |
+| ----- | ----------------------------------------------- | -------- |
+| 1     | Provider + parameters + chat                    | complete |
+| 2     | Context-aware chat (file/selection/diagnostics) | complete |
+| 3     | Inline completion (ghost text)                  | complete |
+| 4     | Manage code via tools (agentic loop)            | complete |
+| 5     | Code actions / refactors                        | complete |
+| 6     | Targeted file editing (`edit_file`)             | complete |
+| 7     | Safe writes & review (diff, approval, undo)     | complete |
+| 8     | Run & verify (`run_command`, `get_diagnostics`) | complete |
+| 9     | Harness UX (tool cards, step budget, summary)   | complete |
+| 10    | Git integration (status/diff, commit)           | complete |
+| 11    | Sessions side panel (conversation management)   | complete |
+| 12    | Change toolbox footer bar                       | complete |
 
 ## Done
 
@@ -948,12 +953,12 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   clears any pending footer). The old `change_summary` webview case + its `.change-summary-card` /
   `.cs-*` CSS are intentionally left in place until 12.5 removes them (the host no longer posts
   `change_summary`, so the old case is dead code). Compiles clean; compiled `out/chat/ChatViewProvider.js`
-  + `out/chat/webview.js` verified to contain the `change_footer` post (with `totalAdded` /
-  `totalRemoved`), the `change_footer` webview case, and `hideChangeFooter()` in all three
-  handlers. A functional vm-based DOM-stub test confirms the footer is shown + populated on
-  `change_footer` (2 file rows, correct paths, summary `2 files changed` / `+6` / `-2`), hidden on
-  `stream_start`, re-shown on a second `change_footer`, and hidden on `clear` (12 checks, all
-  passing). Smoke test unchanged (173 assertions, all passing).
+  - `out/chat/webview.js` verified to contain the `change_footer` post (with `totalAdded` /
+    `totalRemoved`), the `change_footer` webview case, and `hideChangeFooter()` in all three
+    handlers. A functional vm-based DOM-stub test confirms the footer is shown + populated on
+    `change_footer` (2 file rows, correct paths, summary `2 files changed` / `+6` / `-2`), hidden on
+    `stream_start`, re-shown on a second `change_footer`, and hidden on `clear` (12 checks, all
+    passing). Smoke test unchanged (173 assertions, all passing).
 - **12.4 — `keepChanges` / `undoChanges` webview→host** (2026-10-12): wired the Keep and Undo
   buttons in the change toolbox footer bar (12.2) to the host. `webview.ts`: `#cf-keep` click →
   `hideChangeFooter()` + post `{ type: 'keepChanges' }`; `#cf-undo` click → `hideChangeFooter()` +
@@ -990,7 +995,7 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   a hover state (brightens to `--fg` on a `--think-bg` background, with `padding` + `border-radius`
   so the hover target is comfortable); the `.cf-summary` label is now `font-weight: 500` so the
   "N file(s) changed" text reads as the primary content; the `.cf-btn` buttons gained `padding:
-  2px 10px` + `line-height: 1.4` for a more even touch target; and the **Keep** button (the primary
+2px 10px` + `line-height: 1.4` for a more even touch target; and the **Keep** button (the primary
   accept action) is now visually distinct — a new `.cf-keep` class gives it a green border + text
   (`--vscode-testingIcon-passed`) that fills green on hover (text flips to `--bg`), so it reads as
   the clear "accept" action next to the neutral Undo button. The Keep button's DOM class was updated
@@ -999,6 +1004,35 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   button, the summary `font-weight`, and the polished header padding are all present (6 checks, all
   passing). Smoke test green (173 assertions). **Phase 12 complete — the full PLAN.md roadmap
   (Phases 6–12) is done.**
+- **12.5 (PLAN) — Clickable file rows + editor change highlight** (2026-10-12): implemented the
+  previously-skipped PLAN.md 12.5. Clicking a file row in the expanded change footer now opens
+  the file in the editor and highlights the lines the agent changed/created.
+  - `src/diff.ts`: new pure `changedNewLines(oldText, newText): number[]` — walks the same LCS
+    line diff as `diffStats`/`unifiedDiff`, tracking the running new-file line number; every
+    `ins` op is a changed line in the new file (1-based). Returns `[]` when identical. Unit-checked
+    under plain Node (identical→`[]`, insert-at-2→`[2]`, append→`[3,4]`, replace-line-1→`[1]`,
+    new-file→`[1,2,3]`, delete-only→`[]`).
+  - `src/tools/ToolExecutor.ts`: new public `getSnapshot(relPath)` returning the pre-run snapshot
+    (`{ relPath, oldContent, existed }` or `null`) so the provider can compute the changed lines;
+    `resolveSafe` made **public** (same workspace-root guard) so the provider reuses it for the
+    `openFile` path check.
+  - `src/chat/ChatViewProvider.ts`: new `case "openFile"` → `openChangedFile(relPath)`. It resolves
+    the path via `toolExecutor.resolveSafe` (rejects traversal / no-workspace with an error toast),
+    opens the doc (`openTextDocument` + `showTextDocument` preview), then computes the highlight:
+    created file (`existed === false`) → whole file; edited file → `changedNewLines(snap.oldContent,
+    doc.getText())`; no snapshot (after Keep/Undo) → open without highlighting. Highlights via two
+    lazily-created `TextEditorDecorationType`s (a subtle green tint, stronger for created files)
+    applied with `setDecorations`; decorations are cleared on a new `openFile` and on `dispose()`.
+    New `dispose()` disposes the decoration types; registered in `extension.ts` via
+    `context.subscriptions.push(provider)`.
+  - `src/chat/webview.ts`: each `.cf-file-row` is now clickable (`cursor: pointer`, hover underline
+    + link color on `.cf-path`, a `title` tooltip). Clicking (when not streaming) posts
+    `{ type: 'openFile', path }`. All dynamic text still set via `textContent`.
+  - Verified: `npm run compile` clean; the built inline webview script passes `node --check`;
+    `changedNewLines` unit-checked (6 cases); smoke test green (173 assertions); compiled output
+    verified to contain the `openFile` case, `openChangedFile`, `changedNewLines`, `getSnapshot`,
+    the decoration types, `setDecorations`, `dispose`, and the webview `openFile` post + clickable
+    row. **Phase 12 is now fully complete including the previously-skipped 12.5.**
 
 ## Steps — Phase 1 (one per session)
 
@@ -1219,12 +1253,18 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
       `undoChanges` (host calls `revertAll()`, posts `revert_result`, clears snapshots, webview
       hides the bar). Add both cases to the `onMessage` switch. _Accept: Keep dismisses the bar;
       Undo reverts all files and shows a confirmation; compiles._
-- [x] **12.5 — Remove old inline change summary.** Remove the `change_summary` webview case + the
-      `.change-summary-card` / `.cs-*` CSS, and the `change_summary` post from `ChatViewProvider`
-      (replaced by `change_footer`). _Accept: no duplicate change display; compiles._
-- [x] **12.6 — Polish + verify + record.** Match the reference UI styling, run the smoke test,
-      update `PROGRESS.md`. _Accept: the footer bar matches the reference layout; smoke test green;
-      `PROGRESS.md` in sync; committed._
+- [x] **12.5 — Clickable file rows + editor change highlight** (PLAN 12.5; implemented 2026-10-12,
+      was skipped in the first pass). Make each `.cf-file-row` clickable → post `openFile`; the
+      host opens the file (guarded by `resolveSafe`) and highlights the changed/created lines via
+      `TextEditorDecorationType` (created file → whole file; edited file → `changedNewLines`).
+      _Accept: clicking a file row opens it with the changed lines highlighted; compiles._
+- [x] **12.6 — Remove old inline change summary** (PLAN 12.6; recorded as "12.5" in the first
+      pass). Remove the `change_summary` webview case + the `.change-summary-card` / `.cs-*` CSS,
+      and the `change_summary` post from `ChatViewProvider` (replaced by `change_footer`).
+      _Accept: no duplicate change display; compiles._
+- [x] **12.7 — Polish + verify + record** (PLAN 12.7; recorded as "12.6" in the first pass). Match
+      the reference UI styling, run the smoke test, update `PROGRESS.md`. _Accept: the footer bar
+      matches the reference layout; smoke test green; `PROGRESS.md` in sync; committed._
 
 ## Decisions
 

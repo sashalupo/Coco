@@ -441,6 +441,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		font-size: 11px;
 		padding: 1px 0;
 	}
+	.change-footer .cf-file-row { cursor: pointer; }
+	.change-footer .cf-file-row:hover .cf-path {
+		text-decoration: underline;
+		color: var(--vscode-textLink-foreground, #3794ff);
+	}
 	.change-footer .cf-file-row .cf-path { color: var(--fg); word-break: break-all; }
 	.change-footer .cf-file-row .cf-stats { white-space: nowrap; }
 	.change-footer .cf-file-row .cf-add { color: var(--vscode-testingIcon-passed, #89d185); }
@@ -909,6 +914,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			files.forEach(function (f) {
 				var row = document.createElement('div');
 				row.className = 'cf-file-row';
+				row.title = 'Open ' + f.path + ' and highlight the changes';
 				var p = document.createElement('span');
 				p.className = 'cf-path';
 				p.textContent = f.path;
@@ -924,6 +930,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				d.textContent = ' -' + f.removed;
 				stats.appendChild(d);
 				row.appendChild(stats);
+				// Clicking a row opens the file and highlights the lines the
+				// agent changed/created (Phase 12.5).
+				row.addEventListener('click', function () {
+					if (streaming) { return; }
+					if (vscode) { vscode.postMessage({ type: 'openFile', path: f.path }); }
+				});
 				cfFileList.appendChild(row);
 			});
 		}

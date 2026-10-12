@@ -19,6 +19,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(provider.viewType, provider),
   );
+  // The provider owns the change-highlight decoration types (Phase 12.5);
+  // dispose them on deactivation.
+  context.subscriptions.push(provider);
 
   // Register inline (ghost text) completion, opt-in via `llm.inline.enabled`.
   // The setting is read at activation, so toggling it requires a reload.

@@ -85,6 +85,18 @@ export class ToolExecutor {
     }));
   }
 
+  /**
+   * The pre-run snapshot for a single file (Phase 12.5): its pre-mutation
+   * content and whether it existed before the run. `null` when the file was
+   * not mutated this run (e.g. after Keep/Undo cleared the snapshots). Used
+   * to compute which lines to highlight when a footer file row is opened.
+   */
+  public getSnapshot(
+    relPath: string,
+  ): { relPath: string; oldContent: string; existed: boolean } | null {
+    return this.runSnapshots.get(relPath) ?? null;
+  }
+
   /** Record a file mutation in the per-run change summary. */
   private recordChange(
     relPath: string,
@@ -802,8 +814,10 @@ export class ToolExecutor {
    * Resolve a workspace-relative path to an absolute path, rejecting any
    * path that escapes the workspace (e.g. `../../etc/passwd`). Returns
    * `null` when the path is not allowed or there is no workspace.
+   * Public so the chat provider can reuse the same guard when opening a
+   * file from the change footer (Phase 12.5).
    */
-  private async resolveSafe(relPath: string): Promise<string | null> {
+  public async resolveSafe(relPath: string): Promise<string | null> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
       return null;
