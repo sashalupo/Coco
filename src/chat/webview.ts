@@ -379,7 +379,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		padding: 4px 8px;
+		padding: 5px 10px;
 	}
 	.change-footer .cf-chevron {
 		cursor: pointer;
@@ -387,13 +387,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		user-select: none;
 		font-size: 10px;
 		line-height: 1;
+		padding: 0 2px;
+		border-radius: 2px;
 	}
+	.change-footer .cf-chevron:hover { color: var(--fg); background: var(--think-bg); }
 	.change-footer .cf-summary {
 		flex: 1 1 auto;
 		color: var(--fg);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		font-weight: 500;
 	}
 	.change-footer .cf-summary .cf-add { color: var(--vscode-testingIcon-passed, #89d185); }
 	.change-footer .cf-summary .cf-del { color: var(--vscode-errorForeground, #f48771); }
@@ -407,11 +411,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		color: var(--fg);
 		border: 1px solid var(--border);
 		border-radius: 3px;
-		padding: 2px 8px;
+		padding: 2px 10px;
 		font-size: 11px;
 		cursor: pointer;
+		line-height: 1.4;
 	}
 	.change-footer .cf-btn:hover { background: var(--think-bg); }
+	.change-footer .cf-btn.cf-keep {
+		border-color: var(--vscode-testingIcon-passed, #89d185);
+		color: var(--vscode-testingIcon-passed, #89d185);
+	}
+	.change-footer .cf-btn.cf-keep:hover {
+		background: var(--vscode-testingIcon-passed, #89d185);
+		color: var(--bg);
+	}
 	.change-footer .cf-file-list {
 		display: none;
 		border-top: 1px solid var(--border);
@@ -822,7 +835,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				<span id="cf-chevron" class="cf-chevron" title="Expand/collapse changed files">▾</span>
 				<span id="cf-summary" class="cf-summary"></span>
 				<span class="cf-actions">
-					<button id="cf-keep" class="cf-btn" title="Keep changes">Keep</button>
+					<button id="cf-keep" class="cf-btn cf-keep" title="Keep changes">Keep</button>
 					<button id="cf-undo" class="cf-btn" title="Undo all changes">Undo</button>
 				</span>
 			</div>

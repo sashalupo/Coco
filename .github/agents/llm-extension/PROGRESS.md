@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.5 done)
-- **Next step:** **12.6** — Polish + verify + `PROGRESS.md` sync (final Phase 12 step)
+- **Current phase:** **Phase 12 complete** — Change toolbox footer bar (12.1–12.6 done)
+- **Next step:** **none** — all planned phases (1–12) are complete; awaiting new direction
 - **Last updated:** 2026-10-12
-- **Last commit:** `0717dd9` — feat(llm): wire keepChanges/undoChanges footer actions (Phase 12.4)
+- **Last commit:** `f704d07` — refactor(llm): remove old inline change summary (Phase 12.5)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -260,7 +260,7 @@ src/
 | 9     | Harness UX (tool cards, step budget, summary)   | complete    |
 | 10    | Git integration (status/diff, commit)           | complete    |
 | 11    | Sessions side panel (conversation management)   | complete    |
-| 12    | Change toolbox footer bar                       | in progress |
+| 12    | Change toolbox footer bar                       | complete   |
 
 ## Done
 
@@ -984,6 +984,21 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   has no `change_summary` case, no `.change-summary-card` / `.cs-*` CSS, and still has the
   `change_footer` case + `.change-footer` CSS (6 checks, all passing). Smoke test unchanged (173
   assertions, all passing).
+- **12.6 — Polish + verify + record** (2026-10-12): final polish pass on the change toolbox footer
+  bar to match the reference UI. CSS refinements (styling only, no functional changes): the
+  `.cf-header` gained slightly more breathing room (`padding: 5px 10px`); the `.cf-chevron` gained
+  a hover state (brightens to `--fg` on a `--think-bg` background, with `padding` + `border-radius`
+  so the hover target is comfortable); the `.cf-summary` label is now `font-weight: 500` so the
+  "N file(s) changed" text reads as the primary content; the `.cf-btn` buttons gained `padding:
+  2px 10px` + `line-height: 1.4` for a more even touch target; and the **Keep** button (the primary
+  accept action) is now visually distinct — a new `.cf-keep` class gives it a green border + text
+  (`--vscode-testingIcon-passed`) that fills green on hover (text flips to `--bg`), so it reads as
+  the clear "accept" action next to the neutral Undo button. The Keep button's DOM class was updated
+  to `cf-btn cf-keep`. Compiles clean; the built inline webview script passes `node --check`; a
+  structural test confirms the chevron hover, `.cf-keep` rule, the `cf-keep` class on the Keep
+  button, the summary `font-weight`, and the polished header padding are all present (6 checks, all
+  passing). Smoke test green (173 assertions). **Phase 12 complete — the full PLAN.md roadmap
+  (Phases 6–12) is done.**
 
 ## Steps — Phase 1 (one per session)
 
@@ -1207,7 +1222,7 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
 - [x] **12.5 — Remove old inline change summary.** Remove the `change_summary` webview case + the
       `.change-summary-card` / `.cs-*` CSS, and the `change_summary` post from `ChatViewProvider`
       (replaced by `change_footer`). _Accept: no duplicate change display; compiles._
-- [ ] **12.6 — Polish + verify + record.** Match the reference UI styling, run the smoke test,
+- [x] **12.6 — Polish + verify + record.** Match the reference UI styling, run the smoke test,
       update `PROGRESS.md`. _Accept: the footer bar matches the reference layout; smoke test green;
       `PROGRESS.md` in sync; committed._
 
