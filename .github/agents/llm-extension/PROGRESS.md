@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 12 complete** — Change toolbox footer bar (12.1–12.7 done, incl. the previously-skipped 12.5)
 - **Next step:** **none** — all planned phases (1–12) are complete; awaiting new direction
 - **Last updated:** 2026-10-12
-- **Last commit:** `2cd1b38` — feat(llm): clickable change-footer file rows + editor change highlight (Phase 12.5)
+- **Last commit:** `099a474` — feat(llm): clickable change-footer file rows + editor change highlight (Phase 12.5)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); `changedNewLines` unit-checked
 
 > **Numbering note (2026-10-12):** the previous session skipped PLAN.md **12.5**
