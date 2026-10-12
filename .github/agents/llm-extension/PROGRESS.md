@@ -12,10 +12,10 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.4 done)
-- **Next step:** **12.5** — Remove old inline change summary (webview case + CSS + host post)
+- **Current phase:** **Phase 12 in progress** — Change toolbox footer bar (12.1–12.5 done)
+- **Next step:** **12.6** — Polish + verify + `PROGRESS.md` sync (final Phase 12 step)
 - **Last updated:** 2026-10-12
-- **Last commit:** `2100cdf` — feat(llm): post change_footer message + show/hide footer bar (Phase 12.3)
+- **Last commit:** `0717dd9` — feat(llm): wire keepChanges/undoChanges footer actions (Phase 12.4)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **New roadmap — harness (Phase 6+):** the extension is now being turned into an autonomous
@@ -971,6 +971,19 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
   DOM-stub test confirms the footer is shown on `change_footer`, then Keep hides it + posts
   `keepChanges`, and (after re-showing) Undo hides it + posts `undoChanges` (7 checks, all
   passing). Smoke test unchanged (173 assertions, all passing).
+- **12.5 — Remove old inline change summary** (2026-10-12): removed the now-dead Phase 9.3 inline
+  change-summary display, fully replaced by the `change_footer` footer bar (12.2–12.4). The host
+  `change_summary` post was already replaced by `change_footer` in 12.3, so this step removes the
+  remaining webview artifacts: (a) the `case 'change_summary'` handler in `webview.ts` (which built
+  a `.message.change-summary` / `.change-summary-card` inline message with `.cs-row` / `.cs-path` /
+  `.cs-stats` / `.cs-add` / `.cs-del` spans), and (b) the entire `/* Change summary (Phase 9.3) */`
+  CSS block (`.message.change-summary`, `.change-summary-card`, and all `.cs-*` rules). No other
+  references to `change_summary` / `change-summary` / `.cs-*` remain anywhere in `src/` or
+  `scripts/`. The `change_footer` case + `.change-footer` CSS are untouched. Compiles clean; the
+  built inline webview script passes `node --check`; a structural test confirms the generated HTML
+  has no `change_summary` case, no `.change-summary-card` / `.cs-*` CSS, and still has the
+  `change_footer` case + `.change-footer` CSS (6 checks, all passing). Smoke test unchanged (173
+  assertions, all passing).
 
 ## Steps — Phase 1 (one per session)
 
@@ -1191,7 +1204,7 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
       `undoChanges` (host calls `revertAll()`, posts `revert_result`, clears snapshots, webview
       hides the bar). Add both cases to the `onMessage` switch. _Accept: Keep dismisses the bar;
       Undo reverts all files and shows a confirmation; compiles._
-- [ ] **12.5 — Remove old inline change summary.** Remove the `change_summary` webview case + the
+- [x] **12.5 — Remove old inline change summary.** Remove the `change_summary` webview case + the
       `.change-summary-card` / `.cs-*` CSS, and the `change_summary` post from `ChatViewProvider`
       (replaced by `change_footer`). _Accept: no duplicate change display; compiles._
 - [ ] **12.6 — Polish + verify + record.** Match the reference UI styling, run the smoke test,
