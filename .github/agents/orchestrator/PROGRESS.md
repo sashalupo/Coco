@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-8** — Agent mode tool approvals (4-slice plan recorded; 1.99-6 DONE)
-- **Current slice:** 1.99-8.S1 DONE — 1.99-8.S2 next
+- **Current slice:** 1.99-8.S2 DONE — 1.99-8.S3 next
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-8.S2** (host wiring: ChatViewProvider + config.ts + presets.ts autoApprove), then Tester, memory, commit
+- **Next step:** dispatch Coder for slice **1.99-8.S3** (webview scope dropdown in src/chat/webview.ts), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** 5fdca80 (chore: record 1.99-8 plan); S1 commit pending
-- **Build state:** compiles clean; smoke test passes (458 assertions); 1.99-8.S1 done
+- **Last commit:** b498510 (feat: 1.99-8.S1 pure ApprovalStore); S2 commit pending
+- **Build state:** compiles clean; smoke test passes (461 assertions); 1.99-8.S2 done
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

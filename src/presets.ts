@@ -85,6 +85,8 @@ export interface LlmSettings {
   chatTemplateKwargs: Record<string, unknown>;
   toolsEnabled: boolean;
   requireApproval: boolean;
+  /** Auto-approve all mutating tools without asking (experimental). */
+  autoApprove: boolean;
   context: ContextFlags;
   /** Enable auto-loading of custom instruction files (AGENTS.md, etc.). */
   instructionsEnabled: boolean;
@@ -291,7 +293,7 @@ export type ApprovalScope = "session" | "workspace" | "global";
 /** Structural memento (workspaceState / globalState) — keeps this module vscode-free. */
 export interface MementoLike {
   get(key: string): unknown;
-  update(key: string, value: unknown): Promise<void>;
+  update(key: string, value: unknown): PromiseLike<void>;
 }
 
 /**

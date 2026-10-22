@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-8.S1 (pure ApprovalStore in src/presets.ts) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-8.S2 (next slice of Agent mode tool approvals)
+- **Current item:** 1.99-8.S2 (host wiring: ChatViewProvider + config.ts + presets.ts autoApprove) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-8.S3 (next slice of Agent mode tool approvals)
 - **Last updated:** 2026-10-22
-- **Last commit:** 5fdca80 (chore: record 1.99-8 plan)
-- **Build state:** 458/458 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** b498510 (feat: 1.99-8.S1 pure ApprovalStore)
+- **Build state:** 461/461 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-8.S2 — host wiring: ChatViewProvider + config.ts + presets.ts autoApprove (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **461 PASS lines** (458 prior + 3 new `appr-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 461/461 PASS; (3) 3 genuine `appr-s2:` assertions all passing (smoke-test.js L3521/3529/3537): `ChatViewProvider wires ApprovalStore`; `config reads tools.autoApprove`; `presets LlmSettings has autoApprove` PASS; (4) wiring in `src/chat/ChatViewProvider.ts`: L113 `private readonly approvalStore: ApprovalStore;` + L150 `new ApprovalStore(context.workspaceState, context.globalState)`; gate at L1245–1250 verbatim `settings.requireApproval && isMutating && !settings.autoApprove && !this.approvalStore.isApproved(call.function.name)` (isMutating = `isMutatingTool(...) || isMcpToolName(...)` L1238–1240); both approval branches (run_command L1282–1287, plain L1316–1321) call `this.approvalStore.remember(call.function.name, scope)` only when `scope === "session" || scope === "workspace" || scope === "global"`; reject paths `continue` before any remember; `onMessage` L219/L226 pass `typeof msg.scope === "string" ? msg.scope : undefined` PASS; (5) `src/config.ts:65` `autoApprove: c.get<boolean>("tools.autoApprove", false)`; `src/presets.ts:89` `autoApprove: boolean` PASS; (6) scope: exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/chat/ChatViewProvider.ts`, ` M src/config.ts`, ` M src/presets.ts` (ninfer submodule marker ignored); no `package-lock.json` drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-8.S1 — pure ApprovalStore (src/presets.ts) (2026-10-22) — **PASS**
 

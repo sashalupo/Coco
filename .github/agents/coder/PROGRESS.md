@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-8 (Agent mode tool approvals) — S1 done (2026-10-22)
-- **Next step:** 1.99-8.S2 (host wiring: ChatViewProvider + config.ts + presets.ts autoApprove)
+- **Current item:** 1.99-8 (Agent mode tool approvals) — S2 done (2026-10-22)
+- **Next step:** 1.99-8.S3 (webview scope dropdown in src/chat/webview.ts)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (458 assertions)
+- **Build state:** compiles clean; smoke test passes (461 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-8.S2** (2026-10-22) — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts` autoApprove. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: (a) `autoApprove: boolean` on `LlmSettings` (comment: "Auto-approve all mutating tools without asking (experimental)."), right after `requireApproval`; (b) `MementoLike.update` return type changed `Promise<void>` → `PromiseLike<void>` (compiler-required: vscode `Memento.update` returns `Thenable<void>`, which is structurally `PromiseLike<void>` but not `Promise<void>` — TS2345 otherwise).
+  - `src/config.ts`: `readSettings()` adds `autoApprove: c.get<boolean>("tools.autoApprove", false)` right after `requireApproval`.
+  - `src/chat/ChatViewProvider.ts`: (a) `ApprovalStore` added to the existing `../presets` import; (b) field `private readonly approvalStore: ApprovalStore` initialized in the constructor as `new ApprovalStore(context.workspaceState, context.globalState)`; (c) `pendingApproval` widened to `((approved: boolean, scope?: string) => void)`, `pendingCommandApproval` to `((approved: boolean, command: string, scope?: string) => void)`; (d) `onMessage` `toolApproval`/`commandApproval` pass `typeof msg.scope === "string" ? msg.scope : undefined` through; (e) `waitForApproval` now returns `Promise<{ approved: boolean; scope?: string }>` and `waitForCommandApproval` returns `Promise<{ approved: boolean; command: string; scope?: string }>` (abort paths resolve with no scope); (f) gate at ~line 1222 → `if (settings.requireApproval && isMutating && !settings.autoApprove && !this.approvalStore.isApproved(call.function.name))`; (g) after an approved decision on BOTH paths (run_command/command_approval and plain approval_request), if `scope === "session" | "workspace" | "global"` → `this.approvalStore.remember(call.function.name, scope)`; reject never remembers.
+  - `scripts/smoke-test.js`: new section `// 29) Tool approvals — host wiring (1.99-8.S2)` after section 28, before the final summary print; 3 `appr-s2:` static-source assertions (out/config.js + out/chat/ChatViewProvider.js import vscode and cannot be required — `fs.readFileSync` on the TS sources): (a) `src/chat/ChatViewProvider.ts` contains `ApprovalStore` AND `isApproved` AND `autoApprove`; (b) `src/config.ts` contains `"tools.autoApprove"`; (c) `src/presets.ts` contains `autoApprove: boolean`. Total PASS lines now 461 (458 + 3).
+  - Verified: `npm run compile` exit 0 (after the `MementoLike` fix); `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 461 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 4 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-8.S1** (2026-10-22) — `src/presets.ts`: pure `ApprovalStore`. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts` (pure — no `vscode` import): appended at end: (a) `export type ApprovalScope = "session" | "workspace" | "global"`; (b) `export interface MementoLike { get(key): unknown; update(key, value): Promise<void> }` (structural — matches `workspaceState`/`globalState`); (c) `export class ApprovalStore` — constructor `(workspace: MementoLike, global: MementoLike)`, private `session = new Set<string>()`, keys `llm.approvals.workspace` / `llm.approvals.global`; `isApproved(tool)` — session set ∪ either persisted array (private `readArray` tolerates non-array garbage, filters to strings); `remember(tool, scope)` — session: add to set; workspace/global: read array, dedupe, push, `void memento.update(key, arr)`; `listApproved()` — sorted union of all three sources.
   - `scripts/smoke-test.js`: new section `// 28) Tool approvals — ApprovalStore (1.99-8.S1)` after section 27, before the final summary print; fresh `require` of `out/presets.js` (local `presets`), `fakeMemento()` factory (`{ store, get, update }`); 5 `appr-s1:` assertions: (a) `typeof presets.ApprovalStore === "function"`; (b) `remember("write_file","workspace")` → `isApproved` true; (c) `remember("run_command","session")` → true; (d) `remember("edit_file","global")` → true; (e) `isApproved("notebook_edit") === false` AND `listApproved()` deep-equals `["edit_file","run_command","write_file"]`. Total PASS lines now 458 (453 + 5).

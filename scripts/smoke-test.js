@@ -3507,6 +3507,36 @@ function assert(cond, label) {
     "appr-s1: unremembered tool not approved + listApproved sorted",
   );
 
+  // 29) Tool approvals — host wiring (1.99-8.S2)
+  // out/config.js and out/chat/ChatViewProvider.js import vscode and cannot
+  // be required — use static source assertions on the TS sources instead.
+  const chatViewSrcApprS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcApprS2.includes("ApprovalStore") &&
+      chatViewSrcApprS2.includes("isApproved") &&
+      chatViewSrcApprS2.includes("autoApprove"),
+    "appr-s2: ChatViewProvider wires ApprovalStore",
+  );
+  const configSrcApprS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    configSrcApprS2.includes('"tools.autoApprove"'),
+    "appr-s2: config reads tools.autoApprove",
+  );
+  const presetsSrcApprS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    presetsSrcApprS2.includes("autoApprove: boolean"),
+    "appr-s2: presets LlmSettings has autoApprove",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

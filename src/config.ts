@@ -62,6 +62,7 @@ export function readSettings(): LlmSettings {
     ),
     toolsEnabled: c.get<boolean>("tools.enabled", false),
     requireApproval: c.get<boolean>("tools.requireApproval", false),
+    autoApprove: c.get<boolean>("tools.autoApprove", false),
     context: {
       includeFile: c.get<boolean>("context.includeFile", true),
       includeSelection: c.get<boolean>("context.includeSelection", true),

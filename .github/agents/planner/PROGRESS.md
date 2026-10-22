@@ -1039,7 +1039,7 @@ tools (`write_file`, `edit_file`, `run_command`, `notebook_edit`, `mcp__*`) +
   `remember("run_command","session")` → true; `remember("edit_file","global")` → true;
   `isApproved("notebook_edit")` false; `listApproved()` returns the 3 sorted names.
 
-- **1.99-8.S2 — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts`.**
+- **1.99-8.S2 — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts`.** — Done (2026-10-22, PASS, 461 assertions)
   Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`.
   (a) `presets.ts`: `autoApprove: boolean` on `LlmSettings`. (b) `config.ts`:
   `autoApprove: c.get<boolean>("tools.autoApprove", false)` in `readSettings()`.

@@ -51,6 +51,7 @@ import {
   type InstructionFile,
 } from "../instructions";
 import {
+  ApprovalStore,
   isVisionCapableModel,
   type ContextFlags,
   type ContextLevel,
@@ -96,14 +97,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private abortController: AbortController | null = null;
 
   /** Resolver for the pending tool approval (null when no approval is pending). */
-  private pendingApproval: ((approved: boolean) => void) | null = null;
+  private pendingApproval: ((approved: boolean, scope?: string) => void) | null = null;
 
   /**
    * Resolver for the pending editable command approval (null when none is
-   * pending). Resolves with the user's decision and the (possibly edited)
-   * command string.
+   * pending). Resolves with the user's decision, the (possibly edited)
+   * command string, and the chosen remember-scope.
    */
-  private pendingCommandApproval: ((approved: boolean, command: string) => void) | null = null;
+  private pendingCommandApproval: ((approved: boolean, command: string, scope?: string) => void) | null = null;
+
+  /**
+   * Remembered tool approvals (1.99-8): session approvals live in memory,
+   * workspace/global approvals persist in the extension mementos.
+   */
+  private readonly approvalStore: ApprovalStore;
 
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
@@ -140,6 +147,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
     this.toolExecutor = new ToolExecutor();
     this.mcpManager = mcpManager;
+    this.approvalStore = new ApprovalStore(context.workspaceState, context.globalState);
   }
 
   /**
@@ -206,10 +214,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.abortController?.abort();
         break;
       case "toolApproval":
-        this.pendingApproval?.(msg.approved === true);
+        this.pendingApproval?.(
+          msg.approved === true,
+          typeof msg.scope === "string" ? msg.scope : undefined,
+        );
         break;
       case "commandApproval":
-        this.pendingCommandApproval?.(msg.approved === true, String(msg.command ?? ""));
+        this.pendingCommandApproval?.(
+          msg.approved === true,
+          String(msg.command ?? ""),
+          typeof msg.scope === "string" ? msg.scope : undefined,
+        );
         break;
       case "revertLast":
         void this.revertLastChange();
@@ -678,21 +693,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * Wait for the user to approve or reject a pending tool call. Resolves
    * `false` if the stream is aborted while waiting.
    */
-  private waitForApproval(signal: AbortSignal): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
+  private waitForApproval(
+    signal: AbortSignal,
+  ): Promise<{ approved: boolean; scope?: string }> {
+    return new Promise<{ approved: boolean; scope?: string }>((resolve) => {
       if (signal.aborted) {
-        resolve(false);
+        resolve({ approved: false });
         return;
       }
       const onAbort = () => {
         this.pendingApproval = null;
-        resolve(false);
+        resolve({ approved: false });
       };
       signal.addEventListener("abort", onAbort, { once: true });
-      this.pendingApproval = (approved: boolean) => {
+      this.pendingApproval = (approved: boolean, scope?: string) => {
         signal.removeEventListener("abort", onAbort);
         this.pendingApproval = null;
-        resolve(approved);
+        resolve({ approved, scope });
       };
     });
   }
@@ -705,23 +722,29 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    */
   private waitForCommandApproval(
     signal: AbortSignal,
-  ): Promise<{ approved: boolean; command: string }> {
-    return new Promise<{ approved: boolean; command: string }>((resolve) => {
-      if (signal.aborted) {
-        resolve({ approved: false, command: "" });
-        return;
-      }
-      const onAbort = () => {
-        this.pendingCommandApproval = null;
-        resolve({ approved: false, command: "" });
-      };
-      signal.addEventListener("abort", onAbort, { once: true });
-      this.pendingCommandApproval = (approved: boolean, command: string) => {
-        signal.removeEventListener("abort", onAbort);
-        this.pendingCommandApproval = null;
-        resolve({ approved, command });
-      };
-    });
+  ): Promise<{ approved: boolean; command: string; scope?: string }> {
+    return new Promise<{ approved: boolean; command: string; scope?: string }>(
+      (resolve) => {
+        if (signal.aborted) {
+          resolve({ approved: false, command: "" });
+          return;
+        }
+        const onAbort = () => {
+          this.pendingCommandApproval = null;
+          resolve({ approved: false, command: "" });
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+        this.pendingCommandApproval = (
+          approved: boolean,
+          command: string,
+          scope?: string,
+        ) => {
+          signal.removeEventListener("abort", onAbort);
+          this.pendingCommandApproval = null;
+          resolve({ approved, command, scope });
+        };
+      },
+    );
   }
 
   /** Push the persisted toolbar state to the webview (model `null` → `''`). */
@@ -1219,7 +1242,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           // approval gate (command_approval card); other mutating tools
           // keep the plain approval_request path unchanged.
           let commandModified = false;
-          if (settings.requireApproval && isMutating) {
+          if (
+            settings.requireApproval &&
+            isMutating &&
+            !settings.autoApprove &&
+            !this.approvalStore.isApproved(call.function.name)
+          ) {
             if (call.function.name === "run_command") {
               let parsed: Record<string, unknown> = {};
               try {
@@ -1238,16 +1266,24 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 tool: "run_command",
                 command,
               });
-              const { approved, command: edited } =
+              const { approved, command: edited, scope } =
                 await this.waitForCommandApproval(signal);
               if (!approved) {
                 // User rejected (or aborted): feed a "user rejected" result
-                // back to the model so it can adapt.
+                // back to the model so it can adapt. Reject never remembers.
                 const rejectContent =
                   `User rejected the ${call.function.name} operation. ` +
                   `Do not retry the same change; ask the user what to do instead.`;
                 this.history.push(toolResultMessage(call, rejectContent));
                 continue;
+              }
+              // Approved with a non-"once" scope: remember the approval.
+              if (
+                scope === "session" ||
+                scope === "workspace" ||
+                scope === "global"
+              ) {
+                this.approvalStore.remember(call.function.name, scope);
               }
               // Approved: apply the (possibly edited) command. An empty
               // edited command falls back to the original.
@@ -1265,15 +1301,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 tool: call.function.name,
                 args: call.function.arguments,
               });
-              const approved = await this.waitForApproval(signal);
+              const { approved, scope } = await this.waitForApproval(signal);
               if (!approved) {
                 // User rejected (or aborted): feed a "user rejected" result
-                // back to the model so it can adapt.
+                // back to the model so it can adapt. Reject never remembers.
                 const rejectContent =
                   `User rejected the ${call.function.name} operation. ` +
                   `Do not retry the same change; ask the user what to do instead.`;
                 this.history.push(toolResultMessage(call, rejectContent));
                 continue;
+              }
+              // Approved with a non-"once" scope: remember the approval.
+              if (
+                scope === "session" ||
+                scope === "workspace" ||
+                scope === "global"
+              ) {
+                this.approvalStore.remember(call.function.name, scope);
               }
             }
           }
