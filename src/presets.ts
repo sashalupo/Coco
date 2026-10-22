@@ -5,6 +5,8 @@
 // (request building) import from here so the preset tables have a single
 // source of truth.
 
+import type { McpServerConfig } from "./mcp";
+
 /** Thinking presets shown in the chat toolbar. */
 export type ThinkingLevel = "off" | "low" | "medium" | "high" | "max";
 
@@ -96,6 +98,8 @@ export interface LlmSettings {
   folderContextEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
+  /** MCP server configurations (name → command/args/env). */
+  mcpServers: Record<string, McpServerConfig>;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */

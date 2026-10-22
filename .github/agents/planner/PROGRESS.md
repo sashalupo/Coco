@@ -450,7 +450,7 @@ follow-up).
   `mcpResultToText` (multi-part + `isError`); `parseMcpServers` validation.
   Assertion count: 371 → ~381.
 
-- **1.99-2.S2 — settings plumbing (`src/presets.ts`, `src/config.ts`).**
+- **1.99-2.S2 — settings plumbing (`src/presets.ts`, `src/config.ts`).** — Done (2026-10-22, PASS, 387 assertions)
   Files: modify `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`.
   (a) `presets.ts`: add `mcpServers: Record<string, McpServerConfig>` to `LlmSettings`
   (import the type from `./mcp` — `mcp.ts` is vscode-free, keeps `presets.ts` pure).

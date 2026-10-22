@@ -12,11 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-2.S1 (MCP JSON-RPC client) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-2.S2 (settings plumbing)
+- **Current item:** 1.99-2.S2 (MCP settings plumbing) — **PASS** (2026-10-22)
+- **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** — (no tester commits yet)
-- **Build state:** 385/385 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** c8222cb (coder: 1.99-2.S1)
+- **Build state:** 387/387 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+
+### 1.99-2.S2 — MCP settings plumbing (`mcpServers` in `LlmSettings` + `readSettings()`) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **387 PASS lines** (385 prior + 2 new `mcp-s2:`).
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 387 `PASS:` lines. PASS
+  - (3) New `// 18b) MCP settings plumbing (1.99-2.S2)` section (smoke-test.js lines 2739-2754) has 2 `mcp-s2:` assertions: (a) `out/presets.js` loads and `parseMcpServers` reachable via `out/mcp.js` (runtime require — valid since presets/mcp are vscode-free); (b) static source assertion that `src/config.ts` contains `parseMcpServers` and `"mcp.servers"` (accepted approach since `out/config.js` requires `vscode` at load time). Both non-trivial. PASS
+  - (4) `src/presets.ts` has NO `vscode` import — only import is `import type { McpServerConfig } from "./mcp";` (line 8, type-only). `vscode` appears only in comments. PASS
+  - (5) `src/presets.ts` line 102: `mcpServers: Record<string, McpServerConfig>;` in `LlmSettings`; `src/config.ts` line 76: `mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {}))`. PASS
+  - (6) `git status --short | grep -v ninfer` → exactly ` M scripts/smoke-test.js`, ` M src/config.ts`, ` M src/presets.ts`. `package-lock.json` untouched. PASS
+  - (7) `git log --oneline -1` → `c8222cb` (feat(llm): MCP server support — pure JSON-RPC client + tool mapping (1.99-2.S1)). No coder commit for S2. PASS
+- **Verdict:** **PASS** — all 7 criteria met.
 
 ## Verification commands
 

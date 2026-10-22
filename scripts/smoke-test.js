@@ -2736,6 +2736,23 @@ function assert(cond, label) {
     "mcp-s1: parseMcpServers returns {} for non-object input",
   );
 
+  // 18b) MCP settings plumbing (1.99-2.S2)
+  const presetsS2 = require(path.join(__dirname, "..", "out", "presets.js"));
+  const mcpS2 = require(path.join(__dirname, "..", "out", "mcp.js"));
+  assert(
+    typeof presetsS2 === "object" && typeof mcpS2.parseMcpServers === "function",
+    "mcp-s2: out/presets.js loads and parseMcpServers reachable via out/mcp.js",
+  );
+  const configSrcS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    configSrcS2.includes("parseMcpServers") &&
+      configSrcS2.includes('"mcp.servers"'),
+    "mcp-s2: config.ts source contains parseMcpServers and mcp.servers",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

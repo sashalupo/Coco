@@ -14,14 +14,14 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-2** — MCP server support (6-slice plan recorded in `18d2ea6`)
-- **Current slice:** 1.99-2.S1 — **DONE** (PASS, 385 assertions); next: 1.99-2.S2
+- **Current slice:** 1.99-2.S2 — **DONE** (PASS, 387 assertions); next: 1.99-2.S3
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-2.S2** (settings plumbing: `mcpServers` in
-  `LlmSettings` + `readSettings()`), then Tester, memory, commit
+- **Next step:** dispatch Coder for slice **1.99-2.S3** (`src/mcpManager.ts` (new): lazy
+  lifecycle + registry), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `18d2ea6` — chore(llm): record 1.99-2 plan (6 slices) — MCP server support
-- **Build state:** compiles clean; smoke test passes (385 assertions); 1.99-2.S1 verified
+- **Last commit:** `c8222cb` — feat(llm): MCP server support — pure JSON-RPC client + tool mapping (1.99-2.S1)
+- **Build state:** compiles clean; smoke test passes (387 assertions); 1.99-2.S1–S2 verified
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

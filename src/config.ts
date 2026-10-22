@@ -14,6 +14,7 @@ import type {
 } from "./presets";
 import { DEFAULT_CONTEXT_FLAGS } from "./presets";
 import type { ChatMessage } from "./request";
+import { parseMcpServers } from "./mcp";
 
 // Re-export the pure presets/types so existing importers of config.ts keep
 // working. (request.ts imports from ./presets directly to stay vscode-free.)
@@ -72,6 +73,7 @@ export function readSettings(): LlmSettings {
     problemsEnabled: c.get<boolean>("chat.problems.enabled", true),
     folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true),
     completionsModel: c.get<string>("completions.model", ""),
+    mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),
   };
 }
 
