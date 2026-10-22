@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-14 (multimodal message support) — S1 verified
-- **Next step:** verify 1.98-14 S2
+- **Current item:** 1.98-14 (multimodal message support) — S2 verified
+- **Next step:** verify 1.98-14 S3
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 332/332 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 349/349 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -252,6 +252,15 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 16:** 4 genuine behavior assertions (`vision-s1:`) on compiled `out/request.js`: export check, strict string equality, full parts-array shape check, ≥900 token delta. Not tautologies. PASS
 - **Scope check:** `git status --short | grep -v ninfer` → only `src/request.ts` (+62/−6), `scripts/smoke-test.js` (+34/−0), `.github/agents/coder/PROGRESS.md`. No `package-lock.json`. PASS
 
+### 1.98-14.S2 — `src/presets.ts`: `isVisionCapableModel` (pure) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **349 assertions** (346 prior + 3 new `vision-s2:` in subsection 16b; 0 FAIL).
+- **Behavior checks on compiled `out/presets.js` (`node -e`):** (a) `isVisionCapableModel` exported as `function`. PASS (b) `isVisionCapableModel("Qwen2.5-VL-7B-Instruct")` === `true` (case-insensitive). PASS (c) `isVisionCapableModel("")` === `false`. PASS (d) `isVisionCapableModel("llama3.1:8b")` === `false`. PASS (e) `VISION_MODEL_MARKERS` is an array with exactly 16 entries. PASS
+- **Smoke 16b:** 3 genuine assertions requiring compiled `out/presets.js` and asserting strict `=== true` / `=== false` on concrete inputs — would fail if the function were unexported or broken. Not tautologies. PASS
+- **Purity:** `src/presets.ts` has no `vscode` import. PASS
+- **Scope check:** only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` modified. No `package-lock.json`. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -266,6 +275,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12.S4** — `package.json` contributions + smoke 15d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -298,6 +308,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12.S4** — `package.json` contributions + smoke 15d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

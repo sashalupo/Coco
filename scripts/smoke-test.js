@@ -2322,6 +2322,24 @@ function assert(cond, label) {
     "vision-s1: one image adds >= 900 tokens to the estimate",
   );
 
+  // 16b) vision-capable model heuristic (1.98-14.S2): compiled out/presets.js.
+  const { isVisionCapableModel } = require(
+    path.join(__dirname, "..", "out", "presets.js"),
+  );
+  assert(
+    typeof isVisionCapableModel === "function",
+    "vision-s2: isVisionCapableModel is exported (function)",
+  );
+  assert(
+    isVisionCapableModel("Qwen2.5-VL-7B-Instruct") === true,
+    "vision-s2: Qwen2.5-VL-7B-Instruct is vision-capable (case-insensitive)",
+  );
+  assert(
+    isVisionCapableModel("") === false &&
+      isVisionCapableModel("llama3.1:8b") === false,
+    "vision-s2: empty and non-vision models are not vision-capable",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

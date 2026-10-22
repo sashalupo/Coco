@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-14.S1 done — `src/request.ts`: multimodal message support (pure)
-- **Next step:** 1.98-14.S2
+- **Current step:** 1.98-14.S2 done — `src/presets.ts`: `isVisionCapableModel` (pure)
+- **Next step:** 1.98-14.S3
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (346 assertions, incl. 4 new `vision-s1:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (349 assertions, incl. 3 new `vision-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-14.S2** (2026-10-22) — `src/presets.ts`: `isVisionCapableModel` (pure). Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: appended after `buildCompletionsModelList` — `VISION_MODEL_MARKERS: string[]` (16 case-insensitive family markers: llava, qwen2.5-vl, qwen2-vl, qwen3-vl, minicpm-v, minicpm-v2, glm-4v, glm-4.1v, internvl, pixtral, gemma-3, moondream, bakllava, mistral-small-3.1, llama3.2-vision, llama-4) with doc comment (used for the non-blocking "model may not support images" warning); `isVisionCapableModel(model: string): boolean` — trims + lowercases, empty → `false` (conservative), else case-insensitive substring match against any marker. Pure — module stays vscode-free.
+  - `scripts/smoke-test.js`: new subsection `// 16b) vision-capable model heuristic (1.98-14.S2)` requiring compiled `out/presets.js`; 3 assertions (`vision-s2:` labels): `isVisionCapableModel` exported (typeof function), `isVisionCapableModel("Qwen2.5-VL-7B-Instruct") === true` (case-insensitive), `isVisionCapableModel("") === false && isVisionCapableModel("llama3.1:8b") === false`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **349 assertions** (346 prior + 3 new `vision-s2:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-14.S1** (2026-10-22) — `src/request.ts`: multimodal message support (pure). Files: `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/request.ts`: (1) `ChatMessage` gained optional `images?: string[]` (base64 data URLs) with doc comment; (2) new exported `ContentPart` type (`{ type: "text"; text } | { type: "image_url"; image_url: { url } }`) + pure `toContentParts(content, images?)` — plain string when no images, else parts array (text part first, one `image_url` part per data URL); (3) new exported `RequestMessage = Omit<ChatMessage, "content"> & { content: string | ContentPart[] }`; `ChatCompletionRequest.messages` widened to `RequestMessage[]` (`ChatMessage.content` itself stays `string`); `buildRequestBody` maps trimmed messages so any message with `images` gets `content: toContentParts(m.content, m.images)`, text-only messages pass through unchanged; (4) `estimateMessageTokens` adds `1000 * (message.images?.length ?? 0)` (flat 1000-token heuristic per image).
   - **Type-widening ripple (kept in-scope):** widening `ChatCompletionRequest.messages` to `RequestMessage[]` broke `src/chat/ChatViewProvider.ts:1017` (`estimateMessagesTokens(body.messages)` — out-of-scope file). Fixed WITHOUT touching that file by widening the two estimator signatures to `RequestMessage` (`estimateMessageTokens(message: RequestMessage)`, `estimateMessagesTokens(messages: RequestMessage[])`); `ChatMessage` is structurally assignable to `RequestMessage` (string ⊂ string | ContentPart[]), so all existing `ChatMessage[]` call sites still compile. `estimateMessageTokens` now handles parts-array content by joining the text parts (zero behavior change for string content).

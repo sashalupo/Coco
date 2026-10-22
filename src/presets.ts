@@ -152,3 +152,39 @@ export function buildCompletionsModelList(
   }
   return list;
 }
+
+/**
+ * Case-insensitive markers of known vision-capable local model families.
+ * Used for the non-blocking "model may not support images" warning.
+ */
+export const VISION_MODEL_MARKERS: string[] = [
+  "llava",
+  "qwen2.5-vl",
+  "qwen2-vl",
+  "qwen3-vl",
+  "minicpm-v",
+  "minicpm-v2",
+  "glm-4v",
+  "glm-4.1v",
+  "internvl",
+  "pixtral",
+  "gemma-3",
+  "moondream",
+  "bakllava",
+  "mistral-small-3.1",
+  "llama3.2-vision",
+  "llama-4",
+];
+
+/**
+ * Heuristic: does this model ID look vision-capable?
+ * Empty/whitespace → false (conservative). Otherwise a case-insensitive
+ * substring match against any marker in `VISION_MODEL_MARKERS`.
+ */
+export function isVisionCapableModel(model: string): boolean {
+  const m = model.trim().toLowerCase();
+  if (m === "") {
+    return false;
+  }
+  return VISION_MODEL_MARKERS.some((marker) => m.includes(marker));
+}
