@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-2 (MCP server support) — **DONE** (S1–S6, 2026-10-22); next item: 1.99-3 (Thinking tool)
-- **Next step:** await the 1.99-3 plan from the Planner
+- **Current item:** 1.99-3 (Thinking tool) — S1 done (2026-10-22)
+- **Next step:** 1.99-3.S2 (`src/tools/ToolExecutor.ts`: `case "think"` echo handler)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (371 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 `status-s3:` + 4 `status-s4:`)

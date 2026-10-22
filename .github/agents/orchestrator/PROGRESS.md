@@ -14,14 +14,14 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-3** — Thinking tool (3-slice plan recorded; 1.99-2 DONE, tag `changelog-1.99`)
-- **Current slice:** 1.99-3.S1 — **next** (think tool schema in CODE_TOOLS)
+- **Current slice:** 1.99-3.S1 — **DONE** (PASS, 404 assertions); next: 1.99-3.S2
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-3.S1** (`src/tools.ts`: think
-  tool schema in CODE_TOOLS + bump 11→12 guard), then Tester, memory, commit
+- **Next step:** dispatch Coder for slice **1.99-3.S2** (`src/tools/ToolExecutor.ts`:
+  `case "think"` echo handler), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `1adefb6` — feat(llm): MCP server support — commands + manifest (1.99-2.S6, item complete) [tag changelog-1.99]
-- **Build state:** compiles clean; smoke test passes (401 assertions); 1.99-2 fully verified (S1–S6)
+- **Last commit:** `de1a302` — chore(llm): record 1.99-3 plan (3 slices) — Thinking tool
+- **Build state:** compiles clean; smoke test passes (404 assertions); 1.99-3.S1 verified
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

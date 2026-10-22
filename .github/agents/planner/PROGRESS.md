@@ -613,7 +613,7 @@ the reasoning is echoed back as the tool result, no side effects.
 
 **Slices:**
 
-- **1.99-3.S1 — `src/tools.ts`: `think` tool schema in `CODE_TOOLS`.**
+- **1.99-3.S1 — `src/tools.ts`: `think` tool schema in `CODE_TOOLS`.** — Done (2026-10-22, PASS, 404 assertions)
   Files: `src/tools.ts` (modify), `scripts/smoke-test.js` (modify).
   Append a 12th entry to `CODE_TOOLS` (after `notebook_edit`):
   `name: "think"`; description: "Record a thought or reasoning step between tool

@@ -12,12 +12,26 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-2.S6 (FINAL — MCP commands + manifest) — **PASS** (2026-10-22); item 1.99-2 fully verified (S1–S6)
+- **Current item:** 1.99-3.S1 (think tool schema in CODE_TOOLS) — **PASS** (2026-10-22)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** 9783237 (coder: 1.99-2.S5)
-- **Build state:** 401/401 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** de1a302 (orchestrator: 1.99-3 plan)
+- **Build state:** 404/404 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-3.S1 — `think` tool schema in `CODE_TOOLS` (src/tools.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **404 PASS lines** (401 prior + 3 new `think-s1:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 404 `PASS:` lines. PASS
+  - (3) New `// 19) Thinking tool (1.99-3.S1)` section has 3 genuine `think-s1:` assertions (runtime vs `out/tools.js`): (a) `CODE_TOOLS.length === 12` + `think` `required` deep-equal `["thought"]` + `properties.thought.type === "string"`; (b) `isMutatingTool("think") === false` && `isMutatingTool("write_file") === true`; (c) `think` shape `type === "function"`, `name === "think"`. PASS
+  - (4) Source: `git diff src/tools.ts` = exactly 1 hunk +21/-0 — `think` entry appended after `notebook_edit` with exact description/parameters; `isMutatingTool` unchanged. PASS
+  - (5) Regression guards: `git diff scripts/smoke-test.js` = 3 hunks — `CODE_TOOLS.length === 11` → `12` + label; tool-names-in-order list ends `...,notebook_edit,think`; `toolBody.tools.length === 11` → `12`. No other assertions weakened. PASS
+  - (6) Scope: `git status --short | grep -v ninfer` → exactly ` M scripts/smoke-test.js`, ` M src/tools.ts`. `package-lock.json` untouched. PASS
+  - (7) `git log --oneline -1` → `de1a302` (1.99-3 plan). No coder commit for S1. PASS
+- **Verdict:** **PASS** — all 7 criteria met.
 
 ### 1.99-2.S6 (FINAL) — MCP commands + manifest (extension.ts, package.json, mcpManager.ts accessor) (2026-10-22) — **PASS**
 

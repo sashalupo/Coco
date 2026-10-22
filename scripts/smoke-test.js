@@ -471,10 +471,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 11, "tools: CODE_TOOLS has 11 tools");
+  assert(CODE_TOOLS.length === 12, "tools: CODE_TOOLS has 12 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,think",
     "tools: tool names in order",
   );
   assert(
@@ -595,7 +595,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 11,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 12,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -2898,6 +2898,29 @@ function assert(cond, label) {
       (pkgS4.contributes.commands || []).some((c) => c.command === cmd),
     ),
     "mcp-s6: all 7 pre-existing commands still present (regression guard)",
+  );
+
+  // 19) Thinking tool (1.99-3.S1)
+  const toolsS1 = require(path.join(__dirname, "..", "out", "tools.js"));
+  const thinkTool = toolsS1.CODE_TOOLS.find(
+    (t) => t.function.name === "think",
+  );
+  assert(
+    toolsS1.CODE_TOOLS.length === 12 &&
+      thinkTool !== undefined &&
+      JSON.stringify(thinkTool.function.parameters.required) ===
+        JSON.stringify(["thought"]) &&
+      thinkTool.function.parameters.properties.thought.type === "string",
+    "think-s1: CODE_TOOLS has 12 tools and think requires [thought] (string)",
+  );
+  assert(
+    toolsS1.isMutatingTool("think") === false &&
+      toolsS1.isMutatingTool("write_file") === true,
+    "think-s1: think is not mutating (write_file still is)",
+  );
+  assert(
+    thinkTool.type === "function" && thinkTool.function.name === "think",
+    "think-s1: think tool has type=function and name=think",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

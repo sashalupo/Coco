@@ -355,6 +355,27 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "think",
+      description:
+        "Record a thought or reasoning step between tool calls. Use this to " +
+        "plan, reflect, or work through complex multi-step problems before " +
+        "acting. Takes a single 'thought' string; the thought is recorded and " +
+        "echoed back. It has no side effects and changes nothing.",
+      parameters: {
+        type: "object",
+        properties: {
+          thought: {
+            type: "string",
+            description: "The reasoning or plan to record.",
+          },
+        },
+        required: ["thought"],
+      },
+    },
+  },
 ];
 
 /**
