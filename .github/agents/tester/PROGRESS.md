@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-15.S1 (engine status helpers, pure) — **verified PASS** (2026-10-22)
-- **Next step:** verify 1.98-15.S2
+- **Current item:** 1.98-15.S2 (status-bar gate + pure helpers + focus refresh) — **verified PASS** (2026-10-22)
+- **Next step:** verify 1.98-15.S3
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 361/361 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 364/364 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -295,6 +295,14 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 17:** 4 genuine behavior assertions on compiled `out/presets.js` (require + strict value checks: export types, JSON.stringify equality on statusLabel, concrete tooltip content, 4-row shape + empty-model fallbacks). Not tautologies. PASS
 - **Scope check:** `git status --short | grep -v ninfer` → only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. `package-lock.json` NOT modified. PASS
 
+### 1.98-15.S2 — `src/extension.ts`: status-bar gate + pure helpers + focus refresh (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **364 assertions** (361 prior + 3 new `status-s2:` in section 17b; 0 FAIL).
+- **Static checks in `src/extension.ts`:** (a) `statusBarEnabled` read at activation via `getConfiguration("llm").get<boolean>("statusBar.enabled", true)` — default `true`, same pattern as `inlineEnabled`. PASS (b) Entire status-bar block (`createStatusBarItem(Left, 100)`, `status.command = "llm.testConnection"`, `updateHealth`, 5 s `setInterval` poll with `clearInterval` dispose, initial `void updateHealth()`) wrapped in `if (statusBarEnabled)`; `context.subscriptions.push(status)` only when created. PASS (c) `updateHealth` uses `statusLabel(result)` for `status.text` and `statusTooltip(result, readSettings().baseUrl)` for `status.tooltip`; `statusBarItem.errorBackground` when `!result.ok` and `status.show()` preserved. PASS (d) `vscode.window.onDidChangeWindowState` refresh on `e.focused` registered inside the gate and pushed to subscriptions. PASS (e) Commands `llm.openChat`, `llm.testConnection`, `llm.refreshModels`, `llm.changeCompletionsModel` (plus `llm.clearChat`, `llm.commitChanges`) still registered; `statusLabel`/`statusTooltip` imported from `./presets`. PASS
+- **Smoke 17b:** 3 genuine static source checks on `src/extension.ts` (`statusBar.enabled`, `statusLabel`, `onDidChangeWindowState`) — each would fail if the wiring were removed. Not tautologies. PASS
+- **Scope check:** `git status --short | grep -v ninfer` → only `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. `package-lock.json` NOT modified. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -352,6 +360,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14.S5** — `package.json`: `llm.chat.vision.enabled` + planner memory (FINAL) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14** — Copilot Vision (image attachments) — **fully verified** (all slices S1–S5 PASS, 2026-10-22)
 - [x] **1.98-15.S1** — pure status helpers in `src/presets.ts` (statusLabel/statusTooltip/statusOverviewItems/STATUS_COMMANDS) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-15.S2** — `src/extension.ts`: status-bar gate + pure helpers + focus refresh — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

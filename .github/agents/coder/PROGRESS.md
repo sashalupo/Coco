@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.98-15 (Engine status indicator) — S1 done
-- **Next step:** 1.98-15.S2 (extension.ts: gate + pure helpers + focus refresh)
+- **Current item:** 1.98-15 (Engine status indicator) — S2 done
+- **Next step:** 1.98-15.S3 (extension.ts: llm.showStatusOverview QuickPick + repoint click)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (361 assertions, incl. 4 new `status-s1:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (364 assertions, incl. 4 `status-s1:` + 3 new `status-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-15.S2** (2026-10-22) — `src/extension.ts`: status-bar gate + pure helpers + focus refresh. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: (a) extended the `./presets` import to value-import `statusLabel` + `statusTooltip` (alongside `buildCompletionsModelList`); (b) read `statusBar.enabled` (boolean, default `true`) at activation via the exact `inlineEnabled` pattern (`vscode.workspace.getConfiguration("llm").get<boolean>("statusBar.enabled", true)`); (c) wrapped the whole status-bar block (createStatusBarItem + `status.command`/tooltip + subscriptions push + `updateHealth` + 5 s poll timer + initial `void updateHealth()`) in `if (statusBarEnabled) { ... }` — the item lands in subscriptions only when created; (d) `updateHealth` now uses the pure helpers: `const { icon, text } = statusLabel(result); status.text = \`${icon} ${text}\`; status.tooltip = statusTooltip(result, readSettings().baseUrl);` — keeps `status.backgroundColor = undefined` when ok / `new vscode.ThemeColor("statusBarItem.errorBackground")` when not ok, and `status.show()`; (e) added `vscode.window.onDidChangeWindowState((e) => { if (e.focused) { void updateHealth(); } })` to subscriptions inside the gate.
+  - `scripts/smoke-test.js`: new subsection `// 17b) status bar gate + focus refresh (1.98-15.S2)` with 3 static assertions (`status-s2:` labels) on a fresh `extensionSrcS2` read of `src/extension.ts`: contains `statusBar.enabled`, `statusLabel`, `onDidChangeWindowState`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **364 assertions** (361 prior + 3 new `status-s2:`); `git status` shows only the 3 in-scope files modified (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-15.S1** (2026-10-22) — `src/presets.ts`: pure status helpers. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts` (appended after `isVisionCapableModel`, module stays vscode-free/dependency-free): (a) `EngineStatus { ok; status; statusText; error? }` — structural subset of `HealthResult` (no import from `client.ts`); (b) `statusLabel(s)` → `{ icon: "$(check)", text: "LLM" }` when ok else `{ icon: "$(error)", text: "LLM" }`; (c) `statusTooltip(s, baseUrl)` → ok: `` `LLM engine healthy (${s.status} ${s.statusText}) — ${baseUrl}` ``, offline: `` `LLM engine unreachable — ${baseUrl}${s.error ? `: ${s.error}` : ` (${s.status})`}` ``; (d) `StatusOverviewItem { label; description?; detail?; command? }` + `statusOverviewItems(s, baseUrl, chatModel, completionsModel)` → exactly 4 items: `Engine: running` (description = statusText) / `Engine: stopped` (description = error || statusText), `Endpoint` (baseUrl), `Chat model` (chatModel || "default (engine)"), `Completions model` (completionsModel || "chat model (default)"); (e) `STATUS_COMMANDS` readonly array of exactly 4: Open Chat → `llm.openChat`, Test Connection → `llm.testConnection`, Refresh Models → `llm.refreshModels`, Change Completions Model → `llm.changeCompletionsModel` (with the spec's detail strings).
   - `scripts/smoke-test.js`: new subsection `// 17) engine status helpers (1.98-15.S1)` requiring compiled `out/presets.js` (same pattern as `vision-s2:`); 4 assertions (`status-s1:` labels): exports present (3 functions + `STATUS_COMMANDS` array of 4), `statusLabel` ok/offline icons (strict JSON compare), `statusTooltip` ok-case contains baseUrl + `200` / offline-case contains `unreachable` + `fetch failed`, `statusOverviewItems` returns 4 items with the 4 label prefixes and the empty-model fallback descriptions.

@@ -2433,6 +2433,24 @@ function assert(cond, label) {
     "status-s1: statusOverviewItems returns 4 rows with expected labels and empty-model fallbacks",
   );
 
+  // 17b) status bar gate + focus refresh (1.98-15.S2): static checks on the host source.
+  const extensionSrcS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    extensionSrcS2.includes("statusBar.enabled"),
+    "status-s2: extension reads the llm.statusBar.enabled gate",
+  );
+  assert(
+    extensionSrcS2.includes("statusLabel"),
+    "status-s2: extension uses the statusLabel/statusTooltip pure helpers",
+  );
+  assert(
+    extensionSrcS2.includes("onDidChangeWindowState"),
+    "status-s2: extension refreshes health on window focus",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

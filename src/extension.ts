@@ -7,7 +7,7 @@ import { readSettings } from "./config";
 import { ChatViewProvider } from "./chat/ChatViewProvider";
 import { InlineCompletionProvider } from "./inline/InlineCompletionProvider";
 import { CodeActionProvider } from "./codeaction/CodeActionProvider";
-import { buildCompletionsModelList } from "./presets";
+import { buildCompletionsModelList, statusLabel, statusTooltip } from "./presets";
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -55,36 +55,49 @@ export function activate(context: vscode.ExtensionContext): void {
     );
   }
 
-  // Status bar item reflecting engine health.
-  const status = vscode.window.createStatusBarItem(
-    vscode.StatusBarAlignment.Left,
-    100,
-  );
-  status.command = "llm.testConnection";
-  status.tooltip = "LLM engine status (click to test connection)";
-  context.subscriptions.push(status);
+  // Status bar item reflecting engine health, opt-in via `llm.statusBar.enabled`.
+  // The setting is read at activation, so toggling it requires a reload.
+  const statusBarEnabled = vscode.workspace
+    .getConfiguration("llm")
+    .get<boolean>("statusBar.enabled", true);
+  if (statusBarEnabled) {
+    const status = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      100,
+    );
+    status.command = "llm.testConnection";
+    status.tooltip = "LLM engine status (click to test connection)";
+    context.subscriptions.push(status);
 
-  // Poll /health and reflect the result in the status bar.
-  const updateHealth = async (): Promise<void> => {
-    const result = await client.health();
-    if (result.ok) {
-      status.text = "$(check) LLM";
-      status.backgroundColor = undefined;
-      status.tooltip = `LLM engine healthy (${result.status} ${result.statusText})`;
-    } else {
-      status.text = "$(error) LLM";
-      status.backgroundColor = new vscode.ThemeColor(
-        "statusBarItem.errorBackground",
-      );
-      status.tooltip = `LLM engine unreachable${result.error ? `: ${result.error}` : ` (${result.status})`}`;
-    }
-    status.show();
-  };
-  const pollTimer = setInterval(() => {
+    // Poll /health and reflect the result in the status bar.
+    const updateHealth = async (): Promise<void> => {
+      const result = await client.health();
+      const { icon, text } = statusLabel(result);
+      status.text = `${icon} ${text}`;
+      status.tooltip = statusTooltip(result, readSettings().baseUrl);
+      if (result.ok) {
+        status.backgroundColor = undefined;
+      } else {
+        status.backgroundColor = new vscode.ThemeColor(
+          "statusBarItem.errorBackground",
+        );
+      }
+      status.show();
+    };
+    const pollTimer = setInterval(() => {
+      void updateHealth();
+    }, HEALTH_POLL_INTERVAL_MS);
+    context.subscriptions.push({ dispose: () => clearInterval(pollTimer) });
+    // Refresh immediately when the window regains focus.
+    context.subscriptions.push(
+      vscode.window.onDidChangeWindowState((e) => {
+        if (e.focused) {
+          void updateHealth();
+        }
+      }),
+    );
     void updateHealth();
-  }, HEALTH_POLL_INTERVAL_MS);
-  context.subscriptions.push({ dispose: () => clearInterval(pollTimer) });
-  void updateHealth();
+  }
 
   // Commands.
   context.subscriptions.push(

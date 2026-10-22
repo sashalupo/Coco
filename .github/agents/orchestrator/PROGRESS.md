@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-15** — Engine status indicator (status-bar overview, reframed from Copilot status) (VS Code 1.98)
-- **Current slice:** **1.98-15.S1** — done (pure status helpers in `src/presets.ts`); next: 1.98-15.S2
+- **Current slice:** **1.98-15.S2** — done (status-bar gate + pure helpers + focus refresh); next: 1.98-15.S3
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-15.S2 (`src/extension.ts`: gate + pure helpers + focus refresh), then Tester
+- **Next step:** dispatch Coder for slice 1.98-15.S3 (`src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `a02e4c1` — chore(llm): record 1.98-15 plan (4 slices)
-- **Build state:** compiles clean; smoke test passes (361 assertions); 1.98-15.S1 verified
+- **Last commit:** `55cc673` — feat(llm): Engine status indicator — pure status helpers (1.98-15.S1)
+- **Build state:** compiles clean; smoke test passes (364 assertions); 1.98-15.S2 verified
 
 ## Team
 
@@ -76,6 +76,7 @@ pending item** (the oldest).
 - **1.98-14.S4** (2026-10-22) — `src/chat/ChatViewProvider.ts`: host send flow — `case "send"` passes `msg.images` through; `handleSend(text, images)` reads `chat.vision.enabled` gate (default true), sanitizes (data-URL regex, ~14 MB cap, max 4; gate off → drop silently), pushes `images` into history, non-blocking `vision_warning` post when `!isVisionCapableModel(this.toolbarStore.get().model ?? settings.model)`; 3 `vision-s4:` static smoke assertions. Tester PASS. Commit `3d169f6`.
 - **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` (boolean, default true) setting contribution; planner PROGRESS.md marks 1.98-14 Done (Status + 5 slice annotations + Todo checked). No new smoke assertions (total stays 357). Tester PASS. Commit `4e5e56b`.
 - **1.98-15.S1** (2026-10-22) — `src/presets.ts`: pure status helpers (`EngineStatus`, `statusLabel`, `statusTooltip`, `StatusOverviewItem`/`statusOverviewItems`, `STATUS_COMMANDS`); 4 `status-s1:` smoke assertions (357 → 361). Tester PASS.
+- **1.98-15.S2** (2026-10-22) — `src/extension.ts`: `statusBar.enabled` gate (default true), status-bar block wrapped in `if (statusBarEnabled)`, `updateHealth` uses `statusLabel`/`statusTooltip` pure helpers, `onDidChangeWindowState` focus refresh; 3 `status-s2:` smoke assertions (361 → 364). Tester PASS.
 - **1.98-14** — Copilot Vision (image attachments) — **COMPLETE** (all slices S1–S5 PASS, 2026-10-22; commits `9d847c1`, `2d0497b`, `4bd7775`, `3d169f6` + S5). No tag — `changelog-1.98` already exists.
 
 ## Tags (changelog-version tags on completed items)
