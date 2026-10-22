@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-10 (Unified Chat view — mode picker + history) — **planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-10.S1
+- **Current item:** 1.99-12 (Reusable prompt files) — **planned** (2026-10-22, 5 slices S1–S5)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-12.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -1275,6 +1275,134 @@ with tools enabled would still execute; with `llm.tools.enabled: false` (default
 Ask mode is fully tool-free); the Edit addendum is static text — weaker local
 engines may not follow it strongly; `ToolbarState` backfill
 (`normalizeChatMode(state.mode)`) keeps pre-mode memento state valid.
+
+### Item 1.99-12 — Reusable prompt files (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Reusable prompt files" — `chat.promptFilesLocations`
+supports glob patterns; `.prompt.md` editing improvements (path autocompletion, broken-link
+diagnostics, edit/delete actions, folder refs valid, markdown comments ignored when the
+prompt is sent); `.github/copilot-instructions.md` behaves like any `.prompt.md`; Create
+User Prompt (user-data-folder prompts). Text-only section (no images).
+
+**Local reframe (design decisions, justified):**
+1. **Discovery via `llm.promptFiles.locations`** (string[] of workspace-relative globs,
+   default `[".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]`) +
+   `vscode.workspace.findFiles` — mirrors the changelog's glob-based
+   `chat.promptFilesLocations`. `.github/copilot-instructions.md` in the default globs
+   satisfies the "alignment with custom instructions" point.
+2. **Invocation = `llm.usePrompt` command** ("LLM: Use Prompt"): QuickPick of discovered
+   prompts (label = filename, description = relative path) + "New Prompt File…". Picking a
+   prompt **prepends its comment-stripped content to the chat input** via a new
+   `prompt_inject` host→webview message (draft preserved after a blank line; input
+   focused). "New Prompt File…" → input box → creates `.prompts/<name>.prompt.md` from
+   `PROMPT_TEMPLATE` (no overwrite) and opens it.
+3. **Comment stripping is pure** (`stripPromptComments` in new `src/prompts.ts`): removes
+   multi-line `<!-- … -->` (dotAll, non-greedy) + leftover single-line fragments, collapses
+   3+ newlines to 2, trims — the changelog's "commented-out links are ignored" behavior.
+4. **Out of scope (documented):** `.prompt.md` editor diagnostics/autocompletion (needs a
+   language-feature provider — follow-up), user-data-folder "user prompts" (VS Code sync
+   service), edit/delete actions in the picker (v1: create + use only).
+5. **No new dependencies**; pure helpers in `src/prompts.ts` (same purity contract as
+   `src/instructions.ts`); `MAX_PROMPT_CHARS = 32_000` mirrors `MAX_INSTRUCTION_CHARS`.
+
+**Slices:**
+
+- **1.99-12.S1 — `src/prompts.ts`: pure prompt-file helpers (NEW file).**
+  File: `src/prompts.ts` (new; no `vscode` import, no fs). Exports:
+  `interface PromptFile { path: string; title: string; content: string }`;
+  `const MAX_PROMPT_CHARS = 32_000`;
+  `promptTitle(content: string, filePath: string): string` — first markdown H1
+  (`# Title`) if present, else filename without extension;
+  `stripPromptComments(content: string): string` — remove multi-line `<!-- … -->`
+  (non-greedy, dotAll), then leftover single-line `<!-- … -->`, collapse 3+ newlines to 2,
+  trim;
+  `promptBlock(file: PromptFile): string` — `## Prompt: <title>\n\n<stripped content>`,
+  `""` when empty after stripping;
+  `const PROMPT_TEMPLATE: string` — `# My Prompt` + an HTML comment explaining that
+  comments are stripped + a blank body.
+  Acceptance: `npm run compile` clean.
+  Smoke (`rp-s1:`, 5): `out/prompts.js` exports `promptTitle`/`stripPromptComments`/
+  `promptBlock` (functions) + `PROMPT_TEMPLATE` (string); `promptTitle("# Refactor\nbody",
+  "x/y.prompt.md") === "Refactor"`; `promptTitle("no heading", "a/b.prompt.md") === "b"`;
+  `stripPromptComments("a\n<!-- c -->\nb") === "a\nb"`; `stripPromptComments("x <!-- multi\nline --> y")`
+  does not contain `multi`; `promptBlock({path:"p", title:"T", content:"<!-- only -->"}) === ""`.
+
+- **1.99-12.S2 — `src/presets.ts` + `src/config.ts`: settings plumbing.**
+  Files: `src/presets.ts`, `src/config.ts`. (a) `LlmSettings` (after `instructionFiles`,
+  ~line 94): `promptFiles: string[]` with doc comment "Glob patterns
+  (workspace-relative) for reusable prompt files." (b) `readSettings()` (after
+  `instructionFiles`, ~line 57):
+  `promptFiles: c.get<string[]>("promptFiles.locations", [".prompts/**/*.prompt.md",
+  ".github/copilot-instructions.md"])`.
+  Acceptance: `npm run compile` clean (only `config.ts` constructs `LlmSettings`).
+  Smoke (`rp-s2:`, 2): `config.ts` source contains `promptFiles.locations` and
+  `.prompts/**/*.prompt.md`; `presets.ts` source contains `promptFiles: string[]`.
+
+- **1.99-12.S3 — `src/extension.ts`: `llm.usePrompt` command.**
+  File: `src/extension.ts`. Add imports `promptTitle, stripPromptComments,
+  PROMPT_TEMPLATE, MAX_PROMPT_CHARS` from `./prompts`. Register `llm.usePrompt` in the
+  existing `registerCommand` block (after `llm.showStatusOverview`, ~line 154): read
+  `readSettings().promptFiles` (filter non-empty; empty → info message, return);
+  `vscode.workspace.findFiles(new vscode.GlobPattern(globs), "**/node_modules/**", 200)`;
+  QuickPick items `{ label: promptTitle("", uri.fsPath), description:
+  vscode.workspace.asRelativePath(uri), uri }` + `{ label: "$(new-file) New Prompt File…",
+  description: "create .prompts/<name>.prompt.md" }`; title "LLM: Use Prompt", placeHolder
+  "Select a reusable prompt to use in chat". On pick with `uri`: `workspace.fs.readFile` →
+  utf8 → `slice(0, MAX_PROMPT_CHARS)` → `stripPromptComments`; empty → info message; else
+  `provider.postMessage({ type: "prompt_inject", title: promptTitle(content, uri.fsPath),
+  content: stripped })` + `executeCommand("workbench.view.llm")`. On pick without `uri`
+  (New Prompt File…): `showInputBox` (validate `/^[a-zA-Z0-9._-]+$/`); no workspace folder →
+  error message; `target = Uri.joinPath(root, ".prompts", name + ".prompt.md")`; if
+  `fs.stat` throws → `createDirectory(.prompts)` + `writeFile(PROMPT_TEMPLATE)`; open the
+  document. `provider` is already in scope in `activate()`.
+  Acceptance: `npm run compile` clean; picker lists discovered prompts; pick prepends
+  stripped content to the chat input; New Prompt File creates + opens the template.
+  Smoke (`rp-s3:`, 4): `extension.ts` source contains `llm.usePrompt`,
+  `workspace.findFiles`, `prompt_inject`, `PROMPT_TEMPLATE`.
+
+- **1.99-12.S4 — `src/chat/webview.ts`: `prompt_inject` handler.**
+  File: `src/chat/webview.ts`. In `handleHostMessage` (sibling to `case 'vision_warning':`):
+  `case 'prompt_inject':` — `const text = String(msg.content ?? ''); if (!text) break;`
+  get `#input`; `inputEl.value = existing ? text + '\n\n' + existing : text;`
+  `inputEl.focus(); break;`. Prepend semantics (prompt leads, draft preserved). No new
+  HTML/CSS.
+  Acceptance: `npm run compile` clean; after a pick the input shows the prompt prepended
+  before any draft and is focused.
+  Smoke (`rp-s4:`, 2): webview source contains `prompt_inject` and `case 'prompt_inject'`.
+
+- **1.99-12.S5 — `package.json` + final smoke assertions + PROGRESS.md.**
+  Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  (a) `package.json`: command `{ "command": "llm.usePrompt", "title": "LLM: Use Prompt" }`
+  (after `llm.showStatusOverview`); activation event `onCommand:llm.usePrompt`; setting
+  `llm.promptFiles.locations` (array of strings, default
+  `[".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]`, description: "Glob
+  patterns (workspace-relative) for reusable prompt files. Pick one via the 'LLM: Use
+  Prompt' command to prepend it to the chat input. HTML comments in prompt files are
+  stripped before sending.") next to `llm.instructions.files`. (b) `smoke-test.js`: add
+  `rp-s1:` (5), `rp-s2:` (2), `rp-s3:` (4), `rp-s4:` (2) plus `rp-s5:` (4) static
+  `package.json` checks (pattern of the `pkgS4` section): `llm.usePrompt` command with
+  title, `onCommand:llm.usePrompt` activation event, `llm.promptFiles.locations` with
+  `type === "array"` and 2-element default containing `.github/copilot-instructions.md`,
+  `llm.instructions.enabled` still present (regression guard). 17 new assertions (479 →
+  496). (c) `PROGRESS.md`: mark 1.99-12 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (496 assertions);
+  setting visible in the settings UI.
+
+**Overall acceptance (Tester):** with `.prompts/refactor.prompt.md` (H1 + HTML comment)
+and `.github/copilot-instructions.md` present, `LLM: Use Prompt` lists both + "New Prompt
+File…"; picking a prompt prepends its comment-stripped content to the chat input (draft
+preserved, input focused); New Prompt File creates `.prompts/<name>.prompt.md` from the
+template (no overwrite) and opens it; empty/comment-only file → info message;
+`llm.promptFiles.locations: []` → info message; `llm.instructions.*` auto-load unchanged;
+`npm run compile` clean; all 496 smoke assertions pass.
+
+**Risks:** `findFiles` globs are workspace-folder-relative (user-level prompt files not
+discoverable — changelog "user prompts" sub-item deferred); QuickPick labels use filenames
+(content read on pick); regex comment stripping could mangle a code block containing
+`<!-- -->` (prompt files are prose — acceptable v1); injection is prepend-only (no
+attached-prompt chip — follow-up); `.prompt.md` diagnostics/autocompletion deferred (needs
+a language-feature provider).
+
 
 ## Done
 
