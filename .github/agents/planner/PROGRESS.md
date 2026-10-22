@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-12 (Change completions model) — **Done** (2026-10-22, all 4 slices S1–S4 completed)
-- **Next step:** await next item from orchestrator
+- **Current item:** 1.98-14 (Copilot Vision — image attachments) — **Planned** (2026-10-22, 5 slices S1–S5)
+- **Next step:** dispatch slice 1.98-14.S1 (request.ts multimodal support)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -122,6 +122,145 @@ unchanged; `npm run compile` clean.
 `waitForCommandApproval` resolves rejected (matches `waitForApproval`).
 
 
+### Item 1.98-14 — Copilot Vision (Preview): image attachments (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.98, "Copilot Vision (Preview)" — attach images to chat
+prompts (drag/drop, paste, or paperclip > Screenshot Window); JPEG/JPG, PNG, GIF, WEBP;
+warning when the model can't handle the file type. `image-attachments.gif`: attached image
+rendered inline in the prompt; hover shows a preview.
+
+**Design decisions (justified):**
+1. **Webview-side capture, data-URL transport.** Paperclip 📎 (hidden `<input type=file
+   accept="image/jpeg,image/png,image/gif,image/webp" multiple>`), `paste` on the textarea
+   (`clipboardData.items` → `getAsFile()`), and `dragover`/`drop` on the input row all funnel
+   into one `addImageFiles(FileList)` helper. `FileReader.readAsDataURL` →
+   `vscode.postMessage({type:'send', text, images:[dataUrl,...]})`. No host file I/O, no temp
+   files, no proxy — data URLs go straight into the JSON body.
+2. **Multimodal body shape (OpenAI).** `ChatMessage` gains optional `images?: string[]`.
+   `buildRequestBody` maps messages with images to
+   `content: [{type:"text",text}, {type:"image_url", image_url:{url:dataUrl}}, ...]`;
+   text-only messages keep `content: string` (zero change for existing engines).
+   `estimateMessageTokens` adds a flat 1000 tokens/image (heuristic).
+3. **Non-blocking vision warning.** Pure `isVisionCapableModel(model)` in `presets.ts`
+   (case-insensitive substring match against a static marker list: llava, qwen2.5-vl,
+   qwen2-vl, qwen3-vl, minicpm-v, glm-4v, glm-4.1v, internvl, pixtral, gemma-3, moondream,
+   bakllava, mistral-small-3.1, llama3.2-vision, llama-4). Unknown/empty model → false
+   (conservative). On send with images, if the resolved model (toolbar ?? `llm.model`) is
+   not vision-capable the host posts `vision_warning`; the webview shows a dismissible amber
+   notice above the input (auto-hide 8 s). The message still sends.
+4. **Rendering.** Pending attachments: thumbnail strip (`.attach-strip`, 48px thumbs, ×
+   remove) above the input row. Sent images: inline in the user bubble (`.msg-images`, 96px
+   thumbs); hover preview = CSS `:hover { transform: scale(1.6); z-index: 10 }` (no JS
+   tooltip — the data URL is the full image). `restore` re-renders from `m.images`.
+5. **Gate + validation.** `llm.chat.vision.enabled` (default true; follows the
+   `llm.chat.*.enabled` tag-feature pattern). Host sanitizes: mime ∈ {jpeg,png,gif,webp}
+   (checked via the data-URL prefix), ≤ 10 MB each, ≤ 4 images; extras dropped silently.
+   Setting off → images dropped, no warning.
+6. **No new dependencies** — zero runtime npm deps, no bundler; existing `LlmClient`
+   `fetch` path unchanged.
+
+**Slices:**
+
+- **1.98-14.S1 — `src/request.ts`: multimodal message support (pure).**
+  File: `src/request.ts`. (a) `ChatMessage`: add `images?: string[]` (data URLs).
+  (b) New exported `type ContentPart = { type: "text"; text: string } | { type: "image_url";
+  image_url: { url: string } }` and pure helper
+  `toContentParts(content: string, images?: string[]): string | ContentPart[]` — plain
+  string when no images, else parts array (text part first, one image part per data URL).
+  (c) `buildRequestBody`: after `trimHistory`, map messages —
+  `m.images?.length ? { ...m, content: toContentParts(m.content, m.images) } : m`; widen
+  `ChatCompletionRequest.messages` element `content` to `string | ContentPart[]`.
+  (d) `estimateMessageTokens`: `+ 1000 * (message.images?.length ?? 0)`.
+  Acceptance: `npm run compile` clean; text-only bodies byte-identical to before; 2-image
+  message → `content` array of 3 parts with correct `image_url.url`.
+  Smoke (`vision-s1:`, 4): `out/request.js` exports `toContentParts`; `toContentParts("hi")`
+  === `"hi"`; `toContentParts("hi", ["data:image/png;base64,AAA"])` is an array of length 2
+  with `[1].type === "image_url"` and `[1].image_url.url` === the data URL;
+  `estimateMessageTokens` with 1 image exceeds the no-image estimate by ≥ 900.
+
+- **1.98-14.S2 — `src/presets.ts`: `isVisionCapableModel` (pure).**
+  File: `src/presets.ts`. Export `const VISION_MODEL_MARKERS: string[]` (llava, qwen2.5-vl,
+  qwen2-vl, qwen3-vl, minicpm-v, minicpm-v2, glm-4v, glm-4.1v, internvl, pixtral, gemma-3,
+  moondream, bakllava, mistral-small-3.1, llama3.2-vision, llama-4) and
+  `export function isVisionCapableModel(model: string): boolean` — false for empty/whitespace;
+  else case-insensitive `includes` against any marker.
+  Acceptance: `npm run compile` clean; true for `"llava-llama-3.2-11b"`, false for
+  `"qwen2.5:7b"` and `""`.
+  Smoke (`vision-s2:`, 3): `out/presets.js` exports `isVisionCapableModel`; true for
+  `"Qwen2.5-VL-7B-Instruct"` (case-insensitive); false for `""` and `"llama3.1:8b"`.
+
+- **1.98-14.S3 — `src/chat/webview.ts`: attachment UI (capture, strip, inline render, hover, warning).**
+  File: `src/chat/webview.ts`. (a) HTML: `<button id="attach" title="Attach image (or paste /
+  drag-drop)">📎</button>` before Send in `.input-row`; hidden
+  `<input type="file" id="attach-file" accept="image/jpeg,image/png,image/gif,image/webp"
+  multiple hidden>`; `<div id="attach-strip" class="attach-strip" hidden></div>` and
+  `<div id="vision-warning" class="vision-warning" hidden></div>` above `.input-row`.
+  (b) JS: `pendingImages` array; `addImageFiles(files)` — filter to the 4 mimes, cap 4
+  images / 10 MB each, `FileReader.readAsDataURL` → push + `renderAttachStrip()`; wire
+  `#attach` click → `#attach-file.click()`, `#attach-file` change, `inputEl` `paste`
+  (`e.clipboardData.items` → `item.getAsFile()` for image/*), `dragover`/`drop` on the input
+  row (`preventDefault`, `e.dataTransfer.files`). `renderAttachStrip()`: 48px thumbs with
+  `title=name` + × remove button; hidden when empty. `doSend()`: post
+  `{type:'send', text, images: pendingImages.map(i => i.dataUrl)}`; capture
+  `lastSentImages` before clearing; reset strip. `addUserMessage(text, images)`: when
+  `images` present append `<div class="msg-images">` with
+  `<img class="msg-img" src=dataUrl title=escapedName>`; `stream_start` (non-skipUser)
+  passes `lastSentImages`; `restore` passes `m.images`. `case 'vision_warning':` — set
+  `#vision-warning` via `textContent`, unhide, auto-hide after 8 s (click also hides).
+  (c) CSS: `.attach-strip` (flex/gap/wrap), `.attach-thumb` (48px, rounded, relative),
+  `.attach-remove` (absolute ×), `.msg-images` (flex gap), `.msg-img` (96px, rounded,
+  cursor zoom-in, `transition: transform .15s`),
+  `.msg-img:hover { transform: scale(1.6); position: relative; z-index: 10; }` (hover
+  preview), `.vision-warning` (amber, small).
+  Acceptance: `npm run compile` clean; paperclip/paste/drag-drop add thumbs; send posts
+  `images`; user bubble shows inline thumbs; hover scales; warning shows + auto-hides.
+  Smoke (`vision-s3:`, 5): webview HTML contains `id="attach"`, `id="attach-file"`,
+  `id="attach-strip"`, `id="vision-warning"`, and the strings `readAsDataURL`,
+  `clipboardData`, `vision_warning`, `msg-img`.
+
+- **1.98-14.S4 — `src/chat/ChatViewProvider.ts`: host send flow + validation + warning.**
+  File: `src/chat/ChatViewProvider.ts`. (a) Import `isVisionCapableModel` from `../presets`.
+  (b) `onMessage` `case "send"`: pass
+  `Array.isArray(msg.images) ? msg.images : []` to
+  `this.handleSend(String(msg.text ?? ""), images)`. (c) `handleSend(text, images)`: read
+  `visionEnabled` inline via
+  `vscode.workspace.getConfiguration("llm").get<boolean>("chat.vision.enabled", true)`
+  (schema entry lands in S5); sanitize images — keep only strings matching
+  `^data:image/(jpeg|png|gif|webp);base64,`, ≤ 10 MB (data-URL length heuristic), max 4;
+  push `{role:"user", content:text, images: sanitized.length ? sanitized : undefined}`.
+  (d) Warning: if `sanitized.length > 0` and
+  `!isVisionCapableModel(toolbar.model ?? settings.model)`, post
+  `{type:"vision_warning", message: "Model '<model|default>' may not support images — the
+  engine may ignore them."}`. Non-blocking: `runStream` proceeds regardless.
+  Acceptance: `npm run compile` clean; images stored on the history user message; non-vision
+  model → `vision_warning` posted and stream still runs; setting off → images dropped, no
+  warning.
+  Smoke (`vision-s4:`, 3): `ChatViewProvider.ts` source contains `isVisionCapableModel`,
+  `vision_warning`, and `chat.vision.enabled`.
+
+- **1.98-14.S5 — `package.json` setting + final smoke assertions + PROGRESS.md.**
+  Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  (a) `package.json`: add `llm.chat.vision.enabled` (boolean, default `true`, description:
+  "Allow attaching images (JPEG/PNG/GIF/WEBP) to chat messages. Images are sent to the
+  engine as base64 data URLs (OpenAI multimodal format).") next to the other `llm.chat.*`
+  entries. (b) `smoke-test.js`: add the `vision-s1:` (4), `vision-s2:` (3), `vision-s3:`
+  (5), `vision-s4:` (3) assertions (15 total; 342 → 357). (c) `PROGRESS.md`: mark 1.98-14
+  Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (357 assertions);
+  setting visible in the VS Code settings UI.
+
+**Overall acceptance (Tester):** with a vision-capable local engine, the user attaches a
+PNG via paperclip, paste, or drag-drop; the thumbnail strip shows it; on send the user
+bubble renders the image inline with hover zoom; the request body contains the `image_url`
+data-URL part; with a non-vision model an amber non-blocking warning appears and the message
+still sends; unsupported file types (e.g. `.bmp`) are rejected; `llm.chat.vision.enabled:
+false` disables the feature; `npm run compile` clean; all 357 smoke assertions pass.
+
+**Risks:** data URLs bloat the JSON body (worst case ~53 MB at the 4×10 MB cap) — acceptable
+for local engines; conversation persistence stores base64 in globalState (fine for v1;
+possible future downscale in the webview before sending); the vision-model marker list is
+static — unknown models get the conservative non-blocking warning.
+
 ## Done
 
 - **1.98-12** (2026-10-22) — Change completions model. All slices S1–S4 implemented (`buildCompletionsModelList` pure quick-pick list builder in `src/presets.ts`; `completionsModel` config field in `src/presets.ts`/`src/config.ts` with `InlineCompletionProvider` swapping `settings.model` for the completions model when non-empty (toolbar override still wins); `llm.changeCompletionsModel` QuickPick command in `src/extension.ts` (engine models via `client.listModels()`, failure → warning + configured-only list, writes `ConfigurationTarget.Workspace` or `Global`); `package.json` command + `llm.completions.model` setting schema; final smoke assertions). Key decisions:
@@ -184,6 +323,8 @@ unchanged; `npm run compile` clean.
      existing generic `approval_request` gate in `ChatViewProvider.ts` picks the tool up
      with zero new host or webview code (verified by a final smoke assertion).
 
+- [x] Plan backlog item 1.98-14 (Copilot Vision — image attachments) — planned 2026-10-22; 5 slices S1–S5.
+- [ ] Dispatch slices 1.98-14.S1 → S5 (one per session).
 ## Todo
 
 - [x] Wait for the Changelog Researcher to populate the backlog.
