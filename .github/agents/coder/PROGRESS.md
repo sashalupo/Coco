@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-10 (Unified Chat view — mode picker) — S1 done
-- **Next step:** 1.99-10.S2 (host wiring: ChatViewProvider + config.ts ToolbarState.mode)
+- **Current item:** 1.99-10 (Unified Chat view — mode picker) — S2 done
+- **Next step:** 1.99-10.S3 (webview mode picker: src/chat/webview.ts)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (472 assertions)
+- **Build state:** compiles clean; smoke test passes (475 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-10.S2** (2026-10-22) — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts` `ToolbarState.mode`. Files: `src/presets.ts`, `src/config.ts`, `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `mode: ChatMode` field added to `ToolbarState` (one-line addition after `contextFlags`).
+  - `src/config.ts`: (a) `ChatMode` added to the `./presets` type import; `normalizeChatMode` added to the value import; (b) `DEFAULT_TOOLBAR` gains `mode: "agent"`; (c) `ToolbarStateStore.get()` backfills `mode: normalizeChatMode(state.mode)` (mirrors the `contextFlags` backfill); (d) new `setMode(mode: ChatMode)` setter mirroring `setThinking`.
+  - `src/chat/ChatViewProvider.ts`: (a) `modeAddendum` + `normalizeChatMode` added to the `../presets` import; (b) `pushToolbarState()` posts `mode: t.mode` in the `toolbar` message; (c) `applyToolbarMessage()` persists `void this.toolbarStore.setMode(normalizeChatMode(msg.mode))`; (d) `runStream` passes `mode: toolbar.mode` to BOTH `buildRequestBody` call sites (initial + rebuild); (e) `composeSystemPrompt` gains 4th param `modeAddendum: string` (appended last, filtered like the other parts); call site passes `modeAddendum(toolbar.mode)`.
+  - `scripts/smoke-test.js`: new section `// 33) Unified chat mode — host wiring (1.99-10.S2)` after section 32, before the final summary print; 3 `unif-s2:` static-source assertions via `fs.readFileSync` (out/config.js + out/chat/ChatViewProvider.js import vscode and cannot be required — same pattern as sections 29/30): (a) `src/chat/ChatViewProvider.ts` contains `normalizeChatMode` AND `modeAddendum` AND `mode: toolbar.mode`; (b) `src/config.ts` contains `setMode(` AND `normalizeChatMode`; (c) `src/presets.ts` contains `mode: ChatMode`. Total PASS lines now 475 (472 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 475 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 4 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-10.S1** (2026-10-22) — `src/presets.ts` + `src/request.ts`: pure mode logic. Files: `src/presets.ts`, `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts` (pure — no `vscode` import): appended at end: (a) `export type ChatMode = "ask" | "agent" | "edit"`; (b) `export const CHAT_MODES: readonly ChatMode[] = ["ask","agent","edit"]`; (c) `export function normalizeChatMode(v: unknown): ChatMode` — returns the value when one of the three, else `"agent"`; (d) `export const EDIT_MODE_ADDENDUM: string` (static Edit-mode system-prompt text mentioning read_file/edit_file/write_file); (e) `export function modeAddendum(mode: ChatMode): string` — `edit` → `EDIT_MODE_ADDENDUM`, `ask` → "You are in Ask mode. … Do not use tools or modify files.", `agent` → `""`.
   - `src/request.ts`: (a) `ChatMode` added to the `./presets` import; (b) `RequestConfig` gains `mode?: ChatMode` (comment: "Unified Chat view mode. Absent = 'agent' (existing behavior)."); (c) tools block in `buildRequestBody` → `const mode = cfg.mode ?? "agent";` — `mode === "ask"` → no `body.tools`, `body.tool_choice = "none"`; else the existing `settings.toolsEnabled` branch unchanged (`agent`/`edit` byte-identical to today).

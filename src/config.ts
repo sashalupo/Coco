@@ -6,13 +6,14 @@
 
 import * as vscode from "vscode";
 import type {
+  ChatMode,
   ContextFlags,
   ContextLevel,
   LlmSettings,
   ThinkingLevel,
   ToolbarState,
 } from "./presets";
-import { DEFAULT_CONTEXT_FLAGS } from "./presets";
+import { DEFAULT_CONTEXT_FLAGS, normalizeChatMode } from "./presets";
 import type { ChatMessage } from "./request";
 import { parseMcpServers } from "./mcp";
 
@@ -86,6 +87,7 @@ const DEFAULT_TOOLBAR: ToolbarState = {
   thinking: "off",
   context: "auto",
   contextFlags: { ...DEFAULT_CONTEXT_FLAGS },
+  mode: "agent",
 };
 
 const TOOLBAR_KEY = "llm.toolbar";
@@ -107,9 +109,11 @@ export class ToolbarStateStore {
   get(): ToolbarState {
     const state = this.memento.get<ToolbarState>(TOOLBAR_KEY, DEFAULT_TOOLBAR);
     // Backfill `contextFlags` for state saved before S15 introduced it.
+    // Backfill `mode` for state saved before 1.99-10 introduced it.
     return {
       ...state,
       contextFlags: { ...DEFAULT_CONTEXT_FLAGS, ...state.contextFlags },
+      mode: normalizeChatMode(state.mode),
     };
   }
 
@@ -126,6 +130,11 @@ export class ToolbarStateStore {
   /** Override the context budget. */
   setContext(context: ContextLevel): Thenable<void> {
     return this.memento.update(TOOLBAR_KEY, { ...this.get(), context });
+  }
+
+  /** Override the unified chat mode (ask / agent / edit). */
+  setMode(mode: ChatMode): Thenable<void> {
+    return this.memento.update(TOOLBAR_KEY, { ...this.get(), mode });
   }
 
   /** Override which editor-context sections to inject. */

@@ -3620,6 +3620,38 @@ function assert(cond, label) {
     "unif-s1: buildRequestBody ask/agent/no-mode tools",
   );
 
+  // 33) Unified chat mode — host wiring (1.99-10.S2)
+  // out/config.js and out/chat/ChatViewProvider.js import vscode and cannot
+  // be required — static source assertions on the TS sources (same pattern
+  // as sections 29/30).
+  const chatViewSrcUnifS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  const configSrcUnifS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const presetsSrcUnifS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcUnifS2.includes("normalizeChatMode") &&
+      chatViewSrcUnifS2.includes("modeAddendum") &&
+      chatViewSrcUnifS2.includes("mode: toolbar.mode"),
+    "unif-s2: ChatViewProvider wiring",
+  );
+  assert(
+    configSrcUnifS2.includes("setMode(") &&
+      configSrcUnifS2.includes("normalizeChatMode"),
+    "unif-s2: config setMode + backfill",
+  );
+  assert(
+    presetsSrcUnifS2.includes("mode: ChatMode"),
+    "unif-s2: presets ToolbarState.mode",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -116,6 +116,7 @@ export interface ToolbarState {
   thinking: ThinkingLevel;
   context: ContextLevel;
   contextFlags: ContextFlags;
+  mode: ChatMode;
 }
 
 /** One entry in the "Change Completions Model" quick pick. */

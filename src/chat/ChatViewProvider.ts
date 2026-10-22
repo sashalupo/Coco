@@ -53,6 +53,8 @@ import {
 import {
   ApprovalStore,
   isVisionCapableModel,
+  modeAddendum,
+  normalizeChatMode,
   type ContextFlags,
   type ContextLevel,
   type LlmSettings,
@@ -756,6 +758,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       thinking: t.thinking,
       context: t.context,
       contextFlags: t.contextFlags,
+      mode: t.mode,
     });
   }
 
@@ -876,6 +879,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     void this.toolbarStore.setModel(rawModel === "" ? null : rawModel);
     void this.toolbarStore.setThinking(thinking);
     void this.toolbarStore.setContext(context);
+    void this.toolbarStore.setMode(normalizeChatMode(msg.mode));
     if (msg.contextFlags) {
       const f = msg.contextFlags as Partial<ContextFlags>;
       void this.toolbarStore.setContextFlags({
@@ -1137,6 +1141,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         settings.systemPrompt,
         instructionsBlock,
         finalContextBlock,
+        modeAddendum(toolbar.mode),
       );
       this.postMessage({
         type: "instructions",
@@ -1148,7 +1153,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         : [...this.history];
 
       const initial = buildRequestBody(
-        { settings, toolbar, mcpTools: this.mcpManager.getTools() },
+        {
+          settings,
+          toolbar,
+          mcpTools: this.mcpManager.getTools(),
+          mode: toolbar.mode,
+        },
         withSystem,
       );
       body = initial.body;
@@ -1389,7 +1399,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             ]
           : [...this.history];
         const rebuilt = buildRequestBody(
-          { settings, toolbar, mcpTools: this.mcpManager.getTools() },
+          {
+            settings,
+            toolbar,
+            mcpTools: this.mcpManager.getTools(),
+            mode: toolbar.mode,
+          },
           currentWithSystem,
         );
         body = rebuilt.body;
@@ -1613,16 +1628,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Combine the configured system prompt, the loaded custom-instructions
-   * block, and the gathered context block. Any of the three may be empty; the
-   * result is empty only when all are empty. Order: system prompt, then
-   * instructions, then context.
+   * block, the gathered context block, and the chat-mode addendum. Any of
+   * the four may be empty; the result is empty only when all are empty.
+   * Order: system prompt, then instructions, then context, then mode.
    */
   private composeSystemPrompt(
     systemPrompt: string,
     instructionsBlock: string,
     contextBlock: string,
+    modeAddendum: string,
   ): string {
-    const parts = [systemPrompt, instructionsBlock, contextBlock].filter(
+    const parts = [systemPrompt, instructionsBlock, contextBlock, modeAddendum].filter(
       (p) => p && p.trim().length > 0,
     );
     return parts.join("\n\n");

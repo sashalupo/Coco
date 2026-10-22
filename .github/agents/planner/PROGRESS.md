@@ -1387,7 +1387,7 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
   - Extend `isMutatingTool()`: `name === "notebook_edit"`.
 - **Acceptance:** `npm run compile` passes. Smoke test (extend section 5 + 7b): `CODE_TOOLS.length === 11`; tool-name order string ends with `...,manage_todos,notebook_edit`; `byName.notebook_edit.function.parameters.required.join(",") === "path,action"`; `action` enum has 5 values; `isMutatingTool("notebook_edit")` is true.
 
-### S2 — `src/notebook.ts`: pure parse / format / create helpers
+### S2 — `src/notebook.ts`: pure parse / format / create helpers — Done (2026-10-22, PASS, 475 assertions)
 - **File:** `src/notebook.ts` (new)
 - **What:** Pure module, no `vscode` import, no deps:
   - `interface NbCell { cell_type: "code" | "markdown"; source: string; outputs?: unknown[]; }` and `interface NbDoc { cells: NbCell[]; }` (source normalized to a single string — join `string[]` sources).

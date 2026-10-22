@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-10.S1 — pure mode logic — **PASS** (2026-10-22)
-- **Next step:** 1.99-10.S2 — next slice of item 1.99-10 (Unified Chat view — mode picker + history)
+- **Current item:** 1.99-10.S2 — host wiring — **PASS** (2026-10-22)
+- **Next step:** 1.99-10.S3 — next slice of item 1.99-10 (Unified Chat view — mode picker + history)
 - **Last updated:** 2026-10-22
-- **Last commit:** 81f06ef (chore(llm): record 1.99-10 plan); S1 commit pending
-- **Build state:** 472/472 PASS
+- **Last commit:** 0fbd12e (feat(llm): unified chat — pure mode logic (1.99-10.S1)); S2 commit pending
+- **Build state:** 475/475 PASS
 
+
+### 1.99-10.S2 — host wiring: presets + config + ChatViewProvider (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **475 PASS lines** (472 prior + 3 new `unif-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 475/475 with 3 genuine `unif-s2:` static-source assertions in new `// 33) Unified chat mode — host wiring (1.99-10.S2)` section (smoke-test.js:3623) all passing: `unif-s2: ChatViewProvider wiring` (normalizeChatMode + modeAddendum + `mode: toolbar.mode`), `unif-s2: config setMode + backfill`, `unif-s2: presets ToolbarState.mode` PASS; (3) `src/presets.ts`: `ToolbarState` gains `mode: ChatMode` (after `contextFlags`); `src/config.ts`: `DEFAULT_TOOLBAR` gains `mode: "agent"`, `get()` backfills `mode: normalizeChatMode(state.mode)`, new `setMode(mode: ChatMode): Thenable<void>` setter, imports `ChatMode` type + `normalizeChatMode`; `src/chat/ChatViewProvider.ts`: imports `modeAddendum` + `normalizeChatMode` from `../presets`; `pushToolbarState()` posts `mode: t.mode`; `applyToolbarMessage()` persists via `setMode(normalizeChatMode(msg.mode))`; `runStream` passes `mode: toolbar.mode` to BOTH `buildRequestBody` call sites (initial + rebuilt); `composeSystemPrompt` gains 4th param `modeAddendum: string` (appended last in `parts`, filtered by existing empty-trim guard), call site passes `modeAddendum(toolbar.mode)` PASS; (4) scope: exactly coder PROGRESS.md, smoke-test.js, ChatViewProvider.ts, config.ts, presets.ts modified (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 4 criteria met.
 
 ### 1.99-10.S1 — pure mode logic (src/presets.ts + src/request.ts) (2026-10-22) — **PASS**
 
