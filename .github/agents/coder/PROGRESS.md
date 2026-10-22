@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-2.S4 done (ToolExecutor: execute notebook_edit)
-- **Next step:** slice 1.98-2.S5 — context: render tagged .ipynb files as cells (src/context.ts)
+- **Current step:** 1.98-2.S5 done (context: render tagged .ipynb files as cells)
+- **Next step:** slice 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (final slice)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
@@ -103,6 +103,11 @@ by step, one step per session.
   - `scripts/smoke-test.js`: new section 10c (after the 10b `notebook-edit:` pure-function tests, before the final `cmd-approval` assertion) exercising the REAL `ToolExecutor` against the temp workspace (`editRoot`, vscode stub already in place): 14 new `nb-exec:` assertions — `create` writes a valid `.ipynb` into a new subdirectory (`nb/nbtool.ipynb`, file exists, `parseNotebook` OK, 2 cells, exact result message); `modify_cell` / `insert_cell` / `delete_cell` / `change_cell_type` each mutate the file on disk (re-read + `parseNotebook` checks + exact result messages); out-of-range `cell_index` returns the range error and leaves the file byte-identical (no snapshot taken); `revertLast()` restores the pre-`change_cell_type` content (cell 0 back to `code`); `getChangeSummary()` includes the `nb/nbtool.ipynb` path.
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 14 new `nb-exec:` assertions).
   - Not committed (per task instruction — orchestrator commits).
+- **1.98-2.S5** (2026-10-22) — Context: render tagged `.ipynb` files as cells. Files: `src/context.ts`, `scripts/smoke-test.js`.
+  - `src/context.ts`: imported `formatNotebookForContext` from `./notebook`. In `buildContextBlock`'s `taggedFiles` loop, when `tf.path.toLowerCase().endsWith(".ipynb")` the section is the same `Tagged file: …` header + `formatNotebookForContext(tf.content)` (cell-by-cell text view) instead of the raw-JSON fenced block. Non-`.ipynb` tagged files keep the existing fenced-block rendering unchanged.
+  - `scripts/smoke-test.js`: new `3b-nb` block in the context section (after the stable-order assertion, before section 3c) with 5 assertions: a tagged `nb.ipynb` (2-cell fixture: code cell with a stream output + markdown cell) renders `Tagged file: nb.ipynb`, `### Cell 0 (code)`, the cell source `print('hello')`, and does NOT contain the raw `"cells":` JSON key; a tagged `foo.ts` still renders the raw fenced block (`` ```\nconst y = 2;\n``` ``).
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 5 new `context: tagged …` assertions).
+  - Not committed (per task instruction — orchestrator commits).
 
 ## Todo
 
@@ -110,7 +115,8 @@ by step, one step per session.
 - [x] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
 - [x] Slice 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`.
 - [x] Slice 1.98-2.S4 — ToolExecutor: execute `notebook_edit` (read/write the .ipynb file, feed `applyNotebookEdit` result back to the model).
-- [ ] Slice 1.98-2.S5 — context: render tagged .ipynb files as cells (`src/context.ts`).
+- [x] Slice 1.98-2.S5 — context: render tagged .ipynb files as cells (`src/context.ts`).
+- [ ] Slice 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (final slice).
 
 ## Notes / decisions
 

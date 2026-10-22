@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-2 (notebook support in chat) — slices S1–S4 verified
-- **Next step:** verify slice 1.98-2.S5 (context: render tagged .ipynb files as cells in src/context.ts)
+- **Current item:** 1.98-2 (notebook support in chat) — slices S1–S5 verified
+- **Next step:** verify slice 1.98-2.S6 (package.json descriptions + final smoke assertions + PROGRESS.md — final slice)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -108,7 +108,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-2.S2** — `src/notebook.ts` pure parse/format/create helpers — **PASS** (2026-10-22)
 - [x] **1.98-2.S3** — `applyNotebookEdit` (the 5 actions) — **PASS** (2026-10-22)
 - [x] **1.98-2.S4** — ToolExecutor: execute `notebook_edit` — **PASS** (2026-10-22)
-- [ ] Verify slice **1.98-2.S5** — context: render tagged .ipynb files as cells in `src/context.ts`.
+- [x] **1.98-2.S5** — context: render tagged .ipynb files as cells in `src/context.ts` — **PASS** (2026-10-22)
+- [ ] Verify slice **1.98-2.S6** — package.json descriptions + final smoke assertions + PROGRESS.md (final slice).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -130,3 +131,7 @@ acceptance checks, and reports a clear pass/fail.
 ### 1.98-2.S4 — ToolExecutor: execute `notebook_edit` (2026-10-22) — **PASS**
 
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED; 16 `nb-exec:` assertions green. Static checks a–d PASS: case in execute() with coerced args; resolveSafe + snapshot system (lastSnapshot/recordSnapshot/recordChange); ok:false returns before any snapshot/write; git diff = 3 additive hunks (+61/-0). Scope: only ToolExecutor.ts (+61) + smoke-test.js (+172).
+
+### 1.98-2.S5 — context: render tagged .ipynb files as cells (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (241 assertions); 5 new `context:` notebook assertions green. Static checks a–b PASS: `formatNotebookForContext` imported from ./notebook, used only for case-insensitive `.ipynb` in taggedFiles loop; non-.ipynb raw fenced block unchanged (+9/-1). Scope: only context.ts + smoke-test.js (+54).

@@ -332,6 +332,60 @@ function assert(cond, label) {
     "context: stable section order (file -> selection -> diagnostics)",
   );
 
+  // 3b-nb) tagged .ipynb files render as cells, not raw JSON (1.98-2.S5)
+  const taggedNbFixture = JSON.stringify({
+    cells: [
+      {
+        cell_type: "code",
+        execution_count: 1,
+        metadata: {},
+        outputs: [
+          {
+            output_type: "stream",
+            name: "stdout",
+            text: ["hello\n"],
+          },
+        ],
+        source: "print('hello')",
+      },
+      {
+        cell_type: "markdown",
+        metadata: {},
+        source: "# Title",
+      },
+    ],
+    metadata: { language_info: { name: "python" } },
+    nbformat: 4,
+    nbformat_minor: 5,
+  });
+  const taggedNb = buildContextBlock({
+    taggedFiles: [{ path: "nb.ipynb", content: taggedNbFixture }],
+  });
+  assert(
+    taggedNb.includes("Tagged file: nb.ipynb"),
+    "context: tagged notebook header",
+  );
+  assert(
+    taggedNb.includes("### Cell 0 (code)"),
+    "context: tagged notebook renders cell heading",
+  );
+  assert(
+    taggedNb.includes("print('hello')"),
+    "context: tagged notebook cell source included",
+  );
+  assert(
+    !taggedNb.includes('"cells":'),
+    "context: tagged notebook has no raw JSON cells key",
+  );
+  const taggedTs = buildContextBlock({
+    taggedFiles: [{ path: "foo.ts", content: "const y = 2;" }],
+  });
+  assert(
+    taggedTs.includes("Tagged file: foo.ts") &&
+      taggedTs.includes("```\nconst y = 2;\n```"),
+    "context: non-notebook tagged file keeps raw fenced block",
+  );
+
   // 3c) buildCompletionPrompt + parseCompletion (Phase 3: inline completion)
   const cp = buildCompletionPrompt({
     language: "typescript",

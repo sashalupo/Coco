@@ -5,6 +5,8 @@
 // to the system prompt. No `vscode` import, no network — independently
 // testable. The vscode-specific gathering lives in the ChatViewProvider.
 
+import { formatNotebookForContext } from "./notebook";
+
 /** A single diagnostic (error/warning/info) on a file. */
 export interface ContextDiagnostic {
   /** 1-based line number the diagnostic starts on. */
@@ -111,7 +113,12 @@ export function buildContextBlock(input: ContextInput): string {
       const header = tf.language
         ? `Tagged file: ${tf.path} (${tf.language})`
         : `Tagged file: ${tf.path}`;
-      sections.push(`${header}\n\`\`\`\n${tf.content}\n\`\`\``);
+      if (tf.path.toLowerCase().endsWith(".ipynb")) {
+        // Notebooks render as a cell-by-cell text view, not raw JSON.
+        sections.push(`${header}\n${formatNotebookForContext(tf.content)}`);
+      } else {
+        sections.push(`${header}\n\`\`\`\n${tf.content}\n\`\`\``);
+      }
     }
   }
 
