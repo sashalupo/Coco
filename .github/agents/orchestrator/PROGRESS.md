@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-16** — Copilot status menu (completions indicator + toggle) — **DONE** (S1–S3, 2026-10-22)
-- **Current slice:** 1.99-16.S3 DONE (item complete)
+- **Current item:** **1.99-19** — Semantic text search improvements: `#searchResults` tool — planned (4 slices S1–S4)
+- **Current slice:** none yet (S1 next)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-19** (`#searchResults` tool), record plan, commit, run slice pipeline
+- **Next step:** dispatch Coder for 1.99-19.S1 (pure parse/format helpers in src/context.ts), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** 6ca092a (feat: copilot status menu — host indicator + toggle command (1.99-16.S2)); S3 commit pending
+- **Last commit:** fa3987f (feat: copilot status menu — package.json contributions + item complete (1.99-16.S3, item complete)); plan commit pending
 - **Build state:** compiles clean; smoke test passes (518 assertions); 1.99-16 complete
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the

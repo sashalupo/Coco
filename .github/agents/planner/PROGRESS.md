@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-16 (Copilot status menu) — **DONE** (2026-10-22, 3 slices S1–S3, 518 assertions)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-16.S1
+- **Current item:** 1.99-19 (`#searchResults` tool) — **planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-19.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -1909,3 +1909,107 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 - **Engine unreachable when the command runs:** QuickPick still works with configured models only (warning shown); the command never hard-fails.
 - **Toolbar model override still wins over `llm.completions.model`** in the inline provider (reuses chat toolbar state) — consistent with chat; a per-feature toolbar override is out of scope.
 - **Multi-root workspaces:** `ConfigurationTarget.Workspace` writes to the first workspace folder's settings (VS Code default); acceptable, consistent with the rest of the extension.
+
+### Item 1.99-19 — Semantic text search improvements (Experimental): `#searchResults` tool (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99 (March 2025), GitHub Copilot section — "Semantic text search improvements (Experimental)": AI semantic search in the Search view (Ctrl+I); `#searchResults` tool references the current search results in a chat prompt.
+
+**Summary & approach:** Only the `#searchResults` tool part is in scope (Relevance: keep — capability/context). The AI semantic search in the Search view is VS Code core UI (Copilot service) → **skipped** (documented deviation 1). Reading the actual Search view state is not feasible from an extension (VS Code core UI, no public API) → **documented deviation 2**: the documented fallback is used — when the user types `#searchResults` (optionally with a query, e.g. `#searchResults:foo` or `#searchResults foo`) in the chat input, the extension runs a **workspace text search** for the query and attaches the matches (file path + line + snippet) as chat context. The search reuses the existing `ToolExecutor.searchMatches`/`searchFile` infrastructure (regex with literal fallback, `SKIP_DIRS`, `MAX_READ_BYTES` guard, `relPath:line: text` format, cap 50 = `MAX_SEARCH_MATCHES`) — zero new search code, zero new dependencies. Follows the exact established tag pattern (`#usages`/`#fetch`/`#folder`): pure parse+format helpers in `src/context.ts`, a public executor method in `src/tools/ToolExecutor.ts`, wiring in `ChatViewProvider.runStream` gated on a new `llm.chat.searchResults.enabled` setting (default true), and a `package.json` setting entry.
+
+**Design decisions (justified):**
+1. **Tag syntax mirrors `#folder`** (colon or space, optional qualifier): `#searchResults:foo`, `#searchResults foo`, and bare `#searchResults` all match; `#searchResultsfoo` does not (word-bounded, case-insensitive). Bare tag → no query → the block renders a hint line instead of an empty search (the tag was explicit, so the header is always shown — same "never returns `''`" rule as `formatFolderBlock`).
+2. **Reuse `searchMatches` (private) via a new public `searchResults(query)` method** — same shape as `findUsagesPublic` (1.99-5): public wrapper the `ChatViewProvider` calls, returns a plain string body. Cap = `MAX_SEARCH_MATCHES` (50); when the cap is hit, a `… (truncated at 50)` suffix line is appended (same convention as `searchFiles`).
+3. **No workspace folder → hint string, not a throw** — consistent with `codebaseSweep`'s `"(no workspace folder)"` handling; the block still renders so the model sees why.
+4. **New setting `llm.chat.searchResults.enabled` (default true)** — follows the `llm.chat.*.enabled` tag-feature pattern (`fetchEnabled`, `usagesEnabled`, …). Runs regardless of `llm.tools.enabled`, same as the other tags.
+5. **Block format** (stable, truncated at 8000 chars with `… (truncated)` suffix):
+   ```
+   Search results (query: <query or (none)>):
+   <relPath:line: text lines, or hint line>
+   ```
+
+**Slices:**
+
+- **1.99-19.S1** — Pure `#searchResults` parse + format helpers in `src/context.ts`
+  - Files: `src/context.ts`
+  - Changes:
+    - New section at the end of the file (after the `#newWorkspace` block, ~line 505) with the standard section comment `// #searchResults tag (1.99-19): attach workspace text-search results as chat context. The actual search is wired up in a later slice; these functions only parse the tag and render the block.`
+    - `export function extractSearchResultsTag(text: string): string | null` — regex `/#searchResults(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i` (same shape as `extractFolderTag`); returns the trimmed query token (`m[1] ?? m[2] ?? ""`), `""` for the bare tag, `null` when the tag is absent. `#searchResultsfoo` must NOT match.
+    - `export const SEARCH_RESULTS_BLOCK_MAX_CHARS = 8000;` + `const SEARCH_RESULTS_TRUNCATED_SUFFIX = "… (truncated)";`
+    - `export function formatSearchResultsBlock(query: string, body: string): string` — header `Search results (query: ${q}):` where `q = query.trim() !== "" ? query : "(none)"`; body = `body` when non-empty, else `"(no matches)"` (the caller passes hint strings as `body`, so the formatter only substitutes `"(no matches)"` for empty/whitespace body); NEVER returns `""` (explicit tag → header always shown, same rule as `formatFolderBlock`); truncates to `SEARCH_RESULTS_BLOCK_MAX_CHARS` with the suffix.
+  - Smoke: prefix `sres-s1:` (5 assertions, `require` of `out/context.js`, new section `// 47)`):
+    - `sres-s1: extractSearchResultsTag extracts query after #searchResults (space and colon forms)` — `"explain #searchResults foo"` → `"foo"`; `"#searchResults:bar"` → `"bar"`.
+    - `sres-s1: extractSearchResultsTag returns '' for the bare tag` — `"#searchResults"` → `""`; `"#searchResults\nmore"` → `""`.
+    - `sres-s1: extractSearchResultsTag null for absent / no-boundary tag` — `"no tag"` → `null`; `"#searchResultsfoo x"` → `null`.
+    - `sres-s1: formatSearchResultsBlock header + body; empty body → '(no matches)'; never ''` — `formatSearchResultsBlock("foo", "a.ts:1: x")` starts with `Search results (query: foo):` and contains the line; `formatSearchResultsBlock("", "   ")` contains `(no matches)`; `formatSearchResultsBlock("", "hint")` contains `hint`.
+    - `sres-s1: formatSearchResultsBlock truncates long bodies with the suffix` — a 20000-char body → length ≤ 8000 + suffix length and ends with `… (truncated)`; query renders as `(none)` when empty.
+  - Acceptance: `npm run compile` passes; the 5 `sres-s1:` assertions pass; no existing assertion regresses.
+
+- **1.99-19.S2** — `ToolExecutor.searchResults(query)` public method + `LlmSettings.searchResultsEnabled` + `readSettings`
+  - Files: `src/tools/ToolExecutor.ts`, `src/presets.ts`, `src/config.ts`
+  - Changes:
+    - `src/tools/ToolExecutor.ts`: new public method next to `findUsagesPublic` (~line 1223): `public async searchResults(query: string): Promise<string>` — (a) no workspace folder → return `"(no workspace folder)"`; (b) `query.trim() === ""` → return `"(no query — use '#searchResults <query>' to search the workspace)"`; (c) else `const rootAbs = vscode.workspace.workspaceFolders[0].uri.fsPath; const matches = await this.searchMatches(query, rootAbs, MAX_SEARCH_MATCHES);` return `matches.join("\n")` plus `\n… (truncated at ${MAX_SEARCH_MATCHES})` when `matches.length >= MAX_SEARCH_MATCHES` (same convention as `searchFiles`). Reuses the existing private `searchMatches` (regex with literal fallback, `SKIP_DIRS`, size guard) — no new search logic.
+    - `src/presets.ts`: `LlmSettings` — add `/** Enable the \`#searchResults\` chat tag (workspace text-search results injected as context). */ searchResultsEnabled: boolean;` after `newWorkspaceEnabled` (~line 100).
+    - `src/config.ts`: `readSettings` — add `searchResultsEnabled: c.get<boolean>("chat.searchResults.enabled", true),` after `newWorkspaceEnabled` (~line 80).
+  - Smoke: prefix `sres-s2:` (3 assertions, static `fs.readFileSync` on `src/tools/ToolExecutor.ts` — `out/tools/ToolExecutor.js` imports vscode and cannot be required; new section `// 48)`):
+    - `sres-s2: ToolExecutor exposes a public searchResults(query) method` — source contains `public async searchResults(query: string): Promise<string>`.
+    - `sres-s2: searchResults reuses searchMatches with the MAX_SEARCH_MATCHES cap and truncation suffix` — regex over the method body: `searchMatches\(query, rootAbs, MAX_SEARCH_MATCHES\)` present and `truncated at ${MAX_SEARCH_MATCHES}` present.
+    - `sres-s2: searchResults handles no-workspace and no-query cases with hint strings` — method body contains `"(no workspace folder)"` and a `no query` hint.
+  - Acceptance: `npm run compile` passes (the new `LlmSettings` field is satisfied by the `readSettings` addition in the same slice); the 3 `sres-s2:` assertions pass; no existing assertion regresses.
+
+- **1.99-19.S3** — `ChatViewProvider.runStream`: wire the `#searchResults` tag into the context block
+  - Files: `src/chat/ChatViewProvider.ts`
+  - Changes:
+    - Import block (~line 27–35): add `extractSearchResultsTag` and `formatSearchResultsBlock` to the `./context` import.
+    - In `runStream`, after the `#usages` block (~line 1118) and before the `#newWorkspace` block (~line 1121), add the standard gated block:
+      ```ts
+      // 1.99-19.S3: `#searchResults` tag — run a workspace text search for the
+      // tagged query and append the matches to the context block. Gated only on
+      // settings.searchResultsEnabled (runs regardless of llm.tools.enabled,
+      // same as the other tags).
+      if (settings.searchResultsEnabled && lastUser && this.toolExecutor) {
+        const srQuery = extractSearchResultsTag(lastUser.content);
+        if (srQuery !== null) {
+          const srBody = await this.toolExecutor.searchResults(srQuery);
+          const srBlock = formatSearchResultsBlock(srQuery, srBody);
+          if (srBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + srBlock
+              : srBlock;
+          }
+        }
+      }
+      ```
+  - Smoke: prefix `sres-s3:` (3 assertions, static `fs.readFileSync` on `src/chat/ChatViewProvider.ts`, new section `// 49)`):
+    - `sres-s3: ChatViewProvider imports extractSearchResultsTag + formatSearchResultsBlock from ./context`
+    - `sres-s3: ChatViewProvider gates the #searchResults block on settings.searchResultsEnabled` — regex `settings\.searchResultsEnabled && lastUser && this\.toolExecutor` present.
+    - `sres-s3: ChatViewProvider calls toolExecutor.searchResults and appends the formatted block to finalContextBlock` — regex `extractSearchResultsTag\(lastUser\.content\)[\s\S]{0,400}?searchResults\(srQuery\)[\s\S]{0,300}?formatSearchResultsBlock\(srQuery, srBody\)` present.
+  - Acceptance: `npm run compile` passes; the 3 `sres-s3:` assertions pass; no existing assertion regresses.
+
+- **1.99-19.S4** — `package.json`: `llm.chat.searchResults.enabled` setting
+  - Files: `package.json`
+  - Changes:
+    - `contributes.configuration.properties`: add after `llm.chat.newWorkspace.enabled` (~line 283):
+      ```json
+      "llm.chat.searchResults.enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Allow the `#searchResults <query>` (or `#searchResults:<query>`) tag to include workspace text-search results (file:line: snippet, capped at 50 matches) in chat context. Mirrors the VS Code 1.99 `#searchResults` tool (text-search fallback — the AI semantic Search view is VS Code core)."
+      }
+      ```
+  - Smoke: prefix `sres-s4:` (2 assertions, parsed `package.json`, new section `// 50)`):
+    - `sres-s4: package.json contributes llm.chat.searchResults.enabled (boolean, default true)`
+    - `sres-s4: llm.chat.searchResults.enabled description mentions #searchResults and the text-search fallback`
+  - Acceptance: `npm run compile` passes; the 2 `sres-s4:` assertions pass; existing `package.json` assertions still pass.
+
+**Overall acceptance (Tester):** with `llm.chat.searchResults.enabled: true`, typing `#searchResults foo` in the chat input causes a workspace text search for `foo` and the request's system prompt contains a `Search results (query: foo):` block with `relPath:line: text` lines (capped at 50, truncated suffix when hit); bare `#searchResults` renders the header with a no-query hint; `#searchResultsfoo` is NOT treated as the tag; with the setting `false` the tag is ignored (no block, no search); `npm run compile` clean; full smoke suite green.
+
+**Risks / open questions:**
+- The query is treated as a regex with a literal fallback (existing `searchMatches` behavior) — a user query containing regex metacharacters that form an invalid regex falls back to literal matching; valid-but-unintended regexes match as regexes. Acceptable — identical to the existing `search_files` tool and `#codebase` search behavior.
+- Cap of 50 matches / 8000-char block keeps context size bounded for free local engines; deeper searches remain available via the `search_files` tool in agent mode.
+- No webview change needed — the tag is resolved host-side like all other tags (no chip/mention UI), consistent with `#usages`/`#fetch`.
+
+**Total expected assertions after all slices: 529** (baseline 518 + 11 new: 5 `sres-s1` + 3 `sres-s2` + 3 `sres-s3` + 2 `sres-s4`).
+
+**Deviations/skips (documented):**
+1. **AI semantic search in the Search view (Ctrl+I) — skipped**: VS Code core UI backed by the Copilot service; no analogue for a free local engine.
+2. **Reading the actual Search view state — skipped**: no public VS Code API exposes the Search view's current query/results; the documented fallback (run a workspace text search for the query and attach results) is what is planned.
