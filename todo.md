@@ -13,3 +13,4 @@ mcp server
 compact ✅
 hooks (?)
 when send a prompt while llm is working 3 options: "stop and send", "add to queue", "steer with message" ✅
+custom instructions file (AGENTS.md / .github/copilot-instructions.md) ✅

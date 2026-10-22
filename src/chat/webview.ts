@@ -541,6 +541,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		border-top: 1px solid var(--border);
 		background: var(--think-bg);
 	}
+	.instructions-indicator {
+		padding: 2px 8px;
+		font-size: 11px;
+		color: var(--vscode-descriptionForeground, #8b8b8b);
+		background: var(--vscode-editorWidget-background, #252526);
+		border-bottom: 1px solid var(--vscode-panel-border, #454545);
+	}
+	.instructions-indicator .ii-icon {
+		margin-right: 4px;
+	}
 
 	/* Step/iteration budget indicator (Phase 9.2) */
 	.step-indicator {
@@ -989,6 +999,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<div id="messages" class="messages"></div>
 
 		<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
+		<div id="instructions-indicator" class="instructions-indicator" hidden></div>
 		<div id="step-indicator" class="step-indicator" hidden></div>
 		<div id="token-budget" class="token-budget" hidden>
 			<span id="tb-label" class="tb-label"></span>
@@ -1032,6 +1043,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var stopBtn = document.getElementById('stop');
 		var retryBtn = document.getElementById('retry');
 		var contextIndicator = document.getElementById('context-indicator');
+		var instructionsIndicator = document.getElementById('instructions-indicator');
 		var stepIndicator = document.getElementById('step-indicator');
 		var tokenBudget = document.getElementById('token-budget');
 		var tbLabel = document.getElementById('tb-label');
@@ -1701,9 +1713,22 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						contextFlags: msg.contextFlags
 					});
 					break;
+				case 'instructions': {
+					const files = (msg.files || []);
+					if (files.length > 0) {
+						instructionsIndicator.innerHTML =
+							'<span class="ii-icon">📄</span>Instructions: ' +
+							files.map(escapeHtml).join(', ');
+						instructionsIndicator.hidden = false;
+					} else {
+						instructionsIndicator.hidden = true;
+					}
+					break;
+				}
 				case 'clear':
 					messagesEl.innerHTML = '';
 					contextIndicator.hidden = true;
+					instructionsIndicator.hidden = true;
 					stepIndicator.hidden = true;
 					tokenBudget.hidden = true;
 					todosCard.hidden = true;

@@ -7,6 +7,7 @@
 
 import * as vscode from "vscode";
 import * as fs from "fs";
+import * as path from "path";
 import { buildWebviewHtml } from "./webview";
 import { LlmClient, type UsageInfo } from "../client";
 import {
@@ -30,6 +31,12 @@ import {
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
 import { changedNewLines, unifiedDiff } from "../diff";
+import {
+  DEFAULT_INSTRUCTION_FILES,
+  MAX_INSTRUCTION_CHARS,
+  combineInstructions,
+  type InstructionFile,
+} from "../instructions";
 import type {
   ContextFlags,
   ContextLevel,
@@ -879,10 +886,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       }
 
       const contextBlock = buildContextBlock(ctxInput);
+      // Load custom instruction files (AGENTS.md, etc.) and fold them into
+      // the system prompt. Also post which files were loaded so the webview
+      // can show a small indicator.
+      const { block: instructionsBlock, files: instructionFiles } =
+        await this.loadInstructions(settings);
       systemPrompt = this.composeSystemPrompt(
         settings.systemPrompt,
+        instructionsBlock,
         contextBlock,
       );
+      this.postMessage({
+        type: "instructions",
+        files: instructionFiles.map((f) => f.path),
+      });
 
       const withSystem: ChatMessage[] = systemPrompt
         ? [{ role: "system", content: systemPrompt }, ...this.history]
@@ -1204,17 +1221,64 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * Combine the configured system prompt with the gathered context block.
-   * Either may be empty; the result is empty only when both are empty.
+   * Load custom instruction files from the workspace (Phase: custom
+   * instructions). Returns the combined instructions block plus the list of
+   * files that were found. No-op (empty) when the feature is disabled or no
+   * workspace folder is open. Each file is capped at `MAX_INSTRUCTION_CHARS`.
+   */
+  private async loadInstructions(
+    settings: LlmSettings,
+  ): Promise<{ block: string; files: InstructionFile[] }> {
+    if (!settings.instructionsEnabled) {
+      return { block: "", files: [] };
+    }
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!root) {
+      return { block: "", files: [] };
+    }
+    // Default files (priority order) + any user-configured extras, deduped.
+    const candidates = [
+      ...DEFAULT_INSTRUCTION_FILES,
+      ...settings.instructionFiles,
+    ];
+    const seen = new Set<string>();
+    const files: InstructionFile[] = [];
+    for (const rel of candidates) {
+      if (seen.has(rel)) {
+        continue;
+      }
+      seen.add(rel);
+      const abs = path.join(root, rel);
+      try {
+        const raw = await fs.promises.readFile(abs, "utf8");
+        const truncated = raw.length > MAX_INSTRUCTION_CHARS;
+        files.push({
+          path: rel,
+          content: raw.slice(0, MAX_INSTRUCTION_CHARS),
+          truncated,
+        });
+      } catch {
+        // missing/unreadable — skip
+      }
+    }
+    return { block: combineInstructions(files), files };
+  }
+
+  /**
+   * Combine the configured system prompt, the loaded custom-instructions
+   * block, and the gathered context block. Any of the three may be empty; the
+   * result is empty only when all are empty. Order: system prompt, then
+   * instructions, then context.
    */
   private composeSystemPrompt(
     systemPrompt: string,
+    instructionsBlock: string,
     contextBlock: string,
   ): string {
-    if (systemPrompt && contextBlock) {
-      return `${systemPrompt}\n\n${contextBlock}`;
-    }
-    return systemPrompt || contextBlock;
+    const parts = [systemPrompt, instructionsBlock, contextBlock].filter(
+      (p) => p && p.trim().length > 0,
+    );
+    return parts.join("\n\n");
   }
 
   /**

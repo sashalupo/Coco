@@ -66,6 +66,8 @@ export function readSettings(): LlmSettings {
       includeSelection: c.get<boolean>("context.includeSelection", true),
       includeDiagnostics: c.get<boolean>("context.includeDiagnostics", true),
     },
+    instructionsEnabled: c.get<boolean>("instructions.enabled", true),
+    instructionFiles: c.get<string[]>("instructions.files", []),
   };
 }
 

@@ -189,6 +189,19 @@
           "type": "boolean",
           "default": false,
           "description": "Enable the 'Ask LLM to fix/refactor' code action. Opt-in; requires a reload to take effect."
+        },
+        "llm.instructions.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-load custom instruction files (AGENTS.md, .github/copilot-instructions.md) into the system prompt."
+        },
+        "llm.instructions.files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Extra workspace-relative instruction file paths to load (in addition to the defaults)."
         }
       }
     }

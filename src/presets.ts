@@ -84,6 +84,10 @@ export interface LlmSettings {
   toolsEnabled: boolean;
   requireApproval: boolean;
   context: ContextFlags;
+  /** Enable auto-loading of custom instruction files (AGENTS.md, etc.). */
+  instructionsEnabled: boolean;
+  /** Extra workspace-relative instruction file paths (in addition to defaults). */
+  instructionFiles: string[];
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */
