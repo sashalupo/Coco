@@ -131,12 +131,14 @@ researcher does NOT write code — it builds and maintains the backlog.
   *embeddings-based semantic search* sub-item requires a paid embedding service → drop that
   sub-item; the local tools (text/file search, project structure, read file/dir, git modified,
   workspace symbols) are all local and in scope.
-- **Status:** `pending`
+- **Status:** `done` (2026-10-22, slices S1–S4)
 - **Gap vs existing:** existing agent has `search_files`, `list_dir`, `read_file`,
   `get_diagnostics`, but there is **no `#codebase` chat tag** that triggers a workspace-context
   sweep. Build the `#codebase` tag that fans out the local search tools and injects results as
   context.
-- **Implemented in:** —
+- **Implemented in:** `src/context.ts` (extractCodebaseQuery/formatCodebaseSweep),
+  `src/tools/ToolExecutor.ts` (codebaseSweep), `src/chat/ChatViewProvider.ts` (wiring),
+  `llm.chat.codebaseSearch.enabled` setting
 
 #### 1.98-9 · Attach problems as chat context (`#problems`)
 - **Description:** Attach problems from the Problems panel as chat context — drag an item onto
@@ -144,9 +146,11 @@ researcher does NOT write code — it builds and maintains the backlog.
   problems in a file, or all files in the codebase.
 - **Image notes:** None.
 - **Relevance:** `keep (capability/context)` — context injection.
-- **Status:** `pending`
+- **Status:** `done` (2026-10-22, slices S1–S4)
 - **Gap vs existing:** no `#problems` tag / Problems-panel attachment exists yet.
-- **Implemented in:** —
+- **Implemented in:** `src/context.ts` (extractProblemsTag/formatProblemsBlock),
+  `src/tools/ToolExecutor.ts` (collectDiagnostics), `src/chat/ChatViewProvider.ts` (wiring),
+  `llm.chat.problems.enabled` setting
 
 #### 1.98-10 · Attach folders as context (`#folder:<name>`)
 - **Description:** Attach a folder as context via the paperclip 📎 or by typing `#folder:`
@@ -239,6 +243,8 @@ researcher does NOT write code — it builds and maintains the backlog.
 - 1.98-3 Refined editor integration — `done (already built)` (keep/undo, multi-file diff view)
 - 1.98-4 Refreshed UI — `done (already built)` (@filename attachments, change toolbox)
 - 1.98-6 Custom instructions GA — `done (already built)` (loads `.github/copilot-instructions.md`)
+- 1.98-8 `#codebase` tag — `done` (2026-10-22, local workspace-context sweep)
+- 1.98-9 `#problems` tag — `done` (2026-10-22, attach Problems-panel items as context)
 
 ## Skipped (decision trail)
 
@@ -251,14 +257,10 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-1. **1.98-1** Agent mode: editable terminal command before running + `Ctrl+Enter` confirm
-2. **1.98-2** Notebook support in chat (cell insert/delete/modify, cell-type change)
-3. **1.98-8** `#codebase` tag (local workspace-context sweep; drop embeddings sub-item)
-4. **1.98-9** `#problems` tag (attach Problems-panel items as context)
-5. **1.98-10** `#folder:<name>` tag (attach a folder as context)
-6. **1.98-12** Change Completions Model command (switch model for inline completions)
-7. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
-8. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
+1. **1.98-10** `#folder:<name>` tag (attach a folder as context)
+2. **1.98-12** Change Completions Model command (switch model for inline completions)
+3. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
+4. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
 
 ## Todo
 
