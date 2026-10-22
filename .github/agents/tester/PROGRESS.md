@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-10 (`#folder:` tag) — S4 verified (item 1.98-10 fully verified)
-- **Next step:** verify item 1.98-12 (next backlog item)
+- **Current item:** 1.98-12 (completions model quick pick) — S1 verified
+- **Next step:** verify 1.98-12 S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 319/319 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 327/327 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -187,6 +187,30 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** only the 4 in-scope files (+ `ninfer` marker, ignored). PASS
 - **Item 1.98-10 fully verified (S1–S4 all PASS).**
 
+### 1.98-12.S1 — pure `buildCompletionsModelList` in `src/presets.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **327 assertions** (319 prior + 8 new `compm-s1:`; 0 FAIL).
+- **Static checks in `src/presets.ts`:** (a) `CompletionsModelOption` interface exported with `value: string`, `label: string`, `picked: boolean`. PASS (b) `buildCompletionsModelList(current, chatModel, engineModels)` exported, pure. PASS (c) No `import ... from "vscode"` anywhere in the file (grep exit 1). PASS
+- **Behavior contract** — `node -e` spot checks against compiled `out/presets.js`:
+  - `("", "", [])` → exactly 1 entry `{value:"", label:"Use chat model (default)", picked:true}`. PASS
+  - `("m-a","m-b",["m-c"])` → values `["","m-a","m-b","m-c"]`; `picked:true` only on `m-a`. PASS
+  - `("m-b","m-b",["m-c"])` → values `["","m-b","m-c"]`; `picked:true` on `m-b` (dedup current===chat). PASS
+  - `("","m-b",["m-b","m-c"])` → values `["","m-b","m-c"]` (engine model == chat model not duplicated). NOTE: `picked:true` lands on the default entry (value "") because `current === ""` — matches the documented contract ("`picked` is true on the entry matching `current` ("" → the default entry)"); the criterion's "no picked anywhere" wording is subsumed by this. PASS
+  - `("m-c","",["m-a","m-c"])` → values `["","m-c","m-a"]` (current first among candidates, deduped against engine list); `picked` on `m-c`. PASS
+- **Smoke 15a:** 8 genuine `compm-s1:` assertions (lines 2169–2206 of `scripts/smoke-test.js`) exercising the compiled function: default entry shape, picked-on-default, ordering, single picked, current===chat dedup, engine dedup, empty-inputs single entry, picked-false on non-active. Not tautologies. PASS
+- **Scope check:** `git status --short` (ignoring `ninfer` submodule marker) → only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. PASS
+
+
+### 1.98-12.S1 — pure `buildCompletionsModelList` in `src/presets.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **327 assertions** (319 prior + 8 new `compm-s1:` in section 15a).
+- **Static:** `CompletionsModelOption` interface (value/label/picked) + `buildCompletionsModelList` exported; `src/presets.ts` remains vscode-free. PASS
+- **Behavior spot-checks** (`node -e` on `out/presets.js`): empty inputs → single default entry (picked); `("m-a","m-b",["m-c"])` → `["","m-a","m-b","m-c"]` picked on `m-a`; `current === chatModel` dedup → single picked entry; engine-model/chat-model dedup; current-first ordering with engine dedup. All match documented contract. PASS
+- **Smoke 15a:** 8 genuine assertions (not tautologies). PASS
+- **Scope check:** only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ `ninfer` marker, ignored). PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -195,6 +219,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Todo
 
+- [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
+- [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
 - [x] **1.98-1** — fully verified (all slices S1–S5 PASS)
@@ -220,6 +246,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-10.S3** — `folderContextEnabled` field + `#folder:` chat wiring — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json` settings schema + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — `#folder:` tag — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
+- [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

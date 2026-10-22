@@ -103,3 +103,50 @@ export interface ToolbarState {
   context: ContextLevel;
   contextFlags: ContextFlags;
 }
+
+/** One entry in the "Change Completions Model" quick pick. */
+export interface CompletionsModelOption {
+  /** Model ID to write to llm.completions.model ("" = use chat model). */
+  value: string;
+  /** Display label. */
+  label: string;
+  /** True when this is the currently active completions model. */
+  picked: boolean;
+}
+
+/**
+ * Build the quick-pick list for the Change Completions Model command.
+ * Pure: no vscode, no network.
+ * - First entry is always "Use chat model (default)" (value "").
+ * - Then the current completions model (if non-empty and ≠ chat model),
+ *   the chat model (if non-empty), then engine models — deduped by value.
+ * - `picked` is true on the entry matching `current` ("" → the default entry).
+ */
+export function buildCompletionsModelList(
+  current: string,
+  chatModel: string,
+  engineModels: readonly string[],
+): CompletionsModelOption[] {
+  const list: CompletionsModelOption[] = [
+    { value: "", label: "Use chat model (default)", picked: current === "" },
+  ];
+  const seen = new Set<string>([""]);
+  const candidates: string[] = [];
+  if (current !== "" && current !== chatModel) {
+    candidates.push(current);
+  }
+  if (chatModel !== "") {
+    candidates.push(chatModel);
+  }
+  for (const m of engineModels) {
+    candidates.push(m);
+  }
+  for (const value of candidates) {
+    if (value === "" || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    list.push({ value, label: value, picked: value === current });
+  }
+  return list;
+}

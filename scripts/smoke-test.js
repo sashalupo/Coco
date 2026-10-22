@@ -2156,6 +2156,56 @@ function assert(cond, label) {
     "folder-s4: llm.chat.folderContext.enabled description mentions #folder",
   );
 
+  // 15) change completions model (1.98-12): pure quick-pick list builder.
+  // 15a) compiled out/presets.js.
+  const { buildCompletionsModelList } = require(
+    path.join(__dirname, "..", "out", "presets.js"),
+  );
+  const cmDefault = buildCompletionsModelList("", "", []);
+  assert(
+    cmDefault.length === 1 &&
+      cmDefault[0].value === "" &&
+      cmDefault[0].label === "Use chat model (default)",
+    "compm-s1: default entry first with value '' and default label",
+  );
+  assert(
+    cmDefault[0].picked === true,
+    "compm-s1: picked lands on default entry when current === ''",
+  );
+  const cmFull = buildCompletionsModelList("m-a", "m-b", ["m-c"]);
+  assert(
+    JSON.stringify(cmFull.map((e) => e.value)) ===
+      JSON.stringify(["", "m-a", "m-b", "m-c"]),
+    "compm-s1: order is default, current, chat, engine models",
+  );
+  assert(
+    cmFull.filter((e) => e.picked).length === 1 &&
+      cmFull.find((e) => e.picked).value === "m-a",
+    "compm-s1: exactly one picked entry, on the current model",
+  );
+  const cmSame = buildCompletionsModelList("m-x", "m-x", ["m-x"]);
+  assert(
+    cmSame.length === 2 &&
+      cmSame[1].value === "m-x" &&
+      cmSame[1].picked === true,
+    "compm-s1: current === chatModel dedups to single picked entry",
+  );
+  const cmDup = buildCompletionsModelList("", "m-b", ["m-b", "m-c"]);
+  assert(
+    JSON.stringify(cmDup.map((e) => e.value)) ===
+      JSON.stringify(["", "m-b", "m-c"]),
+    "compm-s1: engine models deduped against earlier entries",
+  );
+  assert(
+    buildCompletionsModelList("", "", []).length === 1,
+    "compm-s1: empty inputs yield exactly one entry",
+  );
+  assert(
+    cmFull.filter((e) => e.picked).length === 1 &&
+      cmFull.every((e) => e.picked === (e.value === "m-a")),
+    "compm-s1: picked false on all non-active entries",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

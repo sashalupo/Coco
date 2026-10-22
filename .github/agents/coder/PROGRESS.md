@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-10.S4 done — `package.json` settings schema + final smoke assertions (item 1.98-10 complete)
-- **Next step:** item 1.98-12 (Change completions model) — awaiting planner plan
+- **Current step:** 1.98-12.S1 done — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList` quick-pick builder
+- **Next step:** 1.98-12.S2 (per planner plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (319 assertions, incl. 4 new `folder-s4:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (327 assertions, incl. 8 new `compm-s1:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-12.S1** (2026-10-22) — `src/presets.ts`: `CompletionsModelOption` interface + pure `buildCompletionsModelList(current, chatModel, engineModels)` quick-pick list builder for the Change Completions Model command. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: appended after `ToolbarState` — `CompletionsModelOption { value; label; picked }` (value `""` = use chat model) and `buildCompletionsModelList`: first entry always `{ value: "", label: "Use chat model (default)", picked: current === "" }`; then candidates in order (a) `current` (if non-empty and ≠ chatModel), (b) `chatModel` (if non-empty), (c) each `engineModels` entry — each appended only if non-empty and not already seen (dedup by value via `Set`); appended entries get `label = value`, `picked = value === current`. Pure — no vscode, no network. Module stays vscode-free.
+  - `scripts/smoke-test.js`: new section `// 15) change completions model (1.98-12)` with subsection `15a` importing compiled `out/presets.js`; 8 assertions (`compm-s1:` labels): default entry first with `value === ""` + label, `picked` on default when `current === ""`, order `["", "m-a", "m-b", "m-c"]` for `current="m-a"`/`chatModel="m-b"`/`engineModels=["m-c"]`, exactly one `picked` on `m-a`, `current === chatModel` dedups to single picked entry, engine models deduped against earlier entries, empty inputs → exactly one entry, `picked` false on all non-active entries.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **327 assertions** (319 prior + 8 new `compm-s1:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-10.S4** (2026-10-22) — `package.json` settings schema + final smoke assertions + memory (FINAL slice of item 1.98-10). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: added `llm.chat.folderContext.enabled` (boolean, default `true`) to `contributes.configuration.properties` after `llm.chat.problems.enabled`, with description "When the user types #folder:<name> (or '#folder <name>') in a chat message, attach the folder's file tree as context. Bare #folder attaches the workspace root." JSON validated via `JSON.parse`.
   - `scripts/smoke-test.js`: new subsection `// 14d) folder tag (1.98-10.S4)` with 4 parsed-JSON assertions (`folder-s4:` labels) reusing the `pkg` parse from 12d: (a) `contributes.configuration.properties["llm.chat.folderContext.enabled"]` present, (b) `type === "boolean"`, (c) `default === true`, (d) `description` is a non-empty string mentioning `#folder`.
