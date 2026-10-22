@@ -2835,6 +2835,30 @@ function assert(cond, label) {
     "mcp-s4: toolsEnabled=false → no tools key even with mcpTools present",
   );
 
+  // 18e) MCP chat wiring (1.99-2.S5)
+  // NOTE: out/chat/ChatViewProvider.js imports `vscode`, so it is NOT
+  // require-able outside the VS Code host — use static source assertions
+  // (same pattern as the pkgS4-style checks above).
+  const chatViewSrcS5 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcS5.includes("isMcpToolName") &&
+      chatViewSrcS5.includes("setServers"),
+    "mcp-s5: ChatViewProvider.js uses isMcpToolName and syncs setServers per turn",
+  );
+  const mcpToolsCount = chatViewSrcS5.split("mcpTools:").length - 1;
+  assert(
+    mcpToolsCount >= 2,
+    `mcp-s5: mcpTools passed into both buildRequestBody call sites (found ${mcpToolsCount})`,
+  );
+  assert(
+    chatViewSrcS5.includes("mcpManager.execute(") &&
+      chatViewSrcS5.includes("mcpManager.dispose()"),
+    "mcp-s5: MCP calls routed to mcpManager.execute and manager disposed",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

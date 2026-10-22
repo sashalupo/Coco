@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { LlmClient } from "./client";
 import { readSettings } from "./config";
 import { ChatViewProvider } from "./chat/ChatViewProvider";
+import { McpManager } from "./mcpManager";
 import { InlineCompletionProvider } from "./inline/InlineCompletionProvider";
 import { CodeActionProvider } from "./codeaction/CodeActionProvider";
 import {
@@ -20,7 +21,12 @@ const HEALTH_POLL_INTERVAL_MS = 5000;
 
 export function activate(context: vscode.ExtensionContext): void {
   const client = new LlmClient(readSettings);
-  const provider = new ChatViewProvider(context, client);
+  // 1.99-2.S5: one shared MCP server manager; the chat provider syncs it
+  // each turn and disposes it on deactivation.
+  const mcpManager = new McpManager((msg) =>
+    vscode.window.showErrorMessage(msg),
+  );
+  const provider = new ChatViewProvider(context, client, mcpManager);
 
   // Register the chat webview (view id must match package.json `llm.chat`).
   context.subscriptions.push(

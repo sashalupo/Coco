@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-2 (MCP server support) — S1–S4 done (2026-10-22)
-- **Next step:** 1.99-2.S5 (wire MCP into the chat tool loop, `src/chat/ChatViewProvider.ts`)
+- **Current item:** 1.99-2 (MCP server support) — S1–S5 done (2026-10-22)
+- **Next step:** 1.99-2.S6 (commands + manifest, `src/extension.ts` + `package.json`) — FINAL slice
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (371 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 `status-s3:` + 4 `status-s4:`)

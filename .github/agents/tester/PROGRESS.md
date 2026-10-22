@@ -15,9 +15,22 @@ acceptance checks, and reports a clear pass/fail.
 - **Current item:** 1.99-2.S4 (extra tools in request body, `src/request.ts`) — **PASS** (2026-10-22)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** 851b1b2 (coder: 1.99-2.S3)
-- **Build state:** 394/394 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** ffee7e4 (coder: 1.99-2.S4)
+- **Build state:** 397/397 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-2.S5 — wire MCP into the chat tool loop (ChatViewProvider + extension glue) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **397 PASS lines** (394 prior + 3 new `mcp-s5:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 397 `PASS:` lines. PASS
+  - (3) New `// 18e) MCP chat wiring (1.99-2.S5)` section has 3 `mcp-s5:` static-source assertions on `out/chat/ChatViewProvider.js`: (a) `isMcpToolName` + `setServers`; (b) `mcpTools:` count ≥ 2 (found 2); (c) `mcpManager.execute(` + `mcpManager.dispose()`. Static approach justified (ChatViewProvider.js imports vscode). PASS
+  - (4) Source: `mcpManager` field + 3rd constructor param; `setServers(settings.mcpServers)` at top of `runStream`; both `buildRequestBody` sites pass `mcpTools: this.mcpManager.getTools()`; `isMutating` ORs `isMcpToolName(...)` (approval_request path unchanged); MCP routing with invalid-JSON guard resolving `Error: invalid tool arguments: ...` (never throws), result wrapped `{ tool_call_id: call.id, content }`; non-MCP → `toolExecutor.execute(call)`; `dispose()` calls `mcpManager.dispose()`; `extension.ts` creates ONE shared `McpManager` (notify via `showErrorMessage`) passed to provider; no new commands, no package.json change. PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M scripts/smoke-test.js`, ` M src/chat/ChatViewProvider.ts`, ` M src/extension.ts`. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `ffee7e4` (1.99-2.S4). No coder commit for S5. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-2.S4 — extra tools in request body (`src/request.ts`) (2026-10-22) — **PASS**
 

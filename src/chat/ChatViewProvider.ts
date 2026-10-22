@@ -34,6 +34,8 @@ import {
 } from "../context";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
+import { isMcpToolName } from "../mcp";
+import type { McpManager } from "../mcpManager";
 import { changedNewLines, unifiedDiff } from "../diff";
 import {
   DEFAULT_INSTRUCTION_FILES,
@@ -100,6 +102,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private readonly toolExecutor: ToolExecutor;
 
   /**
+   * Manages the configured MCP servers (1.99-2.S5): their tools are merged
+   * into the request body each turn and `mcp__server__tool` calls are routed
+   * to `execute` instead of the ToolExecutor.
+   */
+  private readonly mcpManager: McpManager;
+
+  /**
    * Pre-run conversation checkpoint (Phase 18): the history snapshot taken
    * at the start of each `runStream`. Used by the "Restore" button in the
    * change footer to revert the conversation to its pre-run state.
@@ -109,6 +118,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly client: LlmClient,
+    mcpManager: McpManager,
   ) {
     this.toolbarStore = ToolbarStateStore.create(context.globalState);
     this.conversationStore = ConversationStore.create(context.globalState);
@@ -122,6 +132,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.history = [];
     }
     this.toolExecutor = new ToolExecutor();
+    this.mcpManager = mcpManager;
   }
 
   /**
@@ -652,6 +663,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.changeDecorations?.added.dispose();
     this.changeDecorations?.created.dispose();
     this.changeDecorations = null;
+    // 1.99-2.S5: close any running MCP server clients (idempotent).
+    this.mcpManager.dispose();
   }
 
   /**
@@ -933,6 +946,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     let body: ChatCompletionRequest;
     let trimmed: boolean;
     let systemPrompt = "";
+    // 1.99-2.S5: sync the configured MCP servers each turn so setting edits
+    // take effect (removed servers are closed by the manager).
+    this.mcpManager.setServers(settings.mcpServers);
     try {
       // Gather editor context (active file, selection, diagnostics) and fold
       // it into the system prompt so the model can see what the user is
@@ -1048,7 +1064,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         ? [{ role: "system", content: systemPrompt }, ...this.history]
         : [...this.history];
 
-      const initial = buildRequestBody({ settings, toolbar }, withSystem);
+      const initial = buildRequestBody(
+        { settings, toolbar, mcpTools: this.mcpManager.getTools() },
+        withSystem,
+      );
       body = initial.body;
       trimmed = initial.trimmed;
       // Token budget visualization: post the estimated usage vs. budget so
@@ -1131,7 +1150,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // When requireApproval is on, mutating tools (write_file, edit_file)
         // are held: post an approval card and await the user's decision.
         for (const call of toolCalls) {
-          const isMutating = isMutatingTool(call.function.name);
+          // 1.99-2.S5: MCP tools are treated as mutating for the approval
+          // gate (they run arbitrary external processes).
+          const isMutating =
+            isMutatingTool(call.function.name) ||
+            isMcpToolName(call.function.name);
           // 1.98-1.S3: run_command goes through the editable command
           // approval gate (command_approval card); other mutating tools
           // keep the plain approval_request path unchanged.
@@ -1202,7 +1225,35 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             tool: call.function.name,
             args: call.function.arguments,
           });
-          const result = await this.toolExecutor.execute(call);
+          // 1.99-2.S5: route `mcp__server__tool` calls to the McpManager
+          // (invalid JSON arguments resolve to an error string, never throw);
+          // everything else goes to the ToolExecutor as before.
+          let result: { tool_call_id: string; content: string };
+          if (isMcpToolName(call.function.name)) {
+            let mcpArgs: Record<string, unknown> = {};
+            let argError: string | null = null;
+            try {
+              mcpArgs = JSON.parse(
+                call.function.arguments || "{}",
+              ) as Record<string, unknown>;
+            } catch (e) {
+              argError = e instanceof Error ? e.message : String(e);
+            }
+            if (argError !== null) {
+              result = {
+                tool_call_id: call.id,
+                content: `Error: invalid tool arguments: ${argError}`,
+              };
+            } else {
+              const mcpRes = await this.mcpManager.execute(
+                call.function.name,
+                mcpArgs,
+              );
+              result = { tool_call_id: call.id, content: mcpRes.content };
+            }
+          } else {
+            result = await this.toolExecutor.execute(call);
+          }
           // If the user edited the command, tell the model about it.
           const modelContent = commandModified
             ? `Note: the user modified the command before running it.\n${result.content}`
@@ -1234,7 +1285,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             ]
           : [...this.history];
         const rebuilt = buildRequestBody(
-          { settings, toolbar },
+          { settings, toolbar, mcpTools: this.mcpManager.getTools() },
           currentWithSystem,
         );
         body = rebuilt.body;
