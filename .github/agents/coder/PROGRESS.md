@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-6 (Create a new workspace with agent mode) — S2 done (2026-10-22)
-- **Next step:** 1.99-6.S3 (wiring: ChatViewProvider + config.ts + presets.ts + package.json)
+- **Current item:** 1.99-6 (Create a new workspace with agent mode) — S3 done (2026-10-22)
+- **Next step:** 1.99-6.S4 (FINAL: final smoke assertions + PROGRESS.md)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** compiles clean; smoke test passes (450 assertions)
@@ -25,6 +25,14 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-6.S3** (2026-10-22) — wiring: `#newWorkspace` tag → scaffold prompt in chat context + `llm.chat.newWorkspace.enabled` setting. Files: `src/presets.ts`, `src/config.ts`, `src/chat/ChatViewProvider.ts`, `package.json`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `newWorkspaceEnabled: boolean` on `LlmSettings` (comment: "Allow the #newWorkspace tag to inject a project scaffold prompt."), right after `usagesEnabled`.
+  - `src/config.ts`: `readSettings()` adds `newWorkspaceEnabled: c.get<boolean>("chat.newWorkspace.enabled", true)` after `usagesEnabled`.
+  - `src/chat/ChatViewProvider.ts`: (a) extended the `../context` import with `extractNewWorkspaceTag` + `formatWorkspaceBlock`, new `import { buildScaffoldPrompt } from "../workspaceScaffold"`; (b) in `runStream`, after the `#usages` block and before `loadInstructions`: `if (settings.newWorkspaceEnabled && lastUser)` (NO `toolExecutor` gate — the block is pure) → `const ws = extractNewWorkspaceTag(lastUser.content)`; if non-null: `buildScaffoldPrompt(ws.type, ws.folder)` → `formatWorkspaceBlock(ws.type, ws.folder, wsPrompt)`; appended to `finalContextBlock` with the same `? + "\n\n" + :` pattern (gated regardless of `llm.tools.enabled`, same as the other tags).
+  - `package.json`: added `llm.chat.newWorkspace.enabled` (boolean, default `true`) immediately after `llm.chat.usages.enabled`, description: "Allow the `#newWorkspace <type> [folder]` tag to inject a project scaffold prompt (extension / mcp-server / dev-env / generic) so the agent can create a new project with the file tools."
+  - No new smoke assertions in this slice (S4 adds the final ones); existing suite unchanged.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 450 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 4 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-6.S2** (2026-10-22) — `src/context.ts`: `#newWorkspace` tag extract + block format (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/context.ts`: (a) `import { listWorkspaceTypes } from "./workspaceScaffold"`; (b) `extractNewWorkspaceTag(text)` — regex `/#newWorkspace(?!\w)\s+([a-z-]+)(?:\s+(\S+))?/i`, lowercases the captured type, validates it against `listWorkspaceTypes()` (unknown type → `null`), folder = captured second group or default `<type>-project`; no match → `null`; (c) `formatWorkspaceBlock(type, folder, prompt)` — local `WORKSPACE_BLOCK_MAX_CHARS = 20000`, `""` on empty/whitespace prompt, else `New workspace scaffold (<type> → <folder>):\n\n<prompt>` truncated to 20000 chars with `… (truncated)` suffix (same pattern as `formatUsagesTagBlock`).
   - `scripts/smoke-test.js`: new section `// 26) New workspace tag context (1.99-6.S2)` reusing the cached `out/context.js` require; 4 `ws-s2:` assertions: (a) `extractNewWorkspaceTag("scaffold #newWorkspace extension my-ext please")` deep-equals `{ type: "extension", folder: "my-ext" }`; (b) `extractNewWorkspaceTag("#newWorkspace mcp-server")` deep-equals `{ type: "mcp-server", folder: "mcp-server-project" }`; (c) `null` for `"no tag"`, bare `"#newWorkspace"`, `"#newWorkspace bogus x"` (unknown type), `"#newWorkspacefoo extension"` (no word boundary); (d) `formatWorkspaceBlock("extension","f","body")` starts with `New workspace scaffold (extension → f):` + contains `body`, whitespace prompt → `""`, 25,000-char prompt → length ≤ 20050 and ends with `(truncated)`. Total PASS lines now 450 (446 + 4).

@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-6.S2 (new workspace tag context) — **PASS** (2026-10-22)
-- **Next step:** 1.99-6.S3 (wiring: ChatViewProvider + config.ts + presets.ts + package.json)
+- **Current item:** 1.99-6.S3 (new workspace wiring + setting) — **PASS** (2026-10-22)
+- **Next step:** 1.99-6.S4 (FINAL: final smoke assertions + PROGRESS.md)
 - **Last updated:** 2026-10-22
-- **Last commit:** d405e15 (coder: 1.99-6.S1)
+- **Last commit:** 06430f7 (coder: 1.99-6.S2)
 - **Build state:** 450/450 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-6.S3 — new workspace wiring + setting (ChatViewProvider + config + presets + package.json) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **450 PASS lines** (no new assertions this slice; S4 will add), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 450/450 PASS; (3) `src/chat/ChatViewProvider.ts` `#newWorkspace` block (L1091–1106) uses `extractNewWorkspaceTag` (L1096), `buildScaffoldPrompt` (L1098), `formatWorkspaceBlock` (L1099); gated on `settings.newWorkspaceEnabled && lastUser` (L1095, no toolExecutor); placed after `#usages` block (L1077–1090) and before `loadInstructions` (L1112); imports at L36–37 (`../context`) + L41 (`../workspaceScaffold`) PASS; (4) `src/config.ts:77` `newWorkspaceEnabled: c.get<boolean>("chat.newWorkspace.enabled", true)` PASS; (5) `src/presets.ts:104` `newWorkspaceEnabled: boolean` PASS; (6) `package.json` valid JSON, `llm.chat.newWorkspace.enabled` = `{type: "boolean", default: true}`; `llm.chat.usages.enabled` still present (regression guard) PASS; (7) scope: exactly coder PROGRESS.md, `package.json`, `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`; no `package-lock.json` drift PASS; (8) last commit `06430f7` (coder: 1.99-6.S2), no coder commit for S3 PASS.
+- **Verdict:** **PASS** — all criteria met.
 
 ### 1.99-6.S2 — new workspace tag context (src/context.ts) (2026-10-22) — **PASS**
 

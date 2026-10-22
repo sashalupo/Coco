@@ -33,9 +33,12 @@ import {
   formatFetchBlock,
   extractUsagesTag,
   formatUsagesTagBlock,
+  extractNewWorkspaceTag,
+  formatWorkspaceBlock,
   type ContextFile,
   type ContextInput,
 } from "../context";
+import { buildScaffoldPrompt } from "../workspaceScaffold";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
 import { isMcpToolName } from "../mcp";
@@ -1081,6 +1084,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + usagesBlock
               : usagesBlock;
+          }
+        }
+      }
+
+      // 1.99-6.S3: `#newWorkspace` tag — inject a project scaffold prompt so
+      // the agent can create a new project with the file tools. Pure block
+      // (no toolExecutor needed). Gated only on settings.newWorkspaceEnabled
+      // (runs regardless of llm.tools.enabled, same as the other tags).
+      if (settings.newWorkspaceEnabled && lastUser) {
+        const ws = extractNewWorkspaceTag(lastUser.content);
+        if (ws !== null) {
+          const wsPrompt = buildScaffoldPrompt(ws.type, ws.folder);
+          const wsBlock = formatWorkspaceBlock(ws.type, ws.folder, wsPrompt);
+          if (wsBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + wsBlock
+              : wsBlock;
           }
         }
       }

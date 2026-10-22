@@ -100,6 +100,8 @@ export interface LlmSettings {
   fetchEnabled: boolean;
   /** Enable the `#usages` chat tag (workspace usages report injected as context). */
   usagesEnabled: boolean;
+  /** Allow the #newWorkspace tag to inject a project scaffold prompt. */
+  newWorkspaceEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
   /** MCP server configurations (name → command/args/env). */

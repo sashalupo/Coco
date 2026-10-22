@@ -978,7 +978,7 @@ reference if the definition file sorts later); tag runs regardless of
   `extractNewWorkspaceTag(text)`, `formatWorkspaceBlock(type, folder, prompt)`.
   Smoke (`ws-s2:`, 4). Acceptance: compile clean; smoke 446 → **450**.
 
-- **1.99-6.S3 — wiring: `ChatViewProvider` + `config.ts` + `presets.ts` + `package.json`.**
+- **1.99-6.S3 — wiring: `ChatViewProvider` + `config.ts` + `presets.ts` + `package.json` — Done (2026-10-22, PASS, 450 assertions).**
   Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `package.json`.
   `newWorkspaceEnabled` setting; `#newWorkspace` block in `runStream` after `#usages`.
   Acceptance: compile clean; tag injects scaffold block.

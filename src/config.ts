@@ -74,6 +74,7 @@ export function readSettings(): LlmSettings {
     folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true),
     fetchEnabled: c.get<boolean>("chat.fetch.enabled", true),
     usagesEnabled: c.get<boolean>("chat.usages.enabled", true),
+    newWorkspaceEnabled: c.get<boolean>("chat.newWorkspace.enabled", true),
     completionsModel: c.get<string>("completions.model", ""),
     mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),
   };

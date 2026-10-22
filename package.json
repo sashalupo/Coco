@@ -252,6 +252,11 @@
           "default": true,
           "description": "Allow the `#usages <symbol>` tag to include a workspace-wide usages report (whole-word matches grouped by file, definition + reference count) in chat context."
         },
+        "llm.chat.newWorkspace.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the `#newWorkspace <type> [folder]` tag to inject a project scaffold prompt (extension / mcp-server / dev-env / generic) so the agent can create a new project with the file tools."
+        },
         "llm.completions.model": {
           "type": "string",
           "default": "",
