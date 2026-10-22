@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-28** — AI notebook editing improvements — new notebook tool — in progress (planned, 5 slices S1–S5)
-- **Current slice:** 1.99-28.S3 DONE (S4 next)
+- **Current slice:** 1.99-28.S4 DONE (S5 next — FINAL)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-28.S4 (/newNotebook chat command host-side + notebook_created webview notice + smoke), then Tester
+- **Next step:** dispatch Coder for 1.99-28.S5 (package.json `llm.chat.newNotebook.enabled` schema + final smoke — FINAL slice), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** 84a4612 (feat(llm): new_notebook agent tool — schema + createNewNotebook executor (1.99-28.S2)); S3 commit pending
-- **Build state:** compiles clean; smoke test passes (563 assertions)
+- **Last commit:** 178a1e9 (feat(llm): llm.chat.newNotebook.enabled setting plumbing (1.99-28.S3)); S4 commit pending
+- **Build state:** compiles clean; smoke test passes (566 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

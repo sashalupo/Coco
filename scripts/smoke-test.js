@@ -4307,6 +4307,29 @@ function assert(cond, label) {
     "nbnew-s3: presets LlmSettings has newNotebookEnabled",
   );
 
+  // 56) /newNotebook command (1.99-28.S4)
+  const cvpJsS4 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    cvpJsS4.includes("/newNotebook") && cvpJsS4.includes("notebook_created"),
+    "nbnew-s4: ChatViewProvider intercepts /newNotebook",
+  );
+  assert(
+    cvpJsS4.includes("createNewNotebook") &&
+      cvpJsS4.includes("notebookNameFromQuery"),
+    "nbnew-s4: ChatViewProvider calls createNewNotebook",
+  );
+  const webviewSrcS4 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcS4.includes("notebook_created"),
+    "nbnew-s4: webview renders notebook_created",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

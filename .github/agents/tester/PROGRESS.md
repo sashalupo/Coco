@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-28 — new notebook tool — S3 PASS (2026-10-22)
-- **Next step:** item 1.99-28 S3 verified — next: 1.99-28 S4 (/newNotebook chat command + webview notice)
+- **Current item:** 1.99-28 — new notebook tool — S4 PASS (2026-10-22)
+- **Next step:** item 1.99-28 S4 verified — next: 1.99-28 S5 (package.json setting schema + final smoke — FINAL slice)
 - **Last updated:** 2026-10-22
-- **Last commit:** 84a4612
-- **Build state:** 563/563 PASS
+- **Last commit:** 178a1e9
+- **Build state:** 566/566 PASS
+
+### 1.99-28.S4 — `/newNotebook` chat command (host-side) + `notebook_created` webview notice (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **566 PASS lines** (563 prior + 3 new `nbnew-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 566/566 PASS; (3) 3 `nbnew-s4:` assertions in section `// 56) /newNotebook command (1.99-28.S4)` (smoke-test.js:4310): `out/chat/ChatViewProvider.js` contains `/newNotebook` + `notebook_created` (L4317), same source contains `createNewNotebook` + `notebookNameFromQuery` (L4322), `src/chat/webview.ts` contains `notebook_created` (L4330) — all PASS; (4) `handleSend`: `!text` guard (L915) → `readSettings()` (L917) → regex (L921); disabled → notice+return (L923–931); empty query → notice+return (L932–940); null toolExecutor → notice+return (L941–948); else `relPath = "notebooks/" + notebookNameFromQuery(query) + ".ipynb"` (L950), `await createNewNotebook` (L951), posts `notebook_created` with `ok: message.startsWith("Created ")` (L952–957), returns before history push / model round-trip (L958) PASS; (5) `webview.ts:2276`: `case 'notebook_created':` — `textContent = (msg.ok ? '✅ ' : '⚠️ ') + (msg.message || '')`, no innerHTML PASS; (6) scope: only ChatViewProvider.ts, webview.ts, smoke-test.js, coder PROGRESS.md + `m ninfer` — PASS.
+- **Verdict:** **PASS** — all 6 criteria met. (S5 of item 1.99-28 remains.)
 
 ### 1.99-28.S3 — Setting plumbing: `llm.chat.newNotebook.enabled` (2026-10-22) — **PASS**
 

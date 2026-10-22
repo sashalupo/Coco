@@ -41,6 +41,7 @@ import {
   type ContextInput,
 } from "../context";
 import { buildScaffoldPrompt } from "../workspaceScaffold";
+import { notebookNameFromQuery } from "../notebook";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
 import { isMcpToolName } from "../mcp";
@@ -915,6 +916,47 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const settings = readSettings();
+    // /newNotebook command (1.99-28.S4): intercepted before anything is
+    // pushed to history — no model round-trip, so it works in ask mode.
+    const nbMatch = /^\/newNotebook[ \t]+([\s\S]+)$/i.exec(text);
+    if (nbMatch) {
+      if (!settings.newNotebookEnabled) {
+        this.postMessage({
+          type: "notebook_created",
+          ok: false,
+          message:
+            "llm.chat.newNotebook.enabled is off — /newNotebook is disabled.",
+        });
+        return;
+      }
+      const query = nbMatch[1].trim();
+      if (!query) {
+        this.postMessage({
+          type: "notebook_created",
+          ok: false,
+          message:
+            "/newNotebook needs a query — what should the notebook accomplish?",
+        });
+        return;
+      }
+      if (!this.toolExecutor) {
+        this.postMessage({
+          type: "notebook_created",
+          ok: false,
+          message: "tools unavailable — cannot create a notebook.",
+        });
+        return;
+      }
+      const relPath = "notebooks/" + notebookNameFromQuery(query) + ".ipynb";
+      const message = await this.toolExecutor.createNewNotebook(relPath, query);
+      this.postMessage({
+        type: "notebook_created",
+        ok: message.startsWith("Created "),
+        path: relPath,
+        message,
+      });
+      return;
+    }
     // Vision gate: `llm.chat.vision.enabled` (schema entry lands in S5; the
     // default keeps this slice single-file). When disabled, drop all images
     // silently (no warning).

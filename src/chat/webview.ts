@@ -2273,6 +2273,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					messagesEl.appendChild(rvEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
+				case 'notebook_created':
+					// /newNotebook command notice (1.99-28.S4): muted system
+					// line; textContent only (the message embeds a path).
+					var nbEl = document.createElement('div');
+					nbEl.className = 'message revert-result';
+					nbEl.textContent = (msg.ok ? '✅ ' : '⚠️ ') + (msg.message || '');
+					messagesEl.appendChild(nbEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
 				case 'tool_start':
 					// Phase 16: show a running tool card with a spinner.
 					(function () {

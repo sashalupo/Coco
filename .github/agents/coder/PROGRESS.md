@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-28 (new notebook planning) — S1–S3 done (S4–S5 pending)
-- **Next step:** 1.99-28.S4 per planner plan (`.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.99-28 (new notebook planning) — S1–S4 done (S5 pending)
+- **Next step:** 1.99-28.S5 per planner plan (`.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (563 assertions)
+- **Build state:** compiles clean; smoke test passes (566 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-28.S4** (2026-10-22) — `/newNotebook` chat command (host-side) + `notebook_created` webview notice. Files: `src/chat/ChatViewProvider.ts`, `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/ChatViewProvider.ts`: (a) `notebookNameFromQuery` added to the `../notebook` import (new import line after `../workspaceScaffold`); (b) `handleSend` — after the `if (!text) return;` guard and `readSettings()`, intercepts `/^\/newNotebook[ \t]+([\s\S]+)$/i`: setting off → posts `{ type: "notebook_created", ok: false, message: "llm.chat.newNotebook.enabled is off — /newNotebook is disabled." }` and returns; empty query → failure notice; `this.toolExecutor` null → "tools unavailable" failure notice; else `relPath = "notebooks/" + notebookNameFromQuery(query) + ".ipynb"`, `message = await this.toolExecutor.createNewNotebook(relPath, query)`, posts `{ type: "notebook_created", ok: message.startsWith("Created "), path: relPath, message }` and returns — NOT pushed to history, no model round-trip (works in ask mode).
+  - `src/chat/webview.ts`: `handleHostMessage` gains `case 'notebook_created':` right after `revert_result` — reuses the muted `.message.revert-result` class; `textContent = (msg.ok ? '✅ ' : '⚠️ ') + (msg.message || '')` (textContent only — the message embeds a path); appended to `messagesEl` + scroll.
+  - `scripts/smoke-test.js`: new section `// 56) /newNotebook command (1.99-28.S4)` after section 55, before `ALL SMOKE TESTS PASSED`; 3 `nbnew-s4:` assertions: (a) compiled `out/chat/ChatViewProvider.js` contains `/newNotebook` AND `notebook_created`; (b) same source contains `createNewNotebook` AND `notebookNameFromQuery`; (c) `src/chat/webview.ts` source contains `notebook_created`. Total PASS lines now 566 (563 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 566 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-28.S3** (2026-10-22) — setting plumbing: `llm.chat.newNotebook.enabled`. Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `LlmSettings` gains `newNotebookEnabled: boolean` (doc comment "Enable the `new_notebook` agent tool (create a new Jupyter notebook planned from a query).") immediately after `searchResultsEnabled`.
   - `src/config.ts`: `readSettings` gains `newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true)` immediately after `searchResultsEnabled`.
