@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-2 (MCP server support) — S1–S2 done (2026-10-22)
-- **Next step:** 1.99-2.S3 (`src/mcpManager.ts` (new): lazy lifecycle + registry)
+- **Current item:** 1.99-2 (MCP server support) — S1–S3 done (2026-10-22)
+- **Next step:** 1.99-2.S4 (extra tools in the request body, `src/request.ts`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (371 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 `status-s3:` + 4 `status-s4:`)

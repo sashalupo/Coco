@@ -461,7 +461,7 @@ follow-up).
   guard).
   Assertion count: ~381 → ~383.
 
-- **1.99-2.S3 — `src/mcpManager.ts` (new): lazy lifecycle + registry.**
+- **1.99-2.S3 — `src/mcpManager.ts` (new): lazy lifecycle + registry.** — Done (2026-10-22, PASS, 391 assertions)
   File: create `src/mcpManager.ts`; modify `scripts/smoke-test.js`.
   `export class McpManager` (no `vscode` import — pass a `notify` callback in the
   constructor to stay smoke-testable):

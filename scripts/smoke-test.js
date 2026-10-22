@@ -36,6 +36,9 @@ const {
   createNotebook,
   applyNotebookEdit,
 } = require(path.join(__dirname, "..", "out", "notebook.js"));
+const { McpManager } = require(
+  path.join(__dirname, "..", "out", "mcpManager.js"),
+);
 
 const PORT = 18099;
 
@@ -2752,6 +2755,39 @@ function assert(cond, label) {
       configSrcS2.includes('"mcp.servers"'),
     "mcp-s2: config.ts source contains parseMcpServers and mcp.servers",
   );
+
+  // 18c) MCP manager (1.99-2.S3)
+  // NOTE: McpClient (src/mcp.ts) does not handle the child's `error` event
+  // (spawn ENOENT), so a nonexistent binary would hang until the 10 s
+  // handshake timeout. The failure case below uses a real binary that exits
+  // non-zero immediately, so the handshake fails via `exit` (fast).
+  const mgr = new McpManager();
+  mgr.setServers({ a: { command: "true" } });
+  assert(
+    mgr.getTools().length === 0 &&
+      JSON.stringify(mgr.listServers()) ===
+        JSON.stringify([{ name: "a", status: "stopped", toolCount: 0 }]),
+    "mcp-s3: fresh manager — getTools() empty, listServers() one stopped entry",
+  );
+  mgr.setServers({ a: { command: "node", args: ["-e", "process.exit(1)"] } });
+  const failRes = await mgr.execute("mcp__a__x", {});
+  assert(
+    typeof failRes.content === "string" &&
+      failRes.content.startsWith("Error:") &&
+      failRes.content.includes("a"),
+    "mcp-s3: execute() on a failing server resolves with Error content (no throw)",
+  );
+  const badNameRes = await mgr.execute("not_an_mcp_name", {});
+  assert(
+    badNameRes.content.includes("not an MCP tool name"),
+    "mcp-s3: execute() with a non-MCP name resolves with 'not an MCP tool name'",
+  );
+  mgr.setServers({});
+  assert(
+    mgr.listServers().length === 0,
+    "mcp-s3: setServers({}) drops removed servers from listServers()",
+  );
+  mgr.dispose();
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

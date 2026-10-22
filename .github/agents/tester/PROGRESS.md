@@ -12,11 +12,27 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-2.S2 (MCP settings plumbing) — **PASS** (2026-10-22)
+- **Current item:** 1.99-2.S3 (McpManager lazy lifecycle + registry) — **PASS** (2026-10-22)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** c8222cb (coder: 1.99-2.S1)
-- **Build state:** 387/387 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 94a7965 (coder: 1.99-2.S2)
+- **Build state:** 391/391 PASS (`npm run compile` exit 0; smoke test ALL PASSED, 0.24 s)
+
+### 1.99-2.S3 — `src/mcpManager.ts`: McpManager lazy lifecycle + registry (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **391 PASS lines** (387 prior + 4 new `mcp-s3:`), 0 FAIL. Wall-clock **0.235 s** (`time`).
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 391 `PASS:` lines. PASS
+  - (3) New `// 18c) MCP manager (1.99-2.S3)` section (smoke-test.js lines 2759-2795) has 4 genuine `mcp-s3:` assertions: (a) fresh manager — `getTools()` empty + `listServers()` exactly `[{name:"a",status:"stopped",toolCount:0}]` (JSON equality, non-trivial); (b) `execute("mcp__a__x")` on `{command:"node",args:["-e","process.exit(1)"]}` RESOLVES with `content` starting `Error:` and containing server name — uses real binary exiting non-zero because `McpClient` lacks a spawn `error` handler (documented in section NOTE); (c) `execute("not_an_mcp_name")` → content includes `not an MCP tool name`; (d) `setServers({})` → `listServers().length === 0`. Section completes fast (whole suite 0.235 s ≪ 30 s). PASS
+  - (4) Purity: `grep -n vscode src/mcpManager.ts` → only line 3 (comment). No `vscode` import. PASS
+  - (5) Contract (source read): `execute()` body fully wrapped in try/catch; every path returns `{ content: "Error: ..." }` (bad name, unknown server, start failure, outer catch) — never throws/rejects. `listServers()` is a pure map over `this.servers` + `statusFor` (no spawn). `dispose()` clears all maps + `servers = {}` — idempotent. PASS
+  - (6) Scope: `git status --short | grep -v ninfer` → exactly ` M scripts/smoke-test.js`, `?? src/mcpManager.ts`. `package-lock.json` untouched. PASS
+  - (7) `git log --oneline -1` → `94a7965` (feat(llm): MCP server support — settings plumbing (1.99-2.S2)). No coder commit for S3. PASS
+- **Verdict:** **PASS** — all 7 criteria met.
+
+
 
 ### 1.99-2.S2 — MCP settings plumbing (`mcpServers` in `LlmSettings` + `readSettings()`) (2026-10-22) — **PASS**
 
