@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-12** — Change Completions Model command (VS Code 1.98)
-- **Current slice:** **1.98-12.S1** — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList`
+- **Current slice:** **1.98-12.S3** — `src/extension.ts`: `llm.changeCompletionsModel` QuickPick command
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-12.S1, then Tester
+- **Next step:** dispatch Coder for slice 1.98-12.S3, then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `f33c3a4` — feat(llm): Change Completions Model — pure buildCompletionsModelList (1.98-12.S1)
-- **Build state:** compiles clean; smoke test passes (327 assertions); 1.98-12.S1 verified
+- **Last commit:** `3c03b59` — feat(llm): Change Completions Model — completionsModel setting + inline provider wiring (1.98-12.S2)
+- **Build state:** compiles clean; smoke test passes (332 assertions); 1.98-12.S1–S2 verified
 
 ## Team
 
@@ -66,6 +66,7 @@ pending item** (the oldest).
 - **1.98-10.S4** (2026-10-22) — `package.json`: `llm.chat.folderContext.enabled` (boolean, default true); 4 `folder-s4:` parsed-JSON smoke assertions; planner PROGRESS.md marks 1.98-10 Done; researcher backlog updated. Tester PASS. **Item 1.98-10 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit `8192065`.
 - **1.98-12 plan** (2026-10-22) — Planner produced 4-slice plan: Change Completions Model command — pure `buildCompletionsModelList` in `src/presets.ts`, `completionsModel` setting (`llm.completions.model`, empty → chat model fallback) + InlineCompletionProvider wiring, `llm.changeCompletionsModel` QuickPick command in `extension.ts` (workspace-scope write), package.json contributions + smoke. Plan recorded in planner PROGRESS.md. Commit `5d2517d`.
 - **1.98-12.S1** (2026-10-22) — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList` (default entry first, dedup by value, `picked` on active); 8 `compm-s1:` smoke assertions. Tester PASS. Commit `f33c3a4`.
+- **1.98-12.S2** (2026-10-22) — `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts`: `completionsModel` field (`llm.completions.model`, default `""`) + conditional model override in the inline provider (empty → keeps `llm.model`); 5 `compm-s2:` smoke assertions. Fallback bug (unconditional override) found by orchestrator, fixed by Coder before verification. Tester PASS. Commit `3c03b59`.
 
 ## Tags (changelog-version tags on completed items)
 
