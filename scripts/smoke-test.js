@@ -1854,6 +1854,36 @@ function assert(cond, label) {
     "codebase-s2: searchFiles still caps at MAX_SEARCH_MATCHES (50)",
   );
 
+  // 12c) codebase sweep (1.98-8.S3): chat wiring static checks.
+  const chatViewSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    chatViewSrc.includes("extractCodebaseQuery"),
+    "codebase-s3: ChatViewProvider imports/uses extractCodebaseQuery",
+  );
+  assert(
+    chatViewSrc.includes("codebaseSweep("),
+    "codebase-s3: ChatViewProvider calls codebaseSweep(",
+  );
+  const configSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    configSrc.includes("codebaseSearchEnabled"),
+    "codebase-s3: config.ts reads codebaseSearchEnabled",
+  );
+  const presetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    presetsSrc.includes("codebaseSearchEnabled"),
+    "codebase-s3: presets.ts LlmSettings has codebaseSearchEnabled",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

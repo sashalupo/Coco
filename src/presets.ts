@@ -88,6 +88,8 @@ export interface LlmSettings {
   instructionsEnabled: boolean;
   /** Extra workspace-relative instruction file paths (in addition to defaults). */
   instructionFiles: string[];
+  /** Enable the `#codebase` chat tag (workspace sweep injected as context). */
+  codebaseSearchEnabled: boolean;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */

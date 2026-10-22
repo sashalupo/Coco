@@ -68,6 +68,7 @@ export function readSettings(): LlmSettings {
     },
     instructionsEnabled: c.get<boolean>("instructions.enabled", true),
     instructionFiles: c.get<string[]>("instructions.files", []),
+    codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true),
   };
 }
 

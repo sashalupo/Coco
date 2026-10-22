@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-8.S2 done (`ToolExecutor.codebaseSweep(query)` + shared `searchMatches` + 5 smoke assertions)
-- **Next step:** 1.98-8.S3 — wire `#codebase` into `ChatViewProvider` (extract query via `extractCodebaseQuery`, call `toolExecutor.codebaseSweep`, inject block into context)
+- **Current step:** 1.98-8.S3 done (`#codebase` wired into `ChatViewProvider.runStream`; `codebaseSearchEnabled` setting pulled into S3 so the slice compiles standalone)
+- **Next step:** 1.98-8.S4 — `package.json` settings schema entry for `llm.chat.codebaseSearch.enabled` + final smoke + memory
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (262 assertions, incl. `codebase-s2:` static checks)
@@ -77,6 +77,13 @@ by step, one step per session.
   - `src/tools.ts`: added `notebook_edit` entry to `CODE_TOOLS` after `manage_todos` (now 11 tools). Schema: `path` (string, workspace-relative .ipynb path), `action` (string enum: `create`, `modify_cell`, `insert_cell`, `delete_cell`, `change_cell_type`), `cell_index` (number, 0-based; required for modify/delete/change_cell_type; for insert_cell the new cell takes this index), `cell_type` (string enum `code`|`markdown`, for create/insert/change_cell_type), `source` (string; for `create` multiple cells separated by the marker line `<<<CELL>>>`). `required: ["path", "action"]`. Extended `isMutatingTool()` to return true for `notebook_edit`.
   - `scripts/smoke-test.js`: tools section updated — `CODE_TOOLS.length === 11`; tool-name order string now ends `...,manage_todos,notebook_edit`; new assertions `byName.notebook_edit.function.parameters.required.join(",") === "path,action"` and `action.enum.length === 5`; `isMutatingTool("notebook_edit")` true in the approval section; also fixed the pre-existing `toolBody.tools.length === 10` assertion to `11` (it hardcodes the tool count and would otherwise fail).
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. `tools: notebook_edit required=[path,action]`, `tools: notebook_edit action enum has 5 values`, `approval: notebook_edit is mutating`).
+  - Not committed (per task instruction — orchestrator commits).
+- **1.98-8.S3** (2026-10-22) — `#codebase` chat wiring. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js` only.
+  - `src/presets.ts`: added `codebaseSearchEnabled: boolean;` to `LlmSettings` (after `instructionFiles`).
+  - `src/config.ts`: `readSettings()` now returns `codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true)`. NOTE: the config field was pulled into S3 (from S4) so this slice compiles standalone; S4 will only do the `package.json` settings schema entry + final smoke + memory.
+  - `src/chat/ChatViewProvider.ts` `runStream`: imported `extractCodebaseQuery` alongside `buildContextBlock`/`extractTaggedFiles` from `../context`. After `const contextBlock = buildContextBlock(ctxInput)` (i.e. AFTER the `@file` tagged-file block is assembled into `ctxInput`), added: if `settings.codebaseSearchEnabled && lastUser && this.toolExecutor`, compute `q = extractCodebaseQuery(lastUser.content)` (same `lastUser` string the tagged-file extraction uses); when `q !== null`, `const codebaseBlock = await this.toolExecutor.codebaseSweep(q)` (q may be `""`); if non-empty, `finalContextBlock = finalContextBlock ? finalContextBlock + "\n\n" + codebaseBlock : codebaseBlock`. `composeSystemPrompt` now receives `finalContextBlock` — the stable section order of `buildContextBlock` output is untouched (sweep is appended after it). Guard: `this.toolExecutor` is a `readonly` field always constructed in the ctor, so the `&& this.toolExecutor` check is a no-op safety net (no crash path).
+  - `scripts/smoke-test.js`: new subsection `// 12c) codebase sweep (1.98-8.S3)` with 4 static source checks: `ChatViewProvider.ts` contains `extractCodebaseQuery` and `codebaseSweep(`; `config.ts` contains `codebaseSearchEnabled`; `presets.ts` contains `codebaseSearchEnabled`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **266 assertions** (262 prior + 4 new `codebase-s3:`).
   - Not committed (per task instruction — orchestrator commits).
 - **1.98-8.S2** (2026-10-22) — `ToolExecutor.codebaseSweep(query)` data gathering. Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js` only.
   - Extracted `private async searchMatches(pattern, rootAbs, cap): Promise<string[]>` from `searchFiles` (same recursive walk: SKIP_DIRS, regex with literal fallback, `path:line: text` lines via `searchFile`, stops at `cap`). `searchFiles` now calls `searchMatches(pattern, rootAbs, MAX_SEARCH_MATCHES)` — behavior unchanged (cap 50, same truncation suffix).

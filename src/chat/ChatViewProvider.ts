@@ -24,6 +24,7 @@ import {
 } from "../request";
 import {
   buildContextBlock,
+  extractCodebaseQuery,
   extractTaggedFiles,
   type ContextFile,
   type ContextInput,
@@ -923,6 +924,24 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       }
 
       const contextBlock = buildContextBlock(ctxInput);
+
+      // 1.98-8.S3: `#codebase` tag — sweep the workspace (structure, git
+      // status, text search for the query) and append the result to the
+      // context block. Runs after the tagged-file block; the stable section
+      // order of `buildContextBlock` output is untouched.
+      let finalContextBlock = contextBlock;
+      if (settings.codebaseSearchEnabled && lastUser && this.toolExecutor) {
+        const q = extractCodebaseQuery(lastUser.content);
+        if (q !== null) {
+          const codebaseBlock = await this.toolExecutor.codebaseSweep(q);
+          if (codebaseBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + codebaseBlock
+              : codebaseBlock;
+          }
+        }
+      }
+
       // Load custom instruction files (AGENTS.md, etc.) and fold them into
       // the system prompt. Also post which files were loaded so the webview
       // can show a small indicator.
@@ -931,7 +950,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       systemPrompt = this.composeSystemPrompt(
         settings.systemPrompt,
         instructionsBlock,
-        contextBlock,
+        finalContextBlock,
       );
       this.postMessage({
         type: "instructions",

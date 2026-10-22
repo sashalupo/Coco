@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — S1 + S2 verified
-- **Next step:** verify next slice of item 1.98-8 (chat wiring: `extractCodebaseQuery` → `codebaseSweep` → context injection)
+- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — S1 + S2 + S3 verified
+- **Next step:** verify next slice of item 1.98-8 (package.json setting `chat.codebaseSearch.enabled` + final smoke assertions + PROGRESS.md)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -113,7 +113,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-2** — fully verified (all slices S1–S6 PASS)
 - [x] **1.98-8.S1** — `src/context.ts`: `extractCodebaseQuery` + `formatCodebaseSweep` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-8.S2** — `src/tools/ToolExecutor.ts`: `codebaseSweep(query)` public method — **PASS** (2026-10-22, see Verifications)
-- [ ] Verify next slice of item **1.98-8** (chat wiring: `#codebase` tag → `codebaseSweep` → context).
+- [x] **1.98-8.S3** — ChatViewProvider: detect `#codebase`, run sweep, inject context — **PASS** (2026-10-22, see Verifications)
+- [ ] Verify next slice of item **1.98-8** (package.json setting + final smoke assertions).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -156,3 +157,12 @@ acceptance checks, and reports a clear pass/fail.
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**262 assertions**; 5 new `codebase-s2:` green in subsection `// 12b) codebase sweep (1.98-8.S2)`).
 - Static checks: (a) `private async searchMatches(pattern, rootAbs, cap): Promise<string[]>` — shared recursive walk, SKIP_DIRS, regex with literal fallback, `relPath:line: text` lines, stops at cap. (b) `searchFiles` delegates to `searchMatches(pattern, rootAbs, MAX_SEARCH_MATCHES)`; cap 50 + truncation suffix preserved; diff confirms pure extraction. (c) `public async codebaseSweep(query)` — structure walk depth ≤ 3, SKIP_DIRS, `name/` dirs / `name` files, 2-space indent, 100-entry cap + `… (truncated at 100 entries)`, `"(no workspace folder)"` fallback; git status via `gitStatusText()` with `git exited` → `""` and 50-line cap; search via `searchMatches(query, rootAbs, 20)` only when non-blank; composes `formatCodebaseSweep` from `../context`. All PASS.
 - Scope: only `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS
+
+### 1.98-8.S3 — `src/chat/ChatViewProvider.ts`: detect `#codebase`, run sweep, inject context (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**266 assertions**; 4 new `codebase-s3:` in subsection `// 12c) codebase sweep (1.98-8.S3)`).
+- ChatViewProvider (git diff +20/-1, 3 hunks): (a) `extractCodebaseQuery` added to `../context` import. (b) In `runStream` after `buildContextBlock(ctxInput)`: guarded by `settings.codebaseSearchEnabled && lastUser && this.toolExecutor`; `extractCodebaseQuery(lastUser.content) !== null` → `await this.toolExecutor.codebaseSweep(q)`; non-empty result appended with `"\n\n"` separator into `finalContextBlock`. (c) `composeSystemPrompt` receives `finalContextBlock`; `buildContextBlock` section order untouched. (d) `this.toolExecutor` in guard — no crash path. All PASS.
+- `src/presets.ts`: `LlmSettings` gains `codebaseSearchEnabled: boolean;`. PASS
+- `src/config.ts`: `readSettings()` returns `codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true)`. PASS
+- No regression: `@file` tagged-file path and rest of `runStream` untouched. PASS
+- Scope: only `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS

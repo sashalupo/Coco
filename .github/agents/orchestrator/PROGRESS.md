@@ -14,15 +14,15 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-8.S3** — `src/chat/ChatViewProvider.ts`: detect `#codebase`, run sweep, inject context
+- **Current slice:** **1.98-8.S4** — `package.json` settings schema + final smoke assertions + PROGRESS.md (final slice)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
   `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
   within the active window)
 - **Last updated:** 2026-10-22
-- **Last commit:** `1e89333` — feat(llm): #codebase tag — pure query extraction + sweep formatting (1.98-8.S1)
-- **Build state:** compiles clean; smoke test passes (262 assertions); 1.98-8.S1–S2 verified
+- **Last commit:** `27ecd1b` — feat(llm): #codebase tag — ToolExecutor.codebaseSweep (1.98-8.S2)
+- **Build state:** compiles clean; smoke test passes (266 assertions); 1.98-8.S1–S3 verified
 
 ## Team
 
@@ -55,6 +55,7 @@ pending item** (the oldest).
 - **1.98-2.S6** (2026-10-22) — `llm.tools.requireApproval` description lists `notebook_edit`; 4 `nb-final:` smoke assertions; planner PROGRESS.md marks 1.98-2 Done. Tester PASS. **Item 1.98-2 complete** (no tag — `changelog-1.98` already exists from 1.98-1).
 - **1.98-8.S1** (2026-10-22) — `src/context.ts`: `extractCodebaseQuery` (string | null, word-bounded, case-insensitive) + `CodebaseSweepData` + `formatCodebaseSweep` (3-section block, placeholders, 12,000-char cap); 12 smoke assertions. Tester PASS.
 - **1.98-8.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: shared private `searchMatches(pattern, rootAbs, cap)` extracted from `searchFiles` (cap 50 preserved); public `codebaseSweep(query)` — structure walk (depth ≤ 3, cap 100), git status (cap 50 lines, `git exited` → ""), search (cap 20); composes `formatCodebaseSweep`; 5 static smoke assertions. Tester PASS.
+- **1.98-8.S3** (2026-10-22) — `ChatViewProvider.runStream`: after `buildContextBlock`, if `settings.codebaseSearchEnabled` and `#codebase` tag present, append `codebaseSweep(q)` result to context (`finalContextBlock` → `composeSystemPrompt`); `codebaseSearchEnabled` field added to `LlmSettings` (presets.ts) + `readSettings()` (config.ts, default true); 4 static smoke assertions. Tester PASS.
 
 ## Tags (changelog-version tags on completed items)
 
