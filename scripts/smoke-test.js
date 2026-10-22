@@ -3154,6 +3154,60 @@ function assert(cond, label) {
     "fetch-s4: ChatViewProvider wires #fetch tag via extractFetchTag + toolExecutor.fetchUrl",
   );
 
+  // 21) Usages helpers (1.99-5.S1)
+  const {
+    buildUsagesRegex,
+    formatUsagesBlock,
+    USAGES_BLOCK_MAX_CHARS,
+  } = require(path.join(__dirname, "..", "out", "usages.js"));
+  assert(
+    typeof buildUsagesRegex === "function" &&
+      typeof formatUsagesBlock === "function" &&
+      USAGES_BLOCK_MAX_CHARS === 20000,
+    "usages-s1: exports present (buildUsagesRegex, formatUsagesBlock, USAGES_BLOCK_MAX_CHARS=20000)",
+  );
+  const fooRe = buildUsagesRegex("foo");
+  assert(
+    fooRe.test("foo()") &&
+      fooRe.test("x = foo") &&
+      !fooRe.test("foobar") &&
+      !fooRe.test("foo_bar") &&
+      (() => {
+        try {
+          buildUsagesRegex("");
+          return false;
+        } catch {
+          return true;
+        }
+      })(),
+    "usages-s1: buildUsagesRegex whole-word match, rejects foobar/foo_bar, empty throws",
+  );
+  assert(
+    formatUsagesBlock("foo", []) === "" &&
+      (() => {
+        const block = formatUsagesBlock("foo", [
+          { file: "a.ts", line: 1, text: "const foo = 1", isDefinition: true },
+          { file: "b.ts", line: 7, text: "foo()", isDefinition: false },
+        ]);
+        return (
+          block.includes("Usages for `foo`: 2 reference(s) in 2 file(s)") &&
+          block.includes("def:") &&
+          block.includes("a.ts") &&
+          block.includes("b.ts")
+        );
+      })(),
+    "usages-s1: formatUsagesBlock empty → '', 2-match/2-file block has header/def/files",
+  );
+  const longUsagesBlock = formatUsagesBlock("foo", [
+    { file: "a.ts", line: 1, text: "x".repeat(13000), isDefinition: true },
+    { file: "b.ts", line: 2, text: "y".repeat(13000), isDefinition: false },
+  ]);
+  assert(
+    longUsagesBlock.length <= 20050 &&
+      longUsagesBlock.endsWith("(truncated)"),
+    "usages-s1: >25k-char matches truncated to ≤20050 chars ending with (truncated)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

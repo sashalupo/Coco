@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-4 (Fetch tool `#fetch`) — **DONE** (2026-10-22, 4 slices S1–S4)
-- **Next step:** 1.99-5 (Usages tool `#usages`) — await planner
+- **Current item:** 1.99-5 (Usages tool `#usages`) — S1 done (2026-10-22)
+- **Next step:** 1.99-5.S2 (`src/tools.ts` + `src/tools/ToolExecutor.ts`: find_usages tool)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (426 PASS lines, incl. 8 `fetch-s1:` + 3 `fetch-s2:` + 3 `fetch-s3:` + 1 `fetch-s4:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (430 PASS lines, incl. 4 `usages-s1:`)
 
 ## Plan pointer
 

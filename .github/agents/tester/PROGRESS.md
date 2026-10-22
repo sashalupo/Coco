@@ -12,12 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-4.S4 (FINAL: `#fetch` tag wiring + setting) — **PASS** (2026-10-22) — item 1.99-4 complete
-- **Next step:** verify next item in planner backlog (1.99-4 done)
+- **Current item:** 1.99-5.S1 (pure usages helpers) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-5.S2 (next slice of Usages tool)
 - **Last updated:** 2026-10-22
-- **Last commit:** 03d6da3 (coder: 1.99-4.S3)
-- **Build state:** 426/426 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 169b392 (orchestrator: 1.99-5 plan)
+- **Build state:** 430/430 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-5.S1 — pure usages helpers (src/usages.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **430 PASS lines** (426 prior + 4 new `usages-s1:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 430 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 21) Usages helpers (1.99-5.S1)` section (smoke-test.js:3157, diff +54/−0) requires `out/usages.js` with 4 genuine `usages-s1:` assertions: (a) exports present incl. `USAGES_BLOCK_MAX_CHARS === 20000`; (b) `buildUsagesRegex("foo")` matches `foo()`/`x = foo`, rejects `foobar`/`foo_bar`, empty throws; (c) `formatUsagesBlock("foo", []) === ""` + 2-match/2-file block has header `Usages for \`foo\`: 2 reference(s) in 2 file(s)`, `def:`, both file names; (d) 2×13k-char matches → length ≤ 20050 + ends with `(truncated)`. PASS
+  - (4) Source: `src/usages.ts` is a new pure module — no `vscode` import, no `fs`/`path`/`child_process`; `buildUsagesRegex` escapes symbol + lookaround boundaries, throws on empty/whitespace; `formatUsagesBlock` has `MAX_MATCHES_PER_FILE = 5` with `… and K more in <file>` and truncation to `USAGES_BLOCK_MAX_CHARS` + `… (truncated)`. PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, `?? src/usages.ts`. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `169b392` (chore(llm): record 1.99-5 plan (4 slices) — Usages tool (#usages)). No coder commit. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-4.S4 — #fetch tag wiring + llm.chat.fetch.enabled setting (FINAL) (2026-10-22) — **PASS**
 

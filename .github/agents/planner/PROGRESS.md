@@ -858,7 +858,7 @@ mirroring the existing `search_files` CODE_TOOL walk (`ToolExecutor.searchMatche
 
 **Slices:**
 
-- **1.99-5.S1 — `src/usages.ts`: pure usages helpers (new file).**
+- **1.99-5.S1 — `src/usages.ts`: pure usages helpers (new file).** — Done (2026-10-22, PASS, 430 assertions)
   File: `src/usages.ts` (new; no `vscode` import, no I/O).
   (a) `export function buildUsagesRegex(symbol: string): RegExp` — escape
   (`replace(/[.*+?^${}()|[\]\\]/g, "\\$&")`) + lookaround whole-word regex; empty/whitespace
