@@ -13,7 +13,7 @@ code — only the Coder writes code.
 ## Status
 
 - **Current item:** 1.98-1 (VS Code 1.98 — Agent mode improvements: editable terminal command approval) — **Done** (S1–S5 complete)
-- **Next step:** plan backlog item 1.98-2 (notebook support in chat)
+- **Next step:** dispatch slice 1.98-2.S1 to the Coder
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -148,3 +148,79 @@ unchanged; `npm run compile` clean.
   (`npm run compile`) and committable. The orchestrator dispatches ONE slice per session, so
   keep slices tiny to limit token consumption.
 - Always plan oldest → newest. Never skip ahead.
+
+---
+
+# Plan: 1.98-2 — Notebook support in chat
+
+**Changelog reference:** VS Code 1.98 — "Notebook support in Copilot Edits (Preview): edit notebook files from chat — create notebooks, modify content across multiple cells, insert/delete cells, change cell types."
+
+## Approach
+
+Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we add **one mutating tool, `notebook_edit`**, with an `action` parameter (`create` | `modify_cell` | `insert_cell` | `delete_cell` | `change_cell_type`) that parses the `.ipynb` JSON, mutates the `cells` array, and writes it back. All pure parse/format/mutate logic lives in a new dependency-free module `src/notebook.ts` (independently testable from `scripts/smoke-test.js` against compiled `out/`), while `ToolExecutor` handles the vscode-specific parts (path safety, snapshot/revert, write). Because `isMutatingTool("notebook_edit")` returns `true`, the existing boolean `approval_request` gate in `ChatViewProvider.ts` picks it up **with zero changes to the host or webview** — the generic approval card already renders tool name + args. Context: when a `.ipynb` is tagged via `@filename`, `buildContextBlock` renders a cell-by-cell text view (source + output summary) instead of raw JSON. The tool result includes a plain-text summary of the cell change (the existing line diff on raw JSON is noisy, so a summary is the primary feedback, per the design direction).
+
+## Slices
+
+### S1 — `notebook_edit` tool schema + mutating flag
+- **File:** `src/tools.ts`
+- **What:** Add a `notebook_edit` entry to `CODE_TOOLS` (after `manage_todos`):
+  - `description`: "Edit a Jupyter notebook (.ipynb) file. Actions: `create` (create a new notebook with the given cells), `modify_cell` (replace a cell's source), `insert_cell` (insert a new cell at cell_index), `delete_cell` (remove a cell), `change_cell_type` (switch a cell between `code` and `markdown`). Cell indices are 0-based. Use this instead of write_file/edit_file for .ipynb files."
+  - `parameters.properties`: `path` (string, workspace-relative `.ipynb` path), `action` (string, enum of the 5 actions), `cell_index` (number, 0-based; required for modify/delete/change_cell_type; for insert_cell the new cell takes this index), `cell_type` (string, enum `code`|`markdown`, for create/insert/change_cell_type), `source` (string, cell source text; for create, multiple cells are separated by a documented marker — use `\n<<<CELL>>>\n` between cells).
+  - `required: ["path", "action"]`.
+  - Extend `isMutatingTool()`: `name === "notebook_edit"`.
+- **Acceptance:** `npm run compile` passes. Smoke test (extend section 5 + 7b): `CODE_TOOLS.length === 11`; tool-name order string ends with `...,manage_todos,notebook_edit`; `byName.notebook_edit.function.parameters.required.join(",") === "path,action"`; `action` enum has 5 values; `isMutatingTool("notebook_edit")` is true.
+
+### S2 — `src/notebook.ts`: pure parse / format / create helpers
+- **File:** `src/notebook.ts` (new)
+- **What:** Pure module, no `vscode` import, no deps:
+  - `interface NbCell { cell_type: "code" | "markdown"; source: string; outputs?: unknown[]; }` and `interface NbDoc { cells: NbCell[]; }` (source normalized to a single string — join `string[]` sources).
+  - `parseNotebook(text: string): NbDoc | null` — JSON.parse, validate `cells` is an array, normalize each cell's `source` (string | string[]) to a string; return `null` on any failure.
+  - `formatNotebookForContext(text: string): string` — human-readable rendering: per cell `### Cell N (code|markdown)` + source in a fenced block + one-line output summary (e.g. `outputs: 2 (stream, error)` or `outputs: none`); returns a clear error string when `parseNotebook` fails.
+  - `createNotebook(source: string): string` — build a minimal valid nbformat-4 `.ipynb` JSON string (nbformat 4, nbformat_minor 5, empty metadata, `language_info` for code cells); splits `source` on the `<<<CELL>>>` marker into cells.
+- **Acceptance:** `npm run compile` passes. Smoke test (new section, e.g. `// 10) notebook helpers (1.98-2)`): `parseNotebook` round-trips a 2-cell doc (string and string[] sources); `parseNotebook("not json") === null`; `formatNotebookForContext` output contains `Cell 0 (code)`, the source text, and an `outputs:` line; `createNotebook` output parses via `parseNotebook` with the expected cell count/types.
+
+### S3 — `src/notebook.ts`: `applyNotebookEdit` (the 5 actions)
+- **File:** `src/notebook.ts`
+- **What:** Add `applyNotebookEdit(text: string, edit: { action: string; cellIndex?: number; cellType?: "code" | "markdown"; source?: string }): { ok: boolean; message: string; newContent?: string }`:
+  - `create`: ignore `text`; `newContent = createNotebook(source ?? "")`; message `Created notebook with N cell(s).`
+  - `modify_cell` / `delete_cell` / `change_cell_type`: parse existing (error message if invalid JSON or not a notebook), validate `cellIndex` is an integer in `[0, cells.length)` (error message includes valid range), mutate, `newContent = JSON.stringify(doc, null, 1)`.
+  - `insert_cell`: parse existing; `cellIndex` clamped to `[0, cells.length]`; splice in a new cell (`outputs: []` for code); message states new index + total.
+  - Messages are plain-text summaries of the cell change (e.g. `Modified cell 2 (code): 42 chars of source.`) — this is what the engine and the approval card see.
+- **Acceptance:** `npm run compile` passes. Smoke test: each of the 5 actions succeeds on a fixture doc (assert resulting `parseNotebook` cell count/types/source); error cases return `ok: false` with a message: bad JSON, out-of-range `cell_index`, missing `source` for `modify_cell`, unknown action.
+
+### S4 — `ToolExecutor`: execute `notebook_edit`
+- **File:** `src/tools/ToolExecutor.ts`
+- **What:**
+  - Import `applyNotebookEdit` from `../notebook`.
+  - Add `case "notebook_edit":` in `execute()` → `this.notebookEdit(call, String(args.path ?? ""), String(args.action ?? ""), typeof args.cell_index === "number" ? args.cell_index : undefined, args.cell_type === "code" || args.cell_type === "markdown" ? args.cell_type : undefined, typeof args.source === "string" ? args.source : undefined)`.
+  - New private `notebookEdit(...)`: `resolveSafe` (reject outside-workspace); read old content if the file exists (empty + `existed=false` otherwise); call `applyNotebookEdit`; on `ok: false` return the error as the `ToolResult` (no write, no snapshot); on success set `this.lastSnapshot` + `recordSnapshot(relPath, oldContent, existed)`, `mkdir` parent, write `newContent`, `recordChange`, and return `Wrote ${relPath} — ${message}` (plain-text summary; skip `unifiedDiff` on raw JSON — it's noisy, per design direction).
+- **Acceptance:** `npm run compile` passes. Smoke test (new section, mirroring the `write_file`/`edit_file` executor tests): in a temp workspace, `notebook_edit` `create` writes a valid `.ipynb` (file exists, `parseNotebook` OK); `modify_cell` + `insert_cell` + `delete_cell` + `change_cell_type` mutate it correctly; out-of-range index leaves the file untouched; `revertLast()` restores pre-mutation content; `getChangeSummary()` includes the `.ipynb` path.
+
+### S5 — Context: render tagged `.ipynb` files as cells
+- **File:** `src/context.ts`
+- **What:** Import `formatNotebookForContext` from `./notebook`. In `buildContextBlock`, in the `taggedFiles` loop: when `tf.path.toLowerCase().endsWith(".ipynb")`, emit the header + `formatNotebookForContext(tf.content)` instead of the raw-JSON fenced block. (The `ChatViewProvider` tagged-file reader already reads any file as utf8 — no host change needed.)
+- **Acceptance:** `npm run compile` passes. Smoke test (extend section 3b): `buildContextBlock({ taggedFiles: [{ path: "nb.ipynb", content: <fixture json> }] })` contains `Tagged file: nb.ipynb`, `Cell 0 (code)`, and does **not** contain the raw `"cells":` JSON key; a non-`.ipynb` tagged file still renders the raw fenced block.
+
+### S6 — package.json descriptions + final smoke assertions + PROGRESS.md
+- **Files:** `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`
+- **What:**
+  - `package.json`: update `llm.tools.requireApproval` description to list `notebook_edit` alongside `write_file, edit_file, run_command`; optionally extend the top-level extension `description` with "edit Jupyter notebooks from chat".
+  - `scripts/smoke-test.js`: add a final static section (mirroring the 1.98-1 section 9) asserting `package.json` contains `notebook_edit` in the `requireApproval` description, and that `ChatViewProvider.ts` still routes mutating tools through `approval_request` (i.e. `isMutatingTool` is the single gate — no notebook-specific host code was added).
+  - `PROGRESS.md`: mark 1.98-2 Planned→(after slices land) Done; record decisions (single `notebook_edit` tool, plain-text summary instead of JSON diff, no host/webview changes).
+- **Acceptance:** `npm run compile` passes; `node scripts/smoke-test.js` prints `ALL SMOKE TESTS PASSED` including all new notebook assertions.
+
+## Overall acceptance criteria (Tester)
+
+1. `npm run compile` clean; `node scripts/smoke-test.js` fully green.
+2. In a live session with `llm.tools.requireApproval` on: asking the model to create/modify a notebook posts a generic `approval_request` card showing `notebook_edit` + args; Approve applies the change, Reject feeds the standard "user rejected" tool result.
+3. `@notebook.ipynb` in a chat message injects a cell-by-cell text view (not raw JSON) into the system prompt.
+4. Notebook mutations participate in the existing per-run snapshot system: revert-last, revert-all, and the change-summary footer all work on `.ipynb` files.
+
+## Risks / open questions
+
+- **`read_file` on `.ipynb`** still returns raw JSON. Acceptable for this item (the model is told to use `notebook_edit`); a follow-up could make `read_file` auto-format notebooks.
+- **Multi-cell `create`/`insert`** uses a `<<<CELL>>>` text marker rather than a JSON array, to keep the schema simple for weaker local engines; if engines struggle, a follow-up could add an optional `cells` array param.
+- **Diff preview:** the existing line diff on raw JSON is intentionally skipped in favor of a plain-text cell-change summary (permitted by the design direction). The webview's tool-result rendering is unchanged.
+- **Cell metadata/metadata preservation:** `applyNotebookEdit` preserves all existing notebook fields (it only touches `cells`); new cells get minimal metadata. No nbformat validation beyond `cells` array shape — engines produce valid-enough output for VS Code's notebook renderer.
+
+**Slice count:** 6 (S1–S6), each ≤1 source file + its smoke-test additions, independently compilable/committable. No host (`ChatViewProvider.ts`) or webview changes required — the approval gate is inherited via `isMutatingTool`.
