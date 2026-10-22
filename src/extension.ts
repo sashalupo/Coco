@@ -15,6 +15,7 @@ import {
   statusOverviewItems,
   STATUS_COMMANDS,
 } from "./presets";
+import { promptTitle, stripPromptComments, PROMPT_TEMPLATE, MAX_PROMPT_CHARS } from "./prompts";
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -179,6 +180,102 @@ export function activate(context: vscode.ExtensionContext): void {
       if (picked && picked.command) {
         await vscode.commands.executeCommand(picked.command);
       }
+    }),
+    vscode.commands.registerCommand("llm.usePrompt", async () => {
+      const settings = readSettings();
+      const globs = (settings.promptFiles ?? []).filter(
+        (g) => typeof g === "string" && g.length > 0,
+      );
+      if (globs.length === 0) {
+        vscode.window.showInformationMessage(
+          "No prompt file locations configured (llm.promptFiles.locations).",
+        );
+        return;
+      }
+      const found: vscode.Uri[] = [];
+      const seen = new Set<string>();
+      for (const glob of globs) {
+        const uris = await vscode.workspace.findFiles(
+          glob,
+          "**/node_modules/**",
+          200,
+        );
+        for (const uri of uris) {
+          if (!seen.has(uri.fsPath)) {
+            seen.add(uri.fsPath);
+            found.push(uri);
+          }
+        }
+      }
+      const items: (vscode.QuickPickItem & { uri?: vscode.Uri })[] = found.map(
+        (uri) => ({
+          label: promptTitle("", uri.fsPath),
+          description: vscode.workspace.asRelativePath(uri),
+          uri,
+        }),
+      );
+      items.push({
+        label: "$(new-file) New Prompt File…",
+        description: "create .prompts/<name>.prompt.md",
+      });
+      const picked = await vscode.window.showQuickPick(items, {
+        title: "LLM: Use Prompt",
+        placeHolder: "Select a reusable prompt to use in chat",
+      });
+      if (!picked) {
+        return; // cancelled
+      }
+      if (picked.uri) {
+        const raw = await vscode.workspace.fs.readFile(picked.uri);
+        const content = Buffer.from(raw).toString("utf8").slice(0, MAX_PROMPT_CHARS);
+        const stripped = stripPromptComments(content);
+        if (stripped.length === 0) {
+          vscode.window.showInformationMessage(
+            "That prompt file is empty (or only comments).",
+          );
+          return;
+        }
+        provider.postMessage({
+          type: "prompt_inject",
+          title: promptTitle(content, picked.uri.fsPath),
+          content: stripped,
+        });
+        await vscode.commands.executeCommand("workbench.view.llm");
+        return;
+      }
+      // New Prompt File…
+      const name = await vscode.window.showInputBox({
+        prompt: "Prompt file name",
+        validateInput: (v) =>
+          /^[a-zA-Z0-9._-]+$/.test(v)
+            ? undefined
+            : "Use letters, digits, dot, dash, underscore only",
+      });
+      if (name === undefined) {
+        return; // cancelled
+      }
+      const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (!root) {
+        vscode.window.showErrorMessage("Open a workspace to create prompt files.");
+        return;
+      }
+      const target = vscode.Uri.joinPath(root, ".prompts", name + ".prompt.md");
+      try {
+        await vscode.workspace.fs.stat(target);
+        vscode.window.showInformationMessage("That prompt file already exists.");
+        return;
+      } catch {
+        // does not exist — create it below.
+      }
+      await vscode.workspace.fs.createDirectory(
+        vscode.Uri.joinPath(root, ".prompts"),
+      );
+      await vscode.workspace.fs.writeFile(
+        target,
+        Buffer.from(PROMPT_TEMPLATE, "utf8"),
+      );
+      const doc = await vscode.workspace.openTextDocument(target);
+      await vscode.window.showTextDocument(doc);
     }),
     vscode.commands.registerCommand("llm.changeCompletionsModel", async () => {
       const cfg = vscode.workspace.getConfiguration("llm");

@@ -3731,6 +3731,15 @@ function assert(cond, label) {
     "rp-s2: LlmSettings has promptFiles: string[]",
   );
 
+  // 38) Reusable prompt files — usePrompt command (1.99-12.S3a)
+  const extSrcRpS3a = fs.readFileSync(path.join(__dirname, "..", "src", "extension.ts"), "utf8");
+  assert(extSrcRpS3a.includes('from "./prompts"'), "rp-s3: extension.ts imports from ./prompts");
+  const extSrcRpS3b = fs.readFileSync(path.join(__dirname, "..", "src", "extension.ts"), "utf8");
+  assert(extSrcRpS3b.includes("llm.usePrompt"), "rp-s3: extension.ts registers llm.usePrompt");
+  assert(extSrcRpS3b.includes("workspace.findFiles"), "rp-s3: extension.ts uses workspace.findFiles");
+  assert(extSrcRpS3b.includes("prompt_inject"), "rp-s3: extension.ts posts prompt_inject");
+  assert(extSrcRpS3b.includes("PROMPT_TEMPLATE"), "rp-s3: extension.ts uses PROMPT_TEMPLATE");
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

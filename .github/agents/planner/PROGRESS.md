@@ -1338,7 +1338,7 @@ User Prompt (user-data-folder prompts). Text-only section (no images).
   Smoke (`rp-s2:`, 2): `config.ts` source contains `promptFiles.locations` and
   `.prompts/**/*.prompt.md`; `presets.ts` source contains `promptFiles: string[]`.
 
-- **1.99-12.S3 — `src/extension.ts`: `llm.usePrompt` command.**
+- **1.99-12.S3 — `src/extension.ts`: `llm.usePrompt` command.** — Done (2026-10-22, PASS, 491 assertions; split into S3a import + S3b registration due to Coder session truncation; GlobPattern deviation: per-glob findFiles loop with Set dedup)
   File: `src/extension.ts`. Add imports `promptTitle, stripPromptComments,
   PROMPT_TEMPLATE, MAX_PROMPT_CHARS` from `./prompts`. Register `llm.usePrompt` in the
   existing `registerCommand` block (after `llm.showStatusOverview`, ~line 154): read
