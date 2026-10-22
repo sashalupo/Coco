@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-8.S1 done (pure `#codebase` helpers in `src/context.ts` + 12 smoke assertions)
-- **Next step:** 1.98-8.S2 — `ToolExecutor.codebaseSweep(query)` (structure + git status + text search, shared `searchMatches`)
+- **Current step:** 1.98-8.S2 done (`ToolExecutor.codebaseSweep(query)` + shared `searchMatches` + 5 smoke assertions)
+- **Next step:** 1.98-8.S3 — wire `#codebase` into `ChatViewProvider` (extract query via `extractCodebaseQuery`, call `toolExecutor.codebaseSweep`, inject block into context)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (262 assertions, incl. `codebase-s2:` static checks)
 
 ## Plan pointer
 
@@ -77,6 +77,12 @@ by step, one step per session.
   - `src/tools.ts`: added `notebook_edit` entry to `CODE_TOOLS` after `manage_todos` (now 11 tools). Schema: `path` (string, workspace-relative .ipynb path), `action` (string enum: `create`, `modify_cell`, `insert_cell`, `delete_cell`, `change_cell_type`), `cell_index` (number, 0-based; required for modify/delete/change_cell_type; for insert_cell the new cell takes this index), `cell_type` (string enum `code`|`markdown`, for create/insert/change_cell_type), `source` (string; for `create` multiple cells separated by the marker line `<<<CELL>>>`). `required: ["path", "action"]`. Extended `isMutatingTool()` to return true for `notebook_edit`.
   - `scripts/smoke-test.js`: tools section updated — `CODE_TOOLS.length === 11`; tool-name order string now ends `...,manage_todos,notebook_edit`; new assertions `byName.notebook_edit.function.parameters.required.join(",") === "path,action"` and `action.enum.length === 5`; `isMutatingTool("notebook_edit")` true in the approval section; also fixed the pre-existing `toolBody.tools.length === 10` assertion to `11` (it hardcodes the tool count and would otherwise fail).
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. `tools: notebook_edit required=[path,action]`, `tools: notebook_edit action enum has 5 values`, `approval: notebook_edit is mutating`).
+  - Not committed (per task instruction — orchestrator commits).
+- **1.98-8.S2** (2026-10-22) — `ToolExecutor.codebaseSweep(query)` data gathering. Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js` only.
+  - Extracted `private async searchMatches(pattern, rootAbs, cap): Promise<string[]>` from `searchFiles` (same recursive walk: SKIP_DIRS, regex with literal fallback, `path:line: text` lines via `searchFile`, stops at `cap`). `searchFiles` now calls `searchMatches(pattern, rootAbs, MAX_SEARCH_MATCHES)` — behavior unchanged (cap 50, same truncation suffix).
+  - New `public async codebaseSweep(query: string): Promise<string>`: (a) structure — walks the first workspace folder via `resolveSafe(".")` (returns `"(no workspace folder)"` structure when none), `fs.promises.readdir({ withFileTypes: true })`, skips `SKIP_DIRS`, depth ≤ 3, 2-space indent per level, `name/` for dirs, stops at 100 entries and appends `… (truncated at 100 entries)`; (b) git status — `gitStatusText()`, `""` when output starts with `git exited`, else first 50 lines; (c) search — only when `query.trim() !== ""`, `searchMatches(query, rootAbs, 20)` joined with `\n`. Composes via `formatCodebaseSweep({ structure, gitStatus, search }, query)` (imported from `../context`).
+  - `scripts/smoke-test.js`: new section 12b with 5 static source checks on `src/tools/ToolExecutor.ts`: contains `codebaseSweep(`, contains `formatCodebaseSweep`, still contains `gitStatusText`, `searchMatches(` appears ≥ 2 times (got 3: definition + `searchFiles` + `codebaseSweep`), `searchFiles` body still references `MAX_SEARCH_MATCHES`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **262 assertions** (257 prior + 5 new `codebase-s2:`).
   - Not committed (per task instruction — orchestrator commits).
 - **1.98-8.S1** (2026-10-22) — `#codebase` pure helpers. Files: `src/context.ts`, `scripts/smoke-test.js`.
   - `src/context.ts` (still pure, no vscode imports): added `extractCodebaseQuery(text): string | null` — first case-insensitive, word-bounded `#codebase` match via `/#codebase(?!\w)/i`; returns trimmed same-line remainder (up to next `\n`), `""` when tag present with nothing after, `null` when absent (`#codebasefoo` does not match). Added `CodebaseSweepData` interface (`structure`/`gitStatus`/`search`) and `formatCodebaseSweep(data, query?)` — renders `Codebase sweep (query: <q|none>)` + `### Project structure` / `### Git status (modified files)` / `### Search: <q|none>` with placeholder lines `(clean or not a git repo)` / `(no matches)` for empty sections; returns `""` when all three fields are empty AND no query; truncates to 12,000 chars + `… (truncated)` suffix. Note: spec's two assertions (all-empty+query → placeholders; all-empty → `""`) only reconcile when the empty-string case is all-empty AND no query — implemented that way.

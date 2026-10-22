@@ -1824,6 +1824,36 @@ function assert(cond, label) {
     "codebase: header shows (none) when no query",
   );
 
+  // 12b) codebase sweep (1.98-8.S2): ToolExecutor.codebaseSweep static checks.
+  const toolExecSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  assert(
+    toolExecSrc.includes("codebaseSweep("),
+    "codebase-s2: ToolExecutor defines codebaseSweep(",
+  );
+  assert(
+    toolExecSrc.includes("formatCodebaseSweep"),
+    "codebase-s2: ToolExecutor composes via formatCodebaseSweep",
+  );
+  assert(
+    toolExecSrc.includes("gitStatusText"),
+    "codebase-s2: ToolExecutor still has gitStatusText",
+  );
+  const searchMatchesCount = toolExecSrc.split("searchMatches(").length - 1;
+  assert(
+    searchMatchesCount >= 2,
+    `codebase-s2: searchMatches( appears >= 2 times (got ${searchMatchesCount})`,
+  );
+  const searchFilesBody = toolExecSrc.slice(
+    toolExecSrc.indexOf("private async searchFiles("),
+  );
+  assert(
+    searchFilesBody.includes("MAX_SEARCH_MATCHES"),
+    "codebase-s2: searchFiles still caps at MAX_SEARCH_MATCHES (50)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

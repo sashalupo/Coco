@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — S1 verified
-- **Next step:** verify next slice of item 1.98-8 (workspace sweep wiring: structure / git status / text search)
+- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — S1 + S2 verified
+- **Next step:** verify next slice of item 1.98-8 (chat wiring: `extractCodebaseQuery` → `codebaseSweep` → context injection)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -112,7 +112,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-2.S6** — package.json descriptions + final smoke assertions + PROGRESS.md — **PASS** (2026-10-22)
 - [x] **1.98-2** — fully verified (all slices S1–S6 PASS)
 - [x] **1.98-8.S1** — `src/context.ts`: `extractCodebaseQuery` + `formatCodebaseSweep` (pure) — **PASS** (2026-10-22, see Verifications)
-- [ ] Verify next slice of item **1.98-8** (workspace sweep wiring).
+- [x] **1.98-8.S2** — `src/tools/ToolExecutor.ts`: `codebaseSweep(query)` public method — **PASS** (2026-10-22, see Verifications)
+- [ ] Verify next slice of item **1.98-8** (chat wiring: `#codebase` tag → `codebaseSweep` → context).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -149,3 +150,9 @@ acceptance checks, and reports a clear pass/fail.
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**257 assertions**; 12 new `codebase:` green in section `// 12) codebase sweep (1.98-8)`).
 - Static checks in `src/context.ts`: (a) `extractCodebaseQuery(text: string): string | null` — regex `/#codebase(?!\w)/i` (case-insensitive, word-bounded; `#codebasefoo` no match); null when absent, "" for bare tag, trimmed same-line remainder. (b) `CodebaseSweepData` interface with `structure`, `gitStatus`, `search`. (c) `formatCodebaseSweep(data, query?)` — header `Codebase sweep (query: <q|none>)`; three `###` headers in order; placeholders `(clean or not a git repo)` / `(no matches)`; 12,000-char cap with `… (truncated)`; `""` only when all-empty AND no query. (d) Purity: no `vscode` import. All PASS.
 - Scope: only `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS
+
+### 1.98-8.S2 — `src/tools/ToolExecutor.ts`: `codebaseSweep(query)` public method (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**262 assertions**; 5 new `codebase-s2:` green in subsection `// 12b) codebase sweep (1.98-8.S2)`).
+- Static checks: (a) `private async searchMatches(pattern, rootAbs, cap): Promise<string[]>` — shared recursive walk, SKIP_DIRS, regex with literal fallback, `relPath:line: text` lines, stops at cap. (b) `searchFiles` delegates to `searchMatches(pattern, rootAbs, MAX_SEARCH_MATCHES)`; cap 50 + truncation suffix preserved; diff confirms pure extraction. (c) `public async codebaseSweep(query)` — structure walk depth ≤ 3, SKIP_DIRS, `name/` dirs / `name` files, 2-space indent, 100-entry cap + `… (truncated at 100 entries)`, `"(no workspace folder)"` fallback; git status via `gitStatusText()` with `git exited` → `""` and 50-line cap; search via `searchMatches(query, rootAbs, 20)` only when non-blank; composes `formatCodebaseSweep` from `../context`. All PASS.
+- Scope: only `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS

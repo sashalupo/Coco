@@ -14,6 +14,7 @@ import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff, diffStats } from "../diff";
 import { scanForSecrets } from "../secrets";
 import { applyNotebookEdit } from "../notebook";
+import { formatCodebaseSweep } from "../context";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -563,36 +564,7 @@ export class ToolExecutor {
         `Path not allowed (outside workspace): ${rootRel}`,
       );
     }
-    let regex: RegExp;
-    try {
-      regex = new RegExp(pattern);
-    } catch {
-      // Fall back to a literal search if the pattern is not a valid regex.
-      regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    }
-
-    const matches: string[] = [];
-    const walk = async (dir: string): Promise<void> => {
-      if (matches.length >= MAX_SEARCH_MATCHES) {
-        return;
-      }
-      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-      for (const e of entries) {
-        if (matches.length >= MAX_SEARCH_MATCHES) {
-          return;
-        }
-        const full = path.join(dir, e.name);
-        if (e.isDirectory()) {
-          if (!SKIP_DIRS.has(e.name)) {
-            await walk(full);
-          }
-        } else if (e.isFile()) {
-          const fileMatches = await this.searchFile(full, regex);
-          matches.push(...fileMatches);
-        }
-      }
-    };
-    await walk(rootAbs);
+    const matches = await this.searchMatches(pattern, rootAbs, MAX_SEARCH_MATCHES);
 
     if (matches.length === 0) {
       return this.result(call, `No matches for /${pattern}/`);
@@ -861,6 +833,75 @@ export class ToolExecutor {
   }
 
   /**
+   * `#codebase` tag data gathering (1.98-8): project structure (depth ≤ 3,
+   * capped at 100 entries), git status (capped at 50 lines), and an optional
+   * text search (capped at 20 matches). Composed via `formatCodebaseSweep`.
+   */
+  public async codebaseSweep(query: string): Promise<string> {
+    const rootAbs = await this.resolveSafe(".");
+    if (!rootAbs) {
+      return formatCodebaseSweep(
+        { structure: "(no workspace folder)", gitStatus: "", search: "" },
+        query,
+      );
+    }
+
+    // Structure: walk the first workspace folder, depth ≤ 3, ≤ 100 entries.
+    const structureLines: string[] = [];
+    let truncated = false;
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > 3 || truncated) {
+        return;
+      }
+      let entries;
+      try {
+        entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const e of entries) {
+        if (structureLines.length >= 100) {
+          truncated = true;
+          return;
+        }
+        if (e.isDirectory() && SKIP_DIRS.has(e.name)) {
+          continue;
+        }
+        const indent = "  ".repeat(depth - 1);
+        if (e.isDirectory()) {
+          structureLines.push(`${indent}${e.name}/`);
+          await walk(path.join(dir, e.name), depth + 1);
+        } else if (e.isFile()) {
+          structureLines.push(`${indent}${e.name}`);
+        }
+      }
+    };
+    await walk(rootAbs, 1);
+    let structure = structureLines.join("\n");
+    if (truncated) {
+      structure += "\n… (truncated at 100 entries)";
+    }
+
+    // Git status: at most 50 lines; "" when not a repo / git unavailable.
+    const status = await this.gitStatusText();
+    const gitStatus = status.startsWith("git exited")
+      ? ""
+      : status
+          .split("\n")
+          .slice(0, 50)
+          .join("\n");
+
+    // Search: only when a query is given; at most 20 matches.
+    let search = "";
+    if (query.trim() !== "") {
+      const lines = await this.searchMatches(query, rootAbs, 20);
+      search = lines.join("\n");
+    }
+
+    return formatCodebaseSweep({ structure, gitStatus, search }, query);
+  }
+
+  /**
    * `git diff --staged` (read-only): the staged diff, used to scan for
    * secrets before committing.
    */
@@ -943,6 +984,50 @@ export class ToolExecutor {
   }
 
   // --- Helpers -----------------------------------------------------------
+
+  /**
+   * Recursively walk `rootAbs` (skipping `SKIP_DIRS`) and collect
+   * `relPath:line: text` match lines for `pattern` (regex, with a literal
+   * fallback when the pattern is not a valid regex). Stops at `cap` matches.
+   * Shared by `searchFiles` and `codebaseSweep`.
+   */
+  private async searchMatches(
+    pattern: string,
+    rootAbs: string,
+    cap: number,
+  ): Promise<string[]> {
+    let regex: RegExp;
+    try {
+      regex = new RegExp(pattern);
+    } catch {
+      // Fall back to a literal search if the pattern is not a valid regex.
+      regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    }
+
+    const matches: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      if (matches.length >= cap) {
+        return;
+      }
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      for (const e of entries) {
+        if (matches.length >= cap) {
+          return;
+        }
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          if (!SKIP_DIRS.has(e.name)) {
+            await walk(full);
+          }
+        } else if (e.isFile()) {
+          const fileMatches = await this.searchFile(full, regex);
+          matches.push(...fileMatches);
+        }
+      }
+    };
+    await walk(rootAbs);
+    return matches;
+  }
 
   /** Search a single file for the pattern; return `relPath:line: text` lines. */
   private async searchFile(file: string, regex: RegExp): Promise<string[]> {
