@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 20 complete** — Tag file (@filename references) (20.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `20229a4` — feat(llm): compact conversation history (Phase 19.1)
+- **Last commit:** `b61f626` — feat(llm): tag file via @filename references (Phase 20.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); extractTaggedFiles unit-checked
 
 > **Phase 20 — Tag file (@filename references) (2026-10-22):**
