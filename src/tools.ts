@@ -402,6 +402,33 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "find_usages",
+      description:
+        "Find all usages of a symbol (function/class/interface/variable) " +
+        "across the workspace: whole-word matches grouped by file, first " +
+        "match marked as the likely definition, with a reference count. Use " +
+        "to understand a symbol's implementations and refactor impact.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description:
+              "The symbol name to find usages of (e.g. a function or class name).",
+          },
+          path: {
+            type: "string",
+            description:
+              "Optional directory (relative to workspace) to limit the search to.",
+          },
+        },
+        required: ["symbol"],
+      },
+    },
+  },
 ];
 
 /**

@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-5 (Usages tool `#usages`) — S1 done (2026-10-22)
-- **Next step:** 1.99-5.S2 (`src/tools.ts` + `src/tools/ToolExecutor.ts`: find_usages tool)
+- **Current item:** 1.99-5 (Usages tool `#usages`) — S2 done (2026-10-22)
+- **Next step:** 1.99-5.S3 (`src/context.ts`: extractUsagesTag + formatUsagesTagBlock)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (430 PASS lines, incl. 4 `usages-s1:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (435 PASS lines, incl. 4 `usages-s1:` + 5 `usages-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-5.S2** (2026-10-22) — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `find_usages` tool schema + executor case. Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools.ts`: appended 14th `CODE_TOOLS` entry after `fetch_url` — `find_usages` with description (whole-word symbol search, grouped by file, first match = likely definition, reference count), parameters `symbol` (string, required) + `path` (string, optional, workspace-relative dir); `isMutatingTool` untouched (`find_usages` is read-only).
+  - `src/tools/ToolExecutor.ts`: (a) `import { buildUsagesRegex, formatUsagesBlock, type UsagesMatch } from "../usages"`; (b) `case "find_usages": return await this.findUsages(call, String(args.symbol ?? ""), args.path ? String(args.path) : undefined);` before `default:`; (c) private `async findUsages(call, symbol, relPath?)` — empty symbol → `Error: symbol is required`; `resolveSafe(relPath ?? ".")` guard (same pattern as `searchFiles`); `buildUsagesRegex` in try/catch → `Error: <msg>`; walks the tree with the same `SKIP_DIRS` / `MAX_READ_BYTES` guards (via new private `usagesFile` helper mirroring `searchFile`), collecting `UsagesMatch[]` capped at **200**; first match marked `isDefinition: true`; zero matches → `No usages found for <symbol>`, else `formatUsagesBlock(symbol, matches)`; whole body in try/catch → `find_usages failed: <msg>` (never throws).
+  - `scripts/smoke-test.js`: (a) bumped all CODE_TOOLS count guards 13 → 14 (line ~474 `CODE_TOOLS.length === 14`, joined-names list now ends `...,think,fetch_url,find_usages`, `toolBody.tools.length === 14`, `think-s1` guard 14, `think-s3` guard 14, `fetch-s2` guards 14); (b) new section `// 22) Usages tool schema + executor (1.99-5.S2)` with 5 `usages-s2:` assertions: (a) `byName.find_usages` exists, `required` deep-equals `["symbol"]`, `isMutatingTool("find_usages") === false`; (b) temp-dir fixture (`a.ts` = `function foo() {}\nfoo();`, `b.ts` = `foo();\nconst foobar = 1;`) with a fresh `Module._load` vscode stub + `delete require.cache[...]` (ToolExecutor was already cached from section 6) → `execute` content includes `def:`, `a.ts`, `b.ts`, `3 reference(s)`, `2 file(s)`, and does NOT include `foobar` (NOTE: spec said `2 reference(s)` but the fixture genuinely has 3 whole-word matches — a.ts line 1 def + a.ts line 2 call + b.ts line 1 call; asserted the true count); (c) empty symbol → content starts with `Error`; (d) `buildRequestBody` `toolsEnabled: true` → `body.tools.length === 14` incl. `find_usages`; (e) `symbol: "nonexistent_symbol_xyz"` → content includes `No usages found`. Temp dir cleaned up. Total PASS lines now 435 (430 + 5).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 435 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 3 code files + this PROGRESS.md.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-4.S4** (2026-10-22, FINAL) — `#fetch` tag wiring + `llm.chat.fetch.enabled` setting. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `fetchEnabled: boolean` on `LlmSettings` (comment: "Enable the `#fetch` chat tag (webpage content injected as context)."), after `folderContextEnabled`.
   - `src/config.ts`: `readSettings()` adds `fetchEnabled: c.get<boolean>("chat.fetch.enabled", true)` after `folderContextEnabled`.

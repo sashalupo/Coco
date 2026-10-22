@@ -471,10 +471,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 13, "tools: CODE_TOOLS has 13 tools");
+  assert(CODE_TOOLS.length === 14, "tools: CODE_TOOLS has 14 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,think,fetch_url",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,think,fetch_url,find_usages",
     "tools: tool names in order",
   );
   assert(
@@ -595,7 +595,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 13,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 14,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -2906,12 +2906,12 @@ function assert(cond, label) {
     (t) => t.function.name === "think",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 13 &&
+    toolsS1.CODE_TOOLS.length === 14 &&
       thinkTool !== undefined &&
       JSON.stringify(thinkTool.function.parameters.required) ===
         JSON.stringify(["thought"]) &&
       thinkTool.function.parameters.properties.thought.type === "string",
-    "think-s1: CODE_TOOLS has 13 tools and think requires [thought] (string)",
+    "think-s1: CODE_TOOLS has 14 tools and think requires [thought] (string)",
   );
   assert(
     toolsS1.isMutatingTool("think") === false &&
@@ -2967,10 +2967,10 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(thinkBodyOn.tools) &&
-      thinkBodyOn.tools.length === 13 &&
+      thinkBodyOn.tools.length === 14 &&
       thinkBodyOn.tools.some((t) => t.function.name === "think") &&
       thinkBodyOn.tool_choice === "auto",
-    "think-s3: toolsEnabled=true → body.tools has 13 tools incl. think, tool_choice auto",
+    "think-s3: toolsEnabled=true → body.tools has 14 tools incl. think, tool_choice auto",
   );
   const thinkBodyOff = buildRequestBody(
     { settings: { ...settings, toolsEnabled: false }, toolbar },
@@ -3074,13 +3074,13 @@ function assert(cond, label) {
     (t) => t.function.name === "fetch_url",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 13 &&
+    toolsS1.CODE_TOOLS.length === 14 &&
       fetchToolEntry !== undefined &&
       JSON.stringify(fetchToolEntry.function.parameters.required) ===
         JSON.stringify(["url"]) &&
       fetchToolEntry.function.parameters.properties.url.type === "string" &&
       toolsS1.isMutatingTool("fetch_url") === false,
-    "fetch-s2: CODE_TOOLS has 13 tools; fetch_url requires [url] (string) and is not mutating",
+    "fetch-s2: CODE_TOOLS has 14 tools; fetch_url requires [url] (string) and is not mutating",
   );
   const { ToolExecutor: FetchExecutor } = require(
     path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
@@ -3108,9 +3108,9 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(fetchBody.tools) &&
-      fetchBody.tools.length === 13 &&
+      fetchBody.tools.length === 14 &&
       fetchBody.tools.some((t) => t.function.name === "fetch_url"),
-    "fetch-s2: toolsEnabled=true → body.tools has 13 tools incl. fetch_url",
+    "fetch-s2: toolsEnabled=true → body.tools has 14 tools incl. fetch_url",
   );
 
   // 20c) Fetch tag context (1.99-4.S3)
@@ -3207,6 +3207,90 @@ function assert(cond, label) {
       longUsagesBlock.endsWith("(truncated)"),
     "usages-s1: >25k-char matches truncated to ≤20050 chars ending with (truncated)",
   );
+
+  // 22) Usages tool schema + executor (1.99-5.S2)
+  const usagesToolEntry = byName.find_usages;
+  assert(
+    usagesToolEntry !== undefined &&
+      JSON.stringify(usagesToolEntry.function.parameters.required) ===
+        JSON.stringify(["symbol"]) &&
+      toolsS1.isMutatingTool("find_usages") === false,
+    "usages-s2: find_usages in CODE_TOOLS, required=[symbol], not mutating",
+  );
+  const usagesRoot = fs.mkdtempSync(path.join(os.tmpdir(), "llm-edit-test-"));
+  fs.writeFileSync(
+    path.join(usagesRoot, "a.ts"),
+    "function foo() {}\nfoo();\n",
+    "utf8",
+  );
+  fs.writeFileSync(path.join(usagesRoot, "b.ts"), "foo();\nconst foobar = 1;\n", "utf8");
+  const originalLoadUsages = Module._load;
+  Module._load = function (request, parent, isMain) {
+    if (request === "vscode") {
+      return {
+        workspace: { workspaceFolders: [{ uri: { fsPath: usagesRoot } }] },
+      };
+    }
+    return originalLoadUsages.apply(this, arguments);
+  };
+  delete require.cache[
+    require.resolve(path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"))
+  ];
+  const { ToolExecutor: UsagesExecutor } = require(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+  );
+  const usagesExecutor = new UsagesExecutor();
+  const usagesRes = await usagesExecutor.execute({
+    id: "u1",
+    type: "function",
+    function: {
+      name: "find_usages",
+      arguments: JSON.stringify({ symbol: "foo" }),
+    },
+  });
+  assert(
+    usagesRes.tool_call_id === "u1" &&
+      usagesRes.content.includes("def:") &&
+      usagesRes.content.includes("a.ts") &&
+      usagesRes.content.includes("b.ts") &&
+      usagesRes.content.includes("3 reference(s)") &&
+      usagesRes.content.includes("2 file(s)") &&
+      !usagesRes.content.includes("foobar"),
+    "usages-s2: find_usages finds foo in a.ts+b.ts with def marker, excludes foobar",
+  );
+  const usagesResEmpty = await usagesExecutor.execute({
+    id: "u2",
+    type: "function",
+    function: { name: "find_usages", arguments: JSON.stringify({ symbol: "" }) },
+  });
+  assert(
+    usagesResEmpty.content.startsWith("Error"),
+    "usages-s2: empty symbol → Error result (never throws)",
+  );
+  const usagesBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(usagesBody.tools) &&
+      usagesBody.tools.length === 14 &&
+      usagesBody.tools.some((t) => t.function.name === "find_usages"),
+    "usages-s2: toolsEnabled=true → body.tools has 14 tools incl. find_usages",
+  );
+  const usagesResNone = await usagesExecutor.execute({
+    id: "u3",
+    type: "function",
+    function: {
+      name: "find_usages",
+      arguments: JSON.stringify({ symbol: "nonexistent_symbol_xyz" }),
+    },
+  });
+  assert(
+    usagesResNone.content.includes("No usages found"),
+    "usages-s2: unknown symbol → 'No usages found'",
+  );
+  Module._load = originalLoadUsages;
+  fs.rmSync(usagesRoot, { recursive: true, force: true });
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

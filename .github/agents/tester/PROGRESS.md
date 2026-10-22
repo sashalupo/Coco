@@ -12,12 +12,26 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-5.S1 (pure usages helpers) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-5.S2 (next slice of Usages tool)
+- **Current item:** 1.99-5.S2 (find_usages tool schema + executor) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-5.S3 (next slice of Usages tool)
 - **Last updated:** 2026-10-22
-- **Last commit:** 169b392 (orchestrator: 1.99-5 plan)
-- **Build state:** 430/430 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 2c84ea8 (coder: 1.99-5.S1)
+- **Build state:** 435/435 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-5.S2 — find_usages tool schema + executor (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **435 PASS lines** (430 prior + 5 new `usages-s2:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 435 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 22) Usages tool schema + executor (1.99-5.S2)` section (smoke-test.js:3211) has 5 genuine `usages-s2:` assertions: (a) `byName.find_usages` exists, `required` deep-equals `["symbol"]`, `isMutatingTool("find_usages") === false`; (b) temp-dir fixture → real `execute({name:"find_usages", arguments:{symbol:"foo"}})` content includes `def:`, `a.ts`, `b.ts`, `3 reference(s)`, `2 file(s)`, excludes `foobar`; (c) empty symbol → `content.startsWith("Error")`; (d) `buildRequestBody` `toolsEnabled: true` → `body.tools.length === 14` incl. `find_usages`; (e) unknown symbol → `includes("No usages found")`. PASS
+  - (4) Count guards: `grep '=== 13\|length === 13' scripts/smoke-test.js` → zero matches; joined-names list (L477) ends `...,think,fetch_url,find_usages`. PASS
+  - (5) Source: `git diff src/tools.ts` = 1 hunk +27/−0 — `find_usages` appended after `fetch_url`, `required: ["symbol"]`, optional `path`; `isMutatingTool` unchanged. `git diff src/tools/ToolExecutor.ts` = 3 hunks, +106/−0, purely additive: `../usages` imports, `case "find_usages":` before `default:`, private `findUsages` (empty-symbol guard, `resolveSafe` guard, try/catch around `buildUsagesRegex`, match cap 200, first match `isDefinition: true`, zero matches → `No usages found for <symbol>`, outer try/catch — never throws). PASS
+  - (6) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/tools.ts`, ` M src/tools/ToolExecutor.ts`. `package-lock.json` untouched. PASS
+  - (7) `git log --oneline -1` → `2c84ea8` (feat(llm): usages tool — pure usages helpers (1.99-5.S1)). No coder commit. PASS
+- **Verdict:** **PASS** — all 7 criteria met.
 
 ### 1.99-5.S1 — pure usages helpers (src/usages.ts) (2026-10-22) — **PASS**
 

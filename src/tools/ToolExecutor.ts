@@ -16,6 +16,11 @@ import { scanForSecrets } from "../secrets";
 import { applyNotebookEdit } from "../notebook";
 import { formatCodebaseSweep, formatFolderBlock } from "../context";
 import { fetchUrl } from "../fetchTool";
+import {
+  buildUsagesRegex,
+  formatUsagesBlock,
+  type UsagesMatch,
+} from "../usages";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -340,6 +345,12 @@ export class ToolExecutor {
             call,
             String(args.url ?? ""),
             typeof args.max_chars === "number" ? args.max_chars : undefined,
+          );
+        case "find_usages":
+          return await this.findUsages(
+            call,
+            String(args.symbol ?? ""),
+            args.path ? String(args.path) : undefined,
           );
         default:
           return this.result(call, `Unknown tool: ${name}`);
@@ -1211,6 +1222,99 @@ export class ToolExecutor {
     maxChars?: number,
   ): Promise<ToolResult> {
     return this.result(call, await this.fetchUrl(url, maxChars));
+  }
+
+  /**
+   * Execute the `find_usages` tool call (1.99-5): whole-word search for a
+   * symbol across the workspace, grouped by file, first match marked as the
+   * likely definition. Never throws — failures come back as error strings.
+   */
+  private async findUsages(
+    call: ToolCall,
+    symbol: string,
+    relPath?: string,
+  ): Promise<ToolResult> {
+    try {
+      if (symbol.trim() === "") {
+        return this.result(call, "Error: symbol is required");
+      }
+      const rootAbs = await this.resolveSafe(relPath ?? ".");
+      if (!rootAbs) {
+        return this.result(
+          call,
+          `Path not allowed (outside workspace): ${relPath ?? "."}`,
+        );
+      }
+      let re: RegExp;
+      try {
+        re = buildUsagesRegex(symbol);
+      } catch (e) {
+        return this.result(call, "Error: " + (e as Error).message);
+      }
+      const matches: UsagesMatch[] = [];
+      const cap = 200;
+      const walk = async (dir: string): Promise<void> => {
+        if (matches.length >= cap) {
+          return;
+        }
+        const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+        for (const e of entries) {
+          if (matches.length >= cap) {
+            return;
+          }
+          const full = path.join(dir, e.name);
+          if (e.isDirectory()) {
+            if (!SKIP_DIRS.has(e.name)) {
+              await walk(full);
+            }
+          } else if (e.isFile()) {
+            const fileMatches = await this.usagesFile(full, re);
+            matches.push(...fileMatches);
+          }
+        }
+      };
+      await walk(rootAbs);
+      if (matches.length > 0) {
+        matches[0].isDefinition = true;
+      }
+      if (matches.length === 0) {
+        return this.result(call, `No usages found for ${symbol}`);
+      }
+      const block = formatUsagesBlock(symbol, matches);
+      return this.result(call, block);
+    } catch (err) {
+      return this.result(call, `find_usages failed: ${this.msg(err)}`);
+    }
+  }
+
+  /** Search a single file for usages; return `UsagesMatch` entries. */
+  private async usagesFile(
+    file: string,
+    regex: RegExp,
+  ): Promise<UsagesMatch[]> {
+    const out: UsagesMatch[] = [];
+    let text: string;
+    try {
+      const stat = await fs.promises.stat(file);
+      if (stat.size > MAX_READ_BYTES) {
+        return out; // skip large files
+      }
+      text = await fs.promises.readFile(file, "utf8");
+    } catch {
+      return out; // unreadable/binary: skip
+    }
+    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (regex.test(lines[i])) {
+        out.push({
+          file: this.toWorkspaceRelative(file),
+          line: i + 1,
+          text: lines[i].trim(),
+          isDefinition: false,
+        });
+      }
+    }
+    return out;
   }
 
   /** Echo a thought back (no I/O, no state). */

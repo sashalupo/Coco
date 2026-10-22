@@ -877,7 +877,7 @@ mirroring the existing `search_files` CODE_TOOL walk (`ToolExecutor.searchMatche
   ending `(truncated)`, `USAGES_BLOCK_MAX_CHARS === 20000`.
   Expected smoke total: **430**.
 
-- **1.99-5.S2 — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `find_usages` tool.**
+- **1.99-5.S2 — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `find_usages` tool.** — Done (2026-10-22, PASS, 435 assertions)
   Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`.
   (a) `tools.ts`: append 14th `Tool` after `fetch_url` — name `find_usages`, description
   "Find all usages of a symbol (function/class/interface/variable) across the workspace:
