@@ -27,6 +27,7 @@ import {
   extractCodebaseQuery,
   extractProblemsTag,
   formatProblemsBlock,
+  extractFolderTag,
   extractTaggedFiles,
   type ContextFile,
   type ContextInput,
@@ -969,6 +970,22 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + problemsBlock
               : problemsBlock;
+          }
+        }
+      }
+
+      // 1.98-10.S3: `#folder:` tag — sweep the named folder (tree only) and
+      // append the result to the context block. Gated only on
+      // settings.folderContextEnabled (runs regardless of llm.tools.enabled,
+      // same as `#codebase`/`#problems`).
+      if (settings.folderContextEnabled && lastUser && this.toolExecutor) {
+        const f = extractFolderTag(lastUser.content);
+        if (f !== null) {
+          const folderBlock = await this.toolExecutor.folderSweep(f);
+          if (folderBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + folderBlock
+              : folderBlock;
           }
         }
       }

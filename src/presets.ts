@@ -92,6 +92,8 @@ export interface LlmSettings {
   codebaseSearchEnabled: boolean;
   /** Enable the `#problems` chat tag (diagnostics injected as context). */
   problemsEnabled: boolean;
+  /** Enable the `#folder:` chat tag (folder tree injected as context). */
+  folderContextEnabled: boolean;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */

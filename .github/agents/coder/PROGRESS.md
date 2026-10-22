@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-10.S2 done — `ToolExecutor.folderSweep`
-- **Next step:** 1.98-10.S3 — `#folder` wiring (ChatViewProvider + config gate)
+- **Current step:** 1.98-10.S3 done — `#folder:` wiring (ChatViewProvider + config gate)
+- **Next step:** 1.98-10.S4 — (per plan; likely `package.json` settings schema + final smoke assertions + memory)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (310 assertions, incl. 4 new `folder-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (315 assertions, incl. 5 new `folder-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-10.S3** (2026-10-22) — `#folder:` wiring: `folderContextEnabled` field + ChatViewProvider integration. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: added `folderContextEnabled: boolean;` to `LlmSettings` (after `problemsEnabled`), with doc comment "Enable the `#folder:` chat tag (folder tree injected as context).".
+  - `src/config.ts`: `readSettings()` now returns `folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true)` (after `problemsEnabled`).
+  - `src/chat/ChatViewProvider.ts`: extended the `../context` import with `extractFolderTag`. In `runStream`, immediately after the `#problems` block and before `composeSystemPrompt`, added the `#folder:` wiring: gated on `settings.folderContextEnabled && lastUser && this.toolExecutor` (runs regardless of `llm.tools.enabled`, same as `#codebase`/`#problems`); `extractFolderTag(lastUser.content)` → if non-null, `await this.toolExecutor.folderSweep(f)`; non-empty result appended to `finalContextBlock` with `"\n\n"` join. No qualifier fallback (unlike `#problems`): `folderSweep` already renders `(folder not found: <name>)` for bad names, which is the intended behavior.
+  - `scripts/smoke-test.js`: new subsection `// 14c) folder tag (1.98-10.S3)` with 5 static assertions (`folder-s3:` labels) reusing the `chatViewSrc`/`configSrc`/`presetsSrc` reads from 12c: ChatViewProvider contains `extractFolderTag`, `folderSweep(`, `folderContextEnabled`; `config.ts` contains `chat.folderContext.enabled`; `presets.ts` contains `folderContextEnabled`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **315 assertions** (310 prior + 5 new `folder-s3:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-10.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `folderSweep` (file tree of a workspace folder, composed via `formatFolderBlock`). Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools/ToolExecutor.ts`: extended the `../context` import with `formatFolderBlock`. Added `public async folderSweep(folderName: string): Promise<string>` next to `codebaseSweep`: (1) `resolveSafe(".")` → `null` (no workspace) → `formatFolderBlock({ tree: "", notFound: true }, folderName || "(workspace root)")`; (2) `target = folderName.trim() === "" ? rootAbs : await this.resolveSafe(folderName)` → `null` (path rejected) → notFound block; (3) `fs.promises.stat(target)` — on error or `!stat.isDirectory()` → notFound block; (4) walk mirrors `codebaseSweep`'s inner `walk` exactly (depth ≤ 3, cap 100 entries with `… (truncated at 100 entries)` suffix, `SKIP_DIRS` skipped, indent `"  ".repeat(depth - 1)`), starting at `walk(target, 1)`; file tree ONLY — no contents, no git status, no search; (5) returns `formatFolderBlock({ tree: structure }, folderName)`.
   - `scripts/smoke-test.js`: new subsection `// 14b) folder tag (1.98-10.S2)` with 4 static assertions (`folder-s2:` labels) reusing the `toolExecSrc` read from 12b: source contains `folderSweep(`, `formatFolderBlock`, `resolveSafe` (guard intact), `codebaseSweep(` (untouched).

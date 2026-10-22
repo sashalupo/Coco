@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-9 (`#problems` tag) — S1 verified
-- **Next step:** verify item 1.98-9 (`#problems` tag) — slice S2
+- **Current item:** 1.98-10 (`#folder:` tag) — S3 verified
+- **Next step:** verify item 1.98-10 (`#folder:` tag) — slice S4
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
+- **Build state:** 315/315 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -145,6 +145,28 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** `git status --short` → only `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ `ninfer` submodule marker, ignored). PASS
 - **Behavior spot-check:** `node -e` against `out/context.js` — `formatFolderBlock({tree:"",notFound:true},"nope")` → `"Folder: nope\n(folder not found: nope)"`; empty name → `Folder: (workspace root)` header. fs-dependent path verified by static review. PASS
 
+### 1.98-10.S3 — `folderContextEnabled` field + `#folder:` chat wiring (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **315 assertions** (310 prior + 5 new `folder-s3:` in subsection 14c; 0 FAIL).
+- **Wiring in `src/chat/ChatViewProvider.ts` (via `git diff` — exactly 2 hunks, +18/−0):**
+  - (a) `extractFolderTag` added to the `../context` import (line 30). PASS
+  - (b) In `runStream`, the `#folder:` block sits immediately after the `#problems` block (line 982) and before `composeSystemPrompt` (line 998). PASS
+  - (c) Gated on `settings.folderContextEnabled && lastUser && this.toolExecutor`; calls `extractFolderTag(lastUser.content)`; on non-null `f` calls `await this.toolExecutor.folderSweep(f)`; non-empty result appended to `finalContextBlock` with `\n\n` join (assigns directly when empty). PASS
+  - (d) `#codebase` (line 937) and `#problems` (line 953) wiring blocks UNCHANGED — diff contains only the import extension and the new `#folder:` block. PASS
+- **Settings field:** `src/presets.ts` line 96 `folderContextEnabled: boolean;` (immediately after `problemsEnabled` at line 94). `src/config.ts` line 73 `folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true)`. PASS
+- **Smoke 14c:** 5 genuine static checks labeled `folder-s3:` — `ChatViewProvider.ts` contains `extractFolderTag`, `folderSweep(`, `folderContextEnabled`; `config.ts` contains `chat.folderContext.enabled`; `presets.ts` contains `folderContextEnabled`. Not tautologies. PASS
+- **Scope check:** `git status --short` → only `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ `ninfer` submodule marker, ignored). PASS
+
+### 1.98-10.S3 — `folderContextEnabled` field + `#folder:` chat wiring (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **315 assertions** (310 prior + 5 new `folder-s3:` in subsection 14c).
+- **Wiring in `src/chat/ChatViewProvider.ts`:** `extractFolderTag` imported from `../context` (line 30); `#folder:` block at L982 — after `#problems` (L953), before `composeSystemPrompt` (L998); gated on `settings.folderContextEnabled && lastUser && this.toolExecutor`; `git diff` = exactly 2 hunks (+18/−0): import extension + new block only; `#codebase`/`#problems` unchanged. PASS
+- **Settings field:** `src/presets.ts:96` `folderContextEnabled: boolean;` (after `problemsEnabled`); `src/config.ts:73` `folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true)`. PASS
+- **Smoke 14c:** 5 genuine static checks (`folder-s3:`). PASS
+- **Scope check:** only the 5 in-scope files (+ `ninfer` marker, ignored). PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -169,7 +191,15 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-8.S4** — package.json settings schema + final smoke assertions + PROGRESS.md — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-8** — fully verified (all slices S1–S4 PASS)
 - [x] **1.98-9.S1** — `src/context.ts`: `extractProblemsTag` + `formatProblemsBlock` (pure) — **PASS** (2026-10-22, see Verifications)
-- [ ] Verify item **1.98-9** (`#problems` tag) — slice S2.
+- [x] **1.98-9.S2** — `ToolExecutor.collectDiagnostics` shared helper — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-9.S3** — `problemsEnabled` field + `#problems` wiring — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-9.S4** — `package.json`: `llm.chat.problems.enabled` + final smoke assertions — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-9** — fully verified (all slices S1–S4 PASS)
+- [x] **1.98-10.S1** — `src/context.ts`: `extractFolderTag` + `formatFolderBlock` + `FOLDER_BLOCK_MAX_CHARS` (pure) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-10.S2** — `ToolExecutor.folderSweep(folderName)` — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-10.S3** — `folderContextEnabled` field + `#folder:` chat wiring — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-10.S3** — `folderContextEnabled` field + `#folder:` chat wiring — **PASS** (2026-10-22, see Verifications)
+- [ ] Verify item **1.98-10** (`#folder:` tag) — slice S4.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions

@@ -2111,6 +2111,28 @@ function assert(cond, label) {
     "folder-s2: ToolExecutor still has codebaseSweep( (untouched)",
   );
 
+  // 14c) folder tag (1.98-10.S3): ChatViewProvider + config wiring static checks.
+  assert(
+    chatViewSrc.includes("extractFolderTag"),
+    "folder-s3: ChatViewProvider imports/uses extractFolderTag",
+  );
+  assert(
+    chatViewSrc.includes("folderSweep("),
+    "folder-s3: ChatViewProvider calls folderSweep(",
+  );
+  assert(
+    chatViewSrc.includes("folderContextEnabled"),
+    "folder-s3: ChatViewProvider gates on folderContextEnabled",
+  );
+  assert(
+    configSrc.includes("chat.folderContext.enabled"),
+    "folder-s3: config.ts reads chat.folderContext.enabled",
+  );
+  assert(
+    presetsSrc.includes("folderContextEnabled"),
+    "folder-s3: presets.ts declares folderContextEnabled",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
