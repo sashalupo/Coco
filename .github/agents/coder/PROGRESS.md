@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-28 (new notebook planning) — S1–S2 done (S3–S5 pending)
-- **Next step:** 1.99-28.S3 per planner plan (`.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.99-28 (new notebook planning) — S1–S3 done (S4–S5 pending)
+- **Next step:** 1.99-28.S4 per planner plan (`.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (560 assertions)
+- **Build state:** compiles clean; smoke test passes (563 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-28.S3** (2026-10-22) — setting plumbing: `llm.chat.newNotebook.enabled`. Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `LlmSettings` gains `newNotebookEnabled: boolean` (doc comment "Enable the `new_notebook` agent tool (create a new Jupyter notebook planned from a query).") immediately after `searchResultsEnabled`.
+  - `src/config.ts`: `readSettings` gains `newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true)` immediately after `searchResultsEnabled`.
+  - `scripts/smoke-test.js`: new section `// 55) newNotebook setting (1.99-28.S3)` after section 54, before `ALL SMOKE TESTS PASSED`; 3 `nbnew-s3:` assertions: (a) compiled `out/config.js` source contains `"chat.newNotebook.enabled"`; (b) compiled `out/config.js` source contains `newNotebookEnabled`; (c) `src/presets.ts` source contains `newNotebookEnabled: boolean`. Total PASS lines now 563 (560 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 563 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
+  - No behavior change yet — the setting is not consumed anywhere in this slice.
 - **1.99-28.S2** (2026-10-22) — `new_notebook` agent tool (schema + executor). Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools.ts`: (a) new `new_notebook` entry in `CODE_TOOLS` immediately after `notebook_edit` — description: creates a new Jupyter notebook planned from the query (markdown title + objective + starter code cell); file must not exist yet; use `notebook_edit` afterwards; parameters `path` (string, "Workspace-relative .ipynb file path (must not exist yet).") + `query` (string, "What the notebook should accomplish; used to plan the cells."), `required: ["path","query"]`; (b) `isMutatingTool` gains `name === "new_notebook"`.
   - `src/tools/ToolExecutor.ts`: (a) `../notebook` import extended with `createNotebook`, `parseNotebook`, `planNewNotebook`; (b) new `public async createNewNotebook(relPath: string, query: string): Promise<string>` right after `notebookEdit` — `resolveSafe` → `Path not allowed (outside workspace): <relPath>`; empty-query guard → `query is empty — provide what the notebook should accomplish.`; `fs.promises.access` exists guard → `Notebook already exists: <relPath> — use notebook_edit to modify it.`; else `content = createNotebook(planNewNotebook(query))`, snapshot bookkeeping (`lastSnapshot`/`recordSnapshot` with `existed: false`), `mkdir -p` parent + `writeFile`, `recordChange`, returns `Created <relPath> — <n> cell(s) planned from the query.` (n = `parseNotebook(content)?.cells.length ?? 0`); (c) `execute` switch gains `case "new_notebook":` → `this.result(call, await this.createNewNotebook(String(args.path ?? ""), String(args.query ?? "")))`.

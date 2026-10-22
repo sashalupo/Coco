@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-28 — new notebook tool — S2 PASS (2026-10-22)
-- **Next step:** item 1.99-28 S2 verified — next: 1.99-28 S3 (setting plumbing llm.chat.newNotebook.enabled)
+- **Current item:** 1.99-28 — new notebook tool — S3 PASS (2026-10-22)
+- **Next step:** item 1.99-28 S3 verified — next: 1.99-28 S4 (/newNotebook chat command + webview notice)
 - **Last updated:** 2026-10-22
-- **Last commit:** 13cf638
-- **Build state:** 560/560 PASS
+- **Last commit:** 84a4612
+- **Build state:** 563/563 PASS
+
+### 1.99-28.S3 — Setting plumbing: `llm.chat.newNotebook.enabled` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **563 PASS lines** (560 prior + 3 new `nbnew-s3:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 563/563 PASS; (3) 3 `nbnew-s3:` assertions in section `// 55) newNotebook setting (1.99-28.S3)` (smoke-test.js:4288): `out/config.js` contains `"chat.newNotebook.enabled"` (L4295), `out/config.js` contains `newNotebookEnabled` (L4299), `src/presets.ts` contains `newNotebookEnabled: boolean` (L4307) — all PASS; (4) `src/presets.ts`: `newNotebookEnabled: boolean;` (L112) after `searchResultsEnabled` (L110) PASS; (5) `src/config.ts`: `newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true)` (L82) PASS; (6) scope: only presets.ts, config.ts, smoke-test.js, coder PROGRESS.md + `m ninfer` — PASS.
+- **Verdict:** **PASS** — all 6 criteria met. (Slices S4–S5 of item 1.99-28 remain.)
 
 ### 1.99-28.S2 — new_notebook agent tool (schema + executor) (2026-10-22) — **PASS**
 

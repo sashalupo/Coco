@@ -4285,6 +4285,28 @@ function assert(cond, label) {
     "nbnew-s2: ToolExecutor wires createNewNotebook",
   );
 
+  // 55) newNotebook setting (1.99-28.S3)
+  const configJsS3 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "config.js"),
+    "utf8",
+  );
+  assert(
+    configJsS3.includes('"chat.newNotebook.enabled"'),
+    "nbnew-s3: config reads chat.newNotebook.enabled",
+  );
+  assert(
+    configJsS3.includes("newNotebookEnabled"),
+    "nbnew-s3: config maps newNotebookEnabled",
+  );
+  const presetsSrcS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    presetsSrcS3.includes("newNotebookEnabled: boolean"),
+    "nbnew-s3: presets LlmSettings has newNotebookEnabled",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

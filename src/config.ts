@@ -79,6 +79,7 @@ export function readSettings(): LlmSettings {
     usagesEnabled: c.get<boolean>("chat.usages.enabled", true),
     newWorkspaceEnabled: c.get<boolean>("chat.newWorkspace.enabled", true),
     searchResultsEnabled: c.get<boolean>("chat.searchResults.enabled", true),
+    newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true),
     completionsModel: c.get<string>("completions.model", ""),
     mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),
   };

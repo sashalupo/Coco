@@ -108,6 +108,8 @@ export interface LlmSettings {
   newWorkspaceEnabled: boolean;
   /** Enable the `#searchResults` chat tag (workspace text-search results injected as context). */
   searchResultsEnabled: boolean;
+  /** Enable the `new_notebook` agent tool (create a new Jupyter notebook planned from a query). */
+  newNotebookEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
   /** MCP server configurations (name → command/args/env). */
