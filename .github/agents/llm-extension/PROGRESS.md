@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 13 complete** — Multi-file diff view (13.1 done)
+- **Current phase:** **Phase 14 complete** — Per-file keep/undo in the change footer (14.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `0f3e668` — feat(llm): multi-file diff view (Phase 13.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
+- **Last commit:** `a92b0e7` — feat(llm): per-file keep/undo in change footer (Phase 14.1)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); per-file keep/undo functionally tested
 
 > **Numbering note (2026-10-12):** the previous session skipped PLAN.md **12.5**
 > (clickable file rows + editor change highlight) and recorded PLAN 12.6/12.7 as
@@ -267,6 +267,7 @@ src/
 | 11    | Sessions side panel (conversation management)   | complete |
 | 12    | Change toolbox footer bar                       | complete |
 | 13    | Multi-file diff view                            | complete |
+| 14    | Per-file keep/undo in the change footer         | complete |
 
 ## Done
 
@@ -1051,6 +1052,32 @@ doc.getText())`; no snapshot (after Keep/Undo) → open without highlighting. Hi
     smoke test green (173 assertions); compiled output verified to contain the `showDiff` case,
     `showCombinedDiff`, `unifiedDiff` import, and the webview `cf-diff` button + handler.
     **Phase 13 complete.**
+- **14.1 — Per-file keep/undo in the change footer** (2026-10-22): added per-file Keep/Undo
+  buttons to each file row in the expanded change footer, so the user can selectively accept or
+  revert individual file changes instead of all-or-nothing.
+  - `src/tools/ToolExecutor.ts`: new `revertFile(relPath)` (restores a single file's pre-run
+    content or deletes it if newly created, then removes it from `runSnapshots` + `runChanges`)
+    and `keepFile(relPath)` (removes a file from `runSnapshots` + `runChanges` without touching
+    disk). Both return a human-readable message; no-op messages when the file has no pending
+    snapshot.
+  - `src/chat/ChatViewProvider.ts`: new `case "keepFile"` → `handleKeepFile(path)` and
+    `case "undoFile"` → `handleUndoFile(path)`. Both call the ToolExecutor method, post a
+    `revert_result` message with the outcome, then call the new `pushChangeFooter()` helper
+    (which posts `change_footer` with the remaining files + totals, or `change_footer_hide`
+    when no files remain). `runStream` now uses `pushChangeFooter()` instead of inlining the
+    footer post (DRY).
+  - `src/chat/webview.ts`: each `.cf-file-row` now has a `.cf-file-right` container holding the
+    stats + a per-file **Keep** button (`.cf-file-keep`, green) and **Undo** button
+    (`.cf-file-undo`, red). Clicking posts `{type:'keepFile'|'undoFile', path}` (with
+    `stopPropagation` so the row's open-file click doesn't fire). The path span is now the
+    clickable element (not the whole row). New `case 'change_footer_hide'` handler calls
+    `hideChangeFooter()`. New CSS themes the per-file buttons (small, 10px, green/red borders
+    that fill on hover).
+  - Verified: `npm run compile` clean; the built inline webview script passes `node --check`;
+    smoke test green (173 assertions); functional test of `revertFile`/`keepFile` against real
+    files (2 files mutated → keep one → summary shrinks + file unchanged on disk → revert the
+    other → restored on disk + summary empty → no-op messages for unknown paths — all pass).
+    **Phase 14 complete.**
 
 ## Steps — Phase 1 (one per session)
 
@@ -1294,6 +1321,20 @@ files changed in the current run as a read-only VS Code text document.
       snapshotted file's current content, computes `unifiedDiff` per file (with `/dev/null`
       labels for new/deleted files), and opens the combined result as an untitled `diff`-language
       text document. _Accept: clicking Diff opens a combined diff of all changed files; compiles._
+
+## Steps — Phase 14 (one per session)
+
+Per-file keep/undo: each file row in the expanded change footer carries its own Keep / Undo
+buttons so the user can selectively accept or revert individual file changes (instead of the
+all-or-nothing footer Keep/Undo, which is kept for convenience).
+
+- [x] **14.1 — Per-file keep/undo.** Add `revertFile(relPath)` / `keepFile(relPath)` to
+      `ToolExecutor` (remove a single file from the snapshot + change maps; `revertFile` also
+      restores/deletes the file on disk). Add `keepFile` / `undoFile` webview→host messages +
+      `pushChangeFooter()` helper (posts `change_footer` or `change_footer_hide`). Add per-file
+      Keep/Undo buttons to each `.cf-file-row` (the path span becomes the clickable open-file
+      element). _Accept: per-file Keep removes the file from the footer without touching disk;
+      per-file Undo restores the file on disk; the footer hides when no files remain; compiles._
 
 ## Decisions
 

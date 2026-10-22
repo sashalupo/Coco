@@ -170,6 +170,52 @@ export class ToolExecutor {
   }
 
   /**
+   * Revert a single file to its pre-run content (or delete it if it was
+   * newly created). Removes the file from the snapshot + change maps so
+   * subsequent `revertAll()` / `getChangeSummary()` calls skip it.
+   * Returns a human-readable message.
+   */
+  public async revertFile(relPath: string): Promise<string> {
+    const snap = this.runSnapshots.get(relPath);
+    if (!snap) {
+      return `No snapshot for ${relPath} (already kept or reverted).`;
+    }
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return `Cannot revert: path not allowed (${relPath}).`;
+    }
+    try {
+      if (!snap.existed) {
+        await fs.promises.unlink(abs);
+      } else {
+        await fs.promises.writeFile(abs, snap.oldContent, "utf8");
+      }
+    } catch (err) {
+      return `Revert failed for ${relPath}: ${err instanceof Error ? err.message : String(err)}`;
+    }
+    this.runSnapshots.delete(relPath);
+    this.runChanges.delete(relPath);
+    return snap.existed
+      ? `Reverted ${relPath} (restored pre-run content).`
+      : `Reverted ${relPath} (deleted newly-created file).`;
+  }
+
+  /**
+   * Accept (keep) a single file's changes: remove it from the snapshot +
+   * change maps without touching the file on disk. Subsequent
+   * `revertAll()` / `getChangeSummary()` calls skip it.
+   * Returns a human-readable message.
+   */
+  public keepFile(relPath: string): string {
+    if (!this.runSnapshots.has(relPath)) {
+      return `No pending changes for ${relPath}.`;
+    }
+    this.runSnapshots.delete(relPath);
+    this.runChanges.delete(relPath);
+    return `Kept ${relPath}.`;
+  }
+
+  /**
    * Revert the last mutation: restore the pre-mutation content (or delete
    * the file if it was newly created). Returns a human-readable message.
    */

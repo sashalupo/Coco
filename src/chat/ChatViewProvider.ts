@@ -177,6 +177,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // Open a combined unified diff of all changed files (Phase 13).
         void this.showCombinedDiff();
         break;
+      case "keepFile":
+        // Accept a single file's changes (Phase 14).
+        this.handleKeepFile(String(msg.path ?? ""));
+        break;
+      case "undoFile":
+        // Revert a single file's changes (Phase 14).
+        void this.handleUndoFile(String(msg.path ?? ""));
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
@@ -349,6 +357,53 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       language: "diff",
     });
     await vscode.window.showTextDocument(doc, { preview: true });
+  }
+
+  /**
+   * Push the current per-run change footer to the webview (Phase 14). Posts
+   * `change_footer` with the remaining files + totals, or `change_footer_hide`
+   * when no files remain (so the webview hides the bar).
+   */
+  private pushChangeFooter(): void {
+    const changes = this.toolExecutor.getChangeSummary();
+    if (changes.length === 0) {
+      this.postMessage({ type: "change_footer_hide" });
+      return;
+    }
+    const totalAdded = changes.reduce((s, c) => s + c.added, 0);
+    const totalRemoved = changes.reduce((s, c) => s + c.removed, 0);
+    this.postMessage({
+      type: "change_footer",
+      files: changes,
+      totalAdded,
+      totalRemoved,
+    });
+  }
+
+  /**
+   * Accept a single file's changes (Phase 14): remove it from the snapshot +
+   * change maps without touching disk, then refresh the footer.
+   */
+  private handleKeepFile(relPath: string): void {
+    if (!relPath) {
+      return;
+    }
+    const message = this.toolExecutor.keepFile(relPath);
+    this.postMessage({ type: "revert_result", message });
+    this.pushChangeFooter();
+  }
+
+  /**
+   * Revert a single file's changes (Phase 14): restore its pre-run content
+   * (or delete it if newly created), then refresh the footer.
+   */
+  private async handleUndoFile(relPath: string): Promise<void> {
+    if (!relPath) {
+      return;
+    }
+    const message = await this.toolExecutor.revertFile(relPath);
+    this.postMessage({ type: "revert_result", message: `↩ ${message}` });
+    this.pushChangeFooter();
   }
 
   /** Create the change-decoration types on first use. */
@@ -741,19 +796,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         );
         body = rebuilt.body;
       }
-      // Post the per-run change footer (Phase 12): files changed with their
-      // net +/- lines + totals. Only shown when at least one file was mutated.
-      const changes = this.toolExecutor.getChangeSummary();
-      if (changes.length > 0) {
-        const totalAdded = changes.reduce((s, c) => s + c.added, 0);
-        const totalRemoved = changes.reduce((s, c) => s + c.removed, 0);
-        this.postMessage({
-          type: "change_footer",
-          files: changes,
-          totalAdded,
-          totalRemoved,
-        });
-      }
+      // Post the per-run change footer (Phase 12/14): files changed with
+      // their net +/- lines + totals. Hides the bar when no files remain.
+      this.pushChangeFooter();
       this.postMessage({ type: "stream_end", usage });
     } catch (err) {
       if (signal.aborted) {

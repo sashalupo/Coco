@@ -436,20 +436,57 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	.change-footer .cf-file-row {
 		display: flex;
 		justify-content: space-between;
+		align-items: center;
 		gap: 8px;
 		font-family: var(--vscode-editor-font-family, monospace);
 		font-size: 11px;
 		padding: 1px 0;
 	}
-	.change-footer .cf-file-row { cursor: pointer; }
-	.change-footer .cf-file-row:hover .cf-path {
+	.change-footer .cf-file-row .cf-path {
+		color: var(--fg);
+		word-break: break-all;
+		cursor: pointer;
+	}
+	.change-footer .cf-file-row .cf-path:hover {
 		text-decoration: underline;
 		color: var(--vscode-textLink-foreground, #3794ff);
 	}
-	.change-footer .cf-file-row .cf-path { color: var(--fg); word-break: break-all; }
+	.change-footer .cf-file-right {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-shrink: 0;
+	}
 	.change-footer .cf-file-row .cf-stats { white-space: nowrap; }
 	.change-footer .cf-file-row .cf-add { color: var(--vscode-testingIcon-passed, #89d185); }
 	.change-footer .cf-file-row .cf-del { color: var(--vscode-errorForeground, #f48771); }
+	.change-footer .cf-file-btn {
+		font-size: 10px;
+		padding: 1px 6px;
+		border: 1px solid var(--border);
+		border-radius: 3px;
+		background: transparent;
+		color: var(--muted);
+		cursor: pointer;
+		line-height: 1.4;
+	}
+	.change-footer .cf-file-btn:hover { background: var(--think-bg); color: var(--fg); }
+	.change-footer .cf-file-keep {
+		border-color: var(--vscode-testingIcon-passed, #89d185);
+		color: var(--vscode-testingIcon-passed, #89d185);
+	}
+	.change-footer .cf-file-keep:hover {
+		background: var(--vscode-testingIcon-passed, #89d185);
+		color: var(--bg);
+	}
+	.change-footer .cf-file-undo {
+		border-color: var(--vscode-errorForeground, #f48771);
+		color: var(--vscode-errorForeground, #f48771);
+	}
+	.change-footer .cf-file-undo:hover {
+		background: var(--vscode-errorForeground, #f48771);
+		color: var(--bg);
+	}
 
 	/* Collapsible thinking block */
 	.thinking {
@@ -916,11 +953,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			files.forEach(function (f) {
 				var row = document.createElement('div');
 				row.className = 'cf-file-row';
-				row.title = 'Open ' + f.path + ' and highlight the changes';
+				// Path (clickable → open file + highlight changes, Phase 12.5).
 				var p = document.createElement('span');
 				p.className = 'cf-path';
 				p.textContent = f.path;
+				p.title = 'Open ' + f.path + ' and highlight the changes';
+				p.addEventListener('click', function () {
+					if (streaming) { return; }
+					if (vscode) { vscode.postMessage({ type: 'openFile', path: f.path }); }
+				});
 				row.appendChild(p);
+				// Stats + per-file Keep/Undo (Phase 14).
+				var right = document.createElement('span');
+				right.className = 'cf-file-right';
 				var stats = document.createElement('span');
 				stats.className = 'cf-stats';
 				var a = document.createElement('span');
@@ -931,13 +976,28 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				d.className = 'cf-del';
 				d.textContent = ' -' + f.removed;
 				stats.appendChild(d);
-				row.appendChild(stats);
-				// Clicking a row opens the file and highlights the lines the
-				// agent changed/created (Phase 12.5).
-				row.addEventListener('click', function () {
+				right.appendChild(stats);
+				var keepBtn = document.createElement('button');
+				keepBtn.className = 'cf-file-btn cf-file-keep';
+				keepBtn.textContent = 'Keep';
+				keepBtn.title = 'Keep changes to ' + f.path;
+				keepBtn.addEventListener('click', function (e) {
+					e.stopPropagation();
 					if (streaming) { return; }
-					if (vscode) { vscode.postMessage({ type: 'openFile', path: f.path }); }
+					if (vscode) { vscode.postMessage({ type: 'keepFile', path: f.path }); }
 				});
+				right.appendChild(keepBtn);
+				var undoBtn = document.createElement('button');
+				undoBtn.className = 'cf-file-btn cf-file-undo';
+				undoBtn.textContent = 'Undo';
+				undoBtn.title = 'Undo changes to ' + f.path;
+				undoBtn.addEventListener('click', function (e) {
+					e.stopPropagation();
+					if (streaming) { return; }
+					if (vscode) { vscode.postMessage({ type: 'undoFile', path: f.path }); }
+				});
+				right.appendChild(undoBtn);
+				row.appendChild(right);
 				cfFileList.appendChild(row);
 			});
 		}
@@ -1607,6 +1667,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					// footer with the files changed this run + their +/- totals.
 					renderChangeFooter(msg.files || [], msg.totalAdded || 0, msg.totalRemoved || 0);
 					showChangeFooter();
+					break;
+				case 'change_footer_hide':
+					// All files kept/undone — hide the footer bar (Phase 14).
+					hideChangeFooter();
 					break;
 				default:
 					break;
