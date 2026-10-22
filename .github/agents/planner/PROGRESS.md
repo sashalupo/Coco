@@ -1469,7 +1469,7 @@ a language-feature provider).
 4. **Toggle via QuickPick, not a bare command flip** — `llm.toggleCompletions` shows a 2-item QuickPick ("Enable inline completions" / "Disable inline completions", current state marked `active`) so the user confirms the target state; on pick it writes `llm.inline.enabled` via `cfg.update(..., target)` (Workspace when a workspace folder exists, else Global — same pattern as `llm.changeCompletionsModel`) and shows an info message noting a reload is required.
 5. **Overview row + command entry** — `statusOverviewItems` gains a 5th row "Completions: on/off" (description: "for the active editor" / "disabled (llm.inline.enabled)"), and `STATUS_COMMANDS` gains a "Toggle Completions" entry pointing at `llm.toggleCompletions`. Both are pure and covered by `out/presets.js` assertions.
 
-- **1.99-16.S1** — Pure completions-status helpers in `src/presets.ts`
+- **1.99-16.S1** — Pure completions-status helpers in `src/presets.ts` — Done (2026-10-22, PASS, 511 assertions)
   - Files: `src/presets.ts`
   - Changes:
     - New exported pure helper near `statusLabel` (~line 230): `export function completionsStatusLabel(enabled: boolean, hasActiveEditor: boolean): { icon: string; text: string; tooltip: string }` — returns `{ icon: "$(pass-filled)", text: "LLM", tooltip: "Code completions enabled for the active editor" }` when `enabled && hasActiveEditor`, else `{ icon: "$(pass-filled~strikethrough)", text: "LLM", tooltip: enabled ? "No active editor — code completions idle" : "Code completions disabled (llm.inline.enabled)" }`.

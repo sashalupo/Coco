@@ -237,6 +237,32 @@ export function statusTooltip(s: EngineStatus, baseUrl: string): string {
   return `LLM engine unreachable — ${baseUrl}${s.error ? `: ${s.error}` : ` (${s.status})`}`;
 }
 
+/**
+ * Status-bar label for the inline-completions indicator.
+ * Active (enabled + an editor is focused): `$(pass-filled) LLM`.
+ * Idle/disabled: `$(pass-filled~strikethrough) LLM` with a tooltip explaining
+ * why (no active editor vs. feature disabled).
+ */
+export function completionsStatusLabel(
+  enabled: boolean,
+  hasActiveEditor: boolean,
+): { icon: string; text: string; tooltip: string } {
+  if (enabled && hasActiveEditor) {
+    return {
+      icon: "$(pass-filled)",
+      text: "LLM",
+      tooltip: "Code completions enabled for the active editor",
+    };
+  }
+  return {
+    icon: "$(pass-filled~strikethrough)",
+    text: "LLM",
+    tooltip: enabled
+      ? "No active editor — code completions idle"
+      : "Code completions disabled (llm.inline.enabled)",
+  };
+}
+
 /** One row in the status overview QuickPick. */
 export interface StatusOverviewItem {
   label: string;
@@ -246,8 +272,8 @@ export interface StatusOverviewItem {
 }
 
 /**
- * Build the 4 info rows of the status overview:
- * engine state, endpoint, chat model, completions model.
+ * Build the 5 info rows of the status overview:
+ * engine state, endpoint, chat model, completions model, completions state.
  * Pure: no vscode, no network.
  */
 export function statusOverviewItems(
@@ -255,6 +281,7 @@ export function statusOverviewItems(
   baseUrl: string,
   chatModel: string,
   completionsModel: string,
+  completionsEnabled: boolean = false,
 ): StatusOverviewItem[] {
   return [
     s.ok
@@ -263,6 +290,7 @@ export function statusOverviewItems(
     { label: "Endpoint", description: baseUrl },
     { label: "Chat model", description: chatModel || "default (engine)" },
     { label: "Completions model", description: completionsModel || "chat model (default)" },
+    { label: "Completions", description: completionsEnabled ? "on (active editor)" : "off" },
   ];
 }
 
@@ -287,6 +315,11 @@ export const STATUS_COMMANDS: readonly {
     label: "Change Completions Model",
     command: "llm.changeCompletionsModel",
     detail: "Pick the model used for inline completions",
+  },
+  {
+    label: "Toggle Completions",
+    command: "llm.toggleCompletions",
+    detail: "Enable/disable inline code completions (reload required)",
   },
 ];
 

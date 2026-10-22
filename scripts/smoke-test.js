@@ -2397,8 +2397,8 @@ function assert(cond, label) {
       typeof p.statusTooltip === "function" &&
       typeof p.statusOverviewItems === "function" &&
       Array.isArray(p.STATUS_COMMANDS) &&
-      p.STATUS_COMMANDS.length === 4,
-    "status-s1: statusLabel/statusTooltip/statusOverviewItems exported, STATUS_COMMANDS has 4 entries",
+      p.STATUS_COMMANDS.length === 5,
+    "status-s1: statusLabel/statusTooltip/statusOverviewItems exported, STATUS_COMMANDS has 5 entries",
   );
   assert(
     JSON.stringify(p.statusLabel({ ok: true, status: 200, statusText: "OK" })) ===
@@ -2426,14 +2426,15 @@ function assert(cond, label) {
     "",
   );
   assert(
-    items.length === 4 &&
+    items.length === 5 &&
       items[0].label.startsWith("Engine: ") &&
       items[1].label.startsWith("Endpoint") &&
       items[2].label.startsWith("Chat model") &&
       items[3].label.startsWith("Completions model") &&
+      items[4].label === "Completions" &&
       items[2].description === "default (engine)" &&
       items[3].description === "chat model (default)",
-    "status-s1: statusOverviewItems returns 4 rows with expected labels and empty-model fallbacks",
+    "status-s1: statusOverviewItems returns 5 rows with expected labels and empty-model fallbacks",
   );
 
   // 17b) status bar gate + focus refresh (1.98-15.S2): static checks on the host source.
@@ -3857,6 +3858,52 @@ function assert(cond, label) {
       visionSetting.description.includes("BMP") &&
       visionSetting.description.includes("browser"),
     "vis-s3: package.json vision setting description mentions BMP and browser URL drag",
+  );
+
+  // 44) Copilot status menu — pure completions-status helpers (1.99-16.S1)
+  const stmenuS1 = require(path.join(__dirname, "..", "out", "presets.js"));
+  const csOn = stmenuS1.completionsStatusLabel(true, true);
+  assert(
+    csOn.icon === "$(pass-filled)" &&
+      csOn.text === "LLM" &&
+      csOn.tooltip === "Code completions enabled for the active editor",
+    "stmenu-s1: completionsStatusLabel on-case returns $(pass-filled) icon + enabled tooltip",
+  );
+  const csOff = stmenuS1.completionsStatusLabel(false, true);
+  assert(
+    csOff.icon === "$(pass-filled~strikethrough)" &&
+      csOff.tooltip === "Code completions disabled (llm.inline.enabled)",
+    "stmenu-s1: completionsStatusLabel off-case (disabled) returns strikethrough icon + disabled tooltip",
+  );
+  const csIdle = stmenuS1.completionsStatusLabel(true, false);
+  assert(
+    csIdle.icon === "$(pass-filled~strikethrough)" &&
+      csIdle.tooltip === "No active editor — code completions idle",
+    "stmenu-s1: completionsStatusLabel enabled-but-no-editor returns strikethrough icon + idle tooltip",
+  );
+  const stItemsOn = stmenuS1.statusOverviewItems(
+    { ok: true, status: 200, statusText: "OK" },
+    "http://localhost:8080",
+    "m",
+    "m",
+    true,
+  );
+  const stItemsOff = stmenuS1.statusOverviewItems(
+    { ok: true, status: 200, statusText: "OK" },
+    "http://localhost:8080",
+    "m",
+    "m",
+    false,
+  );
+  assert(
+    stItemsOn.length === 5 &&
+      stItemsOn[4].label === "Completions" &&
+      stItemsOn[4].description === "on (active editor)" &&
+      stItemsOff[4].label === "Completions" &&
+      stItemsOff[4].description === "off" &&
+      stmenuS1.STATUS_COMMANDS.length === 5 &&
+      stmenuS1.STATUS_COMMANDS.some((c) => c.command === "llm.toggleCompletions"),
+    "stmenu-s1: statusOverviewItems has 5 rows with a Completions row reflecting the flag; STATUS_COMMANDS has 5 entries incl. llm.toggleCompletions",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

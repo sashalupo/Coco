@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-13** — Improved vision support (URL images, .bmp) — **DONE** (S1–S3, 2026-10-22)
-- **Current slice:** 1.99-13.S3 DONE — item complete
+- **Current item:** **1.99-16** — Copilot status menu (completions indicator + toggle) — in progress (S1 done, S2–S3 pending)
+- **Current slice:** 1.99-16.S1 DONE
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-16** (Copilot status menu: completions indicator + toggle), record plan, commit, run slice pipeline
+- **Next step:** dispatch Coder for 1.99-16.S2 (host: status bar indicator + llm.toggleCompletions command), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** 6d69548 (feat: improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)); S3 commit pending
-- **Build state:** compiles clean; smoke test passes (507 assertions); 1.99-13 complete
+- **Last commit:** dee7914 (feat: improved vision support — host sanitize .bmp + setting description (1.99-13.S3)); S1 commit pending
+- **Build state:** compiles clean; smoke test passes (511 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

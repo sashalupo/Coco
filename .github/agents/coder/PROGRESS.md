@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-13 (Improved vision support) — COMPLETE (S1–S3)
-- **Next step:** 1.99-16 (Copilot status menu)
+- **Current item:** 1.99-16 (Copilot status menu) — S1 done
+- **Next step:** 1.99-16.S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (507 assertions)
+- **Build state:** compiles clean; smoke test passes (511 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-16.S1** (2026-10-22) — pure completions-status helpers in `src/presets.ts`. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: (a) new `export function completionsStatusLabel(enabled: boolean, hasActiveEditor: boolean): { icon; text; tooltip }` added right after `statusTooltip` — on-case `$(pass-filled)` + "Code completions enabled for the active editor"; else `$(pass-filled~strikethrough)` with idle tooltip (`No active editor — code completions idle`) when enabled, disabled tooltip (`Code completions disabled (llm.inline.enabled)`) otherwise; (b) `statusOverviewItems` gains trailing optional param `completionsEnabled: boolean = false` and a 5th row `{ label: "Completions", description: completionsEnabled ? "on (active editor)" : "off" }` (doc comment updated 4→5 rows); (c) `STATUS_COMMANDS` gains 5th entry `{ label: "Toggle Completions", command: "llm.toggleCompletions", detail: "Enable/disable inline code completions (reload required)" }`.
+  - `scripts/smoke-test.js`: (a) updated 2 existing `status-s1:` assertions — `STATUS_COMMANDS.length === 5` (label "5 entries") and `items.length === 5` + `items[4].label === "Completions"` (label "5 rows"); (b) new section `// 44) Copilot status menu — pure completions-status helpers (1.99-16.S1)` at end (after section 43, before final summary print); `require` of `out/presets.js` (local `stmenuS1`); 4 `stmenu-s1:` assertions: on-case icon/text/tooltip, disabled-case strikethrough + disabled tooltip, enabled-no-editor strikethrough + idle tooltip, and `statusOverviewItems` 5 rows with Completions row flipping on/off by flag + `STATUS_COMMANDS.length === 5` incl. `llm.toggleCompletions`. Total PASS lines now 511 (507 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 511 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-13.S3** (2026-10-22, FINAL) — host sanitize accepts `.bmp` data URLs + setting description. Files: `src/chat/ChatViewProvider.ts`, `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/ChatViewProvider.ts`: `handleSend` sanitize regex (line 917) changed from `/^data:image\/(jpeg|png|gif|webp);base64,/` to `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/`. No other changes.
   - `package.json`: `llm.chat.vision.enabled` description updated to "Allow attaching images (JPEG/PNG/GIF/WEBP/BMP, including image URLs dragged from a browser) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)." JSON validated with `JSON.parse` → `json ok`. No other changes.

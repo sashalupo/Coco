@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-13 — Improved vision support (URL images, .bmp) — COMPLETE (S1+S2+S3 PASS, 2026-10-22)
-- **Next step:** none for 1.99-13 — item fully verified; await next backlog item
+- **Current item:** 1.99-16 — Copilot status menu (completions indicator + toggle) — S1 PASS (2026-10-22)
+- **Next step:** verify 1.99-16.S2 (host: status bar indicator + llm.toggleCompletions command)
 - **Last updated:** 2026-10-22
-- **Last commit:** 6d69548 (feat(llm): improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)); S3 commit pending
-- **Build state:** 507/507 PASS
+- **Last commit:** dee7914 (feat(llm): improved vision support — host sanitize .bmp + setting description (1.99-13.S3, item complete))
+- **Build state:** 511/511 PASS
 
 
 
@@ -33,6 +33,13 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **505 PASS lines** (501 prior + 4 new `vis-s2:`), 0 FAIL.
 - **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 505/505 PASS; (3) 4 genuine `vis-s2:` assertions in new `// 42) Improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)` section (smoke-test.js:3812) reading `src/chat/webview.ts` from disk: IMAGE_TYPES + accept list with image/bmp; addImageUrl with fetch/.blob()/readAsDataURL; drop handler text/uri-list + addImageUrl; URL regex `jpe?g|png|gif|webp|bmp` PASS; (4) webview.ts diff +36/−3: IMAGE_TYPES 'image/bmp' (L1568), accept attr (L1167), attach title "Attach image (paste / drag-drop file or image URL)" (L1162), addImageUrl (L1585–1599: MAX_IMAGES guard → fetch → res.ok → blob → type/size checks → readAsDataURL → push {name: url, dataUrl} → renderAttachStrip, console.warn only), drop handler (L1650–1663: items iteration, kind==='string' + type text/uri-list or '', getAsString, split \n, trim, inline regex, addImageUrl; existing addImageFiles preserved); all 5 prior `vision-s3:` assertions still pass PASS; (5) scope exactly ` M src/chat/webview.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + ninfer marker; no package-lock.json drift PASS.
 - **Verdict:** **PASS** — all 5 criteria met. (S3 still pending — item not yet complete.)
+
+### 1.99-16.S1 — Pure completions-status helpers in `src/presets.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **511 PASS lines** (507 prior + 4 new `stmenu-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 511/511 PASS; (3) 4 genuine `stmenu-s1:` assertions in new `// 44) Copilot status menu — pure completions-status helpers (1.99-16.S1)` section (smoke-test.js:3863) requiring `out/presets.js`: on-case ($(pass-filled) + enabled tooltip), disabled-case (strikethrough + disabled tooltip), enabled-no-editor (strikethrough + idle tooltip), 5-rows/flag-flip + STATUS_COMMANDS 5 entries incl. llm.toggleCompletions PASS; (4) presets.ts: completionsStatusLabel (L247–265) exact match, statusOverviewItems trailing optional param (L284) + 5th row (L293), STATUS_COMMANDS 5 entries (L319–323); diff +37/−2 (only doc-comment 4→5 rows) PASS; (5) 2 updated status-s1: assertions now expect 5 entries/5 rows (L2401, L2437) PASS; (6) scope exactly ` M src/presets.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + ninfer marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-13.S1 — URL-image helpers in `src/request.ts` (2026-10-22) — **PASS**
 
