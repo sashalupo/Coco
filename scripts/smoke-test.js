@@ -3573,6 +3573,53 @@ function assert(cond, label) {
     "appr-s4: package.json still has llm.tools.requireApproval",
   );
 
+  // 32) Unified chat mode — pure logic (1.99-10.S1)
+  const presetsUnifS1 = require(path.join(__dirname, "..", "out", "presets.js"));
+  assert(
+    JSON.stringify(presetsUnifS1.CHAT_MODES) ===
+      JSON.stringify(["ask", "agent", "edit"]),
+    "unif-s1: CHAT_MODES is [ask, agent, edit]",
+  );
+  assert(
+    presetsUnifS1.normalizeChatMode("edit") === "edit" &&
+      presetsUnifS1.normalizeChatMode("bogus") === "agent" &&
+      presetsUnifS1.normalizeChatMode(undefined) === "agent" &&
+      presetsUnifS1.normalizeChatMode(42) === "agent",
+    "unif-s1: normalizeChatMode valid + invalid",
+  );
+  assert(
+    presetsUnifS1.modeAddendum("edit").includes("Edit mode") &&
+      presetsUnifS1.modeAddendum("edit").includes("edit_file"),
+    "unif-s1: modeAddendum edit",
+  );
+  assert(
+    presetsUnifS1.modeAddendum("ask").includes("Ask mode"),
+    "unif-s1: modeAddendum ask",
+  );
+  assert(
+    presetsUnifS1.modeAddendum("agent") === "",
+    "unif-s1: modeAddendum agent empty",
+  );
+  const unifAskBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar, mode: "ask" },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  const unifAgentBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar, mode: "agent" },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  const unifNoModeBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    unifAskBody.tools === undefined &&
+      unifAskBody.tool_choice === "none" &&
+      Array.isArray(unifAgentBody.tools) &&
+      Array.isArray(unifNoModeBody.tools),
+    "unif-s1: buildRequestBody ask/agent/no-mode tools",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

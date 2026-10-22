@@ -1378,7 +1378,7 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 
 ## Slices
 
-### S1 — `notebook_edit` tool schema + mutating flag
+### S1 — `notebook_edit` tool schema + mutating flag — Done (2026-10-22, PASS, 472 assertions)
 - **File:** `src/tools.ts`
 - **What:** Add a `notebook_edit` entry to `CODE_TOOLS` (after `manage_todos`):
   - `description`: "Edit a Jupyter notebook (.ipynb) file. Actions: `create` (create a new notebook with the given cells), `modify_cell` (replace a cell's source), `insert_cell` (insert a new cell at cell_index), `delete_cell` (remove a cell), `change_cell_type` (switch a cell between `code` and `markdown`). Cell indices are 0-based. Use this instead of write_file/edit_file for .ipynb files."

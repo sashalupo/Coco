@@ -354,3 +354,26 @@ export class ApprovalStore {
     return v.filter((x): x is string => typeof x === "string");
   }
 }
+
+/** Unified Chat view mode (toolbar override, not a setting). */
+export type ChatMode = "ask" | "agent" | "edit";
+
+/** All chat modes, in display order. */
+export const CHAT_MODES: readonly ChatMode[] = ["ask", "agent", "edit"];
+
+/** Coerce an unknown value (e.g. from a memento) to a valid ChatMode. */
+export function normalizeChatMode(v: unknown): ChatMode {
+  return v === "ask" || v === "agent" || v === "edit" ? v : "agent";
+}
+
+/** System-prompt addendum for Edit mode. */
+export const EDIT_MODE_ADDENDUM: string =
+  "You are in Edit mode. Focus on making precise, minimal changes to the user's code. Use the file tools (read_file, edit_file, write_file) to inspect and modify files, and present a short summary of the changes you made (files touched and what changed) instead of long explanations.";
+
+/** System-prompt addendum for a chat mode ("" = no addendum). */
+export function modeAddendum(mode: ChatMode): string {
+  if (mode === "edit") return EDIT_MODE_ADDENDUM;
+  if (mode === "ask")
+    return "You are in Ask mode. Answer the user's question directly. Do not use tools or modify files.";
+  return "";
+}

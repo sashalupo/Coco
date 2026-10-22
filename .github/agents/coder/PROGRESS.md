@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-8 (Agent mode tool approvals) — **DONE** (2026-10-22, all 4 slices S1–S4)
-- **Next step:** 1.99-10 (Unified Chat view) — next item in backlog
+- **Current item:** 1.99-10 (Unified Chat view — mode picker) — S1 done
+- **Next step:** 1.99-10.S2 (host wiring: ChatViewProvider + config.ts ToolbarState.mode)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (466 assertions)
+- **Build state:** compiles clean; smoke test passes (472 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-10.S1** (2026-10-22) — `src/presets.ts` + `src/request.ts`: pure mode logic. Files: `src/presets.ts`, `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts` (pure — no `vscode` import): appended at end: (a) `export type ChatMode = "ask" | "agent" | "edit"`; (b) `export const CHAT_MODES: readonly ChatMode[] = ["ask","agent","edit"]`; (c) `export function normalizeChatMode(v: unknown): ChatMode` — returns the value when one of the three, else `"agent"`; (d) `export const EDIT_MODE_ADDENDUM: string` (static Edit-mode system-prompt text mentioning read_file/edit_file/write_file); (e) `export function modeAddendum(mode: ChatMode): string` — `edit` → `EDIT_MODE_ADDENDUM`, `ask` → "You are in Ask mode. … Do not use tools or modify files.", `agent` → `""`.
+  - `src/request.ts`: (a) `ChatMode` added to the `./presets` import; (b) `RequestConfig` gains `mode?: ChatMode` (comment: "Unified Chat view mode. Absent = 'agent' (existing behavior)."); (c) tools block in `buildRequestBody` → `const mode = cfg.mode ?? "agent";` — `mode === "ask"` → no `body.tools`, `body.tool_choice = "none"`; else the existing `settings.toolsEnabled` branch unchanged (`agent`/`edit` byte-identical to today).
+  - `scripts/smoke-test.js`: new section `// 32) Unified chat mode — pure logic (1.99-10.S1)` after section 31, before the final summary print; 6 `unif-s1:` assertions: (a) `CHAT_MODES` deep-equals `["ask","agent","edit"]`; (b) `normalizeChatMode` — `"edit"`→`"edit"`, `"bogus"`/`undefined`/`42`→`"agent"`; (c) `modeAddendum("edit")` contains `Edit mode` + `edit_file`; (d) `modeAddendum("ask")` contains `Ask mode`; (e) `modeAddendum("agent") === ""`; (f) `buildRequestBody` with `toolsEnabled: true` — `mode: "ask"` → `body.tools === undefined` + `tool_choice === "none"`, `mode: "agent"` → `body.tools` array, no `mode` → `body.tools` array (backward-compat). Local `presetsUnifS1` (the name `presets` was already taken at section 28 in the same scope). Total PASS lines now 472 (466 + 6).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 472 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 3 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-8.S4** (2026-10-22, FINAL) — `package.json` + final smoke assertions + PROGRESS.md. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: added `llm.tools.autoApprove` (boolean, default `false`) immediately after `llm.tools.requireApproval`, description: "Auto-approve all mutating tools without asking (experimental). Overrides llm.tools.requireApproval. Remembered approvals (session/workspace/global) also skip the prompt."
   - `scripts/smoke-test.js`: new section `// 31) Tool approvals — final (1.99-8.S4)` after section 30, before the final summary print; 2 `appr-s4:` assertions on the parsed `package.json` (local `pkgJsonApprS4`): (a) `properties["llm.tools.autoApprove"]` exists with `type === "boolean"` and `default === false`; (b) regression guard — `properties["llm.tools.requireApproval"]` still exists. Total PASS lines now 466 (464 + 2).

@@ -12,12 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-8.S4 (FINAL) — `package.json` + final smoke assertions — **PASS** (2026-10-22) — item 1.99-8 complete
-- **Next step:** item 1.99-8 complete (S1–S4); pick next changelog item (oldest to newest)
+- **Current item:** 1.99-10.S1 — pure mode logic — **PASS** (2026-10-22)
+- **Next step:** 1.99-10.S2 — next slice of item 1.99-10 (Unified Chat view — mode picker + history)
 - **Last updated:** 2026-10-22
-- **Last commit:** 0c9bfbf (feat: 1.99-8.S3 webview scope dropdown); S4 commit pending
-- **Build state:** 466/466 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 81f06ef (chore(llm): record 1.99-10 plan); S1 commit pending
+- **Build state:** 472/472 PASS
 
+
+### 1.99-10.S1 — pure mode logic (src/presets.ts + src/request.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **472 PASS lines** (466 prior + 6 new `unif-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 472/472 with 6 genuine `unif-s1:` assertions in new `// 32) Unified chat mode — pure logic (1.99-10.S1)` section (smoke-test.js:3576) all passing: CHAT_MODES order, normalizeChatMode valid+invalid, modeAddendum edit/ask/agent-empty, buildRequestBody ask/agent/no-mode tools PASS; (3) `src/presets.ts:359–381`: `ChatMode = "ask" | "agent" | "edit"`, `CHAT_MODES = ["ask","agent","edit"]`, `normalizeChatMode` (invalid → `"agent"`), `EDIT_MODE_ADDENDUM`, `modeAddendum` (edit → Edit addendum, ask → Ask addendum, else `""`) PASS; (4) `src/request.ts`: `RequestConfig.mode?: ChatMode` (L63, import L10); `buildRequestBody` L279–287: `mode = cfg.mode ?? "agent"`; ask → `body.tool_choice = "none"` + no `body.tools`; agent/edit/absent → existing `settings.toolsEnabled` branch byte-identical (backward compatible) PASS; (5) scope: exactly coder PROGRESS.md, smoke-test.js, presets.ts, request.ts modified; no package-lock.json drift; diff stat +78/−1 PASS.
+- **Minor (non-blocking):** brace-less `else` at `src/request.ts:282` — compiles and behaves correctly.
+- **Verdict:** **PASS** — all 4 criteria met.
 
 ### 1.99-8.S4 — FINAL: `package.json` + final smoke assertions (2026-10-22) — **PASS**
 

@@ -7,6 +7,7 @@
 import {
   CONTEXT_TO_TOKENS,
   THINKING_TO_EFFORT,
+  type ChatMode,
   type LlmSettings,
   type ToolbarState,
 } from "./presets";
@@ -58,6 +59,8 @@ export interface RequestConfig {
   toolbar: ToolbarState;
   /** MCP tools (already in OpenAI `Tool` shape) appended after CODE_TOOLS. */
   mcpTools?: Tool[];
+  /** Unified Chat view mode. Absent = "agent" (existing behavior). */
+  mode?: ChatMode;
 }
 
 /** The JSON body sent to POST /v1/chat/completions. */
@@ -272,7 +275,11 @@ export function buildRequestBody(
   }
 
   // Tools: expose the workspace tools when tool calling is enabled.
-  // Built-in CODE_TOOLS first, then any MCP tools (byte-identical to the
+  // Ask mode never sends tools (tool_choice "none" as a belt-and-braces hint).
+  const mode = cfg.mode ?? "agent";
+  if (mode === "ask") {
+    body.tool_choice = "none";
+  } else // Built-in CODE_TOOLS first, then any MCP tools (byte-identical to the
   // pre-MCP behavior when no MCP tools are present).
   if (settings.toolsEnabled) {
     body.tools =
