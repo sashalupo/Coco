@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-15.S2 (status-bar gate + pure helpers + focus refresh) — **verified PASS** (2026-10-22)
-- **Next step:** verify 1.98-15.S3
+- **Current item:** 1.98-15.S3 (`llm.showStatusOverview` QuickPick + repoint click) — **verified PASS** (2026-10-22)
+- **Next step:** verify 1.98-15.S4
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 364/364 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 367/367 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -303,6 +303,14 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 17b:** 3 genuine static source checks on `src/extension.ts` (`statusBar.enabled`, `statusLabel`, `onDidChangeWindowState`) — each would fail if the wiring were removed. Not tautologies. PASS
 - **Scope check:** `git status --short | grep -v ninfer` → only `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. `package-lock.json` NOT modified. PASS
 
+### 1.98-15.S3 — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **367 assertions** (364 prior + 3 new `status-s3:` in section 17c; 0 FAIL).
+- **Static checks in `src/extension.ts`:** (a) `llm.showStatusOverview` registered in the `context.subscriptions.push(...)` commands block: fresh `await client.health()`, `readSettings()` for `baseUrl`/`model`/`completionsModel`, info rows from `statusOverviewItems(...)` mapped to `{label, description}` (pick = no-op), `Useful commands` separator + `STATUS_COMMANDS.map(c => ({label, detail, command}))`, `showQuickPick(items, { placeHolder: "LLM engine status" })`, `if (picked && picked.command) await vscode.commands.executeCommand(picked.command)`. PASS (b) `status.command = "llm.showStatusOverview"` (repointed from `llm.testConnection`, which remains registered). PASS (c) `updateHealth` tooltip: `statusTooltip(result, readSettings().baseUrl) + " (click for status overview)"`. PASS (d) No `canSelectMany`, no duplicate command registrations, single status-bar block; `llm.openChat`/`llm.testConnection`/`llm.refreshModels`/`llm.changeCompletionsModel` still registered. PASS
+- **Smoke 17c:** 3 genuine static source checks on `src/extension.ts` (`llm.showStatusOverview`, `statusOverviewItems`, `STATUS_COMMANDS`) — each would fail if the wiring were removed. Not tautologies. PASS
+- **Scope check:** `git status --short | grep -v ninfer` → only `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. `package-lock.json` NOT modified. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -361,6 +369,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14** — Copilot Vision (image attachments) — **fully verified** (all slices S1–S5 PASS, 2026-10-22)
 - [x] **1.98-15.S1** — pure status helpers in `src/presets.ts` (statusLabel/statusTooltip/statusOverviewItems/STATUS_COMMANDS) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-15.S2** — `src/extension.ts`: status-bar gate + pure helpers + focus refresh — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-15.S3** — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

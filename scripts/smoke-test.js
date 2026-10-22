@@ -2451,6 +2451,24 @@ function assert(cond, label) {
     "status-s2: extension refreshes health on window focus",
   );
 
+  // 17c) status overview QuickPick (1.98-15.S3): static checks on the host source.
+  const extensionSrcS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    extensionSrcS3.includes("llm.showStatusOverview"),
+    "status-s3: extension registers the llm.showStatusOverview command",
+  );
+  assert(
+    extensionSrcS3.includes("statusOverviewItems"),
+    "status-s3: extension builds the overview from statusOverviewItems",
+  );
+  assert(
+    extensionSrcS3.includes("STATUS_COMMANDS"),
+    "status-s3: extension lists STATUS_COMMANDS in the overview",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -7,7 +7,13 @@ import { readSettings } from "./config";
 import { ChatViewProvider } from "./chat/ChatViewProvider";
 import { InlineCompletionProvider } from "./inline/InlineCompletionProvider";
 import { CodeActionProvider } from "./codeaction/CodeActionProvider";
-import { buildCompletionsModelList, statusLabel, statusTooltip } from "./presets";
+import {
+  buildCompletionsModelList,
+  statusLabel,
+  statusTooltip,
+  statusOverviewItems,
+  STATUS_COMMANDS,
+} from "./presets";
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -65,8 +71,8 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.StatusBarAlignment.Left,
       100,
     );
-    status.command = "llm.testConnection";
-    status.tooltip = "LLM engine status (click to test connection)";
+    status.command = "llm.showStatusOverview";
+    status.tooltip = "LLM engine status (click for status overview)";
     context.subscriptions.push(status);
 
     // Poll /health and reflect the result in the status bar.
@@ -74,7 +80,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const result = await client.health();
       const { icon, text } = statusLabel(result);
       status.text = `${icon} ${text}`;
-      status.tooltip = statusTooltip(result, readSettings().baseUrl);
+      status.tooltip =
+        statusTooltip(result, readSettings().baseUrl) +
+        " (click for status overview)";
       if (result.ok) {
         status.backgroundColor = undefined;
       } else {
@@ -133,6 +141,35 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("llm.commitChanges", () => {
       void provider.commitChanges();
+    }),
+    vscode.commands.registerCommand("llm.showStatusOverview", async () => {
+      const result = await client.health();
+      const settings = readSettings();
+      const infoItems = statusOverviewItems(
+        result,
+        settings.baseUrl,
+        settings.model,
+        settings.completionsModel,
+      ).map((item) => ({
+        label: item.label,
+        description: item.description,
+      }));
+      const commandItems = STATUS_COMMANDS.map((c) => ({
+        label: c.label,
+        detail: c.detail,
+        command: c.command,
+      }));
+      const items: (vscode.QuickPickItem & { command?: string })[] = [
+        ...infoItems,
+        { label: "Useful commands", kind: vscode.QuickPickItemKind.Separator },
+        ...commandItems,
+      ];
+      const picked = await vscode.window.showQuickPick(items, {
+        placeHolder: "LLM engine status",
+      });
+      if (picked && picked.command) {
+        await vscode.commands.executeCommand(picked.command);
+      }
     }),
     vscode.commands.registerCommand("llm.changeCompletionsModel", async () => {
       const cfg = vscode.workspace.getConfiguration("llm");

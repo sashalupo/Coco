@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.98-15 (Engine status indicator) — S2 done
-- **Next step:** 1.98-15.S3 (extension.ts: llm.showStatusOverview QuickPick + repoint click)
+- **Current item:** 1.98-15 (Engine status indicator) — S3 done
+- **Next step:** 1.98-15.S4 (package.json: command + activation event + llm.statusBar.enabled setting; planner PROGRESS.md marks 1.98-15 Done)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (364 assertions, incl. 4 `status-s1:` + 3 new `status-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (367 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 new `status-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-15.S3** (2026-10-22) — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: (a) registered `llm.showStatusOverview` in the existing `context.subscriptions.push(...)` command block (between `llm.commitChanges` and `llm.changeCompletionsModel`): fresh `await client.health()`, `readSettings()` for `baseUrl`/`model`/`completionsModel`; info rows from `statusOverviewItems(result, settings.baseUrl, settings.model, settings.completionsModel)` mapped to `{ label, description }` (pick = no-op); a `Useful commands` separator (`vscode.QuickPickItemKind.Separator`) + `STATUS_COMMANDS` mapped to `{ label, detail, command }`; `showQuickPick` with `placeHolder: "LLM engine status"`; on pick with a `command`, `vscode.commands.executeCommand(picked.command)`. (b) status-bar click already repointed: `status.command = "llm.showStatusOverview"` and `updateHealth` appends `" (click for status overview)"` to `statusTooltip(...)`.
+  - **Compile fix:** the pre-existing draft used `canSelectMany: false` in the `showQuickPick` options, which does not exist in this `@types/vscode` version and broke overload resolution (TS2769 + `picked` typed as `string[]`). Removed the option (single-select is the default) — 3 errors resolved.
+  - `scripts/smoke-test.js`: new subsection `// 17c) status overview QuickPick (1.98-15.S3)` with 3 static assertions (`status-s3:` labels) on a fresh `extensionSrcS3` read of `src/extension.ts`: contains `llm.showStatusOverview`, `statusOverviewItems`, `STATUS_COMMANDS`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **367 assertions** (364 prior + 3 new `status-s3:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-15.S2** (2026-10-22) — `src/extension.ts`: status-bar gate + pure helpers + focus refresh. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/extension.ts`: (a) extended the `./presets` import to value-import `statusLabel` + `statusTooltip` (alongside `buildCompletionsModelList`); (b) read `statusBar.enabled` (boolean, default `true`) at activation via the exact `inlineEnabled` pattern (`vscode.workspace.getConfiguration("llm").get<boolean>("statusBar.enabled", true)`); (c) wrapped the whole status-bar block (createStatusBarItem + `status.command`/tooltip + subscriptions push + `updateHealth` + 5 s poll timer + initial `void updateHealth()`) in `if (statusBarEnabled) { ... }` — the item lands in subscriptions only when created; (d) `updateHealth` now uses the pure helpers: `const { icon, text } = statusLabel(result); status.text = \`${icon} ${text}\`; status.tooltip = statusTooltip(result, readSettings().baseUrl);` — keeps `status.backgroundColor = undefined` when ok / `new vscode.ThemeColor("statusBarItem.errorBackground")` when not ok, and `status.show()`; (e) added `vscode.window.onDidChangeWindowState((e) => { if (e.focused) { void updateHealth(); } })` to subscriptions inside the gate.
   - `scripts/smoke-test.js`: new subsection `// 17b) status bar gate + focus refresh (1.98-15.S2)` with 3 static assertions (`status-s2:` labels) on a fresh `extensionSrcS2` read of `src/extension.ts`: contains `statusBar.enabled`, `statusLabel`, `onDidChangeWindowState`.

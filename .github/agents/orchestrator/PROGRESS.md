@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-15** — Engine status indicator (status-bar overview, reframed from Copilot status) (VS Code 1.98)
-- **Current slice:** **1.98-15.S2** — done (status-bar gate + pure helpers + focus refresh); next: 1.98-15.S3
+- **Current slice:** **1.98-15.S3** — done (`llm.showStatusOverview` QuickPick + repoint click); next: 1.98-15.S4 (FINAL)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-15.S3 (`src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click), then Tester
+- **Next step:** dispatch Coder for slice 1.98-15.S4 (FINAL: `package.json` command + activation event + `llm.statusBar.enabled` setting; planner PROGRESS.md marks 1.98-15 Done), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `55cc673` — feat(llm): Engine status indicator — pure status helpers (1.98-15.S1)
-- **Build state:** compiles clean; smoke test passes (364 assertions); 1.98-15.S2 verified
+- **Last commit:** `048b248` — feat(llm): Engine status indicator — status-bar gate, pure label/tooltip, focus refresh (1.98-15.S2)
+- **Build state:** compiles clean; smoke test passes (367 assertions); 1.98-15.S3 verified
 
 ## Team
 
@@ -77,6 +77,7 @@ pending item** (the oldest).
 - **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` (boolean, default true) setting contribution; planner PROGRESS.md marks 1.98-14 Done (Status + 5 slice annotations + Todo checked). No new smoke assertions (total stays 357). Tester PASS. Commit `4e5e56b`.
 - **1.98-15.S1** (2026-10-22) — `src/presets.ts`: pure status helpers (`EngineStatus`, `statusLabel`, `statusTooltip`, `StatusOverviewItem`/`statusOverviewItems`, `STATUS_COMMANDS`); 4 `status-s1:` smoke assertions (357 → 361). Tester PASS.
 - **1.98-15.S2** (2026-10-22) — `src/extension.ts`: `statusBar.enabled` gate (default true), status-bar block wrapped in `if (statusBarEnabled)`, `updateHealth` uses `statusLabel`/`statusTooltip` pure helpers, `onDidChangeWindowState` focus refresh; 3 `status-s2:` smoke assertions (361 → 364). Tester PASS.
+- **1.98-15.S3** (2026-10-22) — `src/extension.ts`: `llm.showStatusOverview` QuickPick (fresh `client.health()`, `statusOverviewItems` info rows + `Useful commands` separator + `STATUS_COMMANDS` mapped to `{label, detail, command}`, `executeCommand` on pick); `status.command` repointed to `llm.showStatusOverview`; tooltip suffix `(click for status overview)`; 3 `status-s3:` smoke assertions (364 → 367). Tester PASS.
 - **1.98-14** — Copilot Vision (image attachments) — **COMPLETE** (all slices S1–S5 PASS, 2026-10-22; commits `9d847c1`, `2d0497b`, `4bd7775`, `3d169f6` + S5). No tag — `changelog-1.98` already exists.
 
 ## Tags (changelog-version tags on completed items)
