@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-27 (Minimal nbformat 4.5 — cell `id` fields) — **complete** (2026-10-22, 1 slice S1 done)
-- **Next step:** item 1.99-27 complete — orchestrator moves to next backlog item (1.99-28)
+- **Current item:** 1.99-28 (AI notebook editing improvements — new notebook tool) — **planned** (2026-10-22, 5 slices S1–S5)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-28.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -2231,3 +2231,65 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 - `id` is not added to the `NbCell` interface (normalized parse drops it by design, per the deviation above).
 
 **Total expected assertions after all slices:** 546
+
+### Item 1.99-28 — AI notebook editing improvements — new notebook tool
+
+**Changelog:** VS Code 1.99 — "AI notebook editing improvements": a dedicated tool that plans and creates a new Jupyter notebook from a chat query; `/newNotebook` in ask mode; notebook tool in agent/edit mode. (Navigate/undo AI edits sub-features are VS Code core notebook UI — skipped.)
+**Planned:** 2026-10-22, 5 slices S1–S5
+**Baseline smoke:** 546 assertions
+
+**Design decisions (justified):**
+1. **Model-free planning, deterministic cells.** `planNewNotebook(query)` (pure, in `src/notebook.ts`) plans a fixed 3-cell skeleton from the query: markdown title cell, markdown objective cell (full query), starter code cell. Rationale: works with a free local LLM with zero extra model round-trips; the agent can then fill cells with the existing `notebook_edit` tool.
+2. **Typed cell markers.** `createNotebook`'s marker line gains an optional type: `<<<CELL>>>` (code, unchanged default) and `<<<CELL:markdown>>>` / `<<<CELL:code>>>`. Whitespace-only chunks are dropped. Backward compatible.
+3. **One shared creation path.** `ToolExecutor.createNewNotebook(relPath, query): Promise<string>` is the single implementation. The `new_notebook` agent tool case and the `/newNotebook` chat command both call it.
+4. **`/newNotebook` is host-side (ask-mode safe).** Ask mode never sends tools, so the command intercepts `/newNotebook <query>` before pushing to history, creates the file directly, posts a `notebook_created` webview message, and returns (no model round-trip).
+5. **`new_notebook` is mutating** → flows through the existing `llm.tools.requireApproval` approval gate.
+6. **Setting:** `llm.chat.newNotebook.enabled` (default `true`), gates only the chat command.
+
+**Files to touch:** `src/notebook.ts`, `src/tools.ts`, `src/tools/ToolExecutor.ts`, `src/presets.ts`, `src/config.ts`, `src/chat/ChatViewProvider.ts`, `src/chat/webview.ts`, `package.json`, `scripts/smoke-test.js`
+
+**Slices:**
+
+- **1.99-28.S1** — `src/notebook.ts`: typed cell markers + `planNewNotebook` + `notebookNameFromQuery` (pure).
+  Files: `src/notebook.ts`, `scripts/smoke-test.js`.
+  1. `createNotebook`: replace the single-marker split with a `matchAll` scan of `/^\s*<<<CELL(?::(markdown|code))?>\s*$/gm`; cell 0 = text before the first marker (always `code`), each marker starts a cell of its type (default `code`), trailing text is a `code` cell; drop whitespace-only cell sources; keep `id: cell-<index>`, `nbformat 4 / minor 5`, and the `replace(/^\n+/, "")` source trim.
+  2. `export function planNewNotebook(query: string): string` — returns the marker-separated source: `<<<CELL:markdown>>>\n# <title>` + `<<<CELL:markdown>>>\n## Objective\n\n<query>` + `<<<CELL>>>\n# TODO: implement` (title = first line of trimmed query, ≤ 80 chars, fallback `"New notebook"`).
+  3. `export function notebookNameFromQuery(query: string): string` — first line, lowercased, `[^a-z0-9]+` → `-`, trimmed dashes, ≤ 40 chars, fallback `"notebook"`.
+  4. Smoke: new section `// 53) new_notebook planning (1.99-28)`. 9 assertions, prefix `nbnew-s1:`.
+  Acceptance: `npm run compile` passes; smoke → **555** (546 + 9).
+
+- **1.99-28.S2** — `new_notebook` agent tool (schema + executor).
+  Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`.
+  1. `src/tools.ts`: add `new_notebook` entry to `CODE_TOOLS` after `notebook_edit` — params `path` + `query`, `required: ["path","query"]`.
+  2. `src/tools.ts` `isMutatingTool`: add `name === "new_notebook"`.
+  3. `src/tools/ToolExecutor.ts`: import `createNotebook`, `planNewNotebook`, `parseNotebook` from `../notebook`; add `public async createNewNotebook(relPath, query): Promise<string>` — `resolveSafe`, empty-query guard, exists guard, `createNotebook(planNewNotebook(query))`, snapshot bookkeeping, `mkdir -p` + `writeFile`, `recordChange`, return message.
+  4. `execute` switch: `case "new_notebook"`.
+  5. Smoke: section `// 54)`. 5 assertions, prefix `nbnew-s2:`.
+  Acceptance: compile passes; smoke → **560** (555 + 5).
+
+- **1.99-28.S3** — Setting plumbing: `llm.chat.newNotebook.enabled`.
+  Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`.
+  1. `src/presets.ts`: add `newNotebookEnabled: boolean;` to `LlmSettings`.
+  2. `src/config.ts`: `newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true)`.
+  3. Smoke: section `// 55)`. 3 assertions, prefix `nbnew-s3:`.
+  Acceptance: compile passes; smoke → **563** (560 + 3).
+
+- **1.99-28.S4** — `/newNotebook` chat command (host-side) + `notebook_created` webview notice.
+  Files: `src/chat/ChatViewProvider.ts`, `src/chat/webview.ts`, `scripts/smoke-test.js`.
+  1. `ChatViewProvider.ts` `handleSend`: intercept `/^\/newNotebook[ \t]+([\s\S]+)$/i.exec(text)`. When matched: check `settings.newNotebookEnabled`, derive `relPath = "notebooks/" + notebookNameFromQuery(query) + ".ipynb"`, call `this.toolExecutor.createNewNotebook(relPath, query)`, post `{ type: "notebook_created", ok, path, message }`, return (no history push, no model round-trip).
+  2. `webview.ts`: `case 'notebook_created':` — render notice with ✅/⚠️ prefix, `textContent` (never innerHTML).
+  3. Smoke: section `// 56)`. 3 assertions, prefix `nbnew-s4:`.
+  Acceptance: compile passes; smoke → **566** (563 + 3).
+
+- **1.99-28.S5** — `package.json` setting schema + final smoke.
+  Files: `package.json`, `scripts/smoke-test.js`.
+  1. `package.json`: add `llm.chat.newNotebook.enabled` (boolean, default true).
+  2. Smoke: section `// 57)`. 2 assertions, prefix `nbnew-s5:`.
+  Acceptance: compile passes; smoke → **568** (546 + 22).
+
+**Total expected assertions after all slices:** 546 → **568** (+22: S1 +9, S2 +5, S3 +3, S4 +3, S5 +2).
+
+**Risks:**
+- Name collision: two `/newNotebook` commands with same first line → second fails with "already exists".
+- `createNotebook("")` now yields 0 cells (was 1 empty cell). No existing assertion depends on old behavior.
+- Existing `"tools: tool names in order"` assertion (14 names) must be updated to 15 in S2.

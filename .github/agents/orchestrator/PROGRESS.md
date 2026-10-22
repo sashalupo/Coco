@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-27** — Minimal nbformat 4.5 (cell `id` fields) — **DONE** (1 slice S1)
-- **Current slice:** 1.99-27.S1 DONE (item complete)
+- **Current item:** **1.99-28** — AI notebook editing improvements — new notebook tool — in progress (planned, 5 slices S1–S5)
+- **Current slice:** none yet (1.99-28.S1 next)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** start next backlog item **1.99-28** (New notebook tool — `/newNotebook`): read researcher entry, dispatch Planner
+- **Next step:** dispatch Coder for 1.99-28.S1 (notebook.ts typed markers + planNewNotebook + notebookNameFromQuery + smoke), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** c32d0fd (chore(llm): record 1.99-27 plan (1 slice)); S1 commit pending
+- **Last commit:** 4a46851 (feat(llm): nbformat 4.5 cell id fields on created/inserted cells (1.99-27.S1, item complete)); plan commit pending
 - **Build state:** compiles clean; smoke test passes (546 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
