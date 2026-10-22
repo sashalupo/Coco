@@ -2258,6 +2258,36 @@ function assert(cond, label) {
     "compm-s3: extension.ts writes to workspace target when available",
   );
 
+  // 15d) change completions model (1.98-12.S4): package.json command + setting (parsed JSON).
+  const compmSetting = pkg.contributes.configuration.properties["llm.completions.model"];
+  assert(
+    compmSetting !== undefined,
+    "compm-s4: package.json has llm.completions.model",
+  );
+  assert(
+    compmSetting && compmSetting.type === "string",
+    "compm-s4: llm.completions.model is string",
+  );
+  assert(
+    compmSetting && compmSetting.default === "",
+    "compm-s4: llm.completions.model defaults to ''",
+  );
+  assert(
+    compmSetting &&
+      typeof compmSetting.description === "string" &&
+      compmSetting.description.toLowerCase().includes("completions"),
+    "compm-s4: llm.completions.model description mentions completions",
+  );
+  const compmCommand = pkg.contributes.commands.find(
+    (c) => c.command === "llm.changeCompletionsModel",
+  );
+  assert(
+    compmCommand !== undefined &&
+      typeof compmCommand.title === "string" &&
+      compmCommand.title.length > 0,
+    "compm-s4: package.json has llm.changeCompletionsModel command with title",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

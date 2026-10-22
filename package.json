@@ -35,6 +35,10 @@
       {
         "command": "llm.commitChanges",
         "title": "LLM: Commit Changes"
+      },
+      {
+        "command": "llm.changeCompletionsModel",
+        "title": "LLM: Change Completions Model"
       }
     ],
     "viewsContainers": {
@@ -217,6 +221,11 @@
           "type": "boolean",
           "default": true,
           "description": "When the user types #folder:<name> (or '#folder <name>') in a chat message, attach the folder's file tree as context. Bare #folder attaches the workspace root."
+        },
+        "llm.completions.model": {
+          "type": "string",
+          "default": "",
+          "description": "Model ID used for inline code completions. Empty = use the main chat model (llm.model). Change it via the 'LLM: Change Completions Model' command."
         }
       }
     }

@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-12 (completions model quick pick) — S3 verified
-- **Next step:** verify 1.98-12 S4
+- **Current item:** 1.98-12 (completions model quick pick) — S4 verified — **item complete**
+- **Next step:** verify next item from orchestrator
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** 332/332 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
@@ -232,6 +232,18 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 15c:** 5 genuine static assertions (`compm-s3:`, lines 2234–2260) on `src/extension.ts` source: contains `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`. Not tautologies. PASS
 - **Scope check:** `git status --short` (ignoring `ninfer` submodule marker) → only `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. PASS
 
+### 1.98-12.S4 — `package.json` contributions + smoke 15d + planner memory (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **342 assertions** (337 prior + 5 new `compm-s4:` in subsection 15d; 0 FAIL).
+- **JSON validity:** `package.json` parses as valid JSON (`node -e JSON.parse` OK). PASS
+- **Setting contribution:** `contributes.configuration.properties["llm.completions.model"]` exists with `type === "string"`, `default === ""`, description mentions completions. PASS
+- **Command contribution:** `contributes.commands` contains `command === "llm.changeCompletionsModel"` with non-empty `title === "LLM: Change Completions Model"`. PASS
+- **Smoke 15d:** 5 genuine parsed-JSON assertions (lines 2265–2290) operating on the parsed `pkg` object — NOT string-contains on raw file text. Not tautologies. PASS
+- **Planner memory:** `.github/agents/planner/PROGRESS.md` marks 1.98-12 **Done** (Status + plan header); slices S1–S4 each annotated `— Done (2026-10-22)`. PASS
+- **Scope check:** `git status --short | grep -v ninfer` → only `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md` (+ `ninfer` submodule marker, ignored). PASS
+- **Item 1.98-12 fully verified (S1–S4 all PASS).**
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -243,6 +255,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S2** — `completionsModel` field + provider wiring (fallback fix) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S3** — `llm.changeCompletionsModel` QuickPick command — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12.S4** — `package.json` contributions + smoke 15d + planner memory — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -272,6 +286,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S2** — `completionsModel` field + provider wiring (fallback fix) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S3** — `llm.changeCompletionsModel` QuickPick command — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12.S4** — `package.json` contributions + smoke 15d + planner memory — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

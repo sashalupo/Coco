@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-12 (Change completions model) — **Planned** (2026-10-22, slices S1–S4)
-- **Next step:** dispatch Coder for slice 1.98-12.S1
+- **Current item:** 1.98-12 (Change completions model) — **Done** (2026-10-22, all 4 slices S1–S4 completed)
+- **Next step:** await next item from orchestrator
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -124,6 +124,11 @@ unchanged; `npm run compile` clean.
 
 ## Done
 
+- **1.98-12** (2026-10-22) — Change completions model. All slices S1–S4 implemented (`buildCompletionsModelList` pure quick-pick list builder in `src/presets.ts`; `completionsModel` config field in `src/presets.ts`/`src/config.ts` with `InlineCompletionProvider` swapping `settings.model` for the completions model when non-empty (toolbar override still wins); `llm.changeCompletionsModel` QuickPick command in `src/extension.ts` (engine models via `client.listModels()`, failure → warning + configured-only list, writes `ConfigurationTarget.Workspace` or `Global`); `package.json` command + `llm.completions.model` setting schema; final smoke assertions). Key decisions:
+  1. **Fallback chain** `llm.completions.model` → `llm.model` → engine default — empty setting keeps prior behavior exactly (no `model` override).
+  2. **Zero changes to `request.ts`** — the provider swaps `settings.model` before `buildRequestBody`; the existing `toolbar.model ?? settings.model` precedence means the toolbar override still wins (consistent with chat).
+  3. **Command never hard-fails** — engine unreachable → warning + list of configured models only.
+  4. **Workspace-scoped write** (global when no workspace folder) — per-project capability choice.
 - **1.98-10** (2026-10-22) — `#folder:` tag: attach a folder's file tree as chat context. All slices S1–S4
   implemented (`extractFolderTag`/`formatFolderBlock` pure helpers in `src/context.ts`; `ToolExecutor.folderSweep`
   file-tree sweep (depth ≤ 3, cap 100 entries, no contents); `ChatViewProvider.runStream` injects the folder block
@@ -188,7 +193,7 @@ unchanged; `npm run compile` clean.
 - [x] Plan backlog item 1.98-8 (`#codebase` tag — advanced codebase search; drop the embeddings sub-item) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [x] Plan backlog item 1.98-9 (`#problems` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [x] Plan backlog item 1.98-10 (`#folder:` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
-- [x] Plan backlog item 1.98-12 (Change completions model) — planned 2026-10-22; slices S1–S4 ready for dispatch.
+- [x] Plan backlog item 1.98-12 (Change completions model) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
       the real codebase, break it into tiny slices (one file / one concern each), write the
       plan, record it here.
@@ -477,7 +482,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 - **Bare `#folder` = workspace root** overlaps with `#codebase`'s structure walk —
   intentional (root tree without git status/search); no conflict.
 
-# Plan: 1.98-12 — Change completions model (Planned 2026-10-22)
+# Plan: 1.98-12 — Change completions model (Planned 2026-10-22) — **Done** (2026-10-22, slices S1–S4 complete)
 
 **Changelog reference:** VS Code 1.98 — "Change the model used for inline code completions via the **Change Completions Model** command in the Command Palette (or 'Configure Code Completions' in the Copilot title-bar menu)." Relevance: `keep (capability/context)` — selecting which local engine/model serves completions is a capability control. Gap: no such command exists yet.
 
@@ -490,10 +495,10 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 6. **No webview changes, no new dependencies.** The chat toolbar Model dropdown is NOT touched (it controls the chat model).
 
 ## Slices
-- **S1** `src/presets.ts` (+ smoke): `CompletionsModelOption` interface + pure `buildCompletionsModelList(current, chatModel, engineModels)` (default entry first, dedup, `picked` on active). Smoke section **15a** (labels `compm-s1:`, ~8 assertions). — Pending
-- **S2** `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts` (+ smoke): `completionsModel` field in `LlmSettings` + `readSettings()` (`c.get<string>("completions.model", "")`); provider swaps `settings.model` for `completionsModel` before `buildRequestBody` (toolbar override still wins). Smoke **15b** (labels `compm-s2:`): static checks — `presets.ts` has `completionsModel`, `config.ts` has `completions.model`, `InlineCompletionProvider.ts` has `completionsModel` + `buildRequestBody(`. — Pending
-- **S3** `src/extension.ts` (+ smoke): register `llm.changeCompletionsModel` — read `completions.model` + `model`, `client.listModels()` (failure → warning + configured-only list), `buildCompletionsModelList` → QuickPick (default entry `$(symbol-inherit) Use chat model (default)`, `description: "active"` on picked), write to `ConfigurationTarget.Workspace` (or `Global`), info message; cancel = no-op. Smoke **15c** (labels `compm-s3:`): static checks — `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`. — Pending
-- **S4** `package.json` + `scripts/smoke-test.js` + planner PROGRESS.md: `contributes.commands` entry `{ "command": "llm.changeCompletionsModel", "title": "LLM: Change Completions Model" }`; `contributes.configuration.properties["llm.completions.model"]` (string, default `""`, description mentions completions + the command). Smoke **15d** (labels `compm-s4:`): parsed-JSON checks (setting exists/type/default/description; command entry exists with title). Mark 1.98-12 Done. — Pending
+- **S1** `src/presets.ts` (+ smoke): `CompletionsModelOption` interface + pure `buildCompletionsModelList(current, chatModel, engineModels)` (default entry first, dedup, `picked` on active). Smoke section **15a** (labels `compm-s1:`, ~8 assertions). — Done (2026-10-22)
+- **S2** `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts` (+ smoke): `completionsModel` field in `LlmSettings` + `readSettings()` (`c.get<string>("completions.model", "")`); provider swaps `settings.model` for `completionsModel` before `buildRequestBody` (toolbar override still wins). Smoke **15b** (labels `compm-s2:`): static checks — `presets.ts` has `completionsModel`, `config.ts` has `completions.model`, `InlineCompletionProvider.ts` has `completionsModel` + `buildRequestBody(`. — Done (2026-10-22)
+- **S3** `src/extension.ts` (+ smoke): register `llm.changeCompletionsModel` — read `completions.model` + `model`, `client.listModels()` (failure → warning + configured-only list), `buildCompletionsModelList` → QuickPick (default entry `$(symbol-inherit) Use chat model (default)`, `description: "active"` on picked), write to `ConfigurationTarget.Workspace` (or `Global`), info message; cancel = no-op. Smoke **15c** (labels `compm-s3:`): static checks — `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`. — Done (2026-10-22)
+- **S4** `package.json` + `scripts/smoke-test.js` + planner PROGRESS.md: `contributes.commands` entry `{ "command": "llm.changeCompletionsModel", "title": "LLM: Change Completions Model" }`; `contributes.configuration.properties["llm.completions.model"]` (string, default `""`, description mentions completions + the command). Smoke **15d** (labels `compm-s4:`): parsed-JSON checks (setting exists/type/default/description; command entry exists with title). Mark 1.98-12 Done. — Done (2026-10-22)
 
 ## Overall acceptance (Tester)
 1. `npm run compile` clean; `node scripts/smoke-test.js` fully green.

@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-12.S3 done — `llm.changeCompletionsModel` QuickPick command in `src/extension.ts`
-- **Next step:** 1.98-12.S4 (per planner plan in `.github/agents/planner/PROGRESS.md`)
+- **Current step:** 1.98-12.S4 done — `package.json` contributions + smoke 15d + planner memory update (FINAL slice of item 1.98-12)
+- **Next step:** item 1.98-12 complete — await next item from orchestrator
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (337 assertions, incl. 5 new `compm-s3:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (342 assertions, incl. 5 new `compm-s4:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-12.S4** (2026-10-22) — `package.json` contributions + smoke 15d + planner memory update (FINAL slice of item 1.98-12). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md` only.
+  - `package.json`: added `{ "command": "llm.changeCompletionsModel", "title": "LLM: Change Completions Model" }` to `contributes.commands` after `llm.commitChanges`; added `llm.completions.model` (string, default `""`, description mentions completions + the command) to `contributes.configuration.properties` after `llm.chat.folderContext.enabled`. JSON validated via `JSON.parse`.
+  - `scripts/smoke-test.js`: new subsection `// 15d) change completions model (1.98-12.S4)` with 5 parsed-JSON assertions (`compm-s4:` labels) reusing the `pkg` parse from 12d: (a) `contributes.configuration.properties["llm.completions.model"]` present, (b) `type === "string"`, (c) `default === ""`, (d) `description` mentions `completions` (case-insensitive), (e) `contributes.commands` contains an entry with `command === "llm.changeCompletionsModel"` and a non-empty `title`.
+  - `.github/agents/planner/PROGRESS.md`: marked plan 1.98-12 **Done** (S1–S4, each slice line annotated `— Done (2026-10-22)`); Status Current item → 1.98-12 Done, Next step → await next item from orchestrator; Done section entry added; Todo updated.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **342 assertions** (337 prior + 5 new `compm-s4:`); `package.json` parses via `JSON.parse`.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-12.S3** (2026-10-22) — `llm.changeCompletionsModel` QuickPick command. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/extension.ts`: added `import { buildCompletionsModelList } from "./presets";` (new import — no prior `./presets` import existed). Registered `llm.changeCompletionsModel` in the existing `context.subscriptions.push(...)` block, AFTER `llm.commitChanges`: reads `completions.model` + `model` from the `llm` config; fetches engine models via `client.listModels()` (`.data.map((m) => m.id)` — `ModelInfo.id` confirmed in `src/client.ts`), on failure shows warning "LLM engine unreachable — showing configured models only." and continues with `[]`; builds QuickPick items from `buildCompletionsModelList(current, chatModel, engineModels)` (default entry labeled `$(symbol-inherit) Use chat model (default)`, `description: "active"` on the picked one); `showQuickPick` with placeHolder "Model for inline code completions" / title "Change Completions Model"; cancel → return; target = `ConfigurationTarget.Workspace` when `workspaceFolders` else `Global`; `cfg.update("completions.model", picked.value, target)`; info message "Inline completions will use the chat model." (empty) or `Inline completions will use model: <value>`.
   - `scripts/smoke-test.js`: new subsection `// 15c) change completions model (1.98-12.S3)` with 5 static source checks (`compm-s3:` labels) on a fresh `extensionSrc` read of `src/extension.ts`: contains `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`.

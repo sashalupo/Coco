@@ -180,10 +180,10 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Image notes:** None.
 - **Relevance:** `keep (capability/context)` — selecting which local engine/model serves
   completions is a capability control.
-- **Status:** `pending`
+- **Status:** `done` (2026-10-22, slices S1–S4)
 - **Gap vs existing:** no "Change Completions Model" command exists yet to switch the model
   backing inline completions.
-- **Implemented in:** —
+- **Implemented in:** `llm.changeCompletionsModel` QuickPick command (`src/extension.ts`), `buildCompletionsModelList` (`src/presets.ts`), `llm.completions.model` setting (empty → chat model fallback), inline provider wiring (`src/inline/InlineCompletionProvider.ts`), package.json contributions. Commits `f33c3a4`, `3c03b59`, `bd60c26` + S4.
 
 #### 1.98-13 · Model availability (GPT 4.5, Claude 3.7 Sonnet)
 - **Description:** New models in the picker: GPT 4.5 (Preview, Enterprise) and Claude 3.7
@@ -246,6 +246,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - 1.98-8 `#codebase` tag — `done` (2026-10-22, local workspace-context sweep)
 - 1.98-9 `#problems` tag — `done` (2026-10-22, attach Problems-panel items as context)
 - 1.98-10 `#folder:<name>` tag — `done` (2026-10-22, attach a folder's file tree as context)
+- 1.98-12 Change Completions Model command — `done` (2026-10-22, `llm.changeCompletionsModel` QuickPick + `llm.completions.model` setting)
 
 ## Skipped (decision trail)
 
@@ -258,9 +259,8 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-1. **1.98-12** Change Completions Model command (switch model for inline completions)
-2. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
-3. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
+1. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
+2. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
 
 ## Todo
 

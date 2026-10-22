@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.98-12** — Change Completions Model command (VS Code 1.98)
-- **Current slice:** **1.98-12.S4** (final) — `package.json`: `llm.completions.model` setting + `llm.changeCompletionsModel` command contributions + smoke 15d
+- **Current item:** **1.98-14** — Copilot Vision: image attachments (VS Code 1.98)
+- **Current slice:** none yet — item 1.98-12 just completed; 1.98-14 not yet planned
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-12.S4, then Tester
+- **Next step:** dispatch Planner for item 1.98-14 (read the researcher backlog entry first)
 - **Last updated:** 2026-10-22
-- **Last commit:** `b13e1c1` — chore(llm): update orchestrator PROGRESS.md after 1.98-12.S2
-- **Build state:** compiles clean; smoke test passes (337 assertions); 1.98-12.S1–S3 verified
+- **Last commit:** `bd60c26` — feat(llm): Change Completions Model — llm.changeCompletionsModel QuickPick command (1.98-12.S3)
+- **Build state:** compiles clean; smoke test passes (342 assertions); item 1.98-12 fully verified (S1–S4)
 
 ## Team
 
@@ -68,6 +68,7 @@ pending item** (the oldest).
 - **1.98-12.S1** (2026-10-22) — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList` (default entry first, dedup by value, `picked` on active); 8 `compm-s1:` smoke assertions. Tester PASS. Commit `f33c3a4`.
 - **1.98-12.S2** (2026-10-22) — `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts`: `completionsModel` field (`llm.completions.model`, default `""`) + conditional model override in the inline provider (empty → keeps `llm.model`); 5 `compm-s2:` smoke assertions. Fallback bug (unconditional override) found by orchestrator, fixed by Coder before verification. Tester PASS. Commit `3c03b59`.
 - **1.98-12.S3** (2026-10-22) — `src/extension.ts`: `llm.changeCompletionsModel` QuickPick command (registered after `llm.commitChanges`; list via `buildCompletionsModelList`; engine-unreachable → warning + configured-only list; cancel = no-op; write to `ConfigurationTarget.Workspace`/`Global`); 5 `compm-s3:` smoke assertions. Tester PASS. Commit pending.
+- **1.98-12.S4** (2026-10-22) — `package.json`: `llm.completions.model` setting (string, default `""`) + `llm.changeCompletionsModel` command contribution; 5 `compm-s4:` parsed-JSON smoke assertions; planner PROGRESS.md marks 1.98-12 Done. Tester PASS. **Item 1.98-12 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit pending.
 
 ## Tags (changelog-version tags on completed items)
 
