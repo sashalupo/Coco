@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-19 (`#searchResults` tool) — **planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-19.S1
+- **Current item:** 1.99-19 (`#searchResults` tool) — **complete** (2026-10-22, 4 slices S1–S4 all done)
+- **Next step:** item 1.99-19 complete — orchestrator moves to next backlog item (1.99-23)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -1985,7 +1985,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
     - `sres-s3: ChatViewProvider calls toolExecutor.searchResults and appends the formatted block to finalContextBlock` — regex `extractSearchResultsTag\(lastUser\.content\)[\s\S]{0,400}?searchResults\(srQuery\)[\s\S]{0,300}?formatSearchResultsBlock\(srQuery, srBody\)` present.
   - Acceptance: `npm run compile` passes; the 3 `sres-s3:` assertions pass; no existing assertion regresses.
 
-- **1.99-19.S4** — `package.json`: `llm.chat.searchResults.enabled` setting
+- **1.99-19.S4** (Done — item 1.99-19 complete) — `package.json`: `llm.chat.searchResults.enabled` setting
   - Files: `package.json`
   - Changes:
     - `contributes.configuration.properties`: add after `llm.chat.newWorkspace.enabled` (~line 283):

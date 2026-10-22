@@ -4054,6 +4054,24 @@ function assert(cond, label) {
     "sres-s3: ChatViewProvider calls toolExecutor.searchResults and appends the formatted block to finalContextBlock",
   );
 
+  // 50) #searchResults tag — package.json setting (1.99-19.S4)
+  const sresS4Setting =
+    pkgJson.contributes.configuration.properties[
+      "llm.chat.searchResults.enabled"
+    ];
+  assert(
+    sresS4Setting !== undefined &&
+      sresS4Setting.type === "boolean" &&
+      sresS4Setting.default === true,
+    "sres-s4: package.json contributes llm.chat.searchResults.enabled (boolean, default true)",
+  );
+  assert(
+    typeof sresS4Setting?.description === "string" &&
+      sresS4Setting.description.includes("#searchResults") &&
+      sresS4Setting.description.includes("text-search fallback"),
+    "sres-s4: llm.chat.searchResults.enabled description mentions #searchResults and the text-search fallback",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

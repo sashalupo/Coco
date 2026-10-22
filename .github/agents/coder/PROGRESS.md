@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-19 (`#searchResults` tag) — in progress (S1–S3 done)
-- **Next step:** 1.99-19.S4 (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.99-19 (`#searchResults` tag) — **COMPLETE** (all 4 slices S1–S4 done)
+- **Next step:** item 1.99-19 complete — orchestrator moves to next backlog item (1.99-23)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (529 assertions)
+- **Build state:** compiles clean; smoke test passes (531 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-19.S4** (2026-10-22) — `package.json`: add the `llm.chat.searchResults.enabled` setting (FINAL slice of item 1.99-19 — item now COMPLETE). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: new `llm.chat.searchResults.enabled` property added in `contributes.configuration.properties` immediately after `llm.chat.newWorkspace.enabled`: `type: boolean`, `default: true`, description: "Allow the `#searchResults <query>` (or `#searchResults:<query>`) tag to include workspace text-search results (file:line: snippet, capped at 50 matches) in chat context. Mirrors the VS Code 1.99 `#searchResults` tool (text-search fallback — the AI semantic Search view is VS Code core).". Validated: `node -e "JSON.parse(...)"` → `json ok`.
+  - `scripts/smoke-test.js`: new section `// 50) #searchResults tag — package.json setting (1.99-19.S4)` at end (after section 49, before final summary print); reuses the file-scoped parsed `pkgJson` (same pattern as other package.json assertions); 2 `sres-s4:` assertions: (a) property exists with `type === "boolean"` AND `default === true`; (b) description is a string containing `#searchResults` AND `text-search fallback`. Total PASS lines now 531 (529 + 2).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 531 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-19.S3** (2026-10-22) — `ChatViewProvider.runStream`: wire the `#searchResults` tag into the context block. Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/ChatViewProvider.ts`: (a) `extractSearchResultsTag` + `formatSearchResultsBlock` added to the `../context` import (after `formatUsagesTagBlock`); (b) in `runStream`, the standard gated block inserted after the `#usages` block and before the `#newWorkspace` block: `if (settings.searchResultsEnabled && lastUser && this.toolExecutor)` → `srQuery = extractSearchResultsTag(lastUser.content)` → `srQuery !== null` → `srBody = await this.toolExecutor.searchResults(srQuery)` → `srBlock = formatSearchResultsBlock(srQuery, srBody)` → append to `finalContextBlock` with the same `"\n\n"` join pattern as the neighboring tag blocks.
   - `scripts/smoke-test.js`: new section `// 49) #searchResults tag — ChatViewProvider wiring (1.99-19.S3)` at end (after section 48, before final summary print); static `fs.readFileSync` on `src/chat/ChatViewProvider.ts` (local `cvpSrcSresS3`); 3 `sres-s3:` assertions: (a) source contains `extractSearchResultsTag` AND `formatSearchResultsBlock` AND `from "../context"`; (b) regex `settings\.searchResultsEnabled && lastUser && this\.toolExecutor` present; (c) regex `extractSearchResultsTag\(lastUser\.content\)[\s\S]{0,400}?searchResults\(srQuery\)[\s\S]{0,300}?formatSearchResultsBlock\(srQuery, srBody\)` present. Total PASS lines now 529 (526 + 3).

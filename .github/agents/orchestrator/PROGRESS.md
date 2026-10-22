@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-19** — Semantic text search improvements: `#searchResults` tool — in progress (S1+S2+S3 done, S4 pending)
-- **Current slice:** 1.99-19.S3 DONE
+- **Current item:** **1.99-19** — Semantic text search improvements: `#searchResults` tool — **DONE** (all 4 slices S1–S4)
+- **Current slice:** 1.99-19.S4 DONE (item complete)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-19.S4 (package.json setting — FINAL slice), then Tester
+- **Next step:** start next backlog item **1.99-23** (AI edits improvements — explicit save on keep): read researcher entry, dispatch Planner
 - **Last updated:** 2026-10-22
-- **Last commit:** 5bb42bf (feat(llm): #searchResults tag — ToolExecutor.searchResults + settings (1.99-19.S2)); S3 commit pending
-- **Build state:** compiles clean; smoke test passes (529 assertions)
+- **Last commit:** ab28dcd (feat(llm): #searchResults tag — ChatViewProvider wiring (1.99-19.S3)); S4 commit pending
+- **Build state:** compiles clean; smoke test passes (531 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -62,7 +62,7 @@ pending item** (the oldest).
 - **1.99-16** (2026-10-22) — Copilot status menu, 3 slices S1–S3: `completionsStatusLabel` pure helper (pass-filled / pass-filled~strikethrough icon), `statusOverviewItems` 5th Completions row + `STATUS_COMMANDS` Toggle Completions entry, host status-bar indicator (refresh on `onDidChangeActiveTextEditor`) + `llm.toggleCompletions` QuickPick command writing `llm.inline.enabled` (workspace/global target, reload required), package.json contributions (command + top-level activation event + setting description). Deviations: workspace index status (GitHub-service) and NES skipped; activation event at top-level `activationEvents` (package style). Smoke 507 → 518. Commits 4886fc4, 6ca092a + S3 commit. **Item complete — no tag (changelog-1.99 already exists).**
 
 
-
+- **1.99-19** (2026-10-22) — `#searchResults` tag (text-search fallback for the VS Code 1.99 `#searchResults` tool), 4 slices S1–S4: `extractSearchResultsTag`/`formatSearchResultsBlock` pure helpers in src/context.ts (8000-char cap + truncation suffix), `ToolExecutor.searchResults` (searchMatches, 50-match cap) + `llm.chat.searchResults.enabled` setting (default true), ChatViewProvider.runStream gated block (between #usages and #newWorkspace), package.json setting. Deviations: AI semantic Search view (Ctrl+I) and reading actual Search view state skipped (VS Code core / no public API) — text-search fallback. Smoke 518 → 531. Commits 3076650, 5bb42bf, ab28dcd + S4 commit. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.98-1.S1** (2026-10-22) — webview `command_approval` card: editable textarea (value-set, no innerHTML), Run/Cancel, Ctrl+Enter, double-decide guard, CSS. Tester PASS (compile + smoke + 6 static checks).
 - **1.98-1.S2** (2026-10-22) — host `commandApproval` message case + `pendingCommandApproval` field + `waitForCommandApproval(signal)` (abort-safe, mirrors `waitForApproval`). Pure additions (+37/−0). Tester PASS.
 - **1.98-1.S3** (2026-10-22) — host routes `run_command` through the editable gate: `command_approval` post, edited-command rewrite of tool-call args, "user modified" note to model + `modified: true` on `tool_result`; existing file-tool approval path unchanged (else branch); setting off → immediate run. Tester PASS (9 static checks).

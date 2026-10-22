@@ -281,6 +281,11 @@
           "default": true,
           "description": "Allow the `#newWorkspace <type> [folder]` tag to inject a project scaffold prompt (extension / mcp-server / dev-env / generic) so the agent can create a new project with the file tools."
         },
+        "llm.chat.searchResults.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the `#searchResults <query>` (or `#searchResults:<query>`) tag to include workspace text-search results (file:line: snippet, capped at 50 matches) in chat context. Mirrors the VS Code 1.99 `#searchResults` tool (text-search fallback — the AI semantic Search view is VS Code core)."
+        },
         "llm.completions.model": {
           "type": "string",
           "default": "",

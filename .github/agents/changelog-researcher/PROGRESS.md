@@ -407,7 +407,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Description:** AI semantic search in the Search view (Ctrl+I); `#searchResults` tool
   references the current search results in a chat prompt.
 - **Relevance:** keep (capability/context) — the `#searchResults` tool part only
-- **Status:** pending
+- **Status:** done (2026-10-22 — 4 slices S1–S4; `#searchResults` tag with text-search fallback; AI semantic Search view skipped as VS Code core)
 - **Gap vs existing:** none — add a `searchResults` context source: read the current Search
   view results (or run a workspace text search for the query) and attach them as chat
   context. The semantic Search-view AI part is VS Code core (skipped).
@@ -505,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-19** `#searchResults` tool
 - **1.99-23** AI edits improvements (explicit save on keep)
 - **1.99-27** Minimal nbformat 4.5 (cell `id` fields)
 - **1.99-28** New notebook tool (`/newNotebook`)

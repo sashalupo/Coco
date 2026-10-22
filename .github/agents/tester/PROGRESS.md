@@ -12,12 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-19 — #searchResults tag — S1+S2+S3 PASS (2026-10-22)
-- **Next step:** verify 1.99-19.S4 (ChatViewProvider.runStream wiring)
+- **Current item:** 1.99-19 — #searchResults tag — ALL 4 SLICES PASS (2026-10-22) — ITEM COMPLETE
+- **Next step:** item 1.99-19 complete — next: 1.99-23
 - **Last updated:** 2026-10-22
-- **Last commit:** 5bb42bf (feat(llm): #searchResults tag — ToolExecutor.searchResults + settings (1.99-19.S2))
-- **Build state:** 529/529 PASS
+- **Last commit:** ab28dcd
+- **Build state:** 531/531 PASS
 
+
+
+### 1.99-19.S4 — FINAL: package.json `llm.chat.searchResults.enabled` setting (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **531 PASS lines** (529 prior + 2 new `sres-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 531/531 PASS; (3) 2 genuine `sres-s4:` assertions in new final section `// 50) #searchResults tag — package.json setting (1.99-19.S4)` (smoke-test.js:4057, last section before `ALL SMOKE TESTS PASSED`): setting exists with `type: "boolean"` + `default: true` (L4066), description mentions `#searchResults` and "text-search fallback" (L4072) PASS; (4) `node -e` validation of package.json → `boolean true true true` PASS; (5) `git status --short` shows exactly ` M .github/agents/coder/PROGRESS.md`, ` M package.json`, ` M scripts/smoke-test.js` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met. **Item 1.99-19 (#searchResults tag) fully verified (S1–S4) — ITEM COMPLETE.**
 
 
 ### 1.99-19.S3 — ChatViewProvider.runStream wiring of `#searchResults` (2026-10-22) — **PASS**
