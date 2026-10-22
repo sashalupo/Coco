@@ -1486,6 +1486,178 @@ function assert(cond, label) {
     "notebook-edit: unknown action -> ok:false",
   );
 
+  // 10c) notebook_edit through the real ToolExecutor (1.98-2 S4): the
+  // executor resolves the path in the temp workspace, reads the old content,
+  // applies the edit via applyNotebookEdit, writes the file, and records the
+  // snapshot + change summary.
+  const nbToolPath = "nb/nbtool.ipynb";
+  const nbToolAbs = path.join(editRoot, "nb", "nbtool.ipynb");
+  executor.clearChangeSummary();
+
+  // create: writes a valid .ipynb into a new subdirectory.
+  const nbToolCreate = await executor.execute({
+    id: "nb1",
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      arguments:
+        '{"path":"nb/nbtool.ipynb","action":"create","source":"a = 1\\n<<<CELL>>>\\n# md"}',
+    },
+  });
+  assert(
+    nbToolCreate.content.startsWith("Wrote nb/nbtool.ipynb — Created notebook with 2 cell(s)."),
+    "nb-exec: create result message",
+  );
+  assert(fs.existsSync(nbToolAbs), "nb-exec: create wrote the .ipynb file");
+  const nbToolCreateDoc = parseNotebook(fs.readFileSync(nbToolAbs, "utf8"));
+  assert(
+    nbToolCreateDoc && nbToolCreateDoc.cells.length === 2,
+    "nb-exec: created file parses with 2 cells",
+  );
+  const nbToolBefore = fs.readFileSync(nbToolAbs, "utf8");
+
+  // modify_cell: mutates the file on disk.
+  const nbToolModify = await executor.execute({
+    id: "nb2",
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      arguments:
+        '{"path":"nb/nbtool.ipynb","action":"modify_cell","cell_index":0,"source":"a = 2\\n"}',
+    },
+  });
+  assert(
+    nbToolModify.content ===
+      "Wrote nb/nbtool.ipynb — Modified cell 0 (code): 6 chars of source.",
+    "nb-exec: modify_cell result message",
+  );
+  const nbToolModifyDoc = parseNotebook(fs.readFileSync(nbToolAbs, "utf8"));
+  assert(
+    nbToolModifyDoc &&
+      nbToolModifyDoc.cells.length === 2 &&
+      nbToolModifyDoc.cells[0].source === "a = 2\n",
+    "nb-exec: modify_cell changed the file on disk",
+  );
+
+  // insert_cell: adds a markdown cell at index 1.
+  const nbToolInsert = await executor.execute({
+    id: "nb3",
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      arguments:
+        '{"path":"nb/nbtool.ipynb","action":"insert_cell","cell_index":1,"cell_type":"markdown","source":"Inserted\\n"}',
+    },
+  });
+  assert(
+    nbToolInsert.content ===
+      "Wrote nb/nbtool.ipynb — Inserted markdown cell at index 1. 3 cells total.",
+    "nb-exec: insert_cell result message",
+  );
+  const nbToolInsertDoc = parseNotebook(fs.readFileSync(nbToolAbs, "utf8"));
+  assert(
+    nbToolInsertDoc &&
+      nbToolInsertDoc.cells.length === 3 &&
+      nbToolInsertDoc.cells[1].cell_type === "markdown" &&
+      nbToolInsertDoc.cells[1].source === "Inserted\n",
+    "nb-exec: insert_cell spliced the file on disk",
+  );
+
+  // delete_cell: removes the inserted cell.
+  const nbToolDelete = await executor.execute({
+    id: "nb4",
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      arguments:
+        '{"path":"nb/nbtool.ipynb","action":"delete_cell","cell_index":1}',
+    },
+  });
+  assert(
+    nbToolDelete.content ===
+      "Wrote nb/nbtool.ipynb — Deleted cell 1 (markdown). 2 cells remain.",
+    "nb-exec: delete_cell result message",
+  );
+  const nbToolDeleteDoc = parseNotebook(fs.readFileSync(nbToolAbs, "utf8"));
+  assert(
+    nbToolDeleteDoc &&
+      nbToolDeleteDoc.cells.length === 2 &&
+      nbToolDeleteDoc.cells[1].cell_type === "code" &&
+      nbToolDeleteDoc.cells[1].source === "# md",
+    "nb-exec: delete_cell removed the cell from the file",
+  );
+
+  // change_cell_type: switches cell 0 to markdown.
+  const nbToolChange = await executor.execute({
+    id: "nb5",
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      arguments:
+        '{"path":"nb/nbtool.ipynb","action":"change_cell_type","cell_index":0,"cell_type":"markdown"}',
+    },
+  });
+  assert(
+    nbToolChange.content ===
+      "Wrote nb/nbtool.ipynb — Changed cell 0 to markdown.",
+    "nb-exec: change_cell_type result message",
+  );
+  const nbToolChangeDoc = parseNotebook(fs.readFileSync(nbToolAbs, "utf8"));
+  assert(
+    nbToolChangeDoc &&
+      nbToolChangeDoc.cells[0].cell_type === "markdown" &&
+      nbToolChangeDoc.cells[0].source === "a = 2\n",
+    "nb-exec: change_cell_type switched the type on disk",
+  );
+
+  // Out-of-range cell_index: error result, file untouched, no snapshot taken.
+  const nbToolBeforeRange = fs.readFileSync(nbToolAbs, "utf8");
+  const nbToolRange = await executor.execute({
+    id: "nb6",
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      arguments:
+        '{"path":"nb/nbtool.ipynb","action":"modify_cell","cell_index":99,"source":"x"}',
+    },
+  });
+  assert(
+    nbToolRange.content.includes("cellIndex out of range") &&
+      nbToolRange.content.includes("[0, 2)"),
+    "nb-exec: out-of-range cell_index returns the range error",
+  );
+  assert(
+    fs.readFileSync(nbToolAbs, "utf8") === nbToolBeforeRange,
+    "nb-exec: out-of-range cell_index leaves the file untouched",
+  );
+
+  // revertLast(): restores the pre-mutation content (the last successful
+  // mutation was change_cell_type, so the file goes back to the post-delete
+  // state: cell 0 is code again).
+  const nbToolRevert = await executor.revertLast();
+  assert(
+    nbToolRevert.includes("Reverted nb/nbtool.ipynb"),
+    "nb-exec: revertLast reports the notebook path",
+  );
+  const nbToolRevertDoc = parseNotebook(fs.readFileSync(nbToolAbs, "utf8"));
+  assert(
+    nbToolRevertDoc &&
+      nbToolRevertDoc.cells.length === 2 &&
+      nbToolRevertDoc.cells[0].cell_type === "code" &&
+      nbToolRevertDoc.cells[0].source === "a = 2\n" &&
+      nbToolRevertDoc.cells[1].cell_type === "code" &&
+      nbToolRevertDoc.cells[1].source === "# md",
+    "nb-exec: revertLast restored the pre-mutation content",
+  );
+
+  // getChangeSummary(): includes the .ipynb path (all 4 successful mutations
+  // accumulated into one entry).
+  const nbToolSummary = executor.getChangeSummary();
+  assert(
+    nbToolSummary.some((s) => s.path === "nb/nbtool.ipynb"),
+    "nb-exec: change summary includes the .ipynb path",
+  );
+
   assert(
     hostSrc.includes("waitForCommandApproval"),
     "cmd-approval: host has waitForCommandApproval",

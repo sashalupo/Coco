@@ -14,15 +14,15 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-2.S4** — ToolExecutor: execute `notebook_edit` (src/tools/ToolExecutor.ts)
+- **Current slice:** **1.98-2.S5** — context: render tagged `.ipynb` files as cells (src/context.ts)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
   `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
   within the active window)
 - **Last updated:** 2026-10-22
-- **Last commit:** `f06532b` — feat(llm): pure notebook parse/format/create helpers (1.98-2.S2)
-- **Build state:** compiles clean; smoke test passes (1.98-2.S1–S3 verified)
+- **Last commit:** `e430976` — feat(llm): applyNotebookEdit — 5 notebook cell actions (1.98-2.S3)
+- **Build state:** compiles clean; smoke test passes (1.98-2.S1–S4 verified)
 
 ## Team
 
@@ -50,6 +50,7 @@ pending item** (the oldest).
 - **1.98-2.S1** (2026-10-22) — `notebook_edit` tool schema in `CODE_TOOLS` (11 tools) + `isMutatingTool` flag + 5 smoke assertions (also fixed pre-existing hardcoded tool count 10→11). Tester PASS.
 - **1.98-2.S2** (2026-10-22) — new pure module `src/notebook.ts`: `parseNotebook` / `formatNotebookForContext` / `createNotebook` (+`CELL_MARKER`), 17 smoke assertions. Tester PASS.
 - **1.98-2.S3** (2026-10-22) — `applyNotebookEdit` (5 actions) in `src/notebook.ts` on private `parseNotebookRaw` (full-doc preservation), 24 smoke assertions. First Coder attempt truncated mid-edit (kept its consistent `parseNotebookRaw` refactor; also reverted its out-of-scope edits to `.github/agents/*.agent.md` + researcher PROGRESS.md); retry 2 completed the slice. Tester PASS.
+- **1.98-2.S4** (2026-10-22) — ToolExecutor `notebook_edit` case + private `notebookEdit` (resolveSafe, snapshot/recordChange, plain-text summary, no JSON diff), 16 `nb-exec:` smoke assertions. Tester PASS.
 
 ## Tags (changelog-version tags on completed items)
 

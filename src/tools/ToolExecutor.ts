@@ -13,6 +13,7 @@ import { spawn } from "child_process";
 import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff, diffStats } from "../diff";
 import { scanForSecrets } from "../secrets";
+import { applyNotebookEdit } from "../notebook";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -319,6 +320,17 @@ export class ToolExecutor {
           return this.gitDiff(call, args.path ? String(args.path) : undefined);
         case "manage_todos":
           return this.manageTodos(call, args);
+        case "notebook_edit":
+          return await this.notebookEdit(
+            call,
+            String(args.path ?? ""),
+            String(args.action ?? ""),
+            typeof args.cell_index === "number" ? args.cell_index : undefined,
+            args.cell_type === "code" || args.cell_type === "markdown"
+              ? args.cell_type
+              : undefined,
+            typeof args.source === "string" ? args.source : undefined,
+          );
         default:
           return this.result(call, `Unknown tool: ${name}`);
       }
@@ -469,6 +481,55 @@ export class ToolExecutor {
       `Replaced ${n} occurrence${n === 1 ? "" : "s"} in ${relPath} ` +
         `(${oldString.length} chars → ${newString.length} chars)${diffBlock}`,
     );
+  }
+
+  /**
+   * Apply one `notebook_edit` action to a .ipynb file (item 1.98-2). The
+   * pure mutation logic lives in `applyNotebookEdit` (src/notebook.ts); this
+   * method only handles the file I/O + snapshot bookkeeping. On failure the
+   * error message is returned as the result (no write, no snapshot). On
+   * success the new content is written and a plain-text cell-change summary
+   * is returned (no unifiedDiff — the raw JSON diff is noisy).
+   */
+  private async notebookEdit(
+    call: ToolCall,
+    relPath: string,
+    action: string,
+    cellIndex?: number,
+    cellType?: "code" | "markdown",
+    source?: string,
+  ): Promise<ToolResult> {
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return this.result(
+        call,
+        `Path not allowed (outside workspace): ${relPath}`,
+      );
+    }
+    // Read the old content (if the file exists) for the undo snapshot.
+    let oldContent = "";
+    let existed = false;
+    try {
+      oldContent = await fs.promises.readFile(abs, "utf8");
+      existed = true;
+    } catch {
+      // File does not exist yet — old content is empty.
+    }
+    const edit = applyNotebookEdit(oldContent, {
+      action,
+      cellIndex,
+      cellType,
+      source,
+    });
+    if (!edit.ok || edit.newContent === undefined) {
+      return this.result(call, edit.message);
+    }
+    this.lastSnapshot = { relPath, oldContent, existed };
+    this.recordSnapshot(relPath, oldContent, existed);
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    await fs.promises.writeFile(abs, edit.newContent, "utf8");
+    this.recordChange(relPath, oldContent, edit.newContent);
+    return this.result(call, `Wrote ${relPath} — ${edit.message}`);
   }
 
   private async listDir(call: ToolCall, relPath: string): Promise<ToolResult> {

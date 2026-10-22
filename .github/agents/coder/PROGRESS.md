@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-2.S3 done (applyNotebookEdit — the 5 actions — in src/notebook.ts)
-- **Next step:** slice 1.98-2.S4 — ToolExecutor: execute notebook_edit
+- **Current step:** 1.98-2.S4 done (ToolExecutor: execute notebook_edit)
+- **Next step:** slice 1.98-2.S5 — context: render tagged .ipynb files as cells (src/context.ts)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
@@ -95,13 +95,22 @@ by step, one step per session.
   - `scripts/smoke-test.js`: section 10 extended (10b) — requires `applyNotebookEdit` from `out/notebook.js`; 24 new `notebook-edit:` assertions: each of the 5 actions succeeds on a 2-cell fixture and the resulting `newContent` re-parses via `parseNotebook` with expected count/types/source; exact message checks; raw-doc preservation checks (outputs array + top-level `nbformat`/`metadata` survive modify; inserted code cell has `outputs: []` and `execution_count: null`); error cases return `ok: false` — bad JSON input, out-of-range `cellIndex` (message includes `[0, 2)`), missing `source` for `modify_cell`, unknown action.
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 24 new `notebook-edit:` assertions).
   - Not committed (per task instruction — orchestrator commits).
+- **1.98-2.S4** (2026-10-22) — ToolExecutor: execute `notebook_edit`. Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`.
+  - `src/tools/ToolExecutor.ts`:
+    - Imported `applyNotebookEdit` from `../notebook`.
+    - Added `case "notebook_edit":` in `execute()` → calls new private `notebookEdit(call, path, action, cellIndex?, cellType?, source?)` with args coerced exactly per the schema: `String(args.path ?? "")`, `String(args.action ?? "")`, `cell_index` only when a number, `cell_type` only when `"code"|"markdown"`, `source` only when a string.
+    - `notebookEdit(...)`: `resolveSafe` the path (rejects outside-workspace, same as `write_file`); reads old content if the file exists (else `""` + `existed = false`); calls `applyNotebookEdit(oldContent, { action, cellIndex, cellType, source })`. On `ok: false` → returns the error message as the `ToolResult` (no write, no snapshot). On success → sets `this.lastSnapshot` + `recordSnapshot(relPath, oldContent, existed)`, `mkdir -p` the parent dir, writes `newContent`, `recordChange`, and returns `Wrote ${relPath} — ${message}` (plain-text cell-change summary; deliberately NO `unifiedDiff` on the raw JSON — it's noisy).
+  - `scripts/smoke-test.js`: new section 10c (after the 10b `notebook-edit:` pure-function tests, before the final `cmd-approval` assertion) exercising the REAL `ToolExecutor` against the temp workspace (`editRoot`, vscode stub already in place): 14 new `nb-exec:` assertions — `create` writes a valid `.ipynb` into a new subdirectory (`nb/nbtool.ipynb`, file exists, `parseNotebook` OK, 2 cells, exact result message); `modify_cell` / `insert_cell` / `delete_cell` / `change_cell_type` each mutate the file on disk (re-read + `parseNotebook` checks + exact result messages); out-of-range `cell_index` returns the range error and leaves the file byte-identical (no snapshot taken); `revertLast()` restores the pre-`change_cell_type` content (cell 0 back to `code`); `getChangeSummary()` includes the `nb/nbtool.ipynb` path.
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 14 new `nb-exec:` assertions).
+  - Not committed (per task instruction — orchestrator commits).
 
 ## Todo
 
 - [ ] Item 1.98-1 complete — awaiting Tester verification.
 - [x] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
 - [x] Slice 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`.
-- [ ] Slice 1.98-2.S4 — ToolExecutor: execute `notebook_edit` (read/write the .ipynb file, feed `applyNotebookEdit` result back to the model).
+- [x] Slice 1.98-2.S4 — ToolExecutor: execute `notebook_edit` (read/write the .ipynb file, feed `applyNotebookEdit` result back to the model).
+- [ ] Slice 1.98-2.S5 — context: render tagged .ipynb files as cells (`src/context.ts`).
 
 ## Notes / decisions
 
