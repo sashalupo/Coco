@@ -12,11 +12,25 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 14 complete** — Per-file keep/undo in the change footer (14.1 done)
+- **Current phase:** **Phase 15 complete** — Token budget visualization (15.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `3e63a40` — feat(llm): per-file keep/undo in change footer (Phase 14.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); per-file keep/undo functionally tested
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); token budget bar verified
+
+> **Phase 15 — Token budget visualization (2026-10-22):**
+>
+> A small progress bar appears above the input row when a non-`auto` context
+> budget is selected. It shows `used / budget tok` with a colored fill:
+> blue < 70%, yellow 70–89%, red ≥ 90%. Hidden when the budget is `auto`
+> (unbounded) or when the conversation is cleared/restored.
+>
+> - `ChatViewProvider.runStream`: after `buildRequestBody`, computes
+>   `estimateMessagesTokens(body.messages)` and posts `token_budget`
+>   `{used, budget}` (or `token_budget_hide` when budget is 0/auto).
+> - `webview.ts`: new `#token-budget` bar (CSS `.token-budget`, `.tb-fill`,
+>   `.tb-warn`, `.tb-over`) + `token_budget` / `token_budget_hide` handlers.
+>   Hidden on `clear` and `restore`.
 
 > **Numbering note (2026-10-12):** the previous session skipped PLAN.md **12.5**
 > (clickable file rows + editor change highlight) and recorded PLAN 12.6/12.7 as
@@ -1044,7 +1058,7 @@ doc.getText())`; no snapshot (after Keep/Undo) → open without highlighting. Hi
   - `src/chat/ChatViewProvider.ts`: new `case "showDiff"` → `showCombinedDiff()`. Iterates
     `getChangeSummary()`, reads each file's current content from disk (via `fs.promises.readFile`
     on the `resolveSafe`-resolved path), computes `unifiedDiff(snap.oldContent, newContent,
-    oldLabel, newLabel)` per file (using `/dev/null` labels for newly-created or deleted files),
+oldLabel, newLabel)` per file (using `/dev/null` labels for newly-created or deleted files),
     and opens the combined result as an untitled `diff`-language text document with a header
     (`# Combined diff — N file(s) changed`). Files that no longer exist on disk are shown as
     fully removed. No snapshots → info toast.

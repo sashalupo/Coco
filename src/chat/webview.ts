@@ -530,6 +530,41 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		background: var(--think-bg);
 	}
 
+	/* Token budget bar (Phase 15) */
+	.token-budget {
+		padding: 3px 12px;
+		font-size: 10px;
+		color: var(--muted);
+		border-top: 1px solid var(--border);
+		background: var(--think-bg);
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.token-budget .tb-label {
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	.token-budget .tb-bar {
+		flex: 1 1 auto;
+		height: 4px;
+		background: var(--border);
+		border-radius: 2px;
+		overflow: hidden;
+	}
+	.token-budget .tb-fill {
+		height: 100%;
+		background: var(--vscode-focusBorder, #007fd4);
+		border-radius: 2px;
+		transition: width 0.2s ease;
+	}
+	.token-budget .tb-fill.tb-warn {
+		background: var(--vscode-editorWarning-foreground, #cca700);
+	}
+	.token-budget .tb-fill.tb-over {
+		background: var(--vscode-errorForeground, #f48771);
+	}
+
 	/* Input row */
 	.input-row {
 		display: flex;
@@ -871,6 +906,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 
 		<div id="context-indicator" class="context-indicator" hidden>Context trimmed to fit budget</div>
 		<div id="step-indicator" class="step-indicator" hidden></div>
+		<div id="token-budget" class="token-budget" hidden>
+			<span id="tb-label" class="tb-label"></span>
+			<span class="tb-bar"><span id="tb-fill" class="tb-fill" style="width:0%"></span></span>
+		</div>
 
 		<div id="change-footer" class="change-footer" hidden>
 			<div class="cf-header">
@@ -908,6 +947,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var retryBtn = document.getElementById('retry');
 		var contextIndicator = document.getElementById('context-indicator');
 		var stepIndicator = document.getElementById('step-indicator');
+		var tokenBudget = document.getElementById('token-budget');
+		var tbLabel = document.getElementById('tb-label');
+		var tbFill = document.getElementById('tb-fill');
 		var changeFooter = document.getElementById('change-footer');
 		var cfChevron = document.getElementById('cf-chevron');
 		var cfSummary = document.getElementById('cf-summary');
@@ -1490,6 +1532,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					messagesEl.innerHTML = '';
 					contextIndicator.hidden = true;
 					stepIndicator.hidden = true;
+					tokenBudget.hidden = true;
 					hideChangeFooter();
 					streaming = false;
 					currentAssistant = null;
@@ -1530,6 +1573,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					}
 					// Refresh the Retry button visibility for the restored conversation.
 					stepIndicator.hidden = true;
+					tokenBudget.hidden = true;
 					hideChangeFooter();
 					setStreaming(false);
 					break;
@@ -1564,6 +1608,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				case 'step':
 					stepIndicator.textContent = 'Step ' + msg.step + ' / ' + msg.max;
 					stepIndicator.hidden = false;
+					break;
+				case 'token_budget':
+					(function () {
+						var used = msg.used || 0;
+						var budget = msg.budget || 1;
+						var pct = Math.min(100, Math.round((used / budget) * 100));
+						tbLabel.textContent = used.toLocaleString() + ' / ' + budget.toLocaleString() + ' tok';
+						tbFill.style.width = pct + '%';
+						tbFill.className = 'tb-fill' + (pct >= 90 ? ' tb-over' : pct >= 70 ? ' tb-warn' : '');
+						tokenBudget.hidden = false;
+					})();
+					break;
+				case 'token_budget_hide':
+					tokenBudget.hidden = true;
 					break;
 				case 'stream_end':
 					streaming = false;

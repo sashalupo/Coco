@@ -17,6 +17,7 @@ import {
 } from "../config";
 import {
   buildRequestBody,
+  estimateMessagesTokens,
   type ChatCompletionRequest,
   type ChatMessage,
 } from "../request";
@@ -686,6 +687,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       const initial = buildRequestBody({ settings, toolbar }, withSystem);
       body = initial.body;
       trimmed = initial.trimmed;
+      // Token budget visualization: post the estimated usage vs. budget so
+      // the webview can render a small progress bar.
+      const usedTokens = estimateMessagesTokens(body.messages);
+      const budgetTokens = initial.budgetTokens;
+      if (budgetTokens > 0) {
+        this.postMessage({
+          type: "token_budget",
+          used: usedTokens,
+          budget: budgetTokens,
+        });
+      } else {
+        this.postMessage({ type: "token_budget_hide" });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.postMessage({ type: "error", message });
