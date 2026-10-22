@@ -13,6 +13,7 @@ import {
   statusLabel,
   statusTooltip,
   statusOverviewItems,
+  completionsStatusLabel,
   STATUS_COMMANDS,
 } from "./presets";
 import { promptTitle, stripPromptComments, PROMPT_TEMPLATE, MAX_PROMPT_CHARS } from "./prompts";
@@ -89,10 +90,15 @@ export function activate(context: vscode.ExtensionContext): void {
     const updateHealth = async (): Promise<void> => {
       const result = await client.health();
       const { icon, text } = statusLabel(result);
-      status.text = `${icon} ${text}`;
+      const cs = completionsStatusLabel(
+        inlineEnabled,
+        vscode.window.activeTextEditor !== undefined,
+      );
+      status.text = `${icon} ${text} ${cs.icon} ${cs.text}`;
       status.tooltip =
         statusTooltip(result, readSettings().baseUrl) +
-        " (click for status overview)";
+        " (click for status overview) | " +
+        cs.tooltip;
       if (result.ok) {
         status.backgroundColor = undefined;
       } else {
@@ -113,6 +119,10 @@ export function activate(context: vscode.ExtensionContext): void {
           void updateHealth();
         }
       }),
+    );
+    // Refresh when the active editor changes (completions indicator).
+    context.subscriptions.push(
+      vscode.window.onDidChangeActiveTextEditor(() => void updateHealth()),
     );
     void updateHealth();
   }
@@ -155,11 +165,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llm.showStatusOverview", async () => {
       const result = await client.health();
       const settings = readSettings();
+      const completionsEnabled = vscode.workspace
+        .getConfiguration("llm")
+        .get<boolean>("inline.enabled", false);
       const infoItems = statusOverviewItems(
         result,
         settings.baseUrl,
         settings.model,
         settings.completionsModel,
+        completionsEnabled,
       ).map((item) => ({
         label: item.label,
         description: item.description,
@@ -311,6 +325,34 @@ export function activate(context: vscode.ExtensionContext): void {
         picked.value === ""
           ? "Inline completions will use the chat model."
           : `Inline completions will use model: ${picked.value}`,
+      );
+    }),
+    vscode.commands.registerCommand("llm.toggleCompletions", async () => {
+      const cfg = vscode.workspace.getConfiguration("llm");
+      const current = cfg.get<boolean>("inline.enabled", false);
+      const items = [
+        { label: "$(check) Enable inline completions", value: true },
+        { label: "$(x) Disable inline completions", value: false },
+      ].map((o) => ({
+        label: o.label,
+        description: o.value === current ? "active" : undefined,
+        value: o.value,
+      }));
+      const picked = await vscode.window.showQuickPick(items, {
+        placeHolder: "Inline code completions",
+        title: "Toggle Completions",
+      });
+      if (!picked) {
+        return; // cancelled
+      }
+      const target = vscode.workspace.workspaceFolders
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+      await cfg.update("inline.enabled", picked.value, target);
+      vscode.window.showInformationMessage(
+        "Inline completions " +
+          (picked.value ? "enabled" : "disabled") +
+          ". Reload the window to apply.",
       );
     }),
     vscode.commands.registerCommand("llm.mcp.addServer", async () => {

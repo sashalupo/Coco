@@ -1482,7 +1482,7 @@ a language-feature provider).
     - `stmenu-s1: statusOverviewItems has 5 rows with a Completions row reflecting the flag; STATUS_COMMANDS has 5 entries incl. llm.toggleCompletions`
   - Acceptance: `npm run compile` passes; the 4 `stmenu-s1:` assertions pass; existing `status-s1:` assertions still pass (they assert 4 rows / 4 commands — **update those two existing assertions in the same slice** to expect 5 rows / 5 commands, since `out/presets.js` is the same module; this keeps the suite green).
 
-- **1.99-16.S2** — Host: completions indicator in the status bar + `llm.toggleCompletions` command
+- **1.99-16.S2** — Host: completions indicator in the status bar + `llm.toggleCompletions` command — Done (2026-10-22, PASS, 515 assertions)
   - Files: `src/extension.ts`
   - Changes:
     - Import `completionsStatusLabel` from `./presets` (line ~15 import block).

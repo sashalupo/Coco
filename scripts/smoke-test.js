@@ -3906,6 +3906,39 @@ function assert(cond, label) {
     "stmenu-s1: statusOverviewItems has 5 rows with a Completions row reflecting the flag; STATUS_COMMANDS has 5 entries incl. llm.toggleCompletions",
   );
 
+  // 45) Copilot status menu — host wiring (1.99-16.S2)
+  const extSrcStmenuS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    /from\s+"\.\/presets"/.test(extSrcStmenuS2) &&
+      extSrcStmenuS2.includes("completionsStatusLabel") &&
+      /completionsStatusLabel\([\s\S]{0,200}?status\.text\s*=/.test(
+        extSrcStmenuS2,
+      ),
+    "stmenu-s2: extension imports and uses completionsStatusLabel in the status bar text",
+  );
+  assert(
+    /onDidChangeActiveTextEditor\(\(\)\s*=>\s*void\s+updateHealth\(\)\)/.test(
+      extSrcStmenuS2,
+    ),
+    "stmenu-s2: extension refreshes the status bar on onDidChangeActiveTextEditor",
+  );
+  assert(
+    extSrcStmenuS2.includes('registerCommand("llm.toggleCompletions"') &&
+      /registerCommand\("llm\.toggleCompletions"[\s\S]{0,1200}?update\("inline\.enabled"/.test(
+        extSrcStmenuS2,
+      ),
+    "stmenu-s2: extension registers the llm.toggleCompletions command writing inline.enabled",
+  );
+  assert(
+    /registerCommand\("llm\.showStatusOverview"[\s\S]{0,800}?get<boolean>\("inline\.enabled"[\s\S]{0,400}?statusOverviewItems\([\s\S]{0,300}?completionsEnabled,\s*\)/.test(
+      extSrcStmenuS2,
+    ),
+    "stmenu-s2: showStatusOverview passes the completions-enabled flag to statusOverviewItems",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

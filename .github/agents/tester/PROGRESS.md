@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-16 — Copilot status menu (completions indicator + toggle) — S1 PASS (2026-10-22)
-- **Next step:** verify 1.99-16.S2 (host: status bar indicator + llm.toggleCompletions command)
+- **Current item:** 1.99-16 — Copilot status menu (completions indicator + toggle) — S1+S2 PASS (2026-10-22)
+- **Next step:** verify 1.99-16.S3 (next slice of the Copilot status menu item, per changelog)
 - **Last updated:** 2026-10-22
-- **Last commit:** dee7914 (feat(llm): improved vision support — host sanitize .bmp + setting description (1.99-13.S3, item complete))
-- **Build state:** 511/511 PASS
+- **Last commit:** 4886fc4 (feat(llm): copilot status menu — pure completions-status helpers (1.99-16.S1))
+- **Build state:** 515/515 PASS
 
 
 
@@ -33,6 +33,14 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **505 PASS lines** (501 prior + 4 new `vis-s2:`), 0 FAIL.
 - **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 505/505 PASS; (3) 4 genuine `vis-s2:` assertions in new `// 42) Improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)` section (smoke-test.js:3812) reading `src/chat/webview.ts` from disk: IMAGE_TYPES + accept list with image/bmp; addImageUrl with fetch/.blob()/readAsDataURL; drop handler text/uri-list + addImageUrl; URL regex `jpe?g|png|gif|webp|bmp` PASS; (4) webview.ts diff +36/−3: IMAGE_TYPES 'image/bmp' (L1568), accept attr (L1167), attach title "Attach image (paste / drag-drop file or image URL)" (L1162), addImageUrl (L1585–1599: MAX_IMAGES guard → fetch → res.ok → blob → type/size checks → readAsDataURL → push {name: url, dataUrl} → renderAttachStrip, console.warn only), drop handler (L1650–1663: items iteration, kind==='string' + type text/uri-list or '', getAsString, split \n, trim, inline regex, addImageUrl; existing addImageFiles preserved); all 5 prior `vision-s3:` assertions still pass PASS; (5) scope exactly ` M src/chat/webview.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + ninfer marker; no package-lock.json drift PASS.
 - **Verdict:** **PASS** — all 5 criteria met. (S3 still pending — item not yet complete.)
+
+
+### 1.99-16.S2 — Host wiring: status bar completions indicator + llm.toggleCompletions (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **515 PASS lines** (511 prior + 4 new `stmenu-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 515/515 PASS; (3) 4 genuine `stmenu-s2:` static `fs.readFileSync` assertions in new final section `// 45) Copilot status menu — host wiring (1.99-16.S2)` (smoke-test.js:3909, last section before `ALL SMOKE TESTS PASSED`): imports+uses completionsStatusLabel in status bar text, refresh on onDidChangeActiveTextEditor, llm.toggleCompletions writing inline.enabled, showStatusOverview passing completions-enabled flag to statusOverviewItems PASS; (4) `src/extension.ts`: L16 imports `completionsStatusLabel` from `./presets`; L93–97 `updateHealth` calls `completionsStatusLabel(inlineEnabled, vscode.window.activeTextEditor !== undefined)` (inlineEnabled from L46, in activate scope), result in `status.text` and `cs.tooltip` appended to `status.tooltip`; L124–126 `onDidChangeActiveTextEditor(() => void updateHealth())` subscription inside `statusBarEnabled` block (L80); L330–357 `llm.toggleCompletions` registered directly after `llm.changeCompletionsModel`: QuickPick Enable/Disable, current state `description: "active"`, `cfg.update("inline.enabled", picked.value, target)` with Workspace target when workspaceFolders exist else Global, info message "…Reload the window to apply."; L168–176 `llm.showStatusOverview` reads `inline.enabled` into `completionsEnabled` and passes it as trailing arg to `statusOverviewItems(...)`; `git diff src/extension.ts` +46/−2, only the two `status.text`/`status.tooltip` lines modified (additive extension), no other behavior changed PASS; (5) scope exactly ` M src/extension.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-16.S1 — Pure completions-status helpers in `src/presets.ts` (2026-10-22) — **PASS**
 

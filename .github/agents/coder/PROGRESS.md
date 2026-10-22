@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-16 (Copilot status menu) — S1 done
-- **Next step:** 1.99-16.S2
+- **Current item:** 1.99-16 (Copilot status menu) — S2 done
+- **Next step:** 1.99-16.S3
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (511 assertions)
+- **Build state:** compiles clean; smoke test passes (515 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-16.S2** (2026-10-22) — host wiring: status bar completions indicator + `llm.toggleCompletions` command. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: (a) `completionsStatusLabel` added to the `./presets` import; (b) `updateHealth` now computes `const cs = completionsStatusLabel(inlineEnabled, vscode.window.activeTextEditor !== undefined)` (reuses the activation-time `inlineEnabled` read, already in scope) and sets `status.text = `${icon} ${text} ${cs.icon} ${cs.text}`` with `cs.tooltip` appended to `status.tooltip` via `" | "`; (c) new `vscode.window.onDidChangeActiveTextEditor(() => void updateHealth())` subscription inside the `statusBarEnabled` block (after the window-state listener); (d) `llm.showStatusOverview` handler reads `inline.enabled` via `vscode.workspace.getConfiguration("llm").get<boolean>("inline.enabled", false)` and passes it as the trailing 5th arg to `statusOverviewItems(...)`; (e) new `llm.toggleCompletions` command registered right after `llm.changeCompletionsModel`, mirroring its pattern: reads `inline.enabled`, QuickPick of Enable/Disable items with `description: "active"` on the current state, `cfg.update("inline.enabled", picked.value, target)` (Workspace vs Global by `workspaceFolders`), info message "Inline completions enabled/disabled. Reload the window to apply."
+  - `scripts/smoke-test.js`: new section `// 45) Copilot status menu — host wiring (1.99-16.S2)` at end (after section 44, before final summary print); static `fs.readFileSync` on `src/extension.ts` (local `extSrcStmenuS2`); 4 `stmenu-s2:` assertions: (a) `completionsStatusLabel` present + a `completionsStatusLabel(` call within 200 chars before `status.text =`; (b) regex `onDidChangeActiveTextEditor(() => void updateHealth())`; (c) `registerCommand("llm.toggleCompletions"` + `update("inline.enabled"` within 1200 chars; (d) in the `llm.showStatusOverview` handler, `get<boolean>("inline.enabled"` before a `statusOverviewItems(` call passing `completionsEnabled,` as trailing arg. Total PASS lines now 515 (511 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 515 PASS, 0 FAIL; `git status --short` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-16.S1** (2026-10-22) — pure completions-status helpers in `src/presets.ts`. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: (a) new `export function completionsStatusLabel(enabled: boolean, hasActiveEditor: boolean): { icon; text; tooltip }` added right after `statusTooltip` — on-case `$(pass-filled)` + "Code completions enabled for the active editor"; else `$(pass-filled~strikethrough)` with idle tooltip (`No active editor — code completions idle`) when enabled, disabled tooltip (`Code completions disabled (llm.inline.enabled)`) otherwise; (b) `statusOverviewItems` gains trailing optional param `completionsEnabled: boolean = false` and a 5th row `{ label: "Completions", description: completionsEnabled ? "on (active editor)" : "off" }` (doc comment updated 4→5 rows); (c) `STATUS_COMMANDS` gains 5th entry `{ label: "Toggle Completions", command: "llm.toggleCompletions", detail: "Enable/disable inline code completions (reload required)" }`.
   - `scripts/smoke-test.js`: (a) updated 2 existing `status-s1:` assertions — `STATUS_COMMANDS.length === 5` (label "5 entries") and `items.length === 5` + `items[4].label === "Completions"` (label "5 rows"); (b) new section `// 44) Copilot status menu — pure completions-status helpers (1.99-16.S1)` at end (after section 43, before final summary print); `require` of `out/presets.js` (local `stmenuS1`); 4 `stmenu-s1:` assertions: on-case icon/text/tooltip, disabled-case strikethrough + disabled tooltip, enabled-no-editor strikethrough + idle tooltip, and `statusOverviewItems` 5 rows with Completions row flipping on/off by flag + `STATUS_COMMANDS.length === 5` incl. `llm.toggleCompletions`. Total PASS lines now 511 (507 + 4).
