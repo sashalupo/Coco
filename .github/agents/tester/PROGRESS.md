@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-15 (Engine status indicator) — **DONE** (all slices S1–S4 verified, 2026-10-22)
-- **Next step:** verify next window (v1.99) — await orchestrator
+- **Current item:** 1.99-2.S1 (MCP JSON-RPC client) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-2.S2 (settings plumbing)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 371/371 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 385/385 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 

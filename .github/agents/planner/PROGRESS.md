@@ -417,7 +417,7 @@ follow-up).
 
 **Slices:**
 
-- **1.99-2.S1 — `src/mcp.ts` (new): pure MCP JSON-RPC client + tool mapping.**
+- **1.99-2.S1 — `src/mcp.ts` (new): pure MCP JSON-RPC client + tool mapping.** — Done (2026-10-22, PASS, 385 assertions)
   File: create `src/mcp.ts`; modify `scripts/smoke-test.js`.
   (a) `export interface McpServerConfig { command: string; args?: string[];
   env?: Record<string, string> }` + `export function parseMcpServers(raw: unknown):

@@ -13,15 +13,15 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-2** — MCP server support (first pending v1.99 keep-item)
-- **Current slice:** — (none yet; plan not recorded)
+- **Current item:** **1.99-2** — MCP server support (6-slice plan recorded in `18d2ea6`)
+- **Current slice:** 1.99-2.S1 — **DONE** (PASS, 385 assertions); next: 1.99-2.S2
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-2** (MCP server support), record the plan,
-  then run the slice pipeline (Coder → Tester → memory → commit per slice)
+- **Next step:** dispatch Coder for slice **1.99-2.S2** (settings plumbing: `mcpServers` in
+  `LlmSettings` + `readSettings()`), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `4306c0b` — chore(llm): settings schema; mark item 1.98-15 complete (1.98-15.S4)
-- **Build state:** compiles clean; smoke test passes (371 assertions); item 1.98-15 fully verified (S1–S4)
+- **Last commit:** `18d2ea6` — chore(llm): record 1.99-2 plan (6 slices) — MCP server support
+- **Build state:** compiles clean; smoke test passes (385 assertions); 1.99-2.S1 verified
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

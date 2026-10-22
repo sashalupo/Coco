@@ -2497,6 +2497,245 @@ function assert(cond, label) {
     "status-s4: package.json still contributes llm.testConnection (regression guard)",
   );
 
+  // 18) MCP JSON-RPC client (1.99-2.S1)
+  const {
+    parseMcpServers,
+    McpJsonRpc,
+    McpClient,
+    mcpToolName,
+    parseMcpToolName,
+    isMcpToolName,
+    mcpToolsToOpenAITools,
+    mcpResultToText,
+  } = require(path.join(__dirname, "..", "out", "mcp.js"));
+  const { PassThrough } = require("stream");
+
+  // 18a) Framing: two responses in ONE chunk settle both pending requests.
+  {
+    const serverIn = new PassThrough(); // client -> server
+    const serverOut = new PassThrough(); // server -> client
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    const p1 = rpc.request("a");
+    const p2 = rpc.request("b");
+    serverOut.write(
+      JSON.stringify({ jsonrpc: "2.0", id: 1, result: "r1" }) + "\n" +
+        JSON.stringify({ jsonrpc: "2.0", id: 2, result: "r2" }) + "\n",
+    );
+    const [r1, r2] = await Promise.all([p1, p2]);
+    assert(
+      r1 === "r1" && r2 === "r2",
+      "mcp-s1: two responses in one chunk settle both pending requests",
+    );
+    rpc.close();
+  }
+
+  // 18b) Framing: partial line, then the rest in a second chunk.
+  {
+    const serverIn = new PassThrough();
+    const serverOut = new PassThrough();
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    const p = rpc.request("a");
+    const full = JSON.stringify({ jsonrpc: "2.0", id: 1, result: "split" });
+    serverOut.write(full.slice(0, 10));
+    await new Promise((r) => setTimeout(r, 10));
+    serverOut.write(full.slice(10) + "\n");
+    const r = await p;
+    assert(r === "split", "mcp-s1: partial line + rest in second chunk settles");
+    rpc.close();
+  }
+
+  // 18c) Full handshake simulation with a fake stdio server.
+  {
+    const serverIn = new PassThrough(); // client writes here
+    const serverOut = new PassThrough(); // client reads here
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    let lineBuf = "";
+    serverIn.on("data", (chunk) => {
+      lineBuf += chunk.toString();
+      let idx;
+      while ((idx = lineBuf.indexOf("\n")) !== -1) {
+        const line = lineBuf.slice(0, idx);
+        lineBuf = lineBuf.slice(idx + 1);
+        if (!line.trim()) continue;
+        const msg = JSON.parse(line);
+        if (msg.method === "initialize") {
+          serverOut.write(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: msg.id,
+              result: {
+                protocolVersion: "2024-11-05",
+                capabilities: {},
+                serverInfo: { name: "fake", version: "0.0.1" },
+              },
+            }) + "\n",
+          );
+        } else if (msg.method === "notifications/initialized") {
+          // ignore notification
+        } else if (msg.method === "tools/list") {
+          serverOut.write(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: msg.id,
+              result: {
+                tools: [
+                  {
+                    name: "read",
+                    description: "read a file",
+                    inputSchema: {
+                      type: "object",
+                      properties: { path: { type: "string" } },
+                      required: ["path"],
+                    },
+                  },
+                  { name: "ping" },
+                ],
+              },
+            }) + "\n",
+          );
+        } else if (msg.method === "tools/call") {
+          serverOut.write(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: msg.id,
+              result: { content: [{ type: "text", text: "hello" }] },
+            }) + "\n",
+          );
+        }
+      }
+    });
+    // Drive the handshake the way McpClient.start() does.
+    await rpc.request("initialize", {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: { name: "llm-vscode", version: "1.0.0" },
+    });
+    rpc.notify("notifications/initialized");
+    const list = await rpc.request("tools/list", {});
+    assert(
+      Array.isArray(list.tools) && list.tools.length === 2,
+      "mcp-s1: handshake tools/list returns 2 tools",
+    );
+    const call = await rpc.request("tools/call", {
+      name: "read",
+      arguments: { path: "/x" },
+    });
+    assert(
+      call.content &&
+        call.content[0].type === "text" &&
+        call.content[0].text === "hello",
+      "mcp-s1: tools/call resolves with text content",
+    );
+    rpc.close();
+  }
+
+  // 18d) JSON-RPC error response rejects.
+  {
+    const serverIn = new PassThrough();
+    const serverOut = new PassThrough();
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    const p = rpc.request("boom");
+    serverOut.write(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        error: { code: -32601, message: "method not found" },
+      }) + "\n",
+    );
+    let rejected = false;
+    try {
+      await p;
+    } catch (e) {
+      rejected = true;
+    }
+    assert(rejected, "mcp-s1: JSON-RPC error response rejects the request");
+    rpc.close();
+  }
+
+  // 18e) Name mappers.
+  assert(
+    mcpToolName("fs", "read") === "mcp__fs__read",
+    "mcp-s1: mcpToolName('fs','read') === 'mcp__fs__read'",
+  );
+  const parsed = parseMcpToolName("mcp__fs__read");
+  assert(
+    parsed && parsed.server === "fs" && parsed.tool === "read",
+    "mcp-s1: parseMcpToolName round-trips mcp__fs__read",
+  );
+  assert(
+    parseMcpToolName("read_file") === null,
+    "mcp-s1: parseMcpToolName('read_file') is null",
+  );
+  assert(
+    isMcpToolName("mcp__x__y") === true &&
+      isMcpToolName("write_file") === false,
+    "mcp-s1: isMcpToolName true for mcp__ names, false otherwise",
+  );
+
+  // 18f) mcpToolsToOpenAITools shape.
+  const openaiTools = mcpToolsToOpenAITools("fs", [
+    { name: "read", description: "read a file" },
+    {
+      name: "write",
+      inputSchema: {
+        type: "object",
+        properties: { path: { type: "string" } },
+        required: ["path"],
+      },
+    },
+  ]);
+  assert(
+    openaiTools.length === 2 &&
+      openaiTools.every((t) => t.type === "function") &&
+      openaiTools[0].function.name === "mcp__fs__read" &&
+      openaiTools[0].function.parameters.type === "object" &&
+      Object.keys(openaiTools[0].function.parameters.properties).length === 0 &&
+      openaiTools[1].function.parameters.required[0] === "path",
+    "mcp-s1: mcpToolsToOpenAITools maps to OpenAI Tool shape (object params even without inputSchema)",
+  );
+
+  // 18g) mcpResultToText.
+  assert(
+    mcpResultToText({
+      content: [
+        { type: "text", text: "a" },
+        { type: "image", data: "x" },
+        { type: "text", text: "b" },
+      ],
+    }) === "a\nb",
+    "mcp-s1: mcpResultToText joins text parts with newlines",
+  );
+  assert(
+    mcpResultToText({
+      content: [{ type: "text", text: "bad" }],
+      isError: true,
+    }) === "Error: bad",
+    "mcp-s1: mcpResultToText prefixes 'Error: ' when isError",
+  );
+
+  // 18h) parseMcpServers.
+  const servers = parseMcpServers({
+    good: { command: "node", args: ["a", "b"], env: { K: "V" } },
+    noCmd: { args: ["x"] },
+    badArgs: { command: "node", args: "not-an-array" },
+    notObj: "string",
+  });
+  assert(
+    servers.good.command === "node" &&
+      servers.good.args.join(",") === "a,b" &&
+      servers.good.env.K === "V" &&
+      !("noCmd" in servers) &&
+      servers.badArgs.command === "node" &&
+      servers.badArgs.args === undefined &&
+      !("notObj" in servers),
+    "mcp-s1: parseMcpServers validates entries and drops invalid ones",
+  );
+  assert(
+    Object.keys(parseMcpServers("nope")).length === 0 &&
+      Object.keys(parseMcpServers(null)).length === 0,
+    "mcp-s1: parseMcpServers returns {} for non-object input",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
