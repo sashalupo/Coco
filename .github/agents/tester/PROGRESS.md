@@ -12,13 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-23 — AI edits improvements (explicit save on keep) — S1 PASS (2026-10-22)
-- **Next step:** verify 1.99-23.S2
+- **Current item:** 1.99-23 — AI edits improvements (explicit save on keep) — ALL 2 SLICES PASS (2026-10-22) — ITEM COMPLETE
+- **Next step:** item 1.99-23 complete — next: 1.99-27
 - **Last updated:** 2026-10-22
-- **Last commit:** 3a50ab2
-- **Build state:** 531/531 PASS
+- **Last commit:** 086cfd1
+- **Build state:** 538/538 PASS
 
 
+
+### 1.99-23.S2 — FINAL: ChatViewProvider routes keep paths through saving keepers + smoke assertions (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **538 PASS lines** (531 prior + 7 new: 4 `aedits-s1:` + 3 `aedits-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 538/538 PASS; (3) `grep -c "aedits-s1:\|aedits-s2:" scripts/smoke-test.js` → 7, all in new section `// 51) AI edits improvements — explicit save on keep (1.99-23)` (smoke-test.js:4075, last section before `ALL SMOKE TESTS PASSED`): 4 `aedits-s1:` (L4082–4095: keepFile async, keepAll exists, saveDocument helper, keepFile body calls saveDocument) + 3 `aedits-s2:` (L4104–4120: keep-all routed through handleKeepAll/keepAll, keepChanges no longer calls clearChangeSummary directly, handleKeepFile awaits toolExecutor.keepFile) PASS; (4) `src/chat/ChatViewProvider.ts`: `case "keepChanges":` (L236–241) no longer calls `clearChangeSummary()` — dispatches `void this.handleKeepAll();` (L240); `private async handleKeepAll(): Promise<void>` (L644–648) awaits `this.toolExecutor.keepAll()`, posts `revert_result`, calls `pushChangeFooter()` (same pattern as `handleKeepFile`); `handleKeepFile` is `private async` (L630) and awaits `this.toolExecutor.keepFile(relPath)` (L634); remaining `clearChangeSummary()` call (L1224) is in the run-start path, not the keep path PASS; (5) `git status --short` shows exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/chat/ChatViewProvider.ts` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met. **Item 1.99-23 (AI edits improvements — explicit save on keep) fully verified (S1–S2) — ITEM COMPLETE.**
 
 ### 1.99-23.S1 — ToolExecutor: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument`) (2026-10-22) — **PASS**
 

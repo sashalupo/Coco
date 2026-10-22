@@ -4072,6 +4072,54 @@ function assert(cond, label) {
     "sres-s4: llm.chat.searchResults.enabled description mentions #searchResults and the text-search fallback",
   );
 
+  // 51) AI edits improvements — explicit save on keep (1.99-23)
+  const aeditsToolExecOut = fs.readFileSync(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+    "utf8",
+  );
+  assert(
+    aeditsToolExecOut.includes("async keepFile("),
+    "aedits-s1: ToolExecutor.keepFile is async (explicit save on keep)",
+  );
+  assert(
+    aeditsToolExecOut.includes("async keepAll("),
+    "aedits-s1: ToolExecutor.keepAll exists (keep-all with explicit save)",
+  );
+  assert(
+    aeditsToolExecOut.includes("saveDocument") &&
+      aeditsToolExecOut.includes("openTextDocument"),
+    "aedits-s1: ToolExecutor.saveDocument helper opens + saves the TextDocument",
+  );
+  assert(
+    /async keepFile\([\s\S]{0,400}?saveDocument/.test(aeditsToolExecOut),
+    "aedits-s1: keepFile body calls saveDocument",
+  );
+  const aeditsCvpSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    aeditsCvpSrc.includes("handleKeepAll") &&
+      aeditsCvpSrc.includes("keepAll()"),
+    "aedits-s2: ChatViewProvider routes keep-all through handleKeepAll/keepAll",
+  );
+  const aeditsKeepChangesIdx = aeditsCvpSrc.indexOf('case "keepChanges":');
+  const aeditsKeepChangesBlock = aeditsCvpSrc.slice(
+    aeditsKeepChangesIdx,
+    aeditsKeepChangesIdx + 300,
+  );
+  assert(
+    aeditsKeepChangesBlock.includes("handleKeepAll") &&
+      !aeditsKeepChangesBlock.includes("clearChangeSummary"),
+    "aedits-s2: keepChanges case no longer calls clearChangeSummary directly",
+  );
+  assert(
+    /async handleKeepFile[\s\S]{0,300}?await this\.toolExecutor\.keepFile\(/.test(
+      aeditsCvpSrc,
+    ),
+    "aedits-s2: handleKeepFile awaits toolExecutor.keepFile",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

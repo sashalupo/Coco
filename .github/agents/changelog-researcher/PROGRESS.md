@@ -433,7 +433,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   (less Problems-panel flicker, no quick-fix requests); explicitly save the file when the
   user keeps the AI edits.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 2 slices S1–S2; explicit TextDocument.save() on keep (keepFile/keepAll); diagnostics muting skipped as VS Code core)
 - **Gap vs existing:** the extension applies edits via `WorkspaceEdit` and saves; verify the
   keep-path explicitly saves (`document.save()`) and that no stray diagnostics-triggered
   work happens while an edit is pending. Small change.
@@ -505,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-23** AI edits improvements (explicit save on keep)
 - **1.99-27** Minimal nbformat 4.5 (cell `id` fields)
 - **1.99-28** New notebook tool (`/newNotebook`)
 - **1.99-29** Cell output to chat (text/image)

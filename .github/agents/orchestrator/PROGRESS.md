@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-23** — AI edits improvements (explicit save on keep) — in progress (S1 done, S2 pending)
-- **Current slice:** 1.99-23.S1 DONE
+- **Current item:** **1.99-23** — AI edits improvements (explicit save on keep) — **DONE** (all 2 slices S1–S2)
+- **Current slice:** 1.99-23.S2 DONE (item complete)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-23.S2 (ChatViewProvider: handleKeepAll + keepChanges reroute + smoke — FINAL slice), then Tester
+- **Next step:** start next backlog item **1.99-27** (Minimal nbformat 4.5 — cell `id` fields): read researcher entry, dispatch Planner
 - **Last updated:** 2026-10-22
-- **Last commit:** 5231fbf (chore(llm): record 1.99-23 plan (2 slices)); S1 commit pending
-- **Build state:** compiles clean; smoke test passes (531 assertions)
+- **Last commit:** 086cfd1 (feat(llm): AI edits — explicit save on keep (1.99-23.S1)); S2 commit pending
+- **Build state:** compiles clean; smoke test passes (538 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -62,7 +62,7 @@ pending item** (the oldest).
 - **1.99-16** (2026-10-22) — Copilot status menu, 3 slices S1–S3: `completionsStatusLabel` pure helper (pass-filled / pass-filled~strikethrough icon), `statusOverviewItems` 5th Completions row + `STATUS_COMMANDS` Toggle Completions entry, host status-bar indicator (refresh on `onDidChangeActiveTextEditor`) + `llm.toggleCompletions` QuickPick command writing `llm.inline.enabled` (workspace/global target, reload required), package.json contributions (command + top-level activation event + setting description). Deviations: workspace index status (GitHub-service) and NES skipped; activation event at top-level `activationEvents` (package style). Smoke 507 → 518. Commits 4886fc4, 6ca092a + S3 commit. **Item complete — no tag (changelog-1.99 already exists).**
 
 
-- **1.99-19** (2026-10-22) — `#searchResults` tag (text-search fallback for the VS Code 1.99 `#searchResults` tool), 4 slices S1–S4: `extractSearchResultsTag`/`formatSearchResultsBlock` pure helpers in src/context.ts (8000-char cap + truncation suffix), `ToolExecutor.searchResults` (searchMatches, 50-match cap) + `llm.chat.searchResults.enabled` setting (default true), ChatViewProvider.runStream gated block (between #usages and #newWorkspace), package.json setting. Deviations: AI semantic Search view (Ctrl+I) and reading actual Search view state skipped (VS Code core / no public API) — text-search fallback. Smoke 518 → 531. Commits 3076650, 5bb42bf, ab28dcd + S4 commit. **Item complete — no tag (changelog-1.99 already exists).**
+- **1.99-19** (2026-10-22) — `#searchResults` tag (text-search fallback for the VS Code 1.99 `#searchResults` tool), 4 slices S1–S4: `extractSearchResultsTag`/`formatSearchResultsBlock` pure helpers in src/context.ts (8000-char cap + truncation suffix), `ToolExecutor.searchResults` (searchMatches, 50-match cap) + `llm.chat.searchResults.enabled` setting (default true), ChatViewProvider.runStream gated block (between #usages and #newWorkspace), package.json setting. Deviations: AI semantic Search view (Ctrl+I) and reading actual Search view state skipped (VS Code core / no public API) — text-search fallback. Smoke 518 → 531. Commits 3076650, 5bb42bf, ab28dcd + S4 commit. **Item complete — no tag (changelog-1.99 already exists).**- **1.99-23** (2026-10-22) — AI edits improvements (explicit save on keep), 2 slices S1–S2: `ToolExecutor.saveDocument` helper (openTextDocument + doc.save, never throws), `keepFile` async with `(saved)` suffix, new `keepAll()` (clears maps + saves each file), ChatViewProvider `handleKeepAll` + `keepChanges` reroute (no direct clearChangeSummary on keep). Deviations: diagnostics muting skipped (VS Code core, no public API; extension has no onDidChangeDiagnostics listener); no WorkspaceEdit migration (fs.promises.writeFile kept for Node testability). Smoke 531 → 538. Commits 086cfd1 + S2 commit. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.98-1.S1** (2026-10-22) — webview `command_approval` card: editable textarea (value-set, no innerHTML), Run/Cancel, Ctrl+Enter, double-decide guard, CSS. Tester PASS (compile + smoke + 6 static checks).
 - **1.98-1.S2** (2026-10-22) — host `commandApproval` message case + `pendingCommandApproval` field + `waitForCommandApproval(signal)` (abort-safe, mirrors `waitForApproval`). Pure additions (+37/−0). Tester PASS.
 - **1.98-1.S3** (2026-10-22) — host routes `run_command` through the editable gate: `command_approval` post, edited-command rewrite of tool-call args, "user modified" note to model + `modified: true` on `tool_result`; existing file-tool approval path unchanged (else branch); setting off → immediate run. Tester PASS (9 static checks).

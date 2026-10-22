@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **in progress** (S1 done, S2 next)
-- **Next step:** 1.99-23.S2 — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions
+- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **COMPLETE** (S1 + S2 done)
+- **Next step:** item 1.99-23 complete — orchestrator moves to next backlog item (1.99-27)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (531 assertions)
+- **Build state:** compiles clean; smoke test passes (538 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-23.S2** (2026-10-22, FINAL) — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions. Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/ChatViewProvider.ts`: (a) `case "keepChanges":` body replaced — no longer calls `this.toolExecutor.clearChangeSummary()` directly; now `void this.handleKeepAll();` (comment updated to note 1.99-23: keepAll() also explicitly saves each kept file); (b) new `private async handleKeepAll(): Promise<void>` added right after `handleKeepFile` — `await this.toolExecutor.keepAll()`, then the same `postMessage({ type: "revert_result", message })` + `pushChangeFooter()` calls used by `handleKeepFile`.
+  - `scripts/smoke-test.js`: new section `// 51) AI edits improvements — explicit save on keep (1.99-23)` at end (after section 50, before final summary print); 7 assertions: 4 `aedits-s1:` on the compiled `out/tools/ToolExecutor.js` (read via `fs.readFileSync` — `async keepFile(` present, `async keepAll(` present, `saveDocument` + `openTextDocument` present, regex `/async keepFile\([\s\S]{0,400}?saveDocument/`); 3 `aedits-s2:` on `src/chat/ChatViewProvider.ts` (source contains `handleKeepAll` AND `keepAll()`; the `case "keepChanges":` block (next 300 chars) contains `handleKeepAll` and NOT `clearChangeSummary`; regex `/async handleKeepFile[\s\S]{0,300}?await this\.toolExecutor\.keepFile\(/`). Total PASS lines now 538 (531 + 7).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 538 PASS, 0 FAIL; `git status --short` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
+  - **Item 1.99-23 (AI edits improvements — explicit save on keep) complete** — all 2 slices S1–S2 done.
 - **1.99-23.S1** (2026-10-22) — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper). Files: `src/tools/ToolExecutor.ts`, `src/chat/ChatViewProvider.ts` (minimal caller fix — deviation, see below), `.github/agents/coder/PROGRESS.md` only.
   - `src/tools/ToolExecutor.ts`: (a) new `private async saveDocument(relPath: string): Promise<boolean>` placed right before `keepFile` (near the keep/revert cluster; `resolveSafe` is public and defined later in the class — intent preserved: resolve safely, `fs.promises.access` existence check, `vscode.workspace.openTextDocument` + `doc.save()`, never throws, returns `false` when path disallowed / file missing / save fails); (b) `keepFile` changed from `public keepFile(relPath: string): string` to `public async keepFile(relPath: string): Promise<string>` — same no-pending-changes message (`No pending changes for ${relPath}.`), same map deletions, then `const saved = await this.saveDocument(relPath)` and returns `Kept ${relPath} (saved).` when saved else `Kept ${relPath}.`; (c) new `public async keepAll(): Promise<string>` right after `keepFile` — snapshots `Array.from(this.runChanges.keys())`, resets both maps to `new Map()`, returns `Kept all changes (no pending changes).` when empty, else saves each path via `saveDocument` and returns `Kept N file(s) (M saved).`.
   - `src/chat/ChatViewProvider.ts` (MINIMAL caller fix — deviation required to keep S1 independently compilable): `handleKeepFile` made `async` and now `await`s `this.toolExecutor.keepFile(relPath)` (message wording unchanged); the `case "keepFile":` dispatch now uses `void this.handleKeepFile(...)` (matching the neighboring `undoFile`/`openFile` pattern). No other behavior changed.
@@ -465,7 +471,7 @@ by step, one step per session.
 ## Todo
 
 - [x] Slice 1.99-23.S1 — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper).
-- [ ] Slice 1.99-23.S2 — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions (next).
+- [x] Slice 1.99-23.S2 — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions. **Item 1.99-23 COMPLETE.**
 - [ ] Item 1.98-1 complete — awaiting Tester verification.
 - [x] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
 - [x] Slice 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`.

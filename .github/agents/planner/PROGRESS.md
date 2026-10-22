@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **planned** (2026-10-22, 2 slices S1–S2)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-23.S1
+- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **complete** (2026-10-22, 2 slices S1–S2 all done)
+- **Next step:** item 1.99-23 complete — orchestrator moves to next backlog item (1.99-27)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -2096,7 +2096,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
   - Smoke: none in this slice (covered by S2's static assertions; S1 must still compile and pass the existing 531).
   - Expected total: 531 (unchanged).
 
-- **1.99-23.S2** — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions
+- **1.99-23.S2** (Done — item 1.99-23 complete) — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions
   - Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`
   - Changes:
     1. `ChatViewProvider.ts` — `keepChanges` case (L236–240): replace the body

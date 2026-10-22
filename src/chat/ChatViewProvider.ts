@@ -235,8 +235,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "keepChanges":
         // Keep (Phase 12): accept the changes — clear the per-run snapshots
-        // and change summary so a subsequent run starts fresh.
-        this.toolExecutor.clearChangeSummary();
+        // and change summary so a subsequent run starts fresh. 1.99-23:
+        // keepAll() also explicitly saves each kept file.
+        void this.handleKeepAll();
         break;
       case "undoChanges":
         // Undo (Phase 12): revert all files changed this run and report the
@@ -631,6 +632,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     const message = await this.toolExecutor.keepFile(relPath);
+    this.postMessage({ type: "revert_result", message });
+    this.pushChangeFooter();
+  }
+
+  /**
+   * Accept all of the current run's changes (Phase 12 / 1.99-23):
+   * clear the snapshots + change summary and explicitly save every
+   * kept file, then refresh the footer.
+   */
+  private async handleKeepAll(): Promise<void> {
+    const message = await this.toolExecutor.keepAll();
     this.postMessage({ type: "revert_result", message });
     this.pushChangeFooter();
   }
