@@ -1320,10 +1320,84 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var streaming = false;
 		var currentAssistant = null;
 		var lastSentText = '';
+		var queuedMessage = null;
+
+		// Phase 21: when the user sends while the LLM is streaming, offer three
+		// options: Stop and send (abort + send now), Add to queue (send after
+		// the current run finishes), or Steer with message (inject into the
+		// conversation immediately so the model sees it on the next turn).
+		function showSendWhileStreaming(text) {
+			var overlay = document.createElement('div');
+			overlay.className = 'modal-overlay';
+			var box = document.createElement('div');
+			box.className = 'modal-box';
+			var title = document.createElement('div');
+			title.className = 'modal-title';
+			title.textContent = 'LLM is working';
+			box.appendChild(title);
+			var msg = document.createElement('div');
+			msg.className = 'modal-message';
+			msg.textContent = 'The model is still generating a response. What would you like to do?';
+			box.appendChild(msg);
+			var actions = document.createElement('div');
+			actions.className = 'modal-actions';
+			actions.style.justifyContent = 'flex-start';
+			actions.style.gap = '6px';
+			var stopBtn = document.createElement('button');
+			stopBtn.className = 'modal-cancel';
+			stopBtn.textContent = 'Stop and send';
+			stopBtn.title = 'Stop the current response and send this message now';
+			var queueBtn = document.createElement('button');
+			queueBtn.className = 'modal-ok';
+			queueBtn.textContent = 'Add to queue';
+			queueBtn.title = 'Send this message after the current response finishes';
+			var steerBtn = document.createElement('button');
+			steerBtn.className = 'modal-cancel';
+			steerBtn.textContent = 'Steer with message';
+			steerBtn.title = 'Inject this message into the conversation now (model sees it on the next turn)';
+			actions.appendChild(stopBtn);
+			actions.appendChild(queueBtn);
+			actions.appendChild(steerBtn);
+			box.appendChild(actions);
+			overlay.appendChild(box);
+			document.body.appendChild(overlay);
+			function close() {
+				if (overlay.parentNode) { overlay.parentNode.removeChild(overlay); }
+				document.removeEventListener('keydown', onKey);
+			}
+			function onKey(e) {
+				if (e.key === 'Escape') { close(); }
+			}
+			stopBtn.addEventListener('click', function () {
+				close();
+				if (vscode) { vscode.postMessage({ type: 'stop' }); }
+				queuedMessage = text;
+				inputEl.value = '';
+				inputEl.focus();
+			});
+			queueBtn.addEventListener('click', function () {
+				close();
+				queuedMessage = text;
+				inputEl.value = '';
+				inputEl.focus();
+			});
+			steerBtn.addEventListener('click', function () {
+				close();
+				if (vscode) { vscode.postMessage({ type: 'steer', text: text }); }
+				inputEl.value = '';
+				inputEl.focus();
+			});
+			document.addEventListener('keydown', onKey);
+			stopBtn.focus();
+		}
 
 		function doSend() {
 			var text = inputEl.value.trim();
-			if (!text || streaming) { return; }
+			if (!text) { return; }
+			if (streaming) {
+				showSendWhileStreaming(text);
+				return;
+			}
 			lastSentText = text;
 			inputEl.value = '';
 			inputEl.focus();
@@ -1758,6 +1832,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						messagesEl.appendChild(crEl);
 						messagesEl.scrollTop = messagesEl.scrollHeight;
 						break;
+				case 'steer_ack':
+					// Phase 21: show the steering message as a user message.
+					addUserMessage(msg.text || '');
+					break;
 				case 'stream_end':
 					streaming = false;
 					if (currentAssistant) {
@@ -1778,6 +1856,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					stepIndicator.hidden = true;
 					setStreaming(false);
 					inputEl.focus();
+					// Phase 21: if a message was queued (or interrupted) while the
+					// LLM was working, send it now that the stream has ended.
+					if (queuedMessage) {
+						var q = queuedMessage;
+						queuedMessage = null;
+						lastSentText = q;
+						if (vscode) { vscode.postMessage({ type: 'send', text: q }); }
+					}
 					break;
 				case 'error':
 					streaming = false;

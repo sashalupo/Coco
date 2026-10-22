@@ -206,6 +206,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // Compact the conversation history (Phase 19).
         void this.handleCompact();
         break;
+      case "steer":
+        // Inject a steering message into the conversation while the LLM is
+        // still working (Phase 21). The message is added to the history
+        // immediately so the model sees it on the next turn.
+        this.handleSteer(String(msg.text ?? ""));
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
@@ -400,6 +406,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       totalRemoved,
       hasCheckpoint: this.preRunHistory !== null,
     });
+  }
+
+  /**
+   * Inject a steering message into the conversation while the LLM is still
+   * working (Phase 21). The message is pushed to the history immediately so
+   * the model sees it on the next agentic turn. The webview shows it as a
+   * user message.
+   */
+  private handleSteer(text: string): void {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return;
+    }
+    this.history.push({ role: "user", content: trimmed });
+    this.postMessage({ type: "steer_ack", text: trimmed });
   }
 
   /**

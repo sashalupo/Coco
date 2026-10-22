@@ -12,11 +12,25 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 20 complete** — Tag file (@filename references) (20.1 done)
+- **Current phase:** **Phase 21 complete** — Send-while-streaming 3 options (21.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `b61f626` — feat(llm): tag file via @filename references (Phase 20.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); extractTaggedFiles unit-checked
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); send-while-streaming verified
+
+> **Phase 21 — Send-while-streaming 3 options (2026-10-22):**
+>
+> When the user sends a message while the LLM is still generating, a modal
+> offers three options:
+> - **Queue** — the message is stored and auto-sent when the current run
+>   finishes (`stream_end`).
+> - **Interrupt** — the current run is stopped (`stop`) and the message is
+>   sent as soon as the stream ends.
+> - **Cancel** — the message is discarded (restored to the input box).
+>
+> - `webview.ts`: `queuedMessage` variable + `showSendWhileStreaming(text)`
+>   3-button modal. `doSend` routes to the modal when `streaming` is true.
+>   `stream_end` handler auto-sends `queuedMessage` if set.
 
 > **Phase 20 — Tag file (@filename references) (2026-10-22):**
 >
