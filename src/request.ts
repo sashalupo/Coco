@@ -56,6 +56,8 @@ export type RequestMessage = Omit<ChatMessage, "content"> & {
 export interface RequestConfig {
   settings: LlmSettings;
   toolbar: ToolbarState;
+  /** MCP tools (already in OpenAI `Tool` shape) appended after CODE_TOOLS. */
+  mcpTools?: Tool[];
 }
 
 /** The JSON body sent to POST /v1/chat/completions. */
@@ -197,7 +199,7 @@ export function buildRequestBody(
   cfg: RequestConfig,
   messages: ChatMessage[],
 ): BuildResult {
-  const { settings, toolbar } = cfg;
+  const { settings, toolbar, mcpTools } = cfg;
 
   const budgetTokens = CONTEXT_TO_TOKENS[toolbar.context];
   const { messages: trimmedMessages, trimmed } = trimHistory(
@@ -270,8 +272,11 @@ export function buildRequestBody(
   }
 
   // Tools: expose the workspace tools when tool calling is enabled.
+  // Built-in CODE_TOOLS first, then any MCP tools (byte-identical to the
+  // pre-MCP behavior when no MCP tools are present).
   if (settings.toolsEnabled) {
-    body.tools = CODE_TOOLS;
+    body.tools =
+      mcpTools && mcpTools.length > 0 ? [...CODE_TOOLS, ...mcpTools] : CODE_TOOLS;
     body.tool_choice = "auto";
   }
 

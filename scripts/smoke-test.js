@@ -2789,6 +2789,52 @@ function assert(cond, label) {
   );
   mgr.dispose();
 
+  // 18d) MCP tools in request body (1.99-2.S4)
+  const oneMcpTool = {
+    type: "function",
+    function: {
+      name: "mcp__srv__tool",
+      description: "d",
+      parameters: { type: "object", properties: {} },
+    },
+  };
+  const mcpBody = buildRequestBody(
+    {
+      settings: { ...settings, toolsEnabled: true },
+      toolbar,
+      mcpTools: [oneMcpTool],
+    },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(mcpBody.tools) &&
+      mcpBody.tools.length === CODE_TOOLS.length + 1 &&
+      mcpBody.tools[mcpBody.tools.length - 1].function.name ===
+        "mcp__srv__tool" &&
+      mcpBody.tool_choice === "auto",
+    "mcp-s4: toolsEnabled + mcpTools → CODE_TOOLS first, MCP tool last, tool_choice auto",
+  );
+  const noMcpBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    JSON.stringify(noMcpBody.tools) === JSON.stringify(CODE_TOOLS),
+    "mcp-s4: toolsEnabled without mcpTools → body.tools deep-equals CODE_TOOLS (regression)",
+  );
+  const disabledBody = buildRequestBody(
+    {
+      settings: { ...settings, toolsEnabled: false },
+      toolbar,
+      mcpTools: [oneMcpTool],
+    },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    disabledBody.tools === undefined,
+    "mcp-s4: toolsEnabled=false → no tools key even with mcpTools present",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

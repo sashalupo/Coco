@@ -12,11 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-2.S3 (McpManager lazy lifecycle + registry) — **PASS** (2026-10-22)
+- **Current item:** 1.99-2.S4 (extra tools in request body, `src/request.ts`) — **PASS** (2026-10-22)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** 94a7965 (coder: 1.99-2.S2)
-- **Build state:** 391/391 PASS (`npm run compile` exit 0; smoke test ALL PASSED, 0.24 s)
+- **Last commit:** 851b1b2 (coder: 1.99-2.S3)
+- **Build state:** 394/394 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+
+
+### 1.99-2.S4 — extra tools in request body (`src/request.ts`) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **394 PASS lines** (391 prior + 3 new `mcp-s4:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 394 `PASS:` lines (391 + 3 `mcp-s4:`). PASS
+  - (3) New `// 18d) MCP tools in request body (1.99-2.S4)` section (smoke-test.js lines 2792-2833) has 3 genuine `mcp-s4:` assertions calling `buildRequestBody` from `out/request.js` (required at line 9): (a) `toolsEnabled: true` + `mcpTools: [oneMcpTool]` → `body.tools.length === CODE_TOOLS.length + 1`, last tool name `mcp__srv__tool`, `tool_choice === "auto"`; (b) `toolsEnabled: true` without `mcpTools` → `JSON.stringify(body.tools) === JSON.stringify(CODE_TOOLS)` (deep-equal regression guard); (c) `toolsEnabled: false` + `mcpTools` → `body.tools === undefined`. Non-tautological (real function calls, distinct inputs). PASS
+  - (4) Source: `src/request.ts` line 60 `mcpTools?: Tool[];` on `RequestConfig`; lines 277-281: `if (settings.toolsEnabled) { body.tools = mcpTools && mcpTools.length > 0 ? [...CODE_TOOLS, ...mcpTools] : CODE_TOOLS; body.tool_choice = "auto"; }` — exact match. PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M scripts/smoke-test.js`, ` M src/request.ts`. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `851b1b2` (feat(llm): MCP server support — McpManager lazy lifecycle + registry (1.99-2.S3)). No coder commit for S4. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-2.S3 — `src/mcpManager.ts`: McpManager lazy lifecycle + registry (2026-10-22) — **PASS**
 
