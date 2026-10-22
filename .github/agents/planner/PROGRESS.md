@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-3 (Thinking tool) — **DONE** (2026-10-22, S1–S3 all PASS, 411 assertions); next: 1.99-4 (Fetch tool)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-3.S1
+- **Current item:** 1.99-4 (Fetch tool `#fetch`) — **planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-4.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -671,6 +671,163 @@ clean; all 411 smoke assertions pass.
 is opt-in via `llm.tools.enabled` and harmless if never called; the
 `CODE_TOOLS.length` regression guard (line 474) is bumped in S1 so the suite
 stays green mid-pipeline.
+
+### Item 1.99-4 — Fetch tool (`#fetch`) (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99 — `#fetch` includes content from a publicly
+accessible webpage in the prompt; picked up automatically in agent mode, referenceable
+explicitly via `#fetch <url>`. Local reframe: plain Node 18+ `fetch` + hand-rolled
+HTML→text extraction, size cap, per-URL in-memory cache. No headless browser.
+
+**Verified code assumptions (file:line):**
+- `src/tools.ts:12` — `interface Tool`; `:48` — `CODE_TOOLS` (**12 tools**, last:
+  `think`); `:365` — `toolResultMessage`; `:381` — `isMutatingTool` hardcoded list
+  (`write_file`, `edit_file`, `run_command`, `notebook_edit`) — `fetch_url` NOT in it
+  → non-mutating, no approval gate.
+- `src/tools/ToolExecutor.ts` — `execute()` name-based switch (ends `case "think"`
+  then `default:`), never throws; private `result(call, content)`.
+- `src/request.ts` — `buildRequestBody` spreads `CODE_TOOLS` (+ MCP) when
+  `toolsEnabled` — new entry flows through automatically (zero change).
+- `src/chat/ChatViewProvider.ts` — existing `#`-tag mechanism: `#codebase` (line 992),
+  `#problems` (1008), `#folder:` (1037) — each = pure `extract*Tag` in
+  `src/context.ts` + public `ToolExecutor` method + `llm.chat.*.enabled` setting.
+  `#fetch` follows that pattern. Non-MCP tools route through
+  `this.toolExecutor.execute(call)`; generic `tool_start`/`tool_result` webview cards —
+  **no webview change needed**.
+- `scripts/smoke-test.js` — 411 assertions; `assert(cond, label)` at line 190;
+  `out/tools.js`, `out/request.js`, `out/context.js` require-able;
+  `out/chat/ChatViewProvider.js` NOT (static source assertions only). Regression
+  guards `CODE_TOOLS.length === 12` at lines **474 and 2909** — both bumped to 13 in S2.
+
+**Design decisions:**
+1. **Tool name `fetch_url`** (snake_case, matches the other 12). Params: `url`
+   (string, required) + `max_chars` (number, optional). `required: ["url"]`.
+2. **Pure module `src/fetchTool.ts`** (no `vscode` import, mirrors `src/notebook.ts`):
+   - `htmlToText(html)` — strip `<script>`/`<style>` blocks (case-insensitive,
+     non-greedy), replace `<br>`, `</p>`, `</div>`, `</li>`, `</h1..h6>`, `</tr>` with
+     `\n`, remove all remaining tags, decode 5 common entities
+     (`&amp; &lt; &gt; &quot; &#39;`), collapse 3+ newlines to 2, trim.
+   - `fetchUrl(url, opts?: { maxChars?: number; fetchFn?: FetchFn }): Promise<string>`
+     — `FetchFn = (url, init?) => Promise<Response>` (injectable; defaults to global
+     `fetch`).
+   - Caps: `DEFAULT_MAX_CHARS = 20000`, `HARD_MAX_CHARS = 50000` (model `max_chars`
+     clamped to `[1, 50000]`); `TIMEOUT_MS = 15000` via `AbortSignal.timeout`;
+     `MAX_RESPONSE_BYTES = 2_000_000` (read as `arrayBuffer`, reject if larger).
+   - Cache: module-level `Map<string, { text: string; at: number }>`;
+     `CACHE_TTL_MS = 600_000` (10 min), `CACHE_MAX_ENTRIES = 20` (FIFO eviction via
+     `Map` insertion order). Key = URL string; only successful fetches cached.
+     Export `clearFetchCache()`.
+   - Content-type: `text/html` → `htmlToText`; else raw text.
+   - **Never throws** — failures return error strings: `Invalid URL: <url>` (bad
+     `new URL()` / non-http(s) scheme), `Fetch failed: <msg>`, `HTTP <status>
+     <statusText> for <url>` (non-2xx), `Response too large (>2000000 bytes): <url>`.
+   - Truncation: text > maxChars → cut + `\n… (truncated, showing first <n> of <total>
+     chars)`.
+3. **ToolExecutor:** `case "fetch_url"` → private `fetchUrlTool(call, url, maxChars)`;
+   plus **public** `fetchUrl(url, maxChars?)` thin wrapper so the `#fetch` tag path
+   reuses it (mirrors `codebaseSweep`/`collectDiagnostics`/`folderSweep`).
+4. **`#fetch <url>` tag** follows the `#problems` pattern: `extractFetchTag(text):
+   string | null` (regex `/#fetch(?!\w)\s+(\S+)/i`, first match, same-line URL;
+   `null` = absent or bare `#fetch` with no URL — a no-op, unlike `#folder`'s root
+   fallback); `formatFetchBlock(url, text)` (header `Fetched page: <url>`, body,
+   20,000-char cap with `… (truncated)` suffix, `""` when body empty).
+5. **Setting `llm.chat.fetch.enabled`** (boolean, default `true`) — mirrors
+   `llm.chat.problems.enabled`; tag runs regardless of `llm.tools.enabled`. The
+   **tool** is gated by the existing `llm.tools.enabled` (automatic via `CODE_TOOLS`).
+6. **No approval gate** — `isMutatingTool("fetch_url")` is false (read-only).
+7. **No webview change** — generic `.tool-card` renders `fetch_url` automatically.
+8. **No new dependencies** — Node 18+ global `fetch`, regex extraction.
+
+**Slices:**
+
+- **1.99-4.S1 — `src/fetchTool.ts` (new): pure fetch + HTML→text + cache.**
+  Files: `src/fetchTool.ts` (new), `scripts/smoke-test.js` (modify).
+  Implement design decision 2 (exports: `htmlToText`, `fetchUrl`, `clearFetchCache`,
+  `DEFAULT_MAX_CHARS`, `HARD_MAX_CHARS`, `CACHE_TTL_MS`, `CACHE_MAX_ENTRIES`,
+  `type FetchFn`).
+  Smoke (`fetch-s1:`, 8): (1) exports present + `DEFAULT_MAX_CHARS === 20000`;
+  (2) `htmlToText` on a full HTML fixture (script/style/head) === `"Title\nHello
+  world"`; (3) entity decoding `a&amp;b &lt;c&gt;` → `a&b <c>`; (4) `fetchUrl` with
+  injected `fetchFn` (200 `text/html`) → text, not tags; (5) second call with a
+  throwing `fetchFn` resolves cached text (fetchFn not invoked — counter); (6) 404
+  response → starts with `HTTP 404`; (7) `fetchUrl("not a url")` and
+  `fetchUrl("ftp://x")` → start with `Invalid URL`; (8) `maxChars: 10` on long body →
+  ends with `(truncated`, length bounded; `clearFetchCache()` callable.
+  Acceptance: compile clean; smoke 411 → 419.
+
+- **1.99-4.S2 — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `fetch_url` schema + executor case.**
+  Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js` (modify).
+  (a) `tools.ts`: append 13th `CODE_TOOLS` entry after `think`: `name: "fetch_url"`;
+  description: "Fetch a publicly accessible webpage and return its text content (HTML
+  converted to plain text). Use this to read documentation, API references, or any
+  public URL. The content is truncated to max_chars (default 20000). Read-only: does
+  not change the workspace."; params `url` (string, required) + `max_chars` (number,
+  "Optional maximum characters to return (default 20000, max 50000)");
+  `required: ["url"]`. No `isMutatingTool` change.
+  (b) `ToolExecutor.ts`: import `fetchUrl` from `../fetchTool`; `case "fetch_url":
+  return await this.fetchUrlTool(call, String(args.url ?? ""), typeof args.max_chars
+  === "number" ? args.max_chars : undefined);` before `default:`; private
+  `fetchUrlTool(call, url, maxChars)` → `this.result(call, await fetchUrl(url,
+  { maxChars }))`; **public** `async fetchUrl(url: string, maxChars?: number):
+  Promise<string>` thin wrapper (for the `#fetch` tag path).
+  Smoke (`fetch-s2:`, 3): (1) `CODE_TOOLS.length === 13`, `fetch_url` entry
+  `required: ["url"]` + `properties.url.type === "string"`,
+  `isMutatingTool("fetch_url") === false`; (2) **bump both existing guards**
+  `CODE_TOOLS.length === 12` → `13` (lines 474 and 2909); (3) `buildRequestBody`
+  `toolsEnabled: true` → `body.tools` contains `fetch_url`.
+  Acceptance: compile clean; smoke 419 → 422.
+
+- **1.99-4.S3 — `src/context.ts`: `extractFetchTag` + `formatFetchBlock` (pure).**
+  Files: `src/context.ts`, `scripts/smoke-test.js` (modify).
+  `extractFetchTag(text): string | null` — regex `/#fetch(?!\w)\s+(\S+)/i`, first
+  match, trimmed URL; `null` when absent or bare `#fetch` with no URL.
+  `FETCH_BLOCK_MAX_CHARS = 20000`; `formatFetchBlock(url, text)` — `""` when
+  `text.trim() === ""`; else `Fetched page: <url>\n\n<text>` with 20,000-char cap +
+  `… (truncated)` suffix.
+  Smoke (`fetch-s3:`, 3): (1) `extractFetchTag("please read #fetch
+  https://example.com/docs")` === the URL; absent → `null`; bare `#fetch` at end →
+  `null`; `#fetchfoo` no match; (2) `formatFetchBlock("https://x", "body")` starts
+  with `Fetched page: https://x` + contains `body`; empty body → `""`; (3) 25,000-char
+  body → length ≤ 20,050, ends with `(truncated)`.
+  Acceptance: compile clean; smoke 422 → 425.
+
+- **1.99-4.S4 — `#fetch` tag wiring + setting (FINAL).**
+  Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`,
+  `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`
+  (modify).
+  (a) `presets.ts`: `fetchEnabled: boolean` on `LlmSettings`.
+  (b) `config.ts`: `readSettings()` adds
+  `fetchEnabled: c.get<boolean>("chat.fetch.enabled", true)`.
+  (c) `ChatViewProvider.ts`: import `extractFetchTag`, `formatFetchBlock` from
+  `../context`; in `runStream` after the `#folder:` block (~line 1037–1050): if
+  `settings.fetchEnabled && lastUser`, `const u = extractFetchTag(lastUser.content)`;
+  if `u !== null`, `const fetched = await this.toolExecutor.fetchUrl(u)`;
+  `const fetchBlock = formatFetchBlock(u, fetched)`; append to `finalContextBlock`
+  (same `? + "\n\n" + :` pattern).
+  (d) `package.json`: `llm.chat.fetch.enabled` (boolean, default `true`, description:
+  "Allow the `#fetch <url>` tag to include webpage content in chat context. The page
+  is fetched over plain HTTP and converted to plain text (cached for 10 minutes).")
+  next to the other `llm.chat.*` entries.
+  (e) `smoke-test.js` (`fetch-s4:`, 1): static source assertion —
+  `out/chat/ChatViewProvider.js` contains `extractFetchTag` and `fetchUrl(`.
+  (f) `PROGRESS.md`: mark 1.99-4 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (**426
+  assertions**); setting visible in the settings UI.
+
+**Overall acceptance (Tester):** `npm run compile` clean; all **426** smoke
+assertions pass; with `llm.tools.enabled: true` the request body's `tools` includes
+`fetch_url` (13 built-in) and a `fetch_url` call runs without an approval card (even
+with `requireApproval: true`), with errors (bad URL, non-200, timeout, oversized)
+returned as error tool results (never a crash); `#fetch https://example.com` in any
+mode injects a `Fetched page: <url>` block (≤20,000 chars) into the system prompt,
+cached per URL for 10 min; `llm.chat.fetch.enabled: false` makes the tag inert; no
+webview changes, no new runtime dependencies.
+
+**Risks:** no network in smoke tests — all fetch behavior via injected `fetchFn`
+(real global-`fetch` path is a thin untested wrapper, same stance as `McpClient`
+spawn); outbound GET without approval (SSRF-ish via prompt injection — acceptable for
+a local dev tool; follow-up could add a host allowlist); regex-based HTML→text (no DOM
+parser, zero-dep constraint); cache is per-process, lost on reload.
 
 ## Done
 
