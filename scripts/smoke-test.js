@@ -471,10 +471,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 12, "tools: CODE_TOOLS has 12 tools");
+  assert(CODE_TOOLS.length === 13, "tools: CODE_TOOLS has 13 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,think",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,think,fetch_url",
     "tools: tool names in order",
   );
   assert(
@@ -595,7 +595,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 12,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 13,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -2906,12 +2906,12 @@ function assert(cond, label) {
     (t) => t.function.name === "think",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 12 &&
+    toolsS1.CODE_TOOLS.length === 13 &&
       thinkTool !== undefined &&
       JSON.stringify(thinkTool.function.parameters.required) ===
         JSON.stringify(["thought"]) &&
       thinkTool.function.parameters.properties.thought.type === "string",
-    "think-s1: CODE_TOOLS has 12 tools and think requires [thought] (string)",
+    "think-s1: CODE_TOOLS has 13 tools and think requires [thought] (string)",
   );
   assert(
     toolsS1.isMutatingTool("think") === false &&
@@ -2967,10 +2967,10 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(thinkBodyOn.tools) &&
-      thinkBodyOn.tools.length === 12 &&
+      thinkBodyOn.tools.length === 13 &&
       thinkBodyOn.tools.some((t) => t.function.name === "think") &&
       thinkBodyOn.tool_choice === "auto",
-    "think-s3: toolsEnabled=true → body.tools has 12 tools incl. think, tool_choice auto",
+    "think-s3: toolsEnabled=true → body.tools has 13 tools incl. think, tool_choice auto",
   );
   const thinkBodyOff = buildRequestBody(
     { settings: { ...settings, toolsEnabled: false }, toolbar },
@@ -3067,6 +3067,50 @@ function assert(cond, label) {
       truncated.length < longBody.length + 100 &&
       typeof fetchTool.clearFetchCache() === "undefined",
     "fetch-s1: maxChars truncation marker + clearFetchCache callable",
+  );
+
+  // 20b) Fetch tool schema + executor (1.99-4.S2)
+  const fetchToolEntry = toolsS1.CODE_TOOLS.find(
+    (t) => t.function.name === "fetch_url",
+  );
+  assert(
+    toolsS1.CODE_TOOLS.length === 13 &&
+      fetchToolEntry !== undefined &&
+      JSON.stringify(fetchToolEntry.function.parameters.required) ===
+        JSON.stringify(["url"]) &&
+      fetchToolEntry.function.parameters.properties.url.type === "string" &&
+      toolsS1.isMutatingTool("fetch_url") === false,
+    "fetch-s2: CODE_TOOLS has 13 tools; fetch_url requires [url] (string) and is not mutating",
+  );
+  const { ToolExecutor: FetchExecutor } = require(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+  );
+  const fetchExecutor = new FetchExecutor();
+  // Re-prime the cache (20's last assertion cleared it) so the executor
+  // call is a cache hit — no real network access in the smoke test.
+  await fetchTool.fetchUrl("http://example.com/a", { fetchFn: okFetch });
+  const fetchRes = await fetchExecutor.execute({
+    id: "f1",
+    type: "function",
+    function: {
+      name: "fetch_url",
+      arguments: JSON.stringify({ url: "http://example.com/a" }),
+    },
+  });
+  assert(
+    fetchRes.tool_call_id === "f1" &&
+      fetchRes.content.includes("hi there"),
+    "fetch-s2: fetch_url tool call executes via ToolExecutor (cache hit from 20)",
+  );
+  const fetchBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(fetchBody.tools) &&
+      fetchBody.tools.length === 13 &&
+      fetchBody.tools.some((t) => t.function.name === "fetch_url"),
+    "fetch-s2: toolsEnabled=true → body.tools has 13 tools incl. fetch_url",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

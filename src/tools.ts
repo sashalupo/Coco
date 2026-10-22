@@ -376,6 +376,32 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "fetch_url",
+      description:
+        "Fetch a publicly accessible webpage and return its text content " +
+        "(HTML converted to plain text). Use this to read documentation, API " +
+        "references, or any public URL. The content is truncated to " +
+        "max_chars (default 20000). Read-only: does not change the workspace.",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The http(s) URL to fetch.",
+          },
+          max_chars: {
+            type: "number",
+            description:
+              "Optional maximum characters to return (default 20000, max 50000).",
+          },
+        },
+        required: ["url"],
+      },
+    },
+  },
 ];
 
 /**

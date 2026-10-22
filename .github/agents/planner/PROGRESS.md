@@ -755,7 +755,7 @@ HTML→text extraction, size cap, per-URL in-memory cache. No headless browser.
   ends with `(truncated`, length bounded; `clearFetchCache()` callable.
   Acceptance: compile clean; smoke 411 → 419.
 
-- **1.99-4.S2 — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `fetch_url` schema + executor case.**
+- **1.99-4.S2 — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `fetch_url` schema + executor case.** — Done (2026-10-22, PASS, 422 assertions)
   Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js` (modify).
   (a) `tools.ts`: append 13th `CODE_TOOLS` entry after `think`: `name: "fetch_url"`;
   description: "Fetch a publicly accessible webpage and return its text content (HTML

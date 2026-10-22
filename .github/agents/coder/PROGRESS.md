@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-4 (Fetch tool `#fetch`) — S1 done (2026-10-22)
-- **Next step:** 1.99-4.S2 (`src/tools.ts` + `src/tools/ToolExecutor.ts`: fetch_url schema + executor case)
+- **Current item:** 1.99-4 (Fetch tool `#fetch`) — S2 done (2026-10-22)
+- **Next step:** 1.99-4.S3 (`src/context.ts`: extractFetchTag + formatFetchBlock)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (419 PASS lines, incl. 8 `fetch-s1:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (422 PASS lines, incl. 8 `fetch-s1:` + 3 `fetch-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-4.S2** (2026-10-22) — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `fetch_url` tool schema + executor case. Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools.ts`: appended 13th `CODE_TOOLS` entry after `think` — `fetch_url` with description (public webpage → plain text, truncated to `max_chars` default 20000, read-only), parameters `url` (string, required) + `max_chars` (number, optional, default 20000 / max 50000); `isMutatingTool` untouched (`fetch_url` is read-only).
+  - `src/tools/ToolExecutor.ts`: (a) `import { fetchUrl } from "../fetchTool"`; (b) `case "fetch_url": return await this.fetchUrlTool(call, String(args.url ?? ""), typeof args.max_chars === "number" ? args.max_chars : undefined);` before `default:`; (c) public `async fetchUrl(url: string, maxChars?: number): Promise<string>` thin wrapper over the pure module (for the `#fetch` tag path in S3); (d) private `async fetchUrlTool(call, url, maxChars?): Promise<ToolResult>` → `this.result(call, await this.fetchUrl(url, maxChars))`.
+  - `scripts/smoke-test.js`: new section `// 20b) Fetch tool schema + executor (1.99-4.S2)` with 3 `fetch-s2:` assertions: (a) `CODE_TOOLS.length === 13`, `fetch_url` entry has `required: ["url"]` + `properties.url.type === "string"`, `isMutatingTool("fetch_url") === false`; (b) `ToolExecutor.execute` of a `fetch_url` call → `tool_call_id === "f1"` and content includes `"hi there"` (cache re-primed via injected `fetchFn` since 20's last assertion cleared it — no real network); (c) `buildRequestBody` with `toolsEnabled: true` → `body.tools` has 13 tools incl. `fetch_url`. Bumped all existing count guards 12 → 13: line ~474 (`tools: CODE_TOOLS has 13 tools`), joined-names assertion now ends `...,notebook_edit,think,fetch_url`, line ~598 (`toolBody.tools.length === 13`), `think-s1` guard (13 tools), `think-s3` guard (13 tools incl. think). Total PASS lines now 422 (419 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 422 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-4.S1** (2026-10-22) — `src/fetchTool.ts` (NEW): pure fetch + HTML→text + cache. Files: `src/fetchTool.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/fetchTool.ts` (new, pure — no `vscode` import, mirrors `src/notebook.ts` style): exports `type FetchFn` (injectable, defaults to global `fetch`), `htmlToText` (strip script/style blocks case-insensitive non-greedy; `<br>`/`</p>`/`</div>`/`</li>`/`</h1>`–`</h6>`/`</tr>` → `\n`; remove remaining tags; decode `&amp; &lt; &gt; &quot; &#39;`; collapse 3+ newlines to 2, trim lines + result), `fetchUrl(url, { maxChars?, fetchFn? })` — `DEFAULT_MAX_CHARS = 20000`, `HARD_MAX_CHARS = 50000` (clamp to `[1, 50000]`), `TIMEOUT_MS = 15000` via `AbortSignal.timeout`, `MAX_RESPONSE_BYTES = 2_000_000` (arrayBuffer, reject if larger); module-level `Map` cache (`CACHE_TTL_MS = 600_000`, `CACHE_MAX_ENTRIES = 20` FIFO via Map insertion order, successful fetches only, key = URL string); `content-type` containing `text/html` → `htmlToText`, else raw text; never throws — returns `Invalid URL: <url>` (bad `new URL()` or non-http(s) scheme), `Fetch failed: <msg>`, `HTTP <status> <statusText> for <url>`, `Response too large (>2000000 bytes): <url>`; truncation appends `\n… (truncated, showing first <n> of <total> chars)`; `clearFetchCache()` empties the map.
   - `scripts/smoke-test.js`: new section `// 20) Fetch tool (1.99-4.S1)` requiring `out/fetchTool.js`, `clearFetchCache()` at section start; 8 `fetch-s1:` assertions: exports + `DEFAULT_MAX_CHARS === 20000`; `htmlToText` full-doc → `"Title\nHello world"`; entity decode; injected `fetchFn` 200 `text/html` → plain text (no tags); cache hit (throwing `fetchFn` never invoked, same text returned); 404 → `HTTP 404` prefix; `"not a url"` + `"ftp://x"` → `Invalid URL` prefix; `maxChars: 10` truncation marker + `clearFetchCache` callable. Total PASS lines now 419 (411 + 8).

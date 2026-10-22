@@ -12,12 +12,26 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-4.S1 (pure fetchTool module) — **PASS** (2026-10-22)
-- **Next step:** verify next slice of 1.99-2 (per planner backlog)
+- **Current item:** 1.99-4.S2 (fetch_url schema + executor case) — **PASS** (2026-10-22)
+- **Next step:** verify next slice of 1.99-4 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** 62d0036 (orchestrator: 1.99-4 plan)
-- **Build state:** 419/419 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** e6017e9 (coder: 1.99-4.S1)
+- **Build state:** 422/422 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-4.S2 — fetch_url schema + executor case (src/tools.ts, src/tools/ToolExecutor.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **422 PASS lines** (419 prior + 3 new `fetch-s2:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 422 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 20b) Fetch tool schema + executor (1.99-4.S2)` section has 3 genuine `fetch-s2:` assertions: (a) `CODE_TOOLS.length === 13` + `fetch_url` `required` deep-equal `["url"]` + `properties.url.type === "string"` + `isMutatingTool("fetch_url") === false`; (b) real `ToolExecutor.execute({name:"fetch_url"})` call → cache hit (no network), `tool_call_id === "f1"`, content includes `"hi there"`; (c) `buildRequestBody` `toolsEnabled: true` → `body.tools.length === 13` incl. `fetch_url`. PASS
+  - (4) Regression guards bumped 12 → 13 in exactly 5 places (CODE_TOOLS.length ~L474, joined-names list now ends `...,think,fetch_url` ~L477, `toolBody.tools.length` ~L598, `think-s1` ~L2909, `think-s3` ~L2970); no assertion logic weakened. PASS
+  - (5) Source: `git diff src/tools.ts` = 1 hunk +26/−0 — `fetch_url` entry appended after `think`; `isMutatingTool` unchanged. `git diff src/tools/ToolExecutor.ts` = 3 hunks, +42/−0, purely additive: `fetchUrl` import from `../fetchTool`, `case "fetch_url":` before `default:`, new public `async fetchUrl(url, maxChars?)` wrapper + private `fetchUrlTool`; `countOccurrences` and all pre-existing code byte-identical (zero deletions — mid-edit hiccup left no trace). PASS
+  - (6) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/tools.ts`, ` M src/tools/ToolExecutor.ts`. `package-lock.json` untouched. PASS
+  - (7) `git log --oneline -1` → `e6017e9` (feat(llm): fetch tool — pure fetchTool module (1.99-4.S1)). No coder commit. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-4.S1 — pure fetchTool module (src/fetchTool.ts) (2026-10-22) — **PASS**
 

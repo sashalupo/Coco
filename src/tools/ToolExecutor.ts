@@ -15,6 +15,7 @@ import { unifiedDiff, diffStats } from "../diff";
 import { scanForSecrets } from "../secrets";
 import { applyNotebookEdit } from "../notebook";
 import { formatCodebaseSweep, formatFolderBlock } from "../context";
+import { fetchUrl } from "../fetchTool";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -334,6 +335,12 @@ export class ToolExecutor {
           );
         case "think":
           return this.think(call, String(args.thought ?? ""));
+        case "fetch_url":
+          return await this.fetchUrlTool(
+            call,
+            String(args.url ?? ""),
+            typeof args.max_chars === "number" ? args.max_chars : undefined,
+          );
         default:
           return this.result(call, `Unknown tool: ${name}`);
       }
@@ -1186,6 +1193,24 @@ export class ToolExecutor {
       idx = haystack.indexOf(needle, idx + needle.length);
     }
     return count;
+  }
+
+  /**
+   * Fetch a public URL and return its text content (1.99-4). Thin wrapper
+   * over the pure `fetchTool` module; never throws — failures come back as
+   * error strings the engine can read.
+   */
+  public async fetchUrl(url: string, maxChars?: number): Promise<string> {
+    return fetchUrl(url, { maxChars });
+  }
+
+  /** Execute the `fetch_url` tool call. */
+  private async fetchUrlTool(
+    call: ToolCall,
+    url: string,
+    maxChars?: number,
+  ): Promise<ToolResult> {
+    return this.result(call, await this.fetchUrl(url, maxChars));
   }
 
   /** Echo a thought back (no I/O, no state). */
