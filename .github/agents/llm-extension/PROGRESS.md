@@ -12,11 +12,31 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 19 complete** — Compact conversation (19.1 done)
+- **Current phase:** **Phase 20 complete** — Tag file (@filename references) (20.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `20229a4` — feat(llm): compact conversation history (Phase 19.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); compact verified
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); extractTaggedFiles unit-checked
+
+> **Phase 20 — Tag file (@filename references) (2026-10-22):**
+>
+> The user can reference files in a chat message with `@filename` (e.g.
+> `@src/foo.ts`). The host reads those files and injects their contents into
+> the system prompt as "Tagged file" sections, so the model can see them
+> without the user having to open them. Unreadable / out-of-workspace paths
+> are skipped silently.
+>
+> - `context.ts`: new `extractTaggedFiles(text)` pure helper (regex
+>   `@([A-Za-z0-9_.\-/]+)`, deduped, order-preserving). `ContextInput`
+>   gains `taggedFiles?: ContextFile[]`; `buildContextBlock` renders each as
+>   a `Tagged file: path` fenced section.
+> - `ChatViewProvider.runStream`: after gathering editor context, extracts
+>   `@` tags from the last user message, resolves each via `resolveSafe`,
+>   reads the file, and attaches them as `ctxInput.taggedFiles`.
+>
+> **Note:** the `inline suggestion (autocomplete)` backlog item was already
+> implemented (Phase 3: `InlineCompletionProvider` + `llm.inline.enabled`
+> setting) — marked done in `todo.md`.
 
 > **Phase 19 — Compact conversation (2026-10-22):**
 >

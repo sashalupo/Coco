@@ -46,6 +46,31 @@ export interface ContextInput {
   file?: ContextFile;
   selection?: ContextSelection;
   diagnostics?: ContextDiagnostic[];
+  /** Files explicitly tagged by the user via @filename references. */
+  taggedFiles?: ContextFile[];
+}
+
+/**
+ * Extract `@filename` references from a user message. A tag is `@` followed
+ * by a path-like token (letters, digits, `.`, `_`, `-`, `/`). Returns the
+ * unique file paths in order of first appearance. Pure and testable.
+ */
+export function extractTaggedFiles(text: string): string[] {
+  if (!text) {
+    return [];
+  }
+  const re = /@([A-Za-z0-9_.\-/]+)/g;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const p = m[1];
+    if (!seen.has(p)) {
+      seen.add(p);
+      out.push(p);
+    }
+  }
+  return out;
 }
 
 /**
@@ -53,7 +78,7 @@ export interface ContextInput {
  *
  * Returns an empty string when nothing is provided, so callers can safely
  * skip injection. Sections are emitted in a stable order: file, selection,
- * diagnostics.
+ * diagnostics, tagged files.
  */
 export function buildContextBlock(input: ContextInput): string {
   const sections: string[] = [];
@@ -79,6 +104,15 @@ export function buildContextBlock(input: ContextInput): string {
       (d) => `- [${d.severity}] ${d.line}:${d.column} — ${d.message}`,
     );
     sections.push(`Diagnostics:\n${lines.join("\n")}`);
+  }
+
+  if (input.taggedFiles && input.taggedFiles.length > 0) {
+    for (const tf of input.taggedFiles) {
+      const header = tf.language
+        ? `Tagged file: ${tf.path} (${tf.language})`
+        : `Tagged file: ${tf.path}`;
+      sections.push(`${header}\n\`\`\`\n${tf.content}\n\`\`\``);
+    }
   }
 
   return sections.join("\n\n");

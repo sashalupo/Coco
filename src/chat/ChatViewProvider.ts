@@ -21,7 +21,12 @@ import {
   type ChatCompletionRequest,
   type ChatMessage,
 } from "../request";
-import { buildContextBlock, type ContextInput } from "../context";
+import {
+  buildContextBlock,
+  extractTaggedFiles,
+  type ContextFile,
+  type ContextInput,
+} from "../context";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
 import { changedNewLines, unifiedDiff } from "../diff";
@@ -825,9 +830,34 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       // it into the system prompt so the model can see what the user is
       // looking at. Each section is gated by the toolbar's context flags.
       // Empty context is a no-op.
-      const contextBlock = buildContextBlock(
-        this.gatherContext(toolbar.contextFlags),
-      );
+      const ctxInput = this.gatherContext(toolbar.contextFlags);
+
+      // Phase 20: extract @filename tags from the last user message and
+      // read those files into the context.
+      const lastUser = [...this.history].reverse().find((m) => m.role === "user");
+      if (lastUser) {
+        const tagged = extractTaggedFiles(lastUser.content);
+        if (tagged.length > 0) {
+          const taggedFiles: ContextFile[] = [];
+          for (const relPath of tagged) {
+            const abs = await this.toolExecutor.resolveSafe(relPath);
+            if (!abs) {
+              continue; // outside workspace — skip silently
+            }
+            try {
+              const content = await fs.promises.readFile(abs, "utf8");
+              taggedFiles.push({ path: relPath, content });
+            } catch {
+              // unreadable — skip
+            }
+          }
+          if (taggedFiles.length > 0) {
+            ctxInput.taggedFiles = taggedFiles;
+          }
+        }
+      }
+
+      const contextBlock = buildContextBlock(ctxInput);
       systemPrompt = this.composeSystemPrompt(
         settings.systemPrompt,
         contextBlock,
