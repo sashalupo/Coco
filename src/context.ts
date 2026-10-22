@@ -341,3 +341,55 @@ export function formatFolderBlock(
     block.slice(0, FOLDER_BLOCK_MAX_CHARS) + FOLDER_BLOCK_TRUNCATED_SUFFIX
   );
 }
+
+// ---------------------------------------------------------------------------
+// #fetch tag (1.99-4): attach a fetched web page as chat context. The actual
+// fetch (network) is wired up in a later slice; these functions only parse
+// the tag and render the block.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#fetch` tag URL from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#fetch` occurrence
+ * (`#fetchfoo` does NOT match; `#Fetch` DOES). Returns the trimmed URL
+ * token (first non-whitespace run) after the tag, or `null` when the tag
+ * is absent or bare (no URL follows). Pure and testable.
+ */
+export function extractFetchTag(text: string): string | null {
+  const m = /#fetch(?!\w)\s+(\S+)/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  return m[1].trim();
+}
+
+/** Hard cap for the rendered fetch block. */
+export const FETCH_BLOCK_MAX_CHARS = 20000;
+const FETCH_BLOCK_TRUNCATED_SUFFIX = "… (truncated)";
+
+/**
+ * Render a `#fetch` result as a stable context block:
+ *
+ * ```
+ * Fetched page: <url>
+ *
+ * <text>
+ * ```
+ *
+ * The whole block is truncated to `FETCH_BLOCK_MAX_CHARS` chars with a
+ * `… (truncated)` suffix. Returns `""` when `text` is empty/whitespace.
+ * Pure and testable.
+ */
+export function formatFetchBlock(url: string, text: string): string {
+  if (text.trim() === "") {
+    return "";
+  }
+  const block = `Fetched page: ${url}\n\n${text}`;
+  if (block.length <= FETCH_BLOCK_MAX_CHARS) {
+    return block;
+  }
+  return (
+    block.slice(0, FETCH_BLOCK_MAX_CHARS) + FETCH_BLOCK_TRUNCATED_SUFFIX
+  );
+}

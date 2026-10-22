@@ -12,12 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-4.S2 (fetch_url schema + executor case) — **PASS** (2026-10-22)
+- **Current item:** 1.99-4.S3 (extractFetchTag + formatFetchBlock) — **PASS** (2026-10-22)
 - **Next step:** verify next slice of 1.99-4 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** e6017e9 (coder: 1.99-4.S1)
-- **Build state:** 422/422 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 23e40d4 (coder: 1.99-4.S2)
+- **Build state:** 425/425 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-4.S3 — extractFetchTag + formatFetchBlock (src/context.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **425 PASS lines** (422 prior + 3 new `fetch-s3:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 425 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 20c) Fetch tag context (1.99-4.S3)` section (single diff hunk, +30/−0) has 3 genuine `fetch-s3:` assertions vs `out/context.js`: (a) `extractFetchTag("please read #fetch https://example.com/docs") === "https://example.com/docs"` + `null` for absent / bare-at-end / `#fetchfoo`; (b) `formatFetchBlock("https://x","body")` starts with `Fetched page: https://x` + contains `body`, whitespace-only → `""`; (c) 25,000-char body → `length <= 20050` + `endsWith("(truncated)")` + `FETCH_BLOCK_MAX_CHARS === 20000`. PASS
+  - (4) Source: `git diff src/context.ts` = 1 hunk +52/−0, purely additive after `formatFolderBlock` (`#folder` section): `extractFetchTag` with regex `/#fetch(?!\w)\s+(\S+)/i`, `FETCH_BLOCK_MAX_CHARS = 20000`, `formatFetchBlock` with `""` for whitespace-only and `… (truncated)` suffix; no pre-existing code modified/deleted; no `vscode` import added (file remains pure). PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/context.ts`. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `23e40d4` (feat(llm): fetch tool — fetch_url schema + executor case (1.99-4.S2)). No coder commit. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-4.S2 — fetch_url schema + executor case (src/tools.ts, src/tools/ToolExecutor.ts) (2026-10-22) — **PASS**
 

@@ -3113,6 +3113,36 @@ function assert(cond, label) {
     "fetch-s2: toolsEnabled=true → body.tools has 13 tools incl. fetch_url",
   );
 
+  // 20c) Fetch tag context (1.99-4.S3)
+  const {
+    extractFetchTag,
+    formatFetchBlock,
+    FETCH_BLOCK_MAX_CHARS,
+  } = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    extractFetchTag("please read #fetch https://example.com/docs") ===
+      "https://example.com/docs" &&
+      extractFetchTag("no tag here") === null &&
+      extractFetchTag("end with #fetch") === null &&
+      extractFetchTag("#fetchfoo https://x") === null,
+    "fetch-s3: extractFetchTag returns URL, null when absent/bare/#fetchfoo",
+  );
+  const fetchBlock = formatFetchBlock("https://x", "body");
+  assert(
+    fetchBlock.startsWith("Fetched page: https://x") &&
+      fetchBlock.includes("body") &&
+      formatFetchBlock("https://x", "   ") === "",
+    "fetch-s3: formatFetchBlock renders header+body, empty text → ''",
+  );
+  const longFetchBody = "y".repeat(25000);
+  const longFetchBlock = formatFetchBlock("https://x", longFetchBody);
+  assert(
+    longFetchBlock.length <= 20050 &&
+      longFetchBlock.endsWith("(truncated)") &&
+      FETCH_BLOCK_MAX_CHARS === 20000,
+    "fetch-s3: 25k-char body truncated to ≤20050 chars ending with (truncated)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

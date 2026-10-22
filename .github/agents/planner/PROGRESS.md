@@ -777,7 +777,7 @@ HTML→text extraction, size cap, per-URL in-memory cache. No headless browser.
   `toolsEnabled: true` → `body.tools` contains `fetch_url`.
   Acceptance: compile clean; smoke 419 → 422.
 
-- **1.99-4.S3 — `src/context.ts`: `extractFetchTag` + `formatFetchBlock` (pure).**
+- **1.99-4.S3 — `src/context.ts`: `extractFetchTag` + `formatFetchBlock` (pure).** — Done (2026-10-22, PASS, 425 assertions)
   Files: `src/context.ts`, `scripts/smoke-test.js` (modify).
   `extractFetchTag(text): string | null` — regex `/#fetch(?!\w)\s+(\S+)/i`, first
   match, trimmed URL; `null` when absent or bare `#fetch` with no URL.

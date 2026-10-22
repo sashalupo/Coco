@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-4 (Fetch tool `#fetch`) — S2 done (2026-10-22)
-- **Next step:** 1.99-4.S3 (`src/context.ts`: extractFetchTag + formatFetchBlock)
+- **Current item:** 1.99-4 (Fetch tool `#fetch`) — S3 done (2026-10-22)
+- **Next step:** 1.99-4.S4 (FINAL: `#fetch` tag wiring in ChatViewProvider + `llm.chat.fetch.enabled` setting)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (422 PASS lines, incl. 8 `fetch-s1:` + 3 `fetch-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (425 PASS lines, incl. 8 `fetch-s1:` + 3 `fetch-s2:` + 3 `fetch-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-4.S3** (2026-10-22) — `src/context.ts`: `extractFetchTag` + `formatFetchBlock` (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/context.ts`: appended a `#fetch` tag section after the `#folder` section, matching existing style (JSDoc, `(?!\w)` word-bound regex, `… (truncated)` suffix pattern): (a) `export function extractFetchTag(text: string): string | null` — regex `/#fetch(?!\w)\s+(\S+)/i`, returns first match's trimmed URL token, `null` when absent, bare (no URL), or `#fetchfoo` (guard prevents); (b) `export const FETCH_BLOCK_MAX_CHARS = 20000;` + private `FETCH_BLOCK_TRUNCATED_SUFFIX = "… (truncated)"`; (c) `export function formatFetchBlock(url: string, text: string): string` — `""` when `text.trim() === ""`, else `Fetched page: <url>\n\n<text>` capped at `FETCH_BLOCK_MAX_CHARS` with the truncated suffix.
+  - `scripts/smoke-test.js`: new section `// 20c) Fetch tag context (1.99-4.S3)` requiring `out/context.js` (existing pattern); 3 `fetch-s3:` assertions: (a) `extractFetchTag` URL / absent→null / bare-at-end→null / `#fetchfoo`→null; (b) `formatFetchBlock("https://x","body")` starts with `Fetched page: https://x` + contains `body`, whitespace-only text → `""`; (c) 25,000-char body → length ≤ 20050, ends with `(truncated)`, `FETCH_BLOCK_MAX_CHARS === 20000`. Total PASS lines now 425 (422 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 425 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-4.S2** (2026-10-22) — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `fetch_url` tool schema + executor case. Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools.ts`: appended 13th `CODE_TOOLS` entry after `think` — `fetch_url` with description (public webpage → plain text, truncated to `max_chars` default 20000, read-only), parameters `url` (string, required) + `max_chars` (number, optional, default 20000 / max 50000); `isMutatingTool` untouched (`fetch_url` is read-only).
   - `src/tools/ToolExecutor.ts`: (a) `import { fetchUrl } from "../fetchTool"`; (b) `case "fetch_url": return await this.fetchUrlTool(call, String(args.url ?? ""), typeof args.max_chars === "number" ? args.max_chars : undefined);` before `default:`; (c) public `async fetchUrl(url: string, maxChars?: number): Promise<string>` thin wrapper over the pure module (for the `#fetch` tag path in S3); (d) private `async fetchUrlTool(call, url, maxChars?): Promise<ToolResult>` → `this.result(call, await this.fetchUrl(url, maxChars))`.
