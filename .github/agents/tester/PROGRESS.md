@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-12 (completions model quick pick) — S2 verified
-- **Next step:** verify 1.98-12 S3
+- **Current item:** 1.98-12 (completions model quick pick) — S3 verified
+- **Next step:** verify 1.98-12 S4
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** 332/332 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
@@ -221,6 +221,17 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** only the 5 in-scope files (+ `ninfer` marker, ignored). PASS
 - **Note:** fallback bug (unconditional override → empty `model` omitted from request body) found by orchestrator, fixed by Coder before verification.
 
+### 1.98-12.S3 — `llm.changeCompletionsModel` QuickPick command in `src/extension.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **337 assertions** (332 prior + 5 new `compm-s3:` in subsection 15c; 0 FAIL).
+- **Command registration:** `src/extension.ts:124` `vscode.commands.registerCommand("llm.changeCompletionsModel", async () => {` — inside the `context.subscriptions.push(...)` block, immediately after the `llm.commitChanges` registration (line 121). PASS
+- **QuickPick list:** `buildCompletionsModelList` imported from `./presets` (line 10); items built at line 136 via `buildCompletionsModelList(current, chatModel, engineModels).map(...)`; default entry (`o.value === ""`) → `label: "$(symbol-inherit) Use chat model (default)"`; `description: o.picked ? "active" : undefined`. PASS
+- **Engine-unreachable fallback:** `client.listModels()` wrapped in try/catch (lines 129–135); on failure `showWarningMessage("LLM engine unreachable — showing configured models only.")` and list built from empty `engineModels` (initialized `[]`). PASS
+- **Setting write:** `if (!picked) { return; }` cancel no-op (no write, no info message); `target = workspaceFolders ? ConfigurationTarget.Workspace : ConfigurationTarget.Global`; `await cfg.update("completions.model", picked.value, target)`. PASS
+- **Smoke 15c:** 5 genuine static assertions (`compm-s3:`, lines 2234–2260) on `src/extension.ts` source: contains `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`. Not tautologies. PASS
+- **Scope check:** `git status --short` (ignoring `ninfer` submodule marker) → only `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -231,6 +242,7 @@ acceptance checks, and reports a clear pass/fail.
 
 - [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S2** — `completionsModel` field + provider wiring (fallback fix) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12.S3** — `llm.changeCompletionsModel` QuickPick command — **PASS** (2026-10-22, see Verifications)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -259,6 +271,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-10** — `#folder:` tag — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S2** — `completionsModel` field + provider wiring (fallback fix) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12.S3** — `llm.changeCompletionsModel` QuickPick command — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

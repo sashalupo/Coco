@@ -7,6 +7,7 @@ import { readSettings } from "./config";
 import { ChatViewProvider } from "./chat/ChatViewProvider";
 import { InlineCompletionProvider } from "./inline/InlineCompletionProvider";
 import { CodeActionProvider } from "./codeaction/CodeActionProvider";
+import { buildCompletionsModelList } from "./presets";
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -119,6 +120,42 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("llm.commitChanges", () => {
       void provider.commitChanges();
+    }),
+    vscode.commands.registerCommand("llm.changeCompletionsModel", async () => {
+      const cfg = vscode.workspace.getConfiguration("llm");
+      const current = cfg.get<string>("completions.model", "");
+      const chatModel = cfg.get<string>("model", "");
+      let engineModels: string[] = [];
+      try {
+        engineModels = (await client.listModels()).data.map((m) => m.id);
+      } catch {
+        vscode.window.showWarningMessage(
+          "LLM engine unreachable — showing configured models only.",
+        );
+      }
+      const items = buildCompletionsModelList(current, chatModel, engineModels).map(
+        (o) => ({
+          label: o.value === "" ? "$(symbol-inherit) Use chat model (default)" : o.value,
+          description: o.picked ? "active" : undefined,
+          value: o.value,
+        }),
+      );
+      const picked = await vscode.window.showQuickPick(items, {
+        placeHolder: "Model for inline code completions",
+        title: "Change Completions Model",
+      });
+      if (!picked) {
+        return; // cancelled
+      }
+      const target = vscode.workspace.workspaceFolders
+        ? vscode.ConfigurationTarget.Workspace
+        : vscode.ConfigurationTarget.Global;
+      await cfg.update("completions.model", picked.value, target);
+      vscode.window.showInformationMessage(
+        picked.value === ""
+          ? "Inline completions will use the chat model."
+          : `Inline completions will use model: ${picked.value}`,
+      );
     }),
   );
 }

@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-12** — Change Completions Model command (VS Code 1.98)
-- **Current slice:** **1.98-12.S3** — `src/extension.ts`: `llm.changeCompletionsModel` QuickPick command
+- **Current slice:** **1.98-12.S4** (final) — `package.json`: `llm.completions.model` setting + `llm.changeCompletionsModel` command contributions + smoke 15d
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-12.S3, then Tester
+- **Next step:** dispatch Coder for slice 1.98-12.S4, then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `3c03b59` — feat(llm): Change Completions Model — completionsModel setting + inline provider wiring (1.98-12.S2)
-- **Build state:** compiles clean; smoke test passes (332 assertions); 1.98-12.S1–S2 verified
+- **Last commit:** `b13e1c1` — chore(llm): update orchestrator PROGRESS.md after 1.98-12.S2
+- **Build state:** compiles clean; smoke test passes (337 assertions); 1.98-12.S1–S3 verified
 
 ## Team
 
@@ -67,6 +67,7 @@ pending item** (the oldest).
 - **1.98-12 plan** (2026-10-22) — Planner produced 4-slice plan: Change Completions Model command — pure `buildCompletionsModelList` in `src/presets.ts`, `completionsModel` setting (`llm.completions.model`, empty → chat model fallback) + InlineCompletionProvider wiring, `llm.changeCompletionsModel` QuickPick command in `extension.ts` (workspace-scope write), package.json contributions + smoke. Plan recorded in planner PROGRESS.md. Commit `5d2517d`.
 - **1.98-12.S1** (2026-10-22) — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList` (default entry first, dedup by value, `picked` on active); 8 `compm-s1:` smoke assertions. Tester PASS. Commit `f33c3a4`.
 - **1.98-12.S2** (2026-10-22) — `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts`: `completionsModel` field (`llm.completions.model`, default `""`) + conditional model override in the inline provider (empty → keeps `llm.model`); 5 `compm-s2:` smoke assertions. Fallback bug (unconditional override) found by orchestrator, fixed by Coder before verification. Tester PASS. Commit `3c03b59`.
+- **1.98-12.S3** (2026-10-22) — `src/extension.ts`: `llm.changeCompletionsModel` QuickPick command (registered after `llm.commitChanges`; list via `buildCompletionsModelList`; engine-unreachable → warning + configured-only list; cancel = no-op; write to `ConfigurationTarget.Workspace`/`Global`); 5 `compm-s3:` smoke assertions. Tester PASS. Commit pending.
 
 ## Tags (changelog-version tags on completed items)
 

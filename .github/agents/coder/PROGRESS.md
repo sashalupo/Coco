@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-12.S2 done — `completionsModel` setting field + inline provider wiring (fallback bug fixed)
-- **Next step:** 1.98-12.S3 (per planner plan in `.github/agents/planner/PROGRESS.md`)
+- **Current step:** 1.98-12.S3 done — `llm.changeCompletionsModel` QuickPick command in `src/extension.ts`
+- **Next step:** 1.98-12.S4 (per planner plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (332 assertions, incl. 5 new `compm-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (337 assertions, incl. 5 new `compm-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-12.S3** (2026-10-22) — `llm.changeCompletionsModel` QuickPick command. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: added `import { buildCompletionsModelList } from "./presets";` (new import — no prior `./presets` import existed). Registered `llm.changeCompletionsModel` in the existing `context.subscriptions.push(...)` block, AFTER `llm.commitChanges`: reads `completions.model` + `model` from the `llm` config; fetches engine models via `client.listModels()` (`.data.map((m) => m.id)` — `ModelInfo.id` confirmed in `src/client.ts`), on failure shows warning "LLM engine unreachable — showing configured models only." and continues with `[]`; builds QuickPick items from `buildCompletionsModelList(current, chatModel, engineModels)` (default entry labeled `$(symbol-inherit) Use chat model (default)`, `description: "active"` on the picked one); `showQuickPick` with placeHolder "Model for inline code completions" / title "Change Completions Model"; cancel → return; target = `ConfigurationTarget.Workspace` when `workspaceFolders` else `Global`; `cfg.update("completions.model", picked.value, target)`; info message "Inline completions will use the chat model." (empty) or `Inline completions will use model: <value>`.
+  - `scripts/smoke-test.js`: new subsection `// 15c) change completions model (1.98-12.S3)` with 5 static source checks (`compm-s3:` labels) on a fresh `extensionSrc` read of `src/extension.ts`: contains `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **337 assertions** (332 prior + 5 new `compm-s3:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-12.S2** (2026-10-22) — `completionsModel` setting field + inline provider wiring. Files: `src/presets.ts`, `src/config.ts`, `src/inline/InlineCompletionProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: added `completionsModel: string;` to `LlmSettings` (after `folderContextEnabled`), doc comment "Model for inline completions. Empty = use the main chat model."
   - `src/config.ts`: `readSettings()` now returns `completionsModel: c.get<string>("completions.model", "")` (after `folderContextEnabled`).

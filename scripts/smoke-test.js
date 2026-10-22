@@ -2232,6 +2232,32 @@ function assert(cond, label) {
     "compm-s2: InlineCompletionProvider guards empty completionsModel (keeps llm.model)",
   );
 
+  // 15c) change completions model (1.98-12.S3): QuickPick command in extension.ts.
+  const extensionSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    extensionSrc.includes("llm.changeCompletionsModel"),
+    "compm-s3: extension.ts registers llm.changeCompletionsModel",
+  );
+  assert(
+    extensionSrc.includes("buildCompletionsModelList"),
+    "compm-s3: extension.ts uses buildCompletionsModelList",
+  );
+  assert(
+    extensionSrc.includes("showQuickPick"),
+    "compm-s3: extension.ts shows a QuickPick",
+  );
+  assert(
+    extensionSrc.includes("completions.model"),
+    "compm-s3: extension.ts reads/writes completions.model",
+  );
+  assert(
+    extensionSrc.includes("ConfigurationTarget.Workspace"),
+    "compm-s3: extension.ts writes to workspace target when available",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
