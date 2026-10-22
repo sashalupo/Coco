@@ -137,22 +137,87 @@ function nextCellId(existing: Record<string, unknown>[]): string {
 
 /**
  * Build a minimal valid nbformat-4 notebook JSON string from `source`, which
- * is split on the `<<<CELL>>>` marker line into cells (default type `code`).
+ * is split on typed cell markers (`<<<CELL>>>` or `<<<CELL:markdown>>>`) into
+ * cells. Cell 0 is always `code`. Each marker starts a new cell of its type
+ * (default `code`). Whitespace-only cell sources are dropped.
  * Each cell gets a stable `cell-<index>` id (nbformat 4.5) so diffs can be
  * computed against it.
  */
 export function createNotebook(source: string): string {
-  const chunks = source
-    .split(new RegExp(`^\\s*${CELL_MARKER}\\s*$`, "gm"))
-    .map((s) => s.replace(/^\n+/, ""));
-  const cells = chunks.map((src, i) => ({
-    id: `cell-${i}`,
-    cell_type: "code",
-    execution_count: null,
-    metadata: {},
-    outputs: [],
-    source: src,
-  }));
+  // Trailing `[ \t]*` (not `\s*`) so the regex does not consume the newline
+  // ending the marker line; `cellStart` skips it explicitly.
+  const markerRe = /^\s*<<<CELL(?::(markdown|code))?>>>[ \t]*$/gm;
+  const matches = [...source.matchAll(markerRe)];
+  const cells: {
+    id: string;
+    cell_type: "code" | "markdown";
+    execution_count: null;
+    metadata: Record<string, unknown>;
+    outputs: unknown[];
+    source: string;
+  }[] = [];
+
+  // Index just past the marker line: the regex's trailing `\s*$` backtracks
+  // and does not consume the newline ending the marker line, so skip it
+  // explicitly to start the cell source on the next line.
+  const cellStart = (m: RegExpMatchArray): number => {
+    const i0 = (m.index ?? 0) + m[0].length;
+    if (source.startsWith("\r\n", i0)) return i0 + 2;
+    if (source[i0] === "\n") return i0 + 1;
+    return i0;
+  };
+
+  // Trim leading newlines (marker line boundary) and trailing newlines
+  // (newline ending the line before the next marker).
+  const cleanSource = (s: string): string =>
+    s.replace(/^\n+/, "").replace(/\n+$/, "");
+
+  if (matches.length === 0) {
+    // No markers: single code cell (drop if whitespace-only)
+    const src = cleanSource(source);
+    if (src.trim().length > 0) {
+      cells.push({
+        id: `cell-0`,
+        cell_type: "code",
+        execution_count: null,
+        metadata: {},
+        outputs: [],
+        source: src,
+      });
+    }
+  } else {
+    // Cell 0: text before the first marker (always code)
+    const src0 = cleanSource(source.slice(0, matches[0].index));
+    if (src0.trim().length > 0) {
+      cells.push({
+        id: `cell-${cells.length}`,
+        cell_type: "code",
+        execution_count: null,
+        metadata: {},
+        outputs: [],
+        source: src0,
+      });
+    }
+    // Each marker starts a new cell of its type
+    for (let i = 0; i < matches.length; i++) {
+      const type: "code" | "markdown" =
+        matches[i][1] === "markdown" ? "markdown" : "code";
+      const start = cellStart(matches[i]);
+      const end = i + 1 < matches.length ? matches[i + 1].index : source.length;
+      const src = cleanSource(source.slice(start, end));
+      if (src.trim().length > 0) {
+        cells.push({
+          id: `cell-${cells.length}`,
+          cell_type: type,
+          execution_count: null,
+          metadata: {},
+          outputs: [],
+          source: src,
+        });
+      }
+    }
+  }
+
   const doc = {
     cells,
     metadata: {
@@ -162,6 +227,37 @@ export function createNotebook(source: string): string {
     nbformat_minor: 5,
   };
   return JSON.stringify(doc, null, 1);
+}
+
+/**
+ * Build a marker-separated source string for a new notebook from a user query.
+ * Produces 3 cells: a markdown title, a markdown objective, and a starter code cell.
+ */
+export function planNewNotebook(query: string): string {
+  const trimmed = query.trim();
+  const firstLine = trimmed.split("\n")[0].trim();
+  const title = firstLine.length > 0 ? firstLine.slice(0, 80) : "New notebook";
+  return (
+    `<<<CELL:markdown>>>\n# ${title}\n` +
+    `<<<CELL:markdown>>>\n## Objective\n\n${trimmed}\n` +
+    `<<<CELL>>>\n# TODO: implement`
+  );
+}
+
+/**
+ * Derive a filesystem-safe notebook name from a query string.
+ * First line, lowercased, non-alphanumeric runs → `-`, trimmed dashes, ≤ 40 chars.
+ * Falls back to `"notebook"` if the result is empty.
+ */
+export function notebookNameFromQuery(query: string): string {
+  const firstLine = query.trim().split("\n")[0].trim();
+  let slug = firstLine
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  if (slug.length === 0) slug = "notebook";
+  return slug;
 }
 
 /**

@@ -35,6 +35,8 @@ const {
   formatNotebookForContext,
   createNotebook,
   applyNotebookEdit,
+  planNewNotebook,
+  notebookNameFromQuery,
 } = require(path.join(__dirname, "..", "out", "notebook.js"));
 const { McpManager } = require(
   path.join(__dirname, "..", "out", "mcpManager.js"),
@@ -1351,7 +1353,7 @@ function assert(cond, label) {
     "notebook: createNotebook default cell type is code",
   );
   assert(
-    nbCreatedDoc.cells[0].source === "import os\n",
+    nbCreatedDoc.cells[0].source === "import os",
     "notebook: createNotebook first cell source",
   );
   assert(
@@ -4194,6 +4196,67 @@ function assert(cond, label) {
     JSON.stringify(nb45CreateEditRaw.cells.map((c) => c.id)) ===
       JSON.stringify(["cell-0", "cell-1"]),
     "nb45-s1: create via applyNotebookEdit also carries ids",
+  );
+
+  // 53) new_notebook planning (1.99-28)
+  const nbnewPlain = parseNotebook(createNotebook("a\n<<<CELL>>>\nb"));
+  assert(
+    nbnewPlain !== null &&
+      nbnewPlain.cells.length === 2 &&
+      nbnewPlain.cells.every((c) => c.cell_type === "code"),
+    "nbnew-s1: plain <<<CELL>>> still yields code cells",
+  );
+  const nbnewLead = parseNotebook(
+    createNotebook("<<<CELL:markdown>>>\n# T\n<<<CELL>>>\nx"),
+  );
+  assert(
+    nbnewLead !== null &&
+      nbnewLead.cells.length === 2 &&
+      JSON.stringify(nbnewLead.cells.map((c) => c.cell_type)) ===
+        JSON.stringify(["markdown", "code"]) &&
+      JSON.stringify(nbnewLead.cells.map((c) => c.source)) ===
+        JSON.stringify(["# T", "x"]),
+    "nbnew-s1: leading markdown marker",
+  );
+  const nbnewMid = parseNotebook(createNotebook("intro\n<<<CELL:markdown>>>\nmd"));
+  assert(
+    nbnewMid !== null &&
+      JSON.stringify(nbnewMid.cells.map((c) => c.cell_type)) ===
+        JSON.stringify(["code", "markdown"]),
+    "nbnew-s1: mid-source markdown marker",
+  );
+  const nbnewEmpty = parseNotebook(createNotebook(""));
+  assert(
+    nbnewEmpty !== null && nbnewEmpty.cells.length === 0,
+    "nbnew-s1: empty source yields 0 cells",
+  );
+  const nbnewPlan = parseNotebook(
+    createNotebook(planNewNotebook("Build a data pipeline\nwith pandas")),
+  );
+  assert(
+    nbnewPlan !== null &&
+      JSON.stringify(nbnewPlan.cells.map((c) => c.cell_type)) ===
+        JSON.stringify(["markdown", "markdown", "code"]),
+    "nbnew-s1: planNewNotebook yields 3 typed cells",
+  );
+  assert(
+    nbnewPlan !== null &&
+      nbnewPlan.cells[0].source.startsWith("# Build a data pipeline"),
+    "nbnew-s1: plan title cell",
+  );
+  assert(
+    nbnewPlan !== null &&
+      nbnewPlan.cells[1].source.includes("Build a data pipeline\nwith pandas"),
+    "nbnew-s1: plan objective cell carries full query",
+  );
+  assert(
+    nbnewPlan !== null && nbnewPlan.cells[2].source.includes("TODO"),
+    "nbnew-s1: plan starter code cell",
+  );
+  assert(
+    notebookNameFromQuery("Build a Data Pipeline!") === "build-a-data-pipeline" &&
+      notebookNameFromQuery("!!!") === "notebook",
+    "nbnew-s1: notebookNameFromQuery slug + fallback",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

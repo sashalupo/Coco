@@ -12,13 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-27 — Minimal nbformat 4.5 (cell id fields) — S1 PASS (2026-10-22) — ITEM COMPLETE
-- **Next step:** item 1.99-27 complete — next: 1.99-28
+- **Current item:** 1.99-28 — Typed cell markers + planNewNotebook + notebookNameFromQuery — S1 PASS (2026-10-22)
+- **Next step:** item 1.99-28 S1 verified — next: 1.99-28 S2 (new_notebook agent tool)
 - **Last updated:** 2026-10-22
-- **Last commit:** c32d0fd
-- **Build state:** 546/546 PASS
+- **Last commit:** ce503ea
+- **Build state:** 555/555 PASS
 
+### 1.99-28.S1 — Typed cell markers + planNewNotebook + notebookNameFromQuery (pure) (2026-10-22) — **PASS**
 
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **555 PASS lines** (546 prior + 9 new `nbnew-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 555/555 PASS; (3) 9 `nbnew-s1:` assertions in section `// 53) new_notebook planning (1.99-28)` (smoke-test.js:4201): plain `<<<CELL>>>` → 2 code cells, leading markdown marker → `["markdown","code"]`/`["# T","x"]`, mid-source markdown marker, empty source → 0 cells, `planNewNotebook` → `["markdown","markdown","code"]`, title starts `# Build a data pipeline`, objective contains full query, starter cell contains `TODO`, slug + fallback — all PASS; (4) `src/notebook.ts`: `export function planNewNotebook` (L236) + `export function notebookNameFromQuery` (L252); typed-marker regex (L149); `id: cell-<index>` preserved; `nbformat: 4, nbformat_minor: 5`; whitespace-only sources dropped — PASS; (5) scope: only `src/notebook.ts`, `scripts/smoke-test.js`, coder PROGRESS.md + `m ninfer` — PASS.
+- **Known deviation (acceptable):** section 10 first-cell-source expectation `"import os\n"` → `"import os"` (trailing-newline trim); assertion still genuine.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-27.S1 — FINAL: stable cell id fields in created/inserted notebook cells (nbformat 4.5) (2026-10-22) — **PASS**
 

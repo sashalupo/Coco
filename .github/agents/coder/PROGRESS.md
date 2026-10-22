@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-27 (nbformat 4.5 cell ids) — **COMPLETE** (S1 done)
-- **Next step:** item 1.99-27 complete — orchestrator moves to next backlog item (1.99-28)
+- **Current item:** 1.99-28 (new notebook planning) — S1 done (S2–S5 pending)
+- **Next step:** 1.99-28.S2 per planner plan (`.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (546 assertions)
+- **Build state:** compiles clean; smoke test passes (555 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-28.S1** (2026-10-22) — `src/notebook.ts`: typed cell markers + `planNewNotebook` + `notebookNameFromQuery` (pure). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/notebook.ts`: (a) `createNotebook` now scans `/^\s*<<<CELL(?::(markdown|code))?>>>[ 	]*$/gm` via `matchAll` — cell 0 = text before first marker (always `code`), each marker starts a new cell of its type (default `code`), trailing text after last marker is a `code` cell; whitespace-only sources dropped (leading marker no longer yields an empty first cell); `id: cell-<index>` first field, `nbformat: 4, nbformat_minor: 5`, leading-newline trim kept. Regex trailing `\s*` → `[ 	]*` so the marker-line newline is not consumed (the `cellStart` helper skips it explicitly). New module-private `cleanSource` trims leading AND trailing newlines from each cell source (trailing newline before the next marker no longer leaks into the source).
+  - `src/notebook.ts`: (b) new `export function planNewNotebook(query: string): string` — 3-cell marker source: `<<<CELL:markdown>>>\n# <title>` (title = first line of trimmed query, ≤ 80 chars, fallback `"New notebook"`), `<<<CELL:markdown>>>\n## Objective\n\n<query>`, `<<<CELL>>>\n# TODO: implement`.
+  - `src/notebook.ts`: (c) new `export function notebookNameFromQuery(query: string): string` — first line, lowercased, `[^a-z0-9]+` → `-`, trim leading/trailing dashes, ≤ 40 chars, fallback `"notebook"`.
+  - `scripts/smoke-test.js`: (d) imports `planNewNotebook` + `notebookNameFromQuery` from `out/notebook.js`; new section `// 53) new_notebook planning (1.99-28)` after section 52, before `ALL SMOKE TESTS PASSED`; 9 `nbnew-s1:` assertions (plain `<<<CELL>>>` backward compat → 2 code cells; leading markdown marker → types `[markdown, code]` sources `[# T, x]`; mid-source markdown marker → `[code, markdown]`; empty source → 0 cells; `planNewNotebook` → 3 typed cells `[markdown, markdown, code]`; title cell starts with `# Build a data pipeline`; objective cell carries full query; starter code cell contains `TODO`; `notebookNameFromQuery` slug + fallback). (e) section 10 assertion `createNotebook first cell source` updated `"import os\n"` → `"import os"` (trailing-newline trim is the new documented behavior; last-cell assertion `"# md cell"` unchanged). Total PASS lines now 555 (546 + 9).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 555 PASS, 0 FAIL; notebook sections 10, 10b, 52, 53 all green.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-27.S1** (2026-10-22, FINAL) — stable `id` fields on created/inserted notebook cells (nbformat 4.5). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/notebook.ts`: (a) new module-private `nextCellId(existing: Record<string, unknown>[]): string` placed right before `createNotebook` — collects existing string `id` fields into a `Set` and returns the first free `cell-N`; (b) `createNotebook` cells now built as `{ id: `cell-${i}`, cell_type, execution_count, metadata, outputs, source }` (`id` first field; `nbformat: 4, nbformat_minor: 5` unchanged) and its doc comment now mentions the stable `cell-<index>` ids (nbformat 4.5); (c) `applyNotebookEdit` `insert_cell` case: new cell object now starts with `id: nextCellId(cells)` (first field) before `cell_type`/`source`/`metadata`.
   - `scripts/smoke-test.js`: new section `// 52) nbformat 4.5 cell ids (1.99-27)` at end (after section 51, before final summary print); 8 `nb45-s1:` assertions using the already-imported `createNotebook`/`applyNotebookEdit` + raw `JSON.parse` of `newContent`: sequential `cell-0..2` ids from `createNotebook`; `nbformat === 4 && nbformat_minor === 5`; ids unique non-empty strings; `insert_cell` at index 1 on a 2-cell fixture → `cells[1].id === "cell-2"` + all 3 unique; after `delete_cell` 0 then `insert_cell` at 0 → new id `cell-0` (gap reused, no collision); `modify_cell` preserves `cell-0`/`cell-1`; `delete_cell` 0 leaves remaining id `cell-1`; `create` via `applyNotebookEdit` → ids `["cell-0","cell-1"]`. Total PASS lines now 546 (538 + 8).
