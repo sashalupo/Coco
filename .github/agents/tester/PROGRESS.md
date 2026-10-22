@@ -132,6 +132,19 @@ acceptance checks, and reports a clear pass/fail.
 - 12 new smoke assertions genuine: concrete-input behavior checks on the real compiled `extractFolderTag`/`formatFolderBlock`/`FOLDER_BLOCK_MAX_CHARS`. Not tautologies. PASS
 - Scope: `git status --short` → only `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer submodule marker). PASS
 
+### 1.98-10.S2 — `ToolExecutor.folderSweep(folderName)` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **310 assertions** (306 prior + 4 new `folder-s2:` in subsection 14b).
+- **Static checks in `src/tools/ToolExecutor.ts` (via `git diff`):**
+  - (a) `public async folderSweep(folderName: string): Promise<string>` present immediately after `codebaseSweep`. PASS
+  - (b) Guard chain: `resolveSafe(".")` null → notFound block with `folderName || "(workspace root)"`; empty `folderName` → `target = rootAbs`; non-empty → `resolveSafe(folderName)`, null → notFound; `fs.promises.stat` catch → notFound; `!stat.isDirectory()` → notFound. PASS
+  - (c) Walk mirrors `codebaseSweep` inner walk verbatim: depth ≤ 3, cap 100, `SKIP_DIRS` skip, `"  ".repeat(depth - 1)` indent, `… (truncated at 100 entries)` suffix; file tree only (no git/search). PASS
+  - (d) Returns `formatFolderBlock({ tree: structure }, folderName)`; `formatFolderBlock` imported from `../context` (line 17). PASS
+  - (e) `git diff` → exactly 2 hunks (import + new method, +71/−1); `codebaseSweep`, `collectDiagnostics`, `searchMatches`, `resolveSafe` untouched. PASS
+- **Scope check:** `git status --short` → only `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ `ninfer` submodule marker, ignored). PASS
+- **Behavior spot-check:** `node -e` against `out/context.js` — `formatFolderBlock({tree:"",notFound:true},"nope")` → `"Folder: nope\n(folder not found: nope)"`; empty name → `Folder: (workspace root)` header. fs-dependent path verified by static review. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)

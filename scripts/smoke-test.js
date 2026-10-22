@@ -2093,6 +2093,24 @@ function assert(cond, label) {
     "folder-s1: bare (no folder arg) header shows (workspace root)",
   );
 
+  // 14b) folder tag (1.98-10.S2): ToolExecutor.folderSweep static checks.
+  assert(
+    toolExecSrc.includes("folderSweep("),
+    "folder-s2: ToolExecutor defines folderSweep(",
+  );
+  assert(
+    toolExecSrc.includes("formatFolderBlock"),
+    "folder-s2: ToolExecutor composes via formatFolderBlock",
+  );
+  assert(
+    toolExecSrc.includes("resolveSafe"),
+    "folder-s2: ToolExecutor still has resolveSafe (guard intact)",
+  );
+  assert(
+    toolExecSrc.includes("codebaseSweep("),
+    "folder-s2: ToolExecutor still has codebaseSweep( (untouched)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

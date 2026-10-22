@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-10.S1 done — `src/context.ts` `extractFolderTag` + `formatFolderBlock` (pure helpers)
-- **Next step:** 1.98-10.S2 — `ToolExecutor.folderSweep`
+- **Current step:** 1.98-10.S2 done — `ToolExecutor.folderSweep`
+- **Next step:** 1.98-10.S3 — `#folder` wiring (ChatViewProvider + config gate)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (306 assertions, incl. 12 new `folder-s1:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (310 assertions, incl. 4 new `folder-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-10.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `folderSweep` (file tree of a workspace folder, composed via `formatFolderBlock`). Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools/ToolExecutor.ts`: extended the `../context` import with `formatFolderBlock`. Added `public async folderSweep(folderName: string): Promise<string>` next to `codebaseSweep`: (1) `resolveSafe(".")` → `null` (no workspace) → `formatFolderBlock({ tree: "", notFound: true }, folderName || "(workspace root)")`; (2) `target = folderName.trim() === "" ? rootAbs : await this.resolveSafe(folderName)` → `null` (path rejected) → notFound block; (3) `fs.promises.stat(target)` — on error or `!stat.isDirectory()` → notFound block; (4) walk mirrors `codebaseSweep`'s inner `walk` exactly (depth ≤ 3, cap 100 entries with `… (truncated at 100 entries)` suffix, `SKIP_DIRS` skipped, indent `"  ".repeat(depth - 1)`), starting at `walk(target, 1)`; file tree ONLY — no contents, no git status, no search; (5) returns `formatFolderBlock({ tree: structure }, folderName)`.
+  - `scripts/smoke-test.js`: new subsection `// 14b) folder tag (1.98-10.S2)` with 4 static assertions (`folder-s2:` labels) reusing the `toolExecSrc` read from 12b: source contains `folderSweep(`, `formatFolderBlock`, `resolveSafe` (guard intact), `codebaseSweep(` (untouched).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **310 assertions** (306 prior + 4 new `folder-s2:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-10.S1** (2026-10-22) — `src/context.ts`: `extractFolderTag` + `formatFolderBlock` (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/context.ts`: appended a `#folder` section after the `#problems` section — `extractFolderTag(text): string | null` (regex `/#folder(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i`, first match, case-insensitive, word-bounded so `#folderfoo` does NOT match; accepts `#folder:<name>` and `#folder <name>`; returns trimmed same-line remainder, `""` for bare tag, `null` when absent); `FolderBlockData { tree: string; notFound?: boolean }`; `FOLDER_BLOCK_MAX_CHARS = 8000` (exported) + private `FOLDER_BLOCK_TRUNCATED_SUFFIX`; `formatFolderBlock(data, folder?)` — header `Folder: <name>` or `Folder: (workspace root)`, body `(folder not found: <name>)` when `notFound`, else `data.tree || "(empty folder)"`, truncated to 8,000 chars + `… (truncated)` suffix; NEVER returns `""` (explicit tag always shows header). Pure module — no vscode imports added.
   - NOTE: the plan's literal regex `/#folder(?::|(?=\s|$))(\S*)/i` cannot satisfy the required `extractFolderTag("#folder src") === "src"` assertion (the zero-width lookahead doesn't consume the space, so the capture would be `""`). Implemented the minimal corrected alternation above, which satisfies every stated behavior (colon form, space form, bare tag, word-bounded, case-insensitive, same-line).

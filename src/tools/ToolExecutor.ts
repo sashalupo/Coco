@@ -14,7 +14,7 @@ import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff, diffStats } from "../diff";
 import { scanForSecrets } from "../secrets";
 import { applyNotebookEdit } from "../notebook";
-import { formatCodebaseSweep } from "../context";
+import { formatCodebaseSweep, formatFolderBlock } from "../context";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
@@ -915,6 +915,77 @@ export class ToolExecutor {
     }
 
     return formatCodebaseSweep({ structure, gitStatus, search }, query);
+  }
+
+  /**
+   * `#folder` tag data gathering (1.98-10): file tree of a workspace folder
+   * (depth ≤ 3, capped at 100 entries). Structure only — no file contents,
+   * no git status, no search. Composed via `formatFolderBlock`.
+   */
+  public async folderSweep(folderName: string): Promise<string> {
+    const rootAbs = await this.resolveSafe(".");
+    if (!rootAbs) {
+      return formatFolderBlock(
+        { tree: "", notFound: true },
+        folderName || "(workspace root)",
+      );
+    }
+
+    const target =
+      folderName.trim() === ""
+        ? rootAbs
+        : await this.resolveSafe(folderName);
+    if (!target) {
+      return formatFolderBlock({ tree: "", notFound: true }, folderName);
+    }
+
+    let stat;
+    try {
+      stat = await fs.promises.stat(target);
+    } catch {
+      return formatFolderBlock({ tree: "", notFound: true }, folderName);
+    }
+    if (!stat.isDirectory()) {
+      return formatFolderBlock({ tree: "", notFound: true }, folderName);
+    }
+
+    // Structure: walk the target folder, depth ≤ 3, ≤ 100 entries.
+    const structureLines: string[] = [];
+    let truncated = false;
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > 3 || truncated) {
+        return;
+      }
+      let entries;
+      try {
+        entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const e of entries) {
+        if (structureLines.length >= 100) {
+          truncated = true;
+          return;
+        }
+        if (e.isDirectory() && SKIP_DIRS.has(e.name)) {
+          continue;
+        }
+        const indent = "  ".repeat(depth - 1);
+        if (e.isDirectory()) {
+          structureLines.push(`${indent}${e.name}/`);
+          await walk(path.join(dir, e.name), depth + 1);
+        } else if (e.isFile()) {
+          structureLines.push(`${indent}${e.name}`);
+        }
+      }
+    };
+    await walk(target, 1);
+    let structure = structureLines.join("\n");
+    if (truncated) {
+      structure += "\n… (truncated at 100 entries)";
+    }
+
+    return formatFolderBlock({ tree: structure }, folderName);
   }
 
   /**
