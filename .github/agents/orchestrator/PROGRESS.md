@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-6** — Create a new workspace with agent mode — **DONE** (2026-10-22, all 4 slices S1–S4); next: 1.99-8
-- **Current slice:** none — 1.99-6 complete; 1.99-8 next item
+- **Current item:** **1.99-8** — Agent mode tool approvals (4-slice plan recorded; 1.99-6 DONE)
+- **Current slice:** none yet — 1.99-8.S1 next
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-8** (Agent mode tool approvals), record plan, commit, then run slice pipeline
+- **Next step:** dispatch Coder for slice **1.99-8.S1** (`src/presets.ts` pure ApprovalStore), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `2d0a5df` — feat(llm): new workspace — #newWorkspace tag wiring + setting (1.99-6.S3)
-- **Build state:** compiles clean; smoke test passes (453 assertions); 1.99-6 complete
+- **Last commit:** `1d0b271` — feat(llm): new workspace — #newWorkspace final smoke + item complete (1.99-6.S4, item complete)
+- **Build state:** compiles clean; smoke test passes (453 assertions); 1.99-8 plan recorded
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

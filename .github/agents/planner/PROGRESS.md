@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-6 (Create a new workspace with agent mode) — **planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-6.S1
+- **Current item:** 1.99-8 (Agent mode tool approvals) — **planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-8.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -988,6 +988,117 @@ reference if the definition file sorts later); tag runs regardless of
   Smoke (`ws-s4:`, 3). Acceptance: compile + smoke pass (**453 assertions**).
 
 **Risks:** agent needs `llm.tools.enabled: true` to create files; folder paths workspace-relative (`resolveSafe` guard); template `package.json` names use fixed placeholder.
+
+### Item 1.99-8 — Agent mode tool approvals (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Agent mode tool approvals" — remember tool
+approvals at session, workspace, or application level (Continue-button dropdown);
+experimental `chat.tools.autoApprove` auto-approves all tools. `chat-tool-approval.png`:
+Continue button with dropdown options. Local reframe: remembered approvals for mutating
+tools (`write_file`, `edit_file`, `run_command`, `notebook_edit`, `mcp__*`) +
+`llm.tools.autoApprove` setting.
+
+**Design decisions (justified):**
+1. **Memento, not a workspace file.** Workspace-level remembered approvals →
+   `context.workspaceState` (key `llm.approvals.workspace`, JSON array of tool names);
+   global → `context.globalState` (key `llm.approvals.global`); session → in-memory
+   `Set<string>` on the provider (cleared on reload). No file I/O, no new dependencies.
+2. **Pure `ApprovalStore` in `src/presets.ts`** (vscode-free, smoke-testable via
+   `out/presets.js`). Takes two `MementoLike` objects (structural: `get`/`update`).
+   API: `isApproved(tool)` (session ∪ workspace ∪ global), `remember(tool, scope)`,
+   `listApproved()` (sorted union).
+3. **`llm.tools.autoApprove`** (boolean, default `false`) — when true, mutating tools
+   skip the approval card entirely (regardless of `requireApproval`). New
+   `autoApprove` field on `LlmSettings` / `readSettings()`.
+4. **Webview: scope dropdown on both approval cards.** `approval_request` and
+   `command_approval` cards gain a `<select class="approve-scope">` (once / session /
+   workspace / global, default `once`). Approve posts `scope` alongside the existing
+   payload; Reject never remembers.
+5. **Host gate** becomes
+   `settings.requireApproval && isMutating && !settings.autoApprove &&
+   !this.approvalStore.isApproved(call.function.name)`; on approval with a non-`once`
+   scope the provider calls `approvalStore.remember(tool, scope)`. Scope validated
+   host-side against the three known strings (anything else = `once`).
+6. **No new dependencies, no bundler, no new commands.**
+
+**Slices:**
+
+- **1.99-8.S1 — `src/presets.ts`: pure `ApprovalStore`.**
+  File: `src/presets.ts`. `export type ApprovalScope = "session" | "workspace" |
+  "global"`; `export interface MementoLike { get(key: string): unknown; update(key:
+  string, value: unknown): Promise<void> }`; `export class ApprovalStore` —
+  constructor `(workspace: MementoLike, global: MementoLike)`, private
+  `session = new Set<string>()`, keys `llm.approvals.workspace` /
+  `llm.approvals.global`; `isApproved(tool)` — true if in session set or in either
+  persisted array (tolerate non-array garbage); `remember(tool, scope)` — session: add
+  to set; workspace/global: read array (dedupe), push, `void update(...)`;
+  `listApproved()` — sorted union.
+  Acceptance: `npm run compile` clean.
+  Smoke (`appr-s1:`, 5): `out/presets.js` exports `ApprovalStore`; with fake Memento
+  objects — `remember("write_file","workspace")` → `isApproved` true;
+  `remember("run_command","session")` → true; `remember("edit_file","global")` → true;
+  `isApproved("notebook_edit")` false; `listApproved()` returns the 3 sorted names.
+
+- **1.99-8.S2 — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts`.**
+  Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`.
+  (a) `presets.ts`: `autoApprove: boolean` on `LlmSettings`. (b) `config.ts`:
+  `autoApprove: c.get<boolean>("tools.autoApprove", false)` in `readSettings()`.
+  (c) `ChatViewProvider.ts`: import `ApprovalStore`; field
+  `private readonly approvalStore: ApprovalStore` =
+  `new ApprovalStore(context.workspaceState, context.globalState)` in the constructor;
+  widen `pendingApproval` to `((approved: boolean, scope?: string) => void)` and
+  `pendingCommandApproval` to `((approved: boolean, command: string, scope?: string) =>
+  void)`; `onMessage` `toolApproval`/`commandApproval` pass
+  `typeof msg.scope === "string" ? msg.scope : undefined`; gate at ~line 1222 becomes
+  `if (settings.requireApproval && isMutating && !settings.autoApprove &&
+  !this.approvalStore.isApproved(call.function.name))`; after an approved decision
+  (both `run_command` and plain paths), if scope ∈ {session, workspace, global} call
+  `this.approvalStore.remember(call.function.name, scope)`.
+  Acceptance: `npm run compile` clean; `autoApprove: true` → no card; remembered tool →
+  no card next call; `once` → card every time.
+  Smoke (`appr-s2:`, 3): `ChatViewProvider.ts` source contains `ApprovalStore`,
+  `isApproved`, `autoApprove`; `out/config.js` source contains `"tools.autoApprove"`;
+  `presets.ts` source contains `autoApprove: boolean`.
+
+- **1.99-8.S3 — `src/chat/webview.ts`: scope dropdown on both approval cards.**
+  File: `src/chat/webview.ts`. In `case 'approval_request':` (~line 2123) add
+  `<select class="approve-scope">` (options: `once` "Run once", `session` "Remember
+  for session", `workspace` "Remember for workspace", `global` "Remember globally")
+  inside `.actions`; `decide(approved)` posts
+  `{ type: 'toolApproval', id: msg.id, approved, scope: scopeEl.value }` and disables
+  the select. In `case 'command_approval':` (~line 2155) same dropdown;
+  `decideCmd(true)` posts `scope: scopeEl.value` alongside `command`. CSS:
+  `.approve-scope` reusing existing select/input styling.
+  Acceptance: `npm run compile` clean; both cards show the dropdown; "Remember for
+  workspace" + Approve posts `scope: "workspace"`; Reject posts `approved: false`.
+  Smoke (`appr-s3:`, 3): webview HTML source contains `approve-scope`,
+  `Remember for workspace`, `Remember globally`.
+
+- **1.99-8.S4 — `package.json` + final smoke assertions + PROGRESS.md.**
+  Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  (a) `package.json`: add `llm.tools.autoApprove` (boolean, default `false`,
+  description: "Auto-approve all mutating tools without asking (experimental).
+  Overrides llm.tools.requireApproval. Remembered approvals (session/workspace/global)
+  also skip the prompt.") next to `llm.tools.requireApproval`. (b) `smoke-test.js`: add
+  `appr-s1:` (5), `appr-s2:` (3), `appr-s3:` (3), `appr-s4:` (2: parsed `package.json`
+  has `llm.tools.autoApprove` with `type === "boolean"` and `default === false`;
+  `llm.tools.requireApproval` still present — regression guard). (c) `PROGRESS.md`:
+  mark 1.99-8 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (**453 → 466
+  assertions**); setting visible in the settings UI.
+
+**Overall acceptance (Tester):** with `llm.tools.requireApproval: true`, approving
+`write_file` with "Remember for workspace" skips the card for subsequent `write_file`
+calls in the same workspace (survives reload); "Remember for session" skips until
+reload; "Remember globally" skips across workspaces; "Run once" (default) always asks;
+Reject never remembers; `llm.tools.autoApprove: true` skips all approval cards;
+`command_approval` (run_command) supports the same scopes; `npm run compile` clean; all
+466 smoke assertions pass.
+
+**Risks:** MCP tools are remembered by full tool name (`mcp__server__tool` — only that
+exact tool auto-approves); `autoApprove` is experimental (default false, no
+confirmation dialog); session approvals are intentionally not persisted; unknown scope
+values from the webview are treated as `once`.
 
 ## Done
 
