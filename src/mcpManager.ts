@@ -10,6 +10,7 @@
 import {
   McpClient,
   McpServerConfig,
+  McpTool,
   mcpResultToText,
   mcpToolsToOpenAITools,
   parseMcpToolName,
@@ -144,6 +145,18 @@ export class McpManager {
       }
     }
     return tools;
+  }
+
+  /**
+   * Read-only accessor: the tools of a single server's live client (empty
+   * array if the server is not running).
+   */
+  getServerTools(name: string): McpTool[] {
+    const client = this.clients.get(name);
+    if (client && this.statuses.get(name)?.status === "running") {
+      return client.tools;
+    }
+    return [];
   }
 
   /**

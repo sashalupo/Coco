@@ -13,16 +13,15 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-2** — MCP server support (6-slice plan recorded in `18d2ea6`)
-- **Current slice:** 1.99-2.S5 — **DONE** (PASS, 397 assertions); next: 1.99-2.S6 (FINAL)
+- **Current item:** **1.99-2 DONE** (2026-10-22, 6 slices S1–S6, tag `changelog-1.99`); next: **1.99-3** — Thinking tool
+- **Current slice:** 1.99-2.S6 (FINAL) — **DONE** (PASS, 401 assertions); item 1.99-2 complete
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-2.S6** (commands + manifest,
-  `src/extension.ts` + `package.json`) — FINAL slice; then Tester, memory, commit +
-  tag `changelog-1.99`
+- **Next step:** dispatch Planner for item **1.99-3** (Thinking tool), record plan, commit,
+  then run the slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** `ffee7e4` — feat(llm): MCP server support — MCP tools in request body (1.99-2.S4)
-- **Build state:** compiles clean; smoke test passes (397 assertions); 1.99-2.S1–S5 verified
+- **Last commit:** `9783237` — feat(llm): MCP server support — wire MCP into the chat tool loop (1.99-2.S5)
+- **Build state:** compiles clean; smoke test passes (401 assertions); 1.99-2 fully verified (S1–S6)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

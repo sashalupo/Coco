@@ -2859,6 +2859,47 @@ function assert(cond, label) {
     "mcp-s5: MCP calls routed to mcpManager.execute and manager disposed",
   );
 
+  // 18f) MCP commands + manifest (1.99-2.S6)
+  const mcpAddCmd = (pkgS4.contributes.commands || []).find(
+    (c) => c.command === "llm.mcp.addServer",
+  );
+  const mcpListCmd = (pkgS4.contributes.commands || []).find(
+    (c) => c.command === "llm.mcp.listServers",
+  );
+  assert(
+    mcpAddCmd?.title === "LLM: MCP: Add Server" &&
+      mcpListCmd?.title === "LLM: MCP: List Servers",
+    "mcp-s6: package.json contributes llm.mcp.addServer and llm.mcp.listServers with exact titles",
+  );
+  assert(
+    (pkgS4.activationEvents || []).includes("onCommand:llm.mcp.addServer") &&
+      (pkgS4.activationEvents || []).includes("onCommand:llm.mcp.listServers"),
+    "mcp-s6: package.json has onCommand activation events for both MCP commands",
+  );
+  const mcpServersSetting =
+    pkgS4.contributes.configuration.properties["llm.mcp.servers"];
+  assert(
+    mcpServersSetting &&
+      mcpServersSetting.type === "object" &&
+      JSON.stringify(mcpServersSetting.default) === "{}",
+    "mcp-s6: package.json llm.mcp.servers is an object defaulting to {}",
+  );
+  const preExistingCmds = [
+    "llm.openChat",
+    "llm.testConnection",
+    "llm.refreshModels",
+    "llm.clearChat",
+    "llm.commitChanges",
+    "llm.showStatusOverview",
+    "llm.changeCompletionsModel",
+  ];
+  assert(
+    preExistingCmds.every((cmd) =>
+      (pkgS4.contributes.commands || []).some((c) => c.command === cmd),
+    ),
+    "mcp-s6: all 7 pre-existing commands still present (regression guard)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

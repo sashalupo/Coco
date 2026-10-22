@@ -19,11 +19,14 @@ import {
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
 
+/** Shared MCP manager (module-level so `deactivate` can dispose it). */
+let mcpManager: McpManager | undefined;
+
 export function activate(context: vscode.ExtensionContext): void {
   const client = new LlmClient(readSettings);
   // 1.99-2.S5: one shared MCP server manager; the chat provider syncs it
   // each turn and disposes it on deactivation.
-  const mcpManager = new McpManager((msg) =>
+  mcpManager = new McpManager((msg) =>
     vscode.window.showErrorMessage(msg),
   );
   const provider = new ChatViewProvider(context, client, mcpManager);
@@ -213,7 +216,105 @@ export function activate(context: vscode.ExtensionContext): void {
           : `Inline completions will use model: ${picked.value}`,
       );
     }),
+    vscode.commands.registerCommand("llm.mcp.addServer", async () => {
+      const name = await vscode.window.showInputBox({
+        prompt: "MCP server name",
+        placeHolder: "e.g. filesystem",
+        validateInput: (v) => {
+          if (!v.trim()) {
+            return "Name must not be empty.";
+          }
+          if (v.includes("__")) {
+            return "Name must not contain '__' (reserved for tool names).";
+          }
+          return undefined;
+        },
+      });
+      if (!name) {
+        return; // cancelled
+      }
+      const command = await vscode.window.showInputBox({
+        prompt: "Command to start the server",
+        placeHolder: "e.g. npx",
+        validateInput: (v) => (v.trim() ? undefined : "Command must not be empty."),
+      });
+      if (!command) {
+        return; // cancelled
+      }
+      const argsRaw = await vscode.window.showInputBox({
+        prompt: "Arguments (space-separated, optional)",
+        placeHolder: "e.g. -y @modelcontextprotocol/server-filesystem /tmp",
+      });
+      const args = argsRaw ? argsRaw.trim().split(/\s+/) : [];
+      const cfg = vscode.workspace.getConfiguration("llm.mcp");
+      const servers = cfg.get<
+        Record<string, { command: string; args?: string[]; env?: Record<string, string> }>
+      >("servers", {});
+      servers[name.trim()] = { command: command.trim(), ...(args.length ? { args } : {}) };
+      await cfg.update(
+        "servers",
+        servers,
+        vscode.ConfigurationTarget.Workspace,
+      );
+      vscode.window.showInformationMessage(
+        `MCP server '${name.trim()}' added to llm.mcp.servers (workspace). Reload or start a chat turn to connect.`,
+      );
+    }),
+    vscode.commands.registerCommand("llm.mcp.listServers", async () => {
+      const manager = mcpManager;
+      if (!manager) {
+        vscode.window.showWarningMessage("LLM extension not activated.");
+        return;
+      }
+      const servers = manager.listServers();
+      if (servers.length === 0) {
+        vscode.window.showInformationMessage(
+          "No MCP servers configured (llm.mcp.servers is empty).",
+        );
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(
+        servers.map((s) => ({
+          label: s.name,
+          description: s.status,
+          detail: s.error ? `${s.toolCount} tools — ${s.error}` : `${s.toolCount} tools`,
+        })),
+        { placeHolder: "MCP servers (pick one to refresh and show its tools)" },
+      );
+      if (!picked) {
+        return; // cancelled
+      }
+      const status = await manager.refresh(picked.label);
+      const tools = manager.getServerTools(picked.label);
+      if (status.status === "error") {
+        vscode.window.showErrorMessage(
+          `MCP server '${picked.label}' failed: ${status.error ?? "unknown error"}`,
+        );
+        return;
+      }
+      if (tools.length === 0) {
+        vscode.window.showInformationMessage(
+          `MCP server '${picked.label}' is running but exposes no tools.`,
+        );
+        return;
+      }
+      const toolPicked = await vscode.window.showQuickPick(
+        tools.map((t) => ({
+          label: t.name,
+          detail: t.description,
+        })),
+        { placeHolder: `Tools of MCP server '${picked.label}'` },
+      );
+      if (toolPicked) {
+        vscode.window.showInformationMessage(
+          `Tool '${toolPicked.label}'${toolPicked.detail ? ` — ${toolPicked.detail}` : ""}`,
+        );
+      }
+    }),
   );
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+  mcpManager?.dispose();
+  mcpManager = undefined;
+}

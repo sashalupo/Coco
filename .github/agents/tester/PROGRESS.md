@@ -12,12 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-2.S4 (extra tools in request body, `src/request.ts`) — **PASS** (2026-10-22)
+- **Current item:** 1.99-2.S6 (FINAL — MCP commands + manifest) — **PASS** (2026-10-22); item 1.99-2 fully verified (S1–S6)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** ffee7e4 (coder: 1.99-2.S4)
-- **Build state:** 397/397 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 9783237 (coder: 1.99-2.S5)
+- **Build state:** 401/401 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-2.S6 (FINAL) — MCP commands + manifest (extension.ts, package.json, mcpManager.ts accessor) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **401 PASS lines** (397 prior + 4 new `mcp-s6:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 401 `PASS:` lines. PASS
+  - (3) `// 18f) MCP commands + manifest (1.99-2.S6)` section has 4 `mcp-s6:` assertions: exact command titles, both `onCommand:` activation events, `llm.mcp.servers` object/`{}` default, 7-command regression guard. PASS
+  - (4) Source: `llm.mcp.addServer` 3-step InputBox (name non-empty + no `__`, command non-empty, optional space-separated args) → `ConfigurationTarget.Workspace` write + info message; `llm.mcp.listServers` QuickPick (label=name, description=status, detail=tool count/error) → `await manager.refresh(name)` → error/empty handled, second QuickPick of tools; `deactivate()` calls `mcpManager?.dispose()` (module-level manager); `src/mcpManager.ts` diff = only `McpTool` import + read-only `getServerTools(name)` (live client tools when running, else `[]`); `package.json` valid JSON, +2 commands, +2 activation events, +1 setting. PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M package.json`, ` M scripts/smoke-test.js`, ` M src/extension.ts`, ` M src/mcpManager.ts`. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `9783237` (1.99-2.S5). No coder commit for S6. PASS
+- **Verdict:** **PASS** — all 6 criteria met. **Item 1.99-2 (MCP server support) fully verified (S1–S6).**
 
 ### 1.99-2.S5 — wire MCP into the chat tool loop (ChatViewProvider + extension glue) (2026-10-22) — **PASS**
 

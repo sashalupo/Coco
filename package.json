@@ -12,7 +12,9 @@
   "activationEvents": [
     "onView:llm.chat",
     "onCommand:llm.testConnection",
-    "onCommand:llm.showStatusOverview"
+    "onCommand:llm.showStatusOverview",
+    "onCommand:llm.mcp.addServer",
+    "onCommand:llm.mcp.listServers"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -44,6 +46,14 @@
       {
         "command": "llm.changeCompletionsModel",
         "title": "LLM: Change Completions Model"
+      },
+      {
+        "command": "llm.mcp.addServer",
+        "title": "LLM: MCP: Add Server"
+      },
+      {
+        "command": "llm.mcp.listServers",
+        "title": "LLM: MCP: List Servers"
       }
     ],
     "viewsContainers": {
@@ -241,6 +251,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show the LLM engine status indicator in the status bar. Click it for a status overview. Toggling requires a reload."
+        },
+        "llm.mcp.servers": {
+          "type": "object",
+          "default": {},
+          "description": "MCP servers to connect to. Each entry: { command, args?, env? }."
         }
       }
     }

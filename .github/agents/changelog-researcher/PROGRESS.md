@@ -258,7 +258,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   which MCP tools are available in chat.
 - **Image notes:** `copilot-edits-agent-mode.png` (mode picker), MCP docs screenshots.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** **done** (2026-10-22, 6 slices S1–S6; commits c8222cb, 94a7965, 851b1b2, ffee7e4, 9783237 + S6 commit; tag `changelog-1.99`)
 - **Gap vs existing:** none — new subsystem. Local reframe: `llm.mcp.servers` setting
   (name → {command, args, env}), spawn stdio child process, JSON-RPC over stdio
   (initialize → tools/list → tools/call), expose discovered tools to the agent tool loop
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-2** MCP server support
 - **1.99-3** Thinking tool
 - **1.99-4** Fetch tool (`#fetch`)
 - **1.99-5** Usages tool (`#usages`)
