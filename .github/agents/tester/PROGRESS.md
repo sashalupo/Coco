@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-14 (multimodal message support) — S4 verified
-- **Next step:** verify 1.98-14 S5
+- **Current item:** 1.98-14 (multimodal message support) — **DONE** (all slices S1–S5 verified)
+- **Next step:** verify 1.98-15 (Engine status indicator) — await planner plan
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** 357/357 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
@@ -277,6 +277,15 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 16d:** 3 genuine source-content checks (`isVisionCapableModel`, `vision_warning`, `chat.vision.enabled`) — each would fail if the wiring were removed. PASS
 - **Scope check:** only `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` modified. `package-lock.json` untouched. PASS
 
+### 1.98-14.S5 — `package.json`: `llm.chat.vision.enabled` + planner memory (FINAL) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **357 assertions** (unchanged — S5 adds NO new assertions; 0 FAIL).
+- **`package.json`:** valid JSON. Parsed-JSON check: `contributes.configuration.properties["llm.chat.vision.enabled"]` exists with `type === "boolean"`, `default === true`, non-empty description mentioning images. PASS
+- **Planner memory:** `.github/agents/planner/PROGRESS.md` marks 1.98-14 **Done** (Status block + all 5 slice headers annotated `— Done (2026-10-22)`; dispatch line checked off). PASS
+- **Scope check:** exactly 3 files modified: `package.json`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md`. `package-lock.json` NOT modified; `scripts/smoke-test.js` NOT modified. PASS
+- **1.98-14 fully verified (all slices S1–S5 PASS).**
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -294,6 +303,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S3** — webview attachment UI — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S4** — host send flow + image validation + vision warning — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S5** — `package.json`: `llm.chat.vision.enabled` + planner memory (FINAL) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14** — Copilot Vision (image attachments) — **fully verified** (all slices S1–S5 PASS, 2026-10-22)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -329,6 +340,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S3** — webview attachment UI — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S4** — host send flow + image validation + vision warning — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S5** — `package.json`: `llm.chat.vision.enabled` + planner memory (FINAL) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14** — Copilot Vision (image attachments) — **fully verified** (all slices S1–S5 PASS, 2026-10-22)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

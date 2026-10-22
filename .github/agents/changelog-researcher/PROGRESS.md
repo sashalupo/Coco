@@ -202,9 +202,9 @@ researcher does NOT write code — it builds and maintains the backlog.
   inline in a Copilot Chat prompt**; hovering the image shows a **preview** of it.
 - **Relevance:** `keep (capability/context)` — multimodal context input (works with local
   vision-capable engines).
-- **Status:** `pending`
+- **Status:** `done` (2026-10-22, slices S1–S5)
 - **Gap vs existing:** no image-attachment / vision support exists yet.
-- **Implemented in:** —
+- **Implemented in:** `9d847c1` (S1 request.ts multimodal), `2d0497b` (S2 isVisionCapableModel), `4bd7775` (S3 webview attachment UI), `3d169f6` (S4 host send flow + vision warning) + S5 (`package.json` `llm.chat.vision.enabled`)
 
 #### 1.98-15 · Copilot status overview (Experimental)
 - **Description:** Centralized status overview via the Copilot status-bar icon: quota info
@@ -247,6 +247,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - 1.98-9 `#problems` tag — `done` (2026-10-22, attach Problems-panel items as context)
 - 1.98-10 `#folder:<name>` tag — `done` (2026-10-22, attach a folder's file tree as context)
 - 1.98-12 Change Completions Model command — `done` (2026-10-22, `llm.changeCompletionsModel` QuickPick + `llm.completions.model` setting)
+- 1.98-14 Copilot Vision — image attachments — `done` (2026-10-22, paperclip/paste/drag-drop, `llm.chat.vision.enabled`, non-blocking vision warning)
 
 ## Skipped (decision trail)
 
@@ -259,8 +260,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-1. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
-2. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
+1. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
 
 ## Todo
 

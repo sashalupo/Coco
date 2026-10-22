@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.98-14** — Copilot Vision: image attachments (VS Code 1.98)
-- **Current slice:** **1.98-14.S5** — `package.json`: `llm.chat.vision.enabled` + planner memory (FINAL)
+- **Current item:** **1.98-15** — Engine status indicator (status-bar overview, reframed from Copilot status) (VS Code 1.98)
+- **Current slice:** — (none yet; item not planned)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-14.S5, then Tester
+- **Next step:** dispatch Planner for item 1.98-15 (Engine status indicator), then record plan + commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `4bd7775` — feat(llm): Copilot Vision — attachment UI (1.98-14.S3)
-- **Build state:** compiles clean; smoke test passes (357 assertions); 1.98-14.S1–S4 verified
+- **Last commit:** `3d169f6` — feat(llm): Copilot Vision — host send flow (1.98-14.S4)
+- **Build state:** compiles clean; smoke test passes (357 assertions); item 1.98-14 fully verified (S1–S5)
 
 ## Team
 
@@ -73,7 +73,9 @@ pending item** (the oldest).
 - **1.98-14.S1** (2026-10-22) — `src/request.ts`: `ChatMessage.images?: string[]`, `ContentPart` + pure `toContentParts` (plain string when no images; text part first + one `image_url` part per data URL), `RequestMessage` type widening (`content: string | ContentPart[]`), `buildRequestBody` maps image messages after `trimHistory` (text-only byte-identical), `estimateMessageTokens` +1000/image; 4 `vision-s1:` behavior smoke assertions. Tester PASS. Commit `9d847c1`.
 - **1.98-14.S2** (2026-10-22) — `src/presets.ts`: `VISION_MODEL_MARKERS` (16 family markers) + pure `isVisionCapableModel` (empty → false; case-insensitive substring match); 3 `vision-s2:` behavior smoke assertions. Tester PASS. Commit `2d0497b`.
 - **1.98-14.S3** (2026-10-22) — `src/chat/webview.ts`: attachment UI — paperclip button + hidden file input (jpeg/png/gif/webp, multiple), `pendingImages` state, `addImageFiles` (4 mimes, 4-image / 10 MB caps, `readAsDataURL`), `renderAttachStrip` (48px thumbs + × remove), paste (`clipboardData.items`) + drag-drop wiring, `doSend` posts `images` data URLs (captured before reset), `addUserMessage(text, images)` renders `.msg-images`/`.msg-img` (hover zoom 1.6), `stream_start`/`restore` pass images, `case 'vision_warning'` amber notice (8 s auto-hide); 5 `vision-s3:` static smoke assertions. Tester PASS. Commit `4bd7775`.
-- **1.98-14.S4** (2026-10-22) — `src/chat/ChatViewProvider.ts`: host send flow — `case "send"` passes `msg.images` through; `handleSend(text, images)` reads `chat.vision.enabled` gate (default true), sanitizes (data-URL regex, ~14 MB cap, max 4; gate off → drop silently), pushes `images` into history, non-blocking `vision_warning` post when `!isVisionCapableModel(this.toolbarStore.get().model ?? settings.model)`; 3 `vision-s4:` static smoke assertions. Tester PASS. Commit pending.
+- **1.98-14.S4** (2026-10-22) — `src/chat/ChatViewProvider.ts`: host send flow — `case "send"` passes `msg.images` through; `handleSend(text, images)` reads `chat.vision.enabled` gate (default true), sanitizes (data-URL regex, ~14 MB cap, max 4; gate off → drop silently), pushes `images` into history, non-blocking `vision_warning` post when `!isVisionCapableModel(this.toolbarStore.get().model ?? settings.model)`; 3 `vision-s4:` static smoke assertions. Tester PASS. Commit `3d169f6`.
+- **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` (boolean, default true) setting contribution; planner PROGRESS.md marks 1.98-14 Done (Status + 5 slice annotations + Todo checked). No new smoke assertions (total stays 357). Tester PASS. Commit pending.
+- **1.98-14** — Copilot Vision (image attachments) — **COMPLETE** (all slices S1–S5 PASS, 2026-10-22; commits `9d847c1`, `2d0497b`, `4bd7775`, `3d169f6` + S5). No tag — `changelog-1.98` already exists.
 
 ## Tags (changelog-version tags on completed items)
 

@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-14 (Copilot Vision — image attachments) — **Planned** (2026-10-22, 5 slices S1–S5)
-- **Next step:** dispatch slice 1.98-14.S1 (request.ts multimodal support)
+- **Current item:** 1.98-14 (Copilot Vision — image attachments) — **Done** (2026-10-22, 5 slices S1–S5)
+- **Next step:** plan the next pending backlog item (1.98-15 — Engine status indicator)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -161,7 +161,7 @@ rendered inline in the prompt; hover shows a preview.
 
 **Slices:**
 
-- **1.98-14.S1 — `src/request.ts`: multimodal message support (pure).**
+- **1.98-14.S1 — `src/request.ts`: multimodal message support (pure).** — Done (2026-10-22)
   File: `src/request.ts`. (a) `ChatMessage`: add `images?: string[]` (data URLs).
   (b) New exported `type ContentPart = { type: "text"; text: string } | { type: "image_url";
   image_url: { url: string } }` and pure helper
@@ -178,7 +178,7 @@ rendered inline in the prompt; hover shows a preview.
   with `[1].type === "image_url"` and `[1].image_url.url` === the data URL;
   `estimateMessageTokens` with 1 image exceeds the no-image estimate by ≥ 900.
 
-- **1.98-14.S2 — `src/presets.ts`: `isVisionCapableModel` (pure).**
+- **1.98-14.S2 — `src/presets.ts`: `isVisionCapableModel` (pure).** — Done (2026-10-22)
   File: `src/presets.ts`. Export `const VISION_MODEL_MARKERS: string[]` (llava, qwen2.5-vl,
   qwen2-vl, qwen3-vl, minicpm-v, minicpm-v2, glm-4v, glm-4.1v, internvl, pixtral, gemma-3,
   moondream, bakllava, mistral-small-3.1, llama3.2-vision, llama-4) and
@@ -189,7 +189,7 @@ rendered inline in the prompt; hover shows a preview.
   Smoke (`vision-s2:`, 3): `out/presets.js` exports `isVisionCapableModel`; true for
   `"Qwen2.5-VL-7B-Instruct"` (case-insensitive); false for `""` and `"llama3.1:8b"`.
 
-- **1.98-14.S3 — `src/chat/webview.ts`: attachment UI (capture, strip, inline render, hover, warning).**
+- **1.98-14.S3 — `src/chat/webview.ts`: attachment UI (capture, strip, inline render, hover, warning).** — Done (2026-10-22)
   File: `src/chat/webview.ts`. (a) HTML: `<button id="attach" title="Attach image (or paste /
   drag-drop)">📎</button>` before Send in `.input-row`; hidden
   `<input type="file" id="attach-file" accept="image/jpeg,image/png,image/gif,image/webp"
@@ -218,7 +218,7 @@ rendered inline in the prompt; hover shows a preview.
   `id="attach-strip"`, `id="vision-warning"`, and the strings `readAsDataURL`,
   `clipboardData`, `vision_warning`, `msg-img`.
 
-- **1.98-14.S4 — `src/chat/ChatViewProvider.ts`: host send flow + validation + warning.**
+- **1.98-14.S4 — `src/chat/ChatViewProvider.ts`: host send flow + validation + warning.** — Done (2026-10-22)
   File: `src/chat/ChatViewProvider.ts`. (a) Import `isVisionCapableModel` from `../presets`.
   (b) `onMessage` `case "send"`: pass
   `Array.isArray(msg.images) ? msg.images : []` to
@@ -238,7 +238,7 @@ rendered inline in the prompt; hover shows a preview.
   Smoke (`vision-s4:`, 3): `ChatViewProvider.ts` source contains `isVisionCapableModel`,
   `vision_warning`, and `chat.vision.enabled`.
 
-- **1.98-14.S5 — `package.json` setting + final smoke assertions + PROGRESS.md.**
+- **1.98-14.S5 — `package.json` setting + final smoke assertions + PROGRESS.md.** — Done (2026-10-22)
   Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
   (a) `package.json`: add `llm.chat.vision.enabled` (boolean, default `true`, description:
   "Allow attaching images (JPEG/PNG/GIF/WEBP) to chat messages. Images are sent to the
@@ -324,7 +324,7 @@ static — unknown models get the conservative non-blocking warning.
      with zero new host or webview code (verified by a final smoke assertion).
 
 - [x] Plan backlog item 1.98-14 (Copilot Vision — image attachments) — planned 2026-10-22; 5 slices S1–S5.
-- [ ] Dispatch slices 1.98-14.S1 → S5 (one per session).
+- [x] Dispatch slices 1.98-14.S1 → S5 (one per session).
 ## Todo
 
 - [x] Wait for the Changelog Researcher to populate the backlog.

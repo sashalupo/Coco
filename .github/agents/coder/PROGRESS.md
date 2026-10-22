@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-14.S4 done — `src/chat/ChatViewProvider.ts`: host send flow + image validation + non-blocking vision warning
-- **Next step:** 1.98-14.S5
+- **Current step:** 1.98-14.S5 done (FINAL) — `package.json`: `llm.chat.vision.enabled` setting + planner memory
+- **Next step:** 1.98-15 (next backlog item — await planner plan)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (357 assertions, incl. 3 new `vision-s4:`)
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` setting + planner memory. Files: `package.json`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: added `llm.chat.vision.enabled` (boolean, default `true`) to `contributes.configuration.properties` right after `llm.chat.folderContext.enabled`, with description "Allow attaching images (JPEG/PNG/GIF/WEBP) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)." — makes the gate read inline in S4 (`chat.vision.enabled`, default `true`) user-visible in the settings UI. JSON validated via `JSON.parse`.
+  - `.github/agents/planner/PROGRESS.md`: Status Current item → 1.98-14 **Done** (5 slices S1–S5), Next step → plan the next pending backlog item (1.98-15 — Engine status indicator); all 5 slice headers (1.98-14.S1–S5) annotated ` — Done (2026-10-22)`; Todo `- [ ] Dispatch slices 1.98-14.S1 → S5 (one per session).` → `- [x]`.
+  - Verified: `node -e "JSON.parse(...)"` → `json ok`; `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **357 assertions** (unchanged — S1–S4 already added all 15 vision assertions; `scripts/smoke-test.js` untouched this slice).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-14.S4** (2026-10-22) — `src/chat/ChatViewProvider.ts`: host send flow + image validation + non-blocking vision warning. Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/ChatViewProvider.ts`: (1) extended the `../presets` import to value-import `isVisionCapableModel` (alongside the existing type imports). (2) `onMessage` `case "send":` now passes images through: `this.handleSend(String(msg.text ?? ""), Array.isArray(msg.images) ? msg.images : [])`. (3) `handleSend(text: string, images: unknown[])` — reads the vision gate inline via `vscode.workspace.getConfiguration("llm").get<boolean>("chat.vision.enabled", true)` (schema entry lands in S5; default keeps this slice single-file); sanitizes images ONLY when enabled — keeps entries that are strings matching `^data:image/(jpeg|png|gif|webp);base64,` with data-URL length ≤ `14 * 1024 * 1024` (base64 inflates ~4/3 over the 10 MB cap), capped at 4; when disabled, drops ALL images silently (no warning); pushes `{ role: "user", content: text, images: sanitized.length > 0 ? sanitized : undefined }`; non-blocking warning — if `sanitized.length > 0` and `!isVisionCapableModel(this.toolbarStore.get().model ?? settings.model)`, posts `{ type: "vision_warning", message: "Model '<model or default>' may not support images — the engine may ignore them." }` via `postMessage`; `runStream` proceeds regardless (never blocks on the warning). Model check uses `this.toolbarStore.get().model ?? settings.model` (toolbar override wins, matching `buildRequestBody`). Everything else in `handleSend` unchanged.
   - `scripts/smoke-test.js`: new subsection `// 16d) host send flow (1.98-14.S4)` with 3 static assertions (`vision-s4:` labels) on a fresh `chatViewSrcS4` read of `src/chat/ChatViewProvider.ts`: contains `isVisionCapableModel`, `vision_warning`, `chat.vision.enabled`.
