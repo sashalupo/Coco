@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-12 (Reusable prompt files) — **planned** (2026-10-22, 5 slices S1–S5)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-12.S1
+- **Current item:** 1.99-13 (Improved vision support: URL images, .bmp) — **planned** (2026-10-22, 3 slices S1–S3)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-13.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -1403,6 +1403,58 @@ discoverable — changelog "user prompts" sub-item deferred); QuickPick labels u
 attached-prompt chip — follow-up); `.prompt.md` diagnostics/autocompletion deferred (needs
 a language-feature provider).
 
+
+### Item 1.99-13 — Improved vision support (Preview) (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99 (March 2025), Chat section — "Improved vision support (Preview)": images can be attached from any browser via drag and drop; browser-dropped images must have a correct URL extension (`.jpg`, `.png`, `.gif`, `.webp`, `.bmp`).
+
+**Summary & approach:** 1.98-14 already shipped image attachments (file picker, clipboard paste, file drag-drop, base64 data URLs → `image_url` content parts, `llm.chat.vision.enabled` gate, vision-capable-model warning). This item adds two capabilities: (1) **URL drag-and-drop** — when a browser drags an image URL into the chat input, the webview fetches it (webview fetch → blob → FileReader → data URL) and attaches it like any other image, gated on the URL having an accepted image extension; (2) **`.bmp` support** — added to the webview's accepted MIME list, the file-picker `accept` attribute, the host's sanitize regex, and the setting description. A small pure helper (`isImageUrl` + `mimeFromImageUrl`) lands in `src/request.ts` so the URL-extension logic is unit-testable via `out/request.js`. No new settings, no new dependencies.
+
+- **1.99-13.S1** — URL-image helpers in `src/request.ts`
+  - Files: `src/request.ts`
+  - Changes: Add two exported pure helpers near `toContentParts` (line ~40):
+    - `export const IMAGE_URL_EXTENSIONS: string[] = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];`
+    - `export function isImageUrl(value: string): boolean` — true iff `value` parses as an `http:`/`https:` URL whose pathname ends with one of the accepted extensions (case-insensitive; ignore query/hash; reject anything else, including `file:` URLs and extensionless URLs).
+    - `export function mimeFromImageUrl(url: string): string` — maps the extension to `image/jpeg` (jpg/jpeg), `image/png`, `image/gif`, `image/webp`, `image/bmp`; returns `""` when `isImageUrl` is false.
+    - No changes to `toContentParts`/`buildRequestBody` (data URLs flow through unchanged).
+  - Smoke: prefix `vis-s1:` (4 assertions, `require` of `out/request.js`):
+    - `vis-s1: isImageUrl accepts https .png/.jpg/.bmp URLs (case-insensitive, ignores query)`
+    - `vis-s1: isImageUrl rejects non-image URLs, file: URLs, and extensionless URLs`
+    - `vis-s1: mimeFromImageUrl maps each accepted extension to the right MIME type`
+    - `vis-s1: IMAGE_URL_EXTENSIONS includes bmp and all five prior extensions`
+  - Acceptance: `npm run compile` passes; the 4 `vis-s1:` assertions pass; no existing assertion regresses.
+
+- **1.99-13.S2** — Webview: accept `.bmp` files + handle dropped image URLs
+  - Files: `src/chat/webview.ts`
+  - Changes (all inside the existing "Image attachments" block, ~line 1567):
+    - `IMAGE_TYPES` (line 1568): add `'image/bmp'`.
+    - File input `accept` attribute (line 1167): append `,image/bmp`.
+    - Attach button `title` (line 1162): mention URL drag, e.g. `"Attach image (paste / drag-drop file or image URL)"`.
+    - New function `addImageUrl(url)` next to `addImageFiles`: guard `pendingImages.length < MAX_IMAGES`; `fetch(url)` → `res.ok` check → `res.blob()` → reject if `blob.type` not in `IMAGE_TYPES` or `blob.size > MAX_IMAGE_BYTES` → `FileReader.readAsDataURL(blob)` → `pendingImages.push({ name: url, dataUrl: reader.result })` → `renderAttachStrip()`. All failures are silent (console.warn only), matching the existing silent-skip style.
+    - `drop` handler (line 1631): after `addImageFiles(e.dataTransfer.files)`, iterate `e.dataTransfer.items` — for each item with `kind === 'string'` and `type === 'text/uri-list'` (fallback: `type === ''`/absent with a string value), read the string, split on newlines, and call `addImageUrl` for each entry that looks like an `http(s)` URL ending in an accepted image extension (inline regex `/^https?:\/\/\S+\.(jpe?g|png|gif|webp|bmp)(\?.*)?$/i` — the webview cannot import `out/request.js`).
+  - Smoke: prefix `vis-s2:` (4 assertions, static `fs.readFileSync` on `src/chat/webview.ts`):
+    - `vis-s2: webview accepts image/bmp in IMAGE_TYPES and the file input accept list`
+    - `vis-s2: webview defines addImageUrl with fetch + blob + readAsDataURL`
+    - `vis-s2: webview drop handler reads text/uri-list items and calls addImageUrl`
+    - `vis-s2: webview URL regex covers jpg/png/gif/webp/bmp extensions`
+  - Acceptance: `npm run compile` passes; the 4 `vis-s2:` assertions pass; existing `vision-s3:` assertions still pass (they check substrings that remain present).
+
+- **1.99-13.S3** — Host sanitize accepts `.bmp` data URLs + setting description
+  - Files: `src/chat/ChatViewProvider.ts`, `package.json`
+  - Changes:
+    - `handleSend` sanitize regex (line ~917): change `/^data:image\/(jpeg|png|gif|webp);base64,/` to `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/`.
+    - `package.json` `llm.chat.vision.enabled` description (line ~261): update to "Allow attaching images (JPEG/PNG/GIF/WEBP/BMP, including image URLs dragged from a browser) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)."
+  - Smoke: prefix `vis-s3:` (2 assertions, static `fs.readFileSync` on `src/chat/ChatViewProvider.ts` + `package.json`):
+    - `vis-s3: host sanitize regex accepts bmp data URLs`
+    - `vis-s3: package.json vision setting description mentions BMP and browser URL drag`
+  - Acceptance: `npm run compile` passes; the 2 `vis-s3:` assertions pass; existing `vision-s4:` assertions still pass.
+
+**Risks / open questions:**
+- Cross-origin browser images may fail the webview `fetch` (CORS) — acceptable: silent skip matches existing behavior; the changelog itself only promises the extension check.
+- `text/uri-list` vs plain `text/plain` string drops vary by browser — the inline regex gate makes the fallback safe (non-image URLs are ignored).
+- No new setting is introduced; `llm.chat.vision.enabled` remains the single gate (description-only change).
+
+**Total expected assertions after all slices: 507** (baseline 497 + 10 new: 4 `vis-s1` + 4 `vis-s2` + 2 `vis-s3`).
 
 ## Done
 
