@@ -914,7 +914,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           .filter(
             (img): img is string =>
               typeof img === "string" &&
-              /^data:image\/(jpeg|png|gif|webp);base64,/.test(img) &&
+              /^data:image\/(jpeg|png|gif|webp|bmp);base64,/.test(img) &&
               img.length <= 14 * 1024 * 1024
           )
           .slice(0, 4)

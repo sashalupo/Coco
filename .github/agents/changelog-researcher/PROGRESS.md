@@ -362,10 +362,12 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Description:** Attach images from any browser via drag and drop; URL extensions
   `.jpg`, `.png`, `.gif`, `.webp`, `.bmp` accepted.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 3 slices S1–S3; src/request.ts URL-image helpers (isImageUrl/mimeFromImageUrl/IMAGE_URL_EXTENSIONS), webview .bmp + addImageUrl (fetch → blob → data URL) + text/uri-list drop handling, host sanitize regex accepts bmp, vision setting description updated; smoke 507)
 - **Gap vs existing:** 1.98-14 added image attachments (file picker + drag-drop of files).
   Extend: accept dropped image URLs (browser drag) and add `.bmp` to the accepted
   extensions; fetch URL images to base64 data URLs.
+  Deferred (documented): cross-origin CORS failures are silently skipped (matches
+  existing behavior); no new setting — llm.chat.vision.enabled remains the gate.
 
 #### 1.99-14 · Unified chat experience (Configure the editor)
 - **Description:** Duplicate of the Unified Chat view entry (Chat section).
@@ -503,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-13** Improved vision support (URL images, `.bmp`)
 - **1.99-16** Copilot status menu (completions indicator + toggle)
 - **1.99-19** `#searchResults` tool
 - **1.99-23** AI edits improvements (explicit save on keep)

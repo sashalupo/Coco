@@ -258,7 +258,7 @@
         "llm.chat.vision.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Allow attaching images (JPEG/PNG/GIF/WEBP) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)."
+          "description": "Allow attaching images (JPEG/PNG/GIF/WEBP/BMP, including image URLs dragged from a browser) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)."
         },
         "llm.chat.fetch.enabled": {
           "type": "boolean",

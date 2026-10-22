@@ -1439,7 +1439,7 @@ a language-feature provider).
     - `vis-s2: webview URL regex covers jpg/png/gif/webp/bmp extensions`
   - Acceptance: `npm run compile` passes; the 4 `vis-s2:` assertions pass; existing `vision-s3:` assertions still pass (they check substrings that remain present).
 
-- **1.99-13.S3** — Host sanitize accepts `.bmp` data URLs + setting description
+- **1.99-13.S3** — Host sanitize accepts `.bmp` data URLs + setting description — Done (2026-10-22, PASS, 507 assertions; item 1.99-13 complete)
   - Files: `src/chat/ChatViewProvider.ts`, `package.json`
   - Changes:
     - `handleSend` sanitize regex (line ~917): change `/^data:image\/(jpeg|png|gif|webp);base64,/` to `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/`.

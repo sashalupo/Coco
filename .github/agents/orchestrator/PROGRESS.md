@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-13** — Improved vision support (URL images, .bmp) — in progress (S1+S2 done, S3 pending)
-- **Current slice:** 1.99-13.S2 DONE
+- **Current item:** **1.99-13** — Improved vision support (URL images, .bmp) — **DONE** (S1–S3, 2026-10-22)
+- **Current slice:** 1.99-13.S3 DONE — item complete
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-13.S3 (host sanitize .bmp + setting description), then Tester
+- **Next step:** dispatch Planner for item **1.99-16** (Copilot status menu: completions indicator + toggle), record plan, commit, run slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** 7971ca4 (feat: improved vision support — URL-image helpers (1.99-13.S1)); S2 commit pending
-- **Build state:** compiles clean; smoke test passes (505 assertions)
+- **Last commit:** 6d69548 (feat: improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)); S3 commit pending
+- **Build state:** compiles clean; smoke test passes (507 assertions); 1.99-13 complete
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -58,6 +58,7 @@ pending item** (the oldest).
 - **1.99-8** (2026-10-22) — Agent mode tool approvals, 4 slices S1–S4: pure `ApprovalStore` in `src/presets.ts` (session/workspace/global remembered approvals via MementoLike); host wiring + `llm.tools.autoApprove` setting (gate: `requireApproval && isMutating && !autoApprove && !isApproved`); webview scope dropdown on both approval cards; `package.json` setting + final smoke. Commits b498510, aabc2d3, 0c9bfbf + S4 commit. Smoke 458 → 466. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.99-10** (2026-10-22) — Unified Chat view (mode picker + history), 4 slices S1–S4: ChatMode/normalizeChatMode/modeAddendum in presets, buildRequestBody ask→no tools + tool_choice none, host wiring (ToolbarState.mode, setMode, modeAddendum in system prompt), webview Mode picker (Ask/Agent/Edit, default Agent). Commits 0fbd12e, e281b7f, efbab3c + S4 commit. Smoke 472 → 479. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.99-12** (2026-10-22) — Reusable prompt files, 5 slices S1–S5: pure helpers in src/prompts.ts (promptTitle/stripPromptComments/promptBlock/PROMPT_TEMPLATE, MAX_PROMPT_CHARS 32k), promptFiles setting (llm.promptFiles.locations, default .prompts/**/*.prompt.md + .github/copilot-instructions.md), llm.usePrompt command (QuickPick of discovered prompts + New Prompt File… from template, no overwrite), prompt_inject webview handler (prepend to chat input, draft preserved, focus), package.json contributions. S3 split into S3a/S3b (Coder session truncation); GlobPattern deviation (per-glob findFiles loop + Set dedup). Smoke 484 → 497. Commits b54baa0, 3b59647, 3a1ddf7, 5e9a402 + S5 commit. **Item complete — no tag (changelog-1.99 already exists).**
+- **1.99-13** (2026-10-22) — Improved vision support (Preview), 3 slices S1–S3: URL-image helpers in src/request.ts (IMAGE_URL_EXTENSIONS, isImageUrl, mimeFromImageUrl), webview .bmp support (IMAGE_TYPES, accept attr, attach title) + addImageUrl (fetch → blob → FileReader → data URL) + drop handler reading text/uri-list items with inline extension regex, host sanitize regex accepts bmp data URLs, llm.chat.vision.enabled description updated. Smoke 497 → 507. Commits 7971ca4, 6d69548 + S3 commit. **Item complete — no tag (changelog-1.99 already exists).**
 
 
 

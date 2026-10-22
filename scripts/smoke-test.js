@@ -3836,6 +3836,29 @@ function assert(cond, label) {
     "vis-s2: webview URL regex covers jpg/png/gif/webp/bmp extensions",
   );
 
+  // 43) Improved vision support — host sanitize .bmp + setting description (1.99-13.S3)
+  const cvpSrcVisS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    cvpSrcVisS3.includes("data:image\\/(jpeg|png|gif|webp|bmp);base64,") &&
+      !cvpSrcVisS3.includes("data:image\\/(jpeg|png|gif|webp);base64,"),
+    "vis-s3: host sanitize regex accepts bmp data URLs",
+  );
+  const pkgVisS3 = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const visionSetting =
+    pkgVisS3.contributes.configuration.properties["llm.chat.vision.enabled"];
+  assert(
+    visionSetting &&
+      typeof visionSetting.description === "string" &&
+      visionSetting.description.includes("BMP") &&
+      visionSetting.description.includes("browser"),
+    "vis-s3: package.json vision setting description mentions BMP and browser URL drag",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

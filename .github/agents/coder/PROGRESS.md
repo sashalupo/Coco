@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-13 (Improved vision support) — S1+S2 done
-- **Next step:** 1.99-13.S3
+- **Current item:** 1.99-13 (Improved vision support) — COMPLETE (S1–S3)
+- **Next step:** 1.99-16 (Copilot status menu)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (505 assertions)
+- **Build state:** compiles clean; smoke test passes (507 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-13.S3** (2026-10-22, FINAL) — host sanitize accepts `.bmp` data URLs + setting description. Files: `src/chat/ChatViewProvider.ts`, `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/ChatViewProvider.ts`: `handleSend` sanitize regex (line 917) changed from `/^data:image\/(jpeg|png|gif|webp);base64,/` to `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/`. No other changes.
+  - `package.json`: `llm.chat.vision.enabled` description updated to "Allow attaching images (JPEG/PNG/GIF/WEBP/BMP, including image URLs dragged from a browser) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)." JSON validated with `JSON.parse` → `json ok`. No other changes.
+  - `scripts/smoke-test.js`: new section `// 43) Improved vision support — host sanitize .bmp + setting description (1.99-13.S3)` after section 42, before the final summary print; 2 `vis-s3:` assertions: (a) static `fs.readFileSync` on `src/chat/ChatViewProvider.ts` (local `cvpSrcVisS3`) — contains `data:image\/(jpeg|png|gif|webp|bmp);base64,` AND does NOT contain the old `data:image\/(jpeg|png|gif|webp);base64,` group; (b) `JSON.parse` of `package.json` (local `pkgVisS3`) — `llm.chat.vision.enabled` description contains `BMP` and `browser`. Total PASS lines now 507 (505 + 2).
+  - Verified: `node -e "JSON.parse(...)"` → json ok; `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 507 PASS, 0 FAIL; `git status --short` → only the 3 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
+  - **Item 1.99-13 (Improved vision support) complete** — all 3 slices S1–S3 done.
 - **1.99-13.S2** (2026-10-22) — `src/chat/webview.ts`: accept `.bmp` files + handle dropped image URLs. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/webview.ts`: (a) `IMAGE_TYPES` gains `'image/bmp'` (now `['image/jpeg','image/png','image/gif','image/webp','image/bmp']`); (b) file input `accept` attribute gains `,image/bmp` (now `image/jpeg,image/png,image/gif,image/webp,image/bmp`); (c) attach button `title` → `"Attach image (paste / drag-drop file or image URL)"`; (d) new `addImageUrl(url)` function right after `addImageFiles` — guards `pendingImages.length >= MAX_IMAGES` (silent return), `fetch(url)` → `!res.ok` → `console.warn` + return, `res.blob()` → `blob.type` not in `IMAGE_TYPES` or `blob.size > MAX_IMAGE_BYTES` → `console.warn` + return, `FileReader.readAsDataURL(blob)` → on load pushes `{ name: url, dataUrl: reader.result }` + `renderAttachStrip()`; all failures silent (`console.warn` only, `.catch` included); (e) `drop` handler — after the existing `addImageFiles(e.dataTransfer.files)`, iterates `e.dataTransfer.items`; for each `kind === 'string'` item with `type === 'text/uri-list'` (or `type === ''`), `item.getAsString(...)` → split on `\n` → trim → test against inline regex `/^https?:\/\/\S+\.(jpe?g|png|gif|webp|bmp)(\?.*)?$/i` → `addImageUrl(u)` per match (regex inline because the webview cannot import `out/request.js`).
   - `scripts/smoke-test.js`: new section `// 42) Improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)` after section 41, before the final summary print; static `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcVisS2`); 4 `vis-s2:` assertions: (a) source contains `'image/bmp'` AND the full `accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"` attribute; (b) source contains `addImageUrl`, `fetch(`, `.blob()`, `readAsDataURL`; (c) source contains `text/uri-list` AND `addImageUrl`; (d) source contains the regex extension alternation `jpe?g|png|gif|webp|bmp`. Total PASS lines now 505 (501 + 4).

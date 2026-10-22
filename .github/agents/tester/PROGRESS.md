@@ -12,12 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-13 — Improved vision support (URL images, .bmp) — S1+S2 PASS (2026-10-22)
-- **Next step:** verify 1.99-13.S3 (host sanitize .bmp + setting description)
+- **Current item:** 1.99-13 — Improved vision support (URL images, .bmp) — COMPLETE (S1+S2+S3 PASS, 2026-10-22)
+- **Next step:** none for 1.99-13 — item fully verified; await next backlog item
 - **Last updated:** 2026-10-22
-- **Last commit:** 7971ca4 (feat(llm): improved vision support — URL-image helpers (1.99-13.S1))
-- **Build state:** 505/505 PASS
+- **Last commit:** 6d69548 (feat(llm): improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)); S3 commit pending
+- **Build state:** 507/507 PASS
 
+
+
+### 1.99-13.S3 — FINAL: host sanitize .bmp + setting description (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **507 PASS lines** (505 prior + 2 new `vis-s3:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 507/507 PASS; (3) 2 genuine `vis-s3:` assertions in new `// 43) Improved vision support — host sanitize .bmp + setting description (1.99-13.S3)` section (smoke-test.js:3839, last section before `ALL SMOKE TESTS PASSED`): `vis-s3: host sanitize regex accepts bmp data URLs` (L3847 — reads ChatViewProvider.ts from disk, asserts bmp regex present AND old 4-type regex absent), `vis-s3: package.json vision setting description mentions BMP and browser URL drag` (L3859 — parses package.json, checks description includes "BMP" and "browser") PASS; (4) `src/chat/ChatViewProvider.ts:917`: sanitize regex now `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` — `git diff` shows exactly that one-line change (+1/−1) PASS; (5) `package.json` valid JSON (`json ok`), `llm.chat.vision.enabled` description exactly "Allow attaching images (JPEG/PNG/GIF/WEBP/BMP, including image URLs dragged from a browser) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)." (string-equality check → true); `git diff package.json` shows only that one-line description change PASS; (6) scope exactly ` M src/chat/ChatViewProvider.ts`, ` M package.json`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + persistent ` m ninfer` marker; no package-lock.json drift PASS; (7) all 3 existing `vision-s4:` assertions still pass (smoke log L355–357) PASS.
+- **Verdict:** **PASS** — all 7 criteria met. **Item 1.99-13 (Improved vision support) fully verified (S1–S3).**
 
 ### 1.99-13.S2 — Webview: accept `.bmp` files + handle dropped image URLs (2026-10-22) — **PASS**
 
