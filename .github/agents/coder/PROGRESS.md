@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-10.S3 done — `#folder:` wiring (ChatViewProvider + config gate)
-- **Next step:** 1.98-10.S4 — (per plan; likely `package.json` settings schema + final smoke assertions + memory)
+- **Current step:** 1.98-10.S4 done — `package.json` settings schema + final smoke assertions (item 1.98-10 complete)
+- **Next step:** item 1.98-12 (Change completions model) — awaiting planner plan
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (315 assertions, incl. 5 new `folder-s3:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (319 assertions, incl. 4 new `folder-s4:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-10.S4** (2026-10-22) — `package.json` settings schema + final smoke assertions + memory (FINAL slice of item 1.98-10). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: added `llm.chat.folderContext.enabled` (boolean, default `true`) to `contributes.configuration.properties` after `llm.chat.problems.enabled`, with description "When the user types #folder:<name> (or '#folder <name>') in a chat message, attach the folder's file tree as context. Bare #folder attaches the workspace root." JSON validated via `JSON.parse`.
+  - `scripts/smoke-test.js`: new subsection `// 14d) folder tag (1.98-10.S4)` with 4 parsed-JSON assertions (`folder-s4:` labels) reusing the `pkg` parse from 12d: (a) `contributes.configuration.properties["llm.chat.folderContext.enabled"]` present, (b) `type === "boolean"`, (c) `default === true`, (d) `description` is a non-empty string mentioning `#folder`.
+  - `.github/agents/planner/PROGRESS.md`: marked plan 1.98-10 **Done** (S1–S4, each slice line annotated `— Done (2026-10-22)`); Status Current item → 1.98-10 Done, Next step → plan backlog item 1.98-12 (Change completions model); Done section entry added; Todo updated.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **319 assertions** (315 prior + 4 new `folder-s4:`); `package.json` parses via `JSON.parse`.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-10.S3** (2026-10-22) — `#folder:` wiring: `folderContextEnabled` field + ChatViewProvider integration. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: added `folderContextEnabled: boolean;` to `LlmSettings` (after `problemsEnabled`), with doc comment "Enable the `#folder:` chat tag (folder tree injected as context).".
   - `src/config.ts`: `readSettings()` now returns `folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true)` (after `problemsEnabled`).

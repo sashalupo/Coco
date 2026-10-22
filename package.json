@@ -212,6 +212,11 @@
           "type": "boolean",
           "default": true,
           "description": "When the user types #problems in a chat message, attach compiler/linter problems (all files, or a specific file via '#problems <path>') as context."
+        },
+        "llm.chat.folderContext.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When the user types #folder:<name> (or '#folder <name>') in a chat message, attach the folder's file tree as context. Bare #folder attaches the workspace root."
         }
       }
     }

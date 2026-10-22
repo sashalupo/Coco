@@ -157,9 +157,9 @@ researcher does NOT write code — it builds and maintains the backlog.
   followed by the folder name (previously only drag-and-drop from Explorer).
 - **Image notes:** None.
 - **Relevance:** `keep (capability/context)` — context injection.
-- **Status:** `pending`
+- **Status:** `done` (2026-10-22, slices S1–S4)
 - **Gap vs existing:** no `#folder:` tag exists yet (only `@filename` single-file tags).
-- **Implemented in:** —
+- **Implemented in:** `#folder:<name>` / `#folder <name>` chat tag (bare `#folder` = workspace root): `extractFolderTag` + `formatFolderBlock` in `src/context.ts`, `ToolExecutor.folderSweep` (resolveSafe guard + tree walk depth ≤ 3 / cap 100), ChatViewProvider wiring gated on `llm.chat.folderContext.enabled` (default true).
 
 #### 1.98-11 · Collapsed mode for Next Edit Suggestions (Preview)
 - **Description:** Collapsed NES mode shows only the suggestion indicator in the left margin;
@@ -245,6 +245,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - 1.98-6 Custom instructions GA — `done (already built)` (loads `.github/copilot-instructions.md`)
 - 1.98-8 `#codebase` tag — `done` (2026-10-22, local workspace-context sweep)
 - 1.98-9 `#problems` tag — `done` (2026-10-22, attach Problems-panel items as context)
+- 1.98-10 `#folder:<name>` tag — `done` (2026-10-22, attach a folder's file tree as context)
 
 ## Skipped (decision trail)
 
@@ -257,10 +258,9 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-1. **1.98-10** `#folder:<name>` tag (attach a folder as context)
-2. **1.98-12** Change Completions Model command (switch model for inline completions)
-3. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
-4. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
+1. **1.98-12** Change Completions Model command (switch model for inline completions)
+2. **1.98-14** Copilot Vision — image attachments (JPEG/PNG/GIF/WEBP)
+3. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
 
 ## Todo
 

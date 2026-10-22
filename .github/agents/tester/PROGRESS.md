@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-10 (`#folder:` tag) — S3 verified
-- **Next step:** verify item 1.98-10 (`#folder:` tag) — slice S4
+- **Current item:** 1.98-10 (`#folder:` tag) — S4 verified (item 1.98-10 fully verified)
+- **Next step:** verify item 1.98-12 (next backlog item)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 315/315 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 319/319 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -167,6 +167,26 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 14c:** 5 genuine static checks (`folder-s3:`). PASS
 - **Scope check:** only the 5 in-scope files (+ `ninfer` marker, ignored). PASS
 
+### 1.98-10.S4 — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **319 assertions** (315 prior + 4 new `folder-s4:` in subsection 14d; 0 FAIL).
+- **`package.json`:** valid JSON (`node -e JSON.parse` OK). `llm.chat.folderContext.enabled` present with `type: "boolean"`, `default: true`, non-empty description containing `#folder`. `git diff package.json` = single additive hunk (+5/−0) placed immediately after `llm.chat.problems.enabled`; no other change. PASS
+- **Smoke 14d:** 4 genuine parsed-JSON checks on `pkg.contributes.configuration.properties["llm.chat.folderContext.enabled"]` (NOT string-contains on raw file): entry exists, `type === "boolean"`, `default === true`, description non-empty and contains `#folder`. Not tautologies. PASS
+- **Planner memory:** `.github/agents/planner/PROGRESS.md` marks 1.98-10 **Done** (2026-10-22, slices S1–S4); each slice S1–S4 annotated Done. PASS
+- **Scope check:** `git status --short` (ignoring `ninfer` submodule marker) → only `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md`. PASS
+- **Item 1.98-10 fully verified (S1–S4 all PASS).**
+
+### 1.98-10.S4 — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **319 assertions** (315 prior + 4 new `folder-s4:` in subsection 14d).
+- **`package.json`:** valid JSON; `llm.chat.folderContext.enabled` present with `type: "boolean"`, `default: true`, non-empty description containing `#folder`; `git diff` = single additive hunk (+5/−0) immediately after `llm.chat.problems.enabled`. PASS
+- **Smoke 14d:** 4 genuine parsed-JSON checks (`folder-s4:`) — entry exists, `type === "boolean"`, `default === true`, description non-empty + contains `#folder`. PASS
+- **Planner memory:** item 1.98-10 marked Done (2026-10-22, slices S1–S4), each slice annotated done. PASS
+- **Scope check:** only the 4 in-scope files (+ `ninfer` marker, ignored). PASS
+- **Item 1.98-10 fully verified (S1–S4 all PASS).**
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -198,8 +218,10 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-10.S1** — `src/context.ts`: `extractFolderTag` + `formatFolderBlock` + `FOLDER_BLOCK_MAX_CHARS` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S2** — `ToolExecutor.folderSweep(folderName)` — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S3** — `folderContextEnabled` field + `#folder:` chat wiring — **PASS** (2026-10-22, see Verifications)
-- [x] **1.98-10.S3** — `folderContextEnabled` field + `#folder:` chat wiring — **PASS** (2026-10-22, see Verifications)
-- [ ] Verify item **1.98-10** (`#folder:` tag) — slice S4.
+- [x] **1.98-10.S4** — `package.json` settings schema + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-10** — `#folder:` tag — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
+- [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions

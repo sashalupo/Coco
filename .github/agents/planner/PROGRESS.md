@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-10 (`#folder:` tag) — **Planned** (2026-10-22, slices S1–S4)
-- **Next step:** dispatch Coder for slice 1.98-10.S1
+- **Current item:** 1.98-10 (`#folder:` tag) — **Done** (2026-10-22, slices S1–S4)
+- **Next step:** plan backlog item 1.98-12 (Change completions model)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -124,6 +124,18 @@ unchanged; `npm run compile` clean.
 
 ## Done
 
+- **1.98-10** (2026-10-22) — `#folder:` tag: attach a folder's file tree as chat context. All slices S1–S4
+  implemented (`extractFolderTag`/`formatFolderBlock` pure helpers in `src/context.ts`; `ToolExecutor.folderSweep`
+  file-tree sweep (depth ≤ 3, cap 100 entries, no contents); `ChatViewProvider.runStream` injects the folder block
+  after the `#problems` block, gated on `llm.chat.folderContext.enabled` (default true); `package.json` settings
+  schema entry; final smoke assertions). Key decisions:
+  1. **Tag-only scope** — no paperclip/drag-and-drop (single webview, no attachment UI).
+  2. **File tree only** — no file contents (that's `read_file`'s job); mirrors `codebaseSweep`'s structure walk.
+  3. **Bounded output** — 100 entries (sweep) + 8,000 chars (formatting, `… (truncated)` suffix).
+  4. **No fallback for bad folder names** — renders `(folder not found: <name>)` so the model sees the error;
+     bare `#folder` sweeps the workspace root (never a silent no-op).
+  5. **`folderContextEnabled` config field pulled into S3** so that slice compiles standalone; S4 only added the
+     `package.json` schema entry + final smoke assertions.
 - **1.98-9** (2026-10-22) — `#problems` tag: attach compiler/linter problems as chat context. All slices S1–S4
   implemented (`extractProblemsTag`/`formatProblemsBlock` pure helpers in `src/context.ts`; `ToolExecutor.collectDiagnostics`
   extracted from `getDiagnostics` with a 50-problem cap; `ChatViewProvider.runStream` injects the problems block after the
@@ -175,6 +187,7 @@ unchanged; `npm run compile` clean.
 - [x] Plan backlog item 1.98-2 (notebook support in chat) — planned 2026-10-22; slices S1–S6 dispatched and done.
 - [x] Plan backlog item 1.98-8 (`#codebase` tag — advanced codebase search; drop the embeddings sub-item) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [x] Plan backlog item 1.98-9 (`#problems` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
+- [x] Plan backlog item 1.98-10 (`#folder:` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
       the real codebase, break it into tiny slices (one file / one concern each), write the
       plan, record it here.
@@ -311,7 +324,7 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 ## Overall acceptance
 1. compile clean + smoke all green (270 prior + section 13). 2. `#problems` → `Problems (scope: workspace)` block (≤50 problems / ≤8,000 chars); bare tag + no diagnostics → no block. 3. `#problems src/foo.ts` → file scope; outside-workspace path → not injected (workspace fallback). 4. setting false → tag inert. 5. `get_diagnostics` tool output unchanged. 6. No webview changes, no new deps.
 
-# Plan: 1.98-10 — Attach folders as context (`#folder:<name>`) — **Planned** (2026-10-22)
+# Plan: 1.98-10 — Attach folders as context (`#folder:<name>`) — **Done** (2026-10-22, slices S1–S4)
 
 **Changelog reference:** VS Code 1.98 — attach a folder as context via the paperclip or by
 typing `#folder:` followed by the folder name (previously only drag-and-drop from Explorer).
@@ -351,7 +364,7 @@ Header uses the raw tag name; `(workspace root)` when the name is empty.
 
 ## Slices
 
-### 1.98-10.S1 — Pure helpers in `src/context.ts`
+### 1.98-10.S1 — Pure helpers in `src/context.ts` — Done (2026-10-22)
 File: `src/context.ts` (append a `#folder` section after the `#problems` section, mirroring
 its style).
 - `export function extractFolderTag(text: string): string | null` — regex
@@ -378,7 +391,7 @@ Smoke (new section **14a**, labels `folder-s1:`):
   cap + suffix; bare (no folder) header shows `(workspace root)`.
 Acceptance: `npm run compile` passes; smoke green (existing 294 + new).
 
-### 1.98-10.S2 — `ToolExecutor.folderSweep` in `src/tools/ToolExecutor.ts`
+### 1.98-10.S2 — `ToolExecutor.folderSweep` in `src/tools/ToolExecutor.ts` — Done (2026-10-22)
 File: `src/tools/ToolExecutor.ts` (add a public method next to `codebaseSweep`, ~line 856).
 - `public async folderSweep(folderName: string): Promise<string>` — returns the formatted
   block (mirrors `codebaseSweep` which returns the formatted string, keeping the provider
@@ -396,7 +409,7 @@ Smoke (new section **14b**, labels `folder-s2:`): static checks on `ToolExecutor
 `codebaseSweep(` still present (untouched).
 Acceptance: `npm run compile` passes; smoke green.
 
-### 1.98-10.S3 — Wiring in `src/chat/ChatViewProvider.ts` + `src/config.ts` + `src/presets.ts`
+### 1.98-10.S3 — Wiring in `src/chat/ChatViewProvider.ts` + `src/config.ts` + `src/presets.ts` — Done (2026-10-22)
 Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts` (three files, one
 concern — the wiring; same shape as 1.98-9.S3 which pulled the config field in so the slice
 compiles standalone).
@@ -428,7 +441,7 @@ contains `extractFolderTag`, `folderSweep(`, `folderContextEnabled`; `config.ts`
 `chat.folderContext.enabled`; `presets.ts` contains `folderContextEnabled`.
 Acceptance: `npm run compile` passes; smoke green.
 
-### 1.98-10.S4 — `package.json` + final smoke + mark done
+### 1.98-10.S4 — `package.json` + final smoke + mark done — Done (2026-10-22)
 Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
 - `package.json`: after `llm.chat.problems.enabled` (~line 215) add:
   ```json

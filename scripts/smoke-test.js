@@ -2133,6 +2133,29 @@ function assert(cond, label) {
     "folder-s3: presets.ts declares folderContextEnabled",
   );
 
+  // 14d) folder tag (1.98-10.S4): package.json setting (parsed JSON).
+  const folderSetting =
+    pkg.contributes.configuration.properties["llm.chat.folderContext.enabled"];
+  assert(
+    folderSetting !== undefined,
+    "folder-s4: package.json has llm.chat.folderContext.enabled",
+  );
+  assert(
+    folderSetting && folderSetting.type === "boolean",
+    "folder-s4: llm.chat.folderContext.enabled is boolean",
+  );
+  assert(
+    folderSetting && folderSetting.default === true,
+    "folder-s4: llm.chat.folderContext.enabled defaults to true",
+  );
+  assert(
+    folderSetting &&
+      typeof folderSetting.description === "string" &&
+      folderSetting.description.length > 0 &&
+      folderSetting.description.includes("#folder"),
+    "folder-s4: llm.chat.folderContext.enabled description mentions #folder",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
