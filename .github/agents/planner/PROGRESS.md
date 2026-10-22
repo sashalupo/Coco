@@ -1956,7 +1956,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
     - `sres-s2: searchResults handles no-workspace and no-query cases with hint strings` — method body contains `"(no workspace folder)"` and a `no query` hint.
   - Acceptance: `npm run compile` passes (the new `LlmSettings` field is satisfied by the `readSettings` addition in the same slice); the 3 `sres-s2:` assertions pass; no existing assertion regresses.
 
-- **1.99-19.S3** — `ChatViewProvider.runStream`: wire the `#searchResults` tag into the context block
+- **1.99-19.S3** (Done) — `ChatViewProvider.runStream`: wire the `#searchResults` tag into the context block
   - Files: `src/chat/ChatViewProvider.ts`
   - Changes:
     - Import block (~line 27–35): add `extractSearchResultsTag` and `formatSearchResultsBlock` to the `./context` import.

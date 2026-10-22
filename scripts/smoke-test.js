@@ -4030,6 +4030,30 @@ function assert(cond, label) {
     "sres-s2: searchResults handles no-workspace and no-query cases with hint strings",
   );
 
+  // 49) #searchResults tag — ChatViewProvider wiring (1.99-19.S3)
+  const cvpSrcSresS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    cvpSrcSresS3.includes("extractSearchResultsTag") &&
+      cvpSrcSresS3.includes("formatSearchResultsBlock") &&
+      /from "\.\.\/context"/.test(cvpSrcSresS3),
+    "sres-s3: ChatViewProvider imports extractSearchResultsTag + formatSearchResultsBlock from ./context",
+  );
+  assert(
+    /settings\.searchResultsEnabled && lastUser && this\.toolExecutor/.test(
+      cvpSrcSresS3,
+    ),
+    "sres-s3: ChatViewProvider gates the #searchResults block on settings.searchResultsEnabled",
+  );
+  assert(
+    /extractSearchResultsTag\(lastUser\.content\)[\s\S]{0,400}?searchResults\(srQuery\)[\s\S]{0,300}?formatSearchResultsBlock\(srQuery, srBody\)/.test(
+      cvpSrcSresS3,
+    ),
+    "sres-s3: ChatViewProvider calls toolExecutor.searchResults and appends the formatted block to finalContextBlock",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

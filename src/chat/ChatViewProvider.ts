@@ -33,6 +33,8 @@ import {
   formatFetchBlock,
   extractUsagesTag,
   formatUsagesTagBlock,
+  extractSearchResultsTag,
+  formatSearchResultsBlock,
   extractNewWorkspaceTag,
   formatWorkspaceBlock,
   type ContextFile,
@@ -1111,6 +1113,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + usagesBlock
               : usagesBlock;
+          }
+        }
+      }
+
+      // 1.99-19.S3: `#searchResults` tag — run a workspace text search for the
+      // tagged query and append the matches to the context block. Gated only on
+      // settings.searchResultsEnabled (runs regardless of llm.tools.enabled,
+      // same as the other tags).
+      if (settings.searchResultsEnabled && lastUser && this.toolExecutor) {
+        const srQuery = extractSearchResultsTag(lastUser.content);
+        if (srQuery !== null) {
+          const srBody = await this.toolExecutor.searchResults(srQuery);
+          const srBlock = formatSearchResultsBlock(srQuery, srBody);
+          if (srBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + srBlock
+              : srBlock;
           }
         }
       }

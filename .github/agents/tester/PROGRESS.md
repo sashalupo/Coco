@@ -12,13 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-19 — #searchResults tag — S1+S2 PASS (2026-10-22)
-- **Next step:** verify 1.99-19.S3 (ChatViewProvider.runStream wiring)
+- **Current item:** 1.99-19 — #searchResults tag — S1+S2+S3 PASS (2026-10-22)
+- **Next step:** verify 1.99-19.S4 (ChatViewProvider.runStream wiring)
 - **Last updated:** 2026-10-22
-- **Last commit:** 3076650 (feat(llm): #searchResults tag — pure parse/format helpers (1.99-19.S1))
-- **Build state:** 526/526 PASS
+- **Last commit:** 5bb42bf (feat(llm): #searchResults tag — ToolExecutor.searchResults + settings (1.99-19.S2))
+- **Build state:** 529/529 PASS
 
 
+
+### 1.99-19.S3 — ChatViewProvider.runStream wiring of `#searchResults` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **529 PASS lines** (526 prior + 3 new `sres-s3:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 529/529 PASS; (3) 3 genuine `sres-s3:` assertions in new section `// 49) #searchResults tag — ChatViewProvider wiring (1.99-19.S3)` (smoke-test.js:4033) PASS; (4) `src/chat/ChatViewProvider.ts`: L36–37 imports `extractSearchResultsTag`/`formatSearchResultsBlock` from `../context`; gated block L1122–1135 sits between the `#usages` block (L1104–1117) and the `#newWorkspace` block (L1137+), gated on `settings.searchResultsEnabled && lastUser && this.toolExecutor`, calls `this.toolExecutor.searchResults(srQuery)` and appends `formatSearchResultsBlock(srQuery, srBody)` to `finalContextBlock` PASS; (5) `git status --short` shows exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/chat/ChatViewProvider.ts` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-19.S2 — ToolExecutor.searchResults + LlmSettings.searchResultsEnabled + readSettings (2026-10-22) — **PASS**
 

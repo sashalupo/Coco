@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-19 (`#searchResults` tag) — in progress (S1–S2 done)
-- **Next step:** 1.99-19.S3 (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.99-19 (`#searchResults` tag) — in progress (S1–S3 done)
+- **Next step:** 1.99-19.S4 (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (526 assertions)
+- **Build state:** compiles clean; smoke test passes (529 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-19.S3** (2026-10-22) — `ChatViewProvider.runStream`: wire the `#searchResults` tag into the context block. Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/ChatViewProvider.ts`: (a) `extractSearchResultsTag` + `formatSearchResultsBlock` added to the `../context` import (after `formatUsagesTagBlock`); (b) in `runStream`, the standard gated block inserted after the `#usages` block and before the `#newWorkspace` block: `if (settings.searchResultsEnabled && lastUser && this.toolExecutor)` → `srQuery = extractSearchResultsTag(lastUser.content)` → `srQuery !== null` → `srBody = await this.toolExecutor.searchResults(srQuery)` → `srBlock = formatSearchResultsBlock(srQuery, srBody)` → append to `finalContextBlock` with the same `"\n\n"` join pattern as the neighboring tag blocks.
+  - `scripts/smoke-test.js`: new section `// 49) #searchResults tag — ChatViewProvider wiring (1.99-19.S3)` at end (after section 48, before final summary print); static `fs.readFileSync` on `src/chat/ChatViewProvider.ts` (local `cvpSrcSresS3`); 3 `sres-s3:` assertions: (a) source contains `extractSearchResultsTag` AND `formatSearchResultsBlock` AND `from "../context"`; (b) regex `settings\.searchResultsEnabled && lastUser && this\.toolExecutor` present; (c) regex `extractSearchResultsTag\(lastUser\.content\)[\s\S]{0,400}?searchResults\(srQuery\)[\s\S]{0,300}?formatSearchResultsBlock\(srQuery, srBody\)` present. Total PASS lines now 529 (526 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 529 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-19.S2** (2026-10-22) — `ToolExecutor.searchResults(query)` public method + `LlmSettings.searchResultsEnabled` + `readSettings`. Files: `src/tools/ToolExecutor.ts`, `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools/ToolExecutor.ts`: new `public async searchResults(query: string): Promise<string>` added right after `findUsagesPublic` (mirrors its public-wrapper pattern): (a) no workspace folder → `"(no workspace folder)"`; (b) `query.trim() === ""` → `"(no query — use '#searchResults <query>' to search the workspace)"`; (c) else `rootAbs = vscode.workspace.workspaceFolders[0].uri.fsPath`, `matches = await this.searchMatches(query, rootAbs, MAX_SEARCH_MATCHES)`, returns `matches.join("\n")` + `\n… (truncated at ${MAX_SEARCH_MATCHES})` suffix when `matches.length >= MAX_SEARCH_MATCHES` (exact same suffix convention as `searchFiles`). Reuses the existing private `searchMatches` — no new search logic.
   - `src/presets.ts`: `LlmSettings` gains `searchResultsEnabled: boolean` (doc comment "Enable the `#searchResults` chat tag (workspace text-search results injected as context).") immediately after `newWorkspaceEnabled`.
