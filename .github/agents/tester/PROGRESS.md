@@ -12,12 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-3.S3 (FINAL — request-body + loop verification) — **PASS** (2026-10-22); item 1.99-3 fully verified (S1–S3)
+- **Current item:** 1.99-4.S1 (pure fetchTool module) — **PASS** (2026-10-22)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** 469123c (coder: 1.99-3.S2)
-- **Build state:** 411/411 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 62d0036 (orchestrator: 1.99-4 plan)
+- **Build state:** 419/419 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-4.S1 — pure fetchTool module (src/fetchTool.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **419 PASS lines** (411 prior + 8 new `fetch-s1:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 419 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 20) Fetch tool (1.99-4.S1)` section has 8 genuine `fetch-s1:` runtime assertions vs `out/fetchTool.js`: (a) exports are functions + `DEFAULT_MAX_CHARS === 20000`; (b) `htmlToText` full-HTML fixture === `"Title\nHello world"`; (c) entities `a&amp;b &lt;c&gt;` → `a&b <c>`; (d) injected `fetchFn` 200 `text/html` → body text, no tags, fetchFn called once; (e) second call with throwing `fetchFn` → cached text, `throwingCalls === 0`; (f) 404 → `startsWith("HTTP 404")`; (g) `"not a url"` + `"ftp://x"` → `Invalid URL`; (h) `maxChars: 10` → `(truncated` marker, bounded length, `clearFetchCache()` callable. PASS
+  - (4) Source: `src/fetchTool.ts` is a new pure module — no `vscode` import; exports `htmlToText`/`fetchUrl`/`clearFetchCache`/`DEFAULT_MAX_CHARS`/`HARD_MAX_CHARS`/`CACHE_TTL_MS`/`CACHE_MAX_ENTRIES`/`type FetchFn`; never throws (all failure paths return `Invalid URL:` / `Fetch failed:` / `HTTP <status>` / `Response too large` strings); module-level `Map` cache with 10-min TTL + FIFO eviction (20 entries); `AbortSignal.timeout(15000)` used. PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, `?? src/fetchTool.ts`; `package-lock.json` untouched. `git diff scripts/smoke-test.js` = 1 hunk, +75/−0 (purely additive; `fetch404` naming avoids collision with pre-existing `notFound` at line 741 — no existing assertion weakened). PASS
+  - (6) `git log --oneline -1` → `62d0036` (chore(llm): record 1.99-4 plan (4 slices) — Fetch tool (#fetch)). No coder commit. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-3.S3 (FINAL) — request-body + loop verification (scripts/smoke-test.js only) (2026-10-22) — **PASS**
 

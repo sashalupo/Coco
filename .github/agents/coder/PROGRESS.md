@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-3 (Thinking tool) — **DONE** (S1–S3, 2026-10-22); next item: 1.99-4 (Fetch tool)
-- **Next step:** await next item (1.99-4 Fetch tool) plan from the Planner
+- **Current item:** 1.99-4 (Fetch tool `#fetch`) — S1 done (2026-10-22)
+- **Next step:** 1.99-4.S2 (`src/tools.ts` + `src/tools/ToolExecutor.ts`: fetch_url schema + executor case)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (411 PASS lines, incl. 3 `think-s1:` + 3 `think-s2:` + 4 `think-s3:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (419 PASS lines, incl. 8 `fetch-s1:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-4.S1** (2026-10-22) — `src/fetchTool.ts` (NEW): pure fetch + HTML→text + cache. Files: `src/fetchTool.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/fetchTool.ts` (new, pure — no `vscode` import, mirrors `src/notebook.ts` style): exports `type FetchFn` (injectable, defaults to global `fetch`), `htmlToText` (strip script/style blocks case-insensitive non-greedy; `<br>`/`</p>`/`</div>`/`</li>`/`</h1>`–`</h6>`/`</tr>` → `\n`; remove remaining tags; decode `&amp; &lt; &gt; &quot; &#39;`; collapse 3+ newlines to 2, trim lines + result), `fetchUrl(url, { maxChars?, fetchFn? })` — `DEFAULT_MAX_CHARS = 20000`, `HARD_MAX_CHARS = 50000` (clamp to `[1, 50000]`), `TIMEOUT_MS = 15000` via `AbortSignal.timeout`, `MAX_RESPONSE_BYTES = 2_000_000` (arrayBuffer, reject if larger); module-level `Map` cache (`CACHE_TTL_MS = 600_000`, `CACHE_MAX_ENTRIES = 20` FIFO via Map insertion order, successful fetches only, key = URL string); `content-type` containing `text/html` → `htmlToText`, else raw text; never throws — returns `Invalid URL: <url>` (bad `new URL()` or non-http(s) scheme), `Fetch failed: <msg>`, `HTTP <status> <statusText> for <url>`, `Response too large (>2000000 bytes): <url>`; truncation appends `\n… (truncated, showing first <n> of <total> chars)`; `clearFetchCache()` empties the map.
+  - `scripts/smoke-test.js`: new section `// 20) Fetch tool (1.99-4.S1)` requiring `out/fetchTool.js`, `clearFetchCache()` at section start; 8 `fetch-s1:` assertions: exports + `DEFAULT_MAX_CHARS === 20000`; `htmlToText` full-doc → `"Title\nHello world"`; entity decode; injected `fetchFn` 200 `text/html` → plain text (no tags); cache hit (throwing `fetchFn` never invoked, same text returned); 404 → `HTTP 404` prefix; `"not a url"` + `"ftp://x"` → `Invalid URL` prefix; `maxChars: 10` truncation marker + `clearFetchCache` callable. Total PASS lines now 419 (411 + 8).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 419 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-3.S3** (2026-10-22, FINAL) — `scripts/smoke-test.js` only: request-body + loop verification, final smoke assertions. No source changes — `think` wiring is automatic (in `CODE_TOOLS`, spread into `body.tools` by `buildRequestBody`; chat loop routes non-MCP tools through `toolExecutor.execute`).
   - `scripts/smoke-test.js`: new section `// 19c) Thinking tool wiring (1.99-3.S3)` with 4 `think-s3:` assertions: (a) `buildRequestBody` with `toolsEnabled: true` → `body.tools` has 12 tools incl. `function.name === "think"` and `body.tool_choice === "auto"`; (b) `toolsEnabled: false` → `body.tools === undefined`; (c) static source assertion on `out/chat/ChatViewProvider.js`: contains `isMutatingTool` AND `toolExecutor.execute(` (regression guard that `think` flows through the existing non-MCP path); (d) static source assertion: `out/chat/ChatViewProvider.js` does NOT contain `name === "think"` (no special-casing of think in the chat loop). Total PASS lines now 411 (407 + 4).
   - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 411 PASS, 0 FAIL.

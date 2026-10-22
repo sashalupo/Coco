@@ -2994,6 +2994,81 @@ function assert(cond, label) {
     "think-s3: ChatViewProvider.js has no special-casing of think in the chat loop",
   );
 
+  // 20) Fetch tool (1.99-4.S1)
+  const fetchTool = require("../out/fetchTool.js");
+  fetchTool.clearFetchCache();
+  assert(
+    typeof fetchTool.htmlToText === "function" &&
+      typeof fetchTool.fetchUrl === "function" &&
+      typeof fetchTool.clearFetchCache === "function" &&
+      fetchTool.DEFAULT_MAX_CHARS === 20000,
+    "fetch-s1: exports htmlToText/fetchUrl/clearFetchCache are functions, DEFAULT_MAX_CHARS === 20000",
+  );
+  assert(
+    fetchTool.htmlToText(
+      "<html><head><style>.a{}</style><script>var x=1;</script></head><body><h1>Title</h1><p>Hello <b>world</b></p></body></html>",
+    ) === "Title\nHello world",
+    "fetch-s1: htmlToText strips script/style, tags, decodes structure",
+  );
+  assert(
+    fetchTool.htmlToText("a&amp;b &lt;c&gt;") === "a&b <c>",
+    "fetch-s1: htmlToText decodes common entities",
+  );
+  const fetchCalls = { n: 0 };
+  const okFetch = async () => {
+    fetchCalls.n++;
+    return new Response("<html><body><p>hi there</p></body></html>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  };
+  const fetched = await fetchTool.fetchUrl("http://example.com/a", { fetchFn: okFetch });
+  assert(
+    fetched.includes("hi there") && !fetched.includes("<p>") && fetchCalls.n === 1,
+    "fetch-s1: fetchUrl converts text/html to plain text via injected fetchFn",
+  );
+  let throwingCalls = 0;
+  const throwingFetch = async () => {
+    throwingCalls++;
+    throw new Error("network down");
+  };
+  const cached = await fetchTool.fetchUrl("http://example.com/a", {
+    fetchFn: throwingFetch,
+  });
+  assert(
+    cached === fetched && throwingCalls === 0,
+    "fetch-s1: second call for same URL is a cache hit (fetchFn not invoked)",
+  );
+  const fetch404 = await fetchTool.fetchUrl("http://example.com/missing", {
+    fetchFn: async () =>
+      new Response("nope", { status: 404, statusText: "Not Found" }),
+  });
+  assert(
+    typeof fetch404 === "string" && fetch404.startsWith("HTTP 404"),
+    "fetch-s1: non-2xx resolves to 'HTTP 404 …' error string",
+  );
+  const badUrl1 = await fetchTool.fetchUrl("not a url");
+  const badUrl2 = await fetchTool.fetchUrl("ftp://x");
+  assert(
+    badUrl1.startsWith("Invalid URL") && badUrl2.startsWith("Invalid URL"),
+    "fetch-s1: bad URL and non-http(s) scheme resolve to 'Invalid URL …'",
+  );
+  const longBody = "x".repeat(500);
+  const truncated = await fetchTool.fetchUrl("http://example.com/long", {
+    maxChars: 10,
+    fetchFn: async () =>
+      new Response(longBody, {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      }),
+  });
+  assert(
+    truncated.includes("(truncated") &&
+      truncated.length < longBody.length + 100 &&
+      typeof fetchTool.clearFetchCache() === "undefined",
+    "fetch-s1: maxChars truncation marker + clearFetchCache callable",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

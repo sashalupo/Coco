@@ -740,7 +740,7 @@ HTML→text extraction, size cap, per-URL in-memory cache. No headless browser.
 
 **Slices:**
 
-- **1.99-4.S1 — `src/fetchTool.ts` (new): pure fetch + HTML→text + cache.**
+- **1.99-4.S1 — `src/fetchTool.ts` (new): pure fetch + HTML→text + cache.** — Done (2026-10-22, PASS, 419 assertions)
   Files: `src/fetchTool.ts` (new), `scripts/smoke-test.js` (modify).
   Implement design decision 2 (exports: `htmlToText`, `fetchUrl`, `clearFetchCache`,
   `DEFAULT_MAX_CHARS`, `HARD_MAX_CHARS`, `CACHE_TTL_MS`, `CACHE_MAX_ENTRIES`,

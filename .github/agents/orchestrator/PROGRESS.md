@@ -14,14 +14,14 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-4** — Fetch tool (`#fetch`) (4-slice plan recorded; 1.99-3 DONE)
-- **Current slice:** 1.99-4.S1 — **next** (pure `src/fetchTool.ts` module)
+- **Current slice:** 1.99-4.S1 — **DONE** (PASS, 419 assertions); next: 1.99-4.S2
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-4.S1** (`src/fetchTool.ts`:
-  pure fetch + HTML→text + cache), then Tester, memory, commit
+- **Next step:** dispatch Coder for slice **1.99-4.S2** (`src/tools.ts` +
+  `src/tools/ToolExecutor.ts`: fetch_url schema + executor case), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `469123c` — feat(llm): thinking tool — ToolExecutor think echo handler (1.99-3.S2)
-- **Build state:** compiles clean; smoke test passes (411 assertions); 1.99-4 planned
+- **Last commit:** `62d0036` — chore(llm): record 1.99-4 plan (4 slices) — Fetch tool (#fetch)
+- **Build state:** compiles clean; smoke test passes (419 assertions); 1.99-4.S1 verified
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
