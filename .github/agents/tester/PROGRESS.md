@@ -93,6 +93,18 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke-test diff note:** pre-existing hardcoded `toolBody.tools.length === 10` correctly updated to `11`; tool-name order assertion extended with `notebook_edit`.
 
 
+### 1.98-9.S2 — `ToolExecutor.collectDiagnostics` shared helper (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **284 assertions** (280 prior + 4 new `problems-s2:` in subsection 13b).
+- **Static checks in `src/tools/ToolExecutor.ts` (via `git diff`):**
+  - (a) `public async collectDiagnostics(relPath?: string): Promise<string>` present; extracted body keeps the same workspace-folder guard string, path-safety string, per-file format (`rel:` header + `  sev line:col — message [source]`), and empty-result strings ("No diagnostics in open files (clean)." / "No diagnostics in <relPath> (clean)."). PASS
+  - (b) New 50-problem cap: `shown` counter, `continue`/`break` at 50, suffix `… (showing first 50 of ${total})` appended only when `total > 50`. PASS
+  - (c) `getDiagnostics` is now a thin async wrapper (`const text = await this.collectDiagnostics(relPath); return this.result(call, text);`); `case "get_diagnostics":` in `execute()` intact and still calls it. PASS
+  - (d) Diff is a pure extraction: single logical change, old body re-added as `collectDiagnostics` modulo `this.result(call, X)` → `return X` and the cap logic. No other tool/method touched. PASS
+- **Scope check:** `git status --short` → only `src/tools/ToolExecutor.ts` (+38/-14), `scripts/smoke-test.js` (+19), `.github/agents/coder/PROGRESS.md`; `ninfer` submodule dirty marker (not a source change). PASS
+- **New smoke assertions (4, subsection 13b):** genuine source-content checks on `toolExecSrc` — `collectDiagnostics(` present, occurrence count ≥ 2 (definition + call site), `getDiagnostics` still present, `showing first 50` cap note present. Not tautologies. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)

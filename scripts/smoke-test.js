@@ -1964,6 +1964,25 @@ function assert(cond, label) {
     "problems: oversized text truncated to cap + suffix",
   );
 
+  // 13b) problems tag (1.98-9.S2): ToolExecutor.collectDiagnostics static checks.
+  assert(
+    toolExecSrc.includes("collectDiagnostics("),
+    "problems-s2: ToolExecutor defines collectDiagnostics(",
+  );
+  const collectDiagCount = toolExecSrc.split("collectDiagnostics(").length - 1;
+  assert(
+    collectDiagCount >= 2,
+    `problems-s2: collectDiagnostics( appears >= 2 times (got ${collectDiagCount})`,
+  );
+  assert(
+    toolExecSrc.includes("getDiagnostics"),
+    "problems-s2: ToolExecutor still has getDiagnostics (tool case intact)",
+  );
+  assert(
+    toolExecSrc.includes("showing first 50"),
+    "problems-s2: 50-problem cap note present",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -669,13 +669,22 @@ export class ToolExecutor {
    * file (by workspace-relative path) or for all open files when no path is
    * given. Read-only: never mutates workspace state.
    */
-  private getDiagnostics(call: ToolCall, relPath?: string): ToolResult {
+  private async getDiagnostics(call: ToolCall, relPath?: string): Promise<ToolResult> {
+    const text = await this.collectDiagnostics(relPath);
+    return this.result(call, text);
+  }
+
+  /**
+   * Shared diagnostics-collection core (backing the `get_diagnostics` tool and
+   * the `#problems` chat tag). Returns the formatted diagnostics text for a
+   * single file (by workspace-relative path) or for all open files when no
+   * path is given. Read-only: never mutates workspace state. Caps output at
+   * the first 50 problems, noting the total when more exist.
+   */
+  public async collectDiagnostics(relPath?: string): Promise<string> {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
-      return this.result(
-        call,
-        "No workspace folder — cannot read diagnostics.",
-      );
+      return "No workspace folder — cannot read diagnostics.";
     }
     const root = folders[0].uri.fsPath;
 
@@ -686,10 +695,7 @@ export class ToolExecutor {
       const abs = path.resolve(root, relPath);
       const rel = path.relative(root, abs);
       if (rel.startsWith("..") || path.isAbsolute(rel)) {
-        return this.result(
-          call,
-          `Path not allowed (outside workspace): ${relPath}`,
-        );
+        return `Path not allowed (outside workspace): ${relPath}`;
       }
       uris = [vscode.Uri.file(abs)];
     } else {
@@ -709,29 +715,39 @@ export class ToolExecutor {
 
     const lines: string[] = [];
     let total = 0;
+    let shown = 0;
     for (const [fsPath, diags] of entries) {
       if (diags.length === 0) {
         continue;
       }
       const rel = this.toWorkspaceRelative(fsPath);
       total += diags.length;
+      if (shown >= 50) {
+        continue;
+      }
       lines.push(`${rel}:`);
       for (const d of diags) {
+        if (shown >= 50) {
+          break;
+        }
         const sev = vscode.DiagnosticSeverity[d.severity];
         const range = `${d.range.start.line + 1}:${d.range.start.character + 1}`;
         const src = d.source ? ` [${d.source}]` : "";
         lines.push(`  ${sev} ${range} — ${d.message}${src}`);
+        shown += 1;
       }
     }
 
     if (total === 0) {
       const scope = relPath ? ` in ${relPath}` : " in open files";
-      return this.result(call, `No diagnostics${scope} (clean).`);
+      return `No diagnostics${scope} (clean).`;
     }
     const header = relPath
       ? `Diagnostics for ${relPath} (${total}):`
       : `Diagnostics for open files (${total}):`;
-    return this.result(call, header + "\n" + lines.join("\n"));
+    const cap =
+      total > 50 ? `\n… (showing first 50 of ${total})` : "";
+    return header + "\n" + lines.join("\n") + cap;
   }
 
   /**

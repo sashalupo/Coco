@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-9.S1 done — pure `#problems` tag parsing + block formatting in `src/context.ts`
-- **Next step:** 1.98-9.S2 — diagnostics collection (ToolExecutor `collectDiagnostics` + 50-problem cap)
+- **Current step:** 1.98-9.S2 done — `ToolExecutor.collectDiagnostics` shared helper (refactor of `get_diagnostics` + 50-problem cap)
+- **Next step:** 1.98-9.S3 — wire `#problems` sweep into ChatViewProvider (reuse `collectDiagnostics`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (280 assertions, incl. `problems:` pure-helper checks)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (284 assertions, incl. `problems-s2:` static checks)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-9.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `collectDiagnostics` shared helper (pure extraction of `get_diagnostics` core + 50-problem cap). Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools/ToolExecutor.ts`: extracted the body of `private getDiagnostics(call, relPath?)` into new `public async collectDiagnostics(relPath?: string): Promise<string>` — byte-identical workspace-folder guard ("No workspace folder — cannot read diagnostics."), path-safety check ("Path not allowed (outside workspace): …"), collection + per-file formatting, and empty-result strings ("No diagnostics in open files (clean)." / "No diagnostics in <relPath> (clean)."). NEW cap: counts total problems; if > 50, only the first 50 are rendered (file headers with zero rendered lines are skipped) and `\n… (showing first 50 of N)` is appended (N = total). `getDiagnostics` is now a thin async wrapper: `const text = await this.collectDiagnostics(relPath); return this.result(call, text);` (call site at ~line 314 already `await`s it, so the tool's observable output is unchanged except for the new cap above 50 problems).
+  - `scripts/smoke-test.js`: new subsection `// 13b) problems tag (1.98-9.S2)` with 4 static assertions on the `ToolExecutor.ts` source (reuses the `toolExecSrc` read from 12b): (a) contains `collectDiagnostics(`, (b) `collectDiagnostics(` appears ≥ 2 times (definition + call from `getDiagnostics`), (c) still contains `getDiagnostics` (tool case intact), (d) contains `showing first 50` (cap note present).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **284 assertions** (280 prior + 4 new `problems-s2:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-9.S1** (2026-10-22) — `src/context.ts`: `extractProblemsTag` + `formatProblemsBlock` (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/context.ts`: added after the `#codebase` section — `extractProblemsTag(text): string | null` (regex `/#problems(?!\w)/i`, first match, trimmed same-line remainder as raw qualifier, `""` for bare tag, `null` when absent); `ProblemsBlockData { text: string }`; `PROBLEMS_BLOCK_MAX_CHARS = 8000` (exported); `formatProblemsBlock(data, scope?)` — header `Problems (scope: workspace)` (or `scope: <scope>`), body `data.text` or `(no problems — clean)`, truncated to 8,000 chars + `… (truncated)` suffix; returns `""` when text empty AND scope undefined/`"workspace"`. Pure module — no vscode imports added.
   - `scripts/smoke-test.js`: new section `// 13) problems tag (1.98-9)` with subsection `13a` importing compiled `out/context.js`; 10 assertions (`problems:` labels): bare tag → `""`, remainder extraction, absent → `null`, `#problemsfoo` no-match, case-insensitive `#Problems`, same-line-only, default-scope header + body, empty text + default scope → `""`, empty text + file scope → header + clean note, 9,000-char text truncated to cap + suffix.
