@@ -12,11 +12,26 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 18 complete** — Restore checkpoints (18.1 done)
+- **Current phase:** **Phase 19 complete** — Compact conversation (19.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `bd4191e` — feat(llm): restore checkpoints (Phase 18.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); restore checkpoint verified
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); compact verified
+
+> **Phase 19 — Compact conversation (2026-10-22):**
+>
+> A "Compact" button in the toolbar summarizes older conversation turns
+> (keeping the last 4 messages) into a single context-summary message. This
+> frees up context space for longer conversations. The summary is generated
+> by the engine (non-streaming request with a summarization system prompt).
+>
+> - `ChatViewProvider`: `handleCompact()` — splits history into
+>   `toSummarize` (all but last 4) + `toKeep` (last 4), sends a
+>   summarization request to the engine, replaces the summarized portion
+>   with a `[Context summary]` user message. Posts `compact_result` with
+>   token savings. Refreshes the webview via `restore`.
+> - `webview.ts`: `#compact` button in the toolbar (before Revert).
+>   `compact_result` handler renders the result as a `revert-result` line.
 
 > **Phase 18 — Restore checkpoints (2026-10-22):**
 >

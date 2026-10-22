@@ -197,6 +197,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // Restore the conversation to its pre-run state (Phase 18).
         this.handleRestoreCheckpoint();
         break;
+      case "compact":
+        // Compact the conversation history (Phase 19).
+        void this.handleCompact();
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
@@ -391,6 +395,108 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       totalRemoved,
       hasCheckpoint: this.preRunHistory !== null,
     });
+  }
+
+  /**
+   * Compact the conversation history (Phase 19): summarize the older
+   * messages (keeping the last 4) into a single context-summary message.
+   * This frees up context space for longer conversations.
+   */
+  private async handleCompact(): Promise<void> {
+    if (this.history.length <= 6) {
+      this.postMessage({
+        type: "compact_result",
+        message: "Conversation is too short to compact.",
+      });
+      return;
+    }
+    // Keep the last 4 messages; summarize everything before them.
+    const keepCount = 4;
+    const toSummarize = this.history.slice(0, this.history.length - keepCount);
+    const toKeep = this.history.slice(this.history.length - keepCount);
+
+    // Build a summarization prompt.
+    const transcript = toSummarize
+      .map((m) => {
+        const role = m.role === "user" ? "User" : m.role === "assistant" ? "Assistant" : m.role;
+        const content = m.content || "";
+        return `${role}: ${content}`;
+      })
+      .join("\n\n");
+
+    const settings = readSettings();
+    const toolbar = this.toolbarStore.get();
+    const model = toolbar.model ?? settings.model;
+
+    try {
+      // Use the engine to generate a summary (non-streaming via chatStream).
+      const body: ChatCompletionRequest = {
+        messages: [
+          {
+            role: "system",
+            content:
+              "Summarize the following conversation concisely. Preserve key decisions, " +
+              "file paths, code changes, and task context. Keep it under 500 words. " +
+              "Format as a brief narrative.",
+          },
+          { role: "user", content: transcript },
+        ],
+        max_completion_tokens: 1024,
+        temperature: 0.3,
+        stream: false,
+      };
+      if (model) {
+        body.model = model;
+      }
+
+      // Collect the summary from the stream.
+      let summary = "";
+      for await (const chunk of this.client.chatStream(body)) {
+        if (chunk.done) {
+          break;
+        }
+        if (chunk.content) {
+          summary += chunk.content;
+        }
+      }
+
+      if (!summary.trim()) {
+        this.postMessage({
+          type: "compact_result",
+          message: "Compaction failed: empty summary.",
+        });
+        return;
+      }
+
+      // Replace the summarized portion with a single context message.
+      const compactMsg: ChatMessage = {
+        role: "user",
+        content: `[Context summary of earlier conversation]\n${summary.trim()}`,
+      };
+      this.history = [compactMsg, ...toKeep];
+      this.saveCurrentConversation();
+
+      const beforeTokens = estimateMessagesTokens(toSummarize);
+      const afterTokens = estimateMessagesTokens([compactMsg]);
+      this.postMessage({
+        type: "compact_result",
+        message: `Compacted ${toSummarize.length} messages (~${beforeTokens} tok → ~${afterTokens} tok).`,
+      });
+      // Refresh the webview with the new history.
+      const all = this.conversationStore.getAll();
+      this.postMessage({
+        type: "restore",
+        messages: this.history,
+        conversations: all.map((c) => ({ id: c.id, title: c.title })),
+        activeId: this.currentConvId,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.postMessage({
+        type: "compact_result",
+        message: `Compaction failed: ${message}`,
+      });
+    }
   }
 
   /**

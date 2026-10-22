@@ -10,5 +10,5 @@ Streaming tool-call progress ✅
 inline suggestion (autocomplete), disable autocomplete, param
 skills
 mcp server
-compact
+compact ✅
 hooks (?)

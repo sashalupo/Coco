@@ -748,6 +748,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		font-size: 11px;
 	}
 	#export:hover { color: var(--fg); border-color: var(--focus); }
+	#compact {
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		color: var(--muted);
+		cursor: pointer;
+		padding: 2px 8px;
+		font-size: 11px;
+	}
+	#compact:hover { color: var(--fg); border-color: var(--focus); }
 
 	/* Sessions side panel (Phase 11.1) */
 	.side-panel {
@@ -972,6 +982,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				<label><input type="checkbox" id="ctx-diagnostics" checked>diag</label>
 			</span>
 			<select id="conv-select" title="Switch conversation"><option value="">History…</option></select>
+			<button id="compact" title="Compact conversation history">Compact</button>
 			<button id="revert" title="Revert last file change">Revert</button>
 		</div>
 
@@ -1043,6 +1054,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var convDelete = document.getElementById('conv-delete');
 		var exportBtn = document.getElementById('export');
 		var revertBtn = document.getElementById('revert');
+		var compactBtn = document.getElementById('compact');
 		var sidePanel = document.getElementById('side-panel');
 		var sessionsToggle = document.getElementById('sessions-toggle');
 		var quickNewChat = document.getElementById('quick-new-chat');
@@ -1246,6 +1258,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		revertBtn.addEventListener('click', function () {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'revertLast' }); }
+		});
+		compactBtn.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'compact' }); }
 		});
 		// Change toolbox footer bar (Phase 12): Diff opens a combined unified
 		// diff of all changed files in a VS Code text document (host builds it
@@ -1735,6 +1751,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						todosCard.hidden = false;
 					})();
 					break;
+				case 'compact_result':
+					var crEl = document.createElement('div');
+						crEl.className = 'message revert-result';
+						crEl.textContent = msg.message || '';
+						messagesEl.appendChild(crEl);
+						messagesEl.scrollTop = messagesEl.scrollHeight;
+						break;
 				case 'stream_end':
 					streaming = false;
 					if (currentAssistant) {
