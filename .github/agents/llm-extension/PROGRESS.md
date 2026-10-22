@@ -15,18 +15,19 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 21 complete** — Send-while-streaming 3 options (21.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `b61f626` — feat(llm): tag file via @filename references (Phase 20.1)
+- **Last commit:** `ce6a95d` — feat(llm): send-while-streaming 3 options (Phase 21)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); send-while-streaming verified
 
 > **Phase 21 — Send-while-streaming 3 options (2026-10-22):**
 >
 > When the user sends a message while the LLM is still generating, a modal
 > offers three options:
-> - **Queue** — the message is stored and auto-sent when the current run
->   finishes (`stream_end`).
-> - **Interrupt** — the current run is stopped (`stop`) and the message is
->   sent as soon as the stream ends.
-> - **Cancel** — the message is discarded (restored to the input box).
+> - **Stop and send** — the current run is stopped and the new message is
+>   sent immediately.
+> - **Add to queue** — the message is stored and auto-sent when the current
+>   run finishes (`stream_end`).
+> - **Steer with message** — the message is injected mid-run via
+>   `handleSteer()`, letting the agent adjust course without stopping.
 >
 > - `webview.ts`: `queuedMessage` variable + `showSendWhileStreaming(text)`
 >   3-button modal. `doSend` routes to the modal when `streaming` is true.
