@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — **Done** (S1–S4 complete)
-- **Next step:** dispatch Coder for slice 1.98-9.S1
+- **Current item:** 1.98-9 (`#problems` tag) — **Done** (S1–S4 complete)
+- **Next step:** plan backlog item 1.98-10 (`#folder:` tag) — awaiting planner
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -124,6 +124,17 @@ unchanged; `npm run compile` clean.
 
 ## Done
 
+- **1.98-9** (2026-10-22) — `#problems` tag: attach compiler/linter problems as chat context. All slices S1–S4
+  implemented (`extractProblemsTag`/`formatProblemsBlock` pure helpers in `src/context.ts`; `ToolExecutor.collectDiagnostics`
+  extracted from `getDiagnostics` with a 50-problem cap; `ChatViewProvider.runStream` injects the problems block after the
+  `#codebase` block, gated on `llm.chat.problems.enabled` (default true), with qualifier path-rejection → workspace fallback;
+  `package.json` settings schema entry; final smoke assertions). Key decisions:
+  1. **Tag-only scope** — no paperclip/drag-and-drop (single webview, no attachment UI).
+  2. **Reuses diagnostics collection** — `collectDiagnostics` is the extracted `getDiagnostics` core; the `get_diagnostics`
+     tool output is unchanged (thin wrapper).
+  3. **Bounded output** — 50 problems (collection) + 8,000 chars (formatting, `… (truncated)` suffix).
+  4. **`problemsEnabled` config field pulled into S3** so that slice compiles standalone; S4 only added the `package.json`
+     schema entry + final smoke assertions.
 - **1.98-1** (2026-10-22) — Editable terminal command approval in chat. All slices S1–S5
   implemented and committed (webview `command_approval` card with editable command +
   Ctrl+Enter; host `commandApproval` handler + `waitForCommandApproval`; agentic loop routes
@@ -163,7 +174,7 @@ unchanged; `npm run compile` clean.
 - [x] Dispatch slices 1.98-1.S1 → S5 (one per session).
 - [x] Plan backlog item 1.98-2 (notebook support in chat) — planned 2026-10-22; slices S1–S6 dispatched and done.
 - [x] Plan backlog item 1.98-8 (`#codebase` tag — advanced codebase search; drop the embeddings sub-item) — planned 2026-10-22; slices S1–S4 dispatched and done.
-- [ ] Plan backlog item 1.98-9 (`#problems` tag).
+- [x] Plan backlog item 1.98-9 (`#problems` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
       the real codebase, break it into tiny slices (one file / one concern each), write the
       plan, record it here.
@@ -276,7 +287,7 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 ## Overall acceptance
 1. compile clean + smoke fully green. 2. `#codebase <q>` → `Codebase sweep` section (structure, git status when dirty, search matches), ≤12,000 chars. 3. setting false → inert. 4. `#codebase` no query → structure + git status, search placeholder. 5. `@file` tagging, section order, 11 tools unaffected.
 
-# Plan: 1.98-9 — Attach problems as chat context (`#problems`) (Planned 2026-10-22)
+# Plan: 1.98-9 — Attach problems as chat context (`#problems`) (Planned 2026-10-22) — **Done** (2026-10-22, slices S1–S4 complete)
 
 **Changelog:** VS Code 1.98 — "Attach problems from the Problems panel as chat context — type `#problems` (or paperclip / drag). Specific problems, all problems in a file, or all files in the codebase."
 
@@ -292,10 +303,10 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 9. Qualifier fallback (S3): if the qualifier is non-empty and path resolution rejects it, fall back to workspace scope (avoids rendering "Path not allowed" as body).
 
 ## Slices
-- **S1** `src/context.ts` (+ smoke): `extractProblemsTag` + `ProblemsBlockData` + `PROBLEMS_BLOCK_MAX_CHARS = 8000` + `formatProblemsBlock`. Smoke section 13a (~10 assertions).
-- **S2** `src/tools/ToolExecutor.ts` (+ smoke): `public async collectDiagnostics(relPath?)` extracted from `getDiagnostics` (thin wrapper, tool behavior byte-identical); 50-problem cap. Smoke 13b static: `collectDiagnostics(` ≥ 2, `getDiagnostics` intact, `showing first 50`.
-- **S3** `src/chat/ChatViewProvider.ts` + `src/config.ts` + `src/presets.ts` (+ smoke): `problemsEnabled` field (presets + config, default true); in `runStream` after the `#codebase` block: if `settings.problemsEnabled` and tag present, `collectDiagnostics(p || undefined)` → `formatProblemsBlock` → append to `finalContextBlock`; qualifier path-rejection → workspace fallback. Smoke 13c static (5 checks).
-- **S4** `package.json` + `scripts/smoke-test.js` + planner PROGRESS.md: `llm.chat.problems.enabled` (boolean, default true); smoke 13d; mark 1.98-9 Done.
+- **S1** `src/context.ts` (+ smoke): `extractProblemsTag` + `ProblemsBlockData` + `PROBLEMS_BLOCK_MAX_CHARS = 8000` + `formatProblemsBlock`. Smoke section 13a (~10 assertions). — Done (2026-10-22)
+- **S2** `src/tools/ToolExecutor.ts` (+ smoke): `public async collectDiagnostics(relPath?)` extracted from `getDiagnostics` (thin wrapper, tool behavior byte-identical); 50-problem cap. Smoke 13b static: `collectDiagnostics(` ≥ 2, `getDiagnostics` intact, `showing first 50`. — Done (2026-10-22)
+- **S3** `src/chat/ChatViewProvider.ts` + `src/config.ts` + `src/presets.ts` (+ smoke): `problemsEnabled` field (presets + config, default true); in `runStream` after the `#codebase` block: if `settings.problemsEnabled` and tag present, `collectDiagnostics(p || undefined)` → `formatProblemsBlock` → append to `finalContextBlock`; qualifier path-rejection → workspace fallback. Smoke 13c static (5 checks). — Done (2026-10-22; `problemsEnabled` in `readSettings()`/`LlmSettings` landed in S3 so the slice compiles standalone)
+- **S4** `package.json` + `scripts/smoke-test.js` + planner PROGRESS.md: `llm.chat.problems.enabled` (boolean, default true); smoke 13d; mark 1.98-9 Done. — Done (2026-10-22; config/presets parts already landed in S3, so S4 = `package.json` schema entry + final smoke assertions + memory)
 
 ## Overall acceptance
 1. compile clean + smoke all green (270 prior + section 13). 2. `#problems` → `Problems (scope: workspace)` block (≤50 problems / ≤8,000 chars); bare tag + no diagnostics → no block. 3. `#problems src/foo.ts` → file scope; outside-workspace path → not injected (workspace fallback). 4. setting false → tag inert. 5. `get_diagnostics` tool output unchanged. 6. No webview changes, no new deps.

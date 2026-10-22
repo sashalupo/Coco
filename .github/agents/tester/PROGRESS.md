@@ -114,6 +114,15 @@ acceptance checks, and reports a clear pass/fail.
 - 6 new smoke assertions genuine: source-content checks on `chatViewSrc` (`extractProblemsTag`, `formatProblemsBlock`, `collectDiagnostics(`, `problemsEnabled`), `configSrc` (`chat.problems.enabled`), `presetsSrc` (`problemsEnabled`). Not tautologies. PASS
 - Scope: only `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer submodule marker). PASS
 
+### 1.98-9.S4 — `package.json`: `llm.chat.problems.enabled` + final smoke assertions (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**294 assertions**; 4 new `problems-s4:` green in subsection `// 13d) problems tag (1.98-9.S4)`).
+- `package.json`: valid JSON; single additive hunk (+5/-0) adding `llm.chat.problems.enabled` (`type: "boolean"`, `default: true`, description mentions `#problems` and the `#problems <path>` qualifier). Existing `llm.chat.codebaseSearch.enabled` entry untouched (context lines only in diff). PASS
+- 4 new smoke assertions genuine: parsed-JSON checks on `pkg.contributes.configuration.properties["llm.chat.problems.enabled"]` — entry exists, `type === "boolean"`, `default === true`, non-empty description containing `#problems`. Not tautologies. PASS
+- Scope: `git status --short` → only `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md` (+ ninfer submodule marker). PASS
+- Planner PROGRESS.md: 1.98-9 marked **Done** (S1–S4 complete); Next step → 1.98-10 (`#folder:` tag). PASS
+- **Item 1.98-9 fully verified (S1–S4 all PASS).**
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)

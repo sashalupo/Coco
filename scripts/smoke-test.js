@@ -2009,6 +2009,29 @@ function assert(cond, label) {
     "problems-s3: presets.ts LlmSettings has problemsEnabled",
   );
 
+  // 13d) problems tag (1.98-9.S4): package.json setting (final slice).
+  const problemsSetting =
+    pkg.contributes.configuration.properties["llm.chat.problems.enabled"];
+  assert(
+    problemsSetting !== undefined,
+    "problems-s4: package.json has llm.chat.problems.enabled",
+  );
+  assert(
+    problemsSetting && problemsSetting.type === "boolean",
+    "problems-s4: llm.chat.problems.enabled is boolean",
+  );
+  assert(
+    problemsSetting && problemsSetting.default === true,
+    "problems-s4: llm.chat.problems.enabled defaults to true",
+  );
+  assert(
+    problemsSetting &&
+      typeof problemsSetting.description === "string" &&
+      problemsSetting.description.length > 0 &&
+      problemsSetting.description.includes("#problems"),
+    "problems-s4: llm.chat.problems.enabled description mentions #problems",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

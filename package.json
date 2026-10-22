@@ -207,6 +207,11 @@
           "type": "boolean",
           "default": true,
           "description": "When the user types #codebase in a chat message, sweep the workspace (project structure, git status, text search for the query) and inject the results as context."
+        },
+        "llm.chat.problems.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When the user types #problems in a chat message, attach compiler/linter problems (all files, or a specific file via '#problems <path>') as context."
         }
       }
     }

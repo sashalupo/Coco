@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-9.S3 done — `#problems` wiring in ChatViewProvider + `problemsEnabled` setting
-- **Next step:** 1.98-9.S4 — (per planner)
+- **Current step:** 1.98-9.S4 done — `package.json` `llm.chat.problems.enabled` + final smoke assertions (item 1.98-9 complete)
+- **Next step:** item 1.98-10 (`#folder:` tag) — awaiting planner
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (290 assertions, incl. `problems-s3:` static checks)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (294 assertions, incl. `problems-s4:` static checks)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-9.S4** (2026-10-22) — `package.json` settings schema + final smoke assertions + memory (FINAL slice of item 1.98-9). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: added `llm.chat.problems.enabled` (boolean, default `true`) to `contributes.configuration.properties` after `llm.chat.codebaseSearch.enabled`, with description "When the user types #problems in a chat message, attach compiler/linter problems (all files, or a specific file via '#problems <path>') as context." JSON validated via `JSON.parse`.
+  - `scripts/smoke-test.js`: new subsection `// 13d) problems tag (1.98-9.S4)` with 4 static assertions (`problems-s4:` labels) reusing the `pkg` parse from 12d: (a) `contributes.configuration.properties["llm.chat.problems.enabled"]` present, (b) `type === "boolean"`, (c) `default === true`, (d) `description` is a non-empty string mentioning `#problems`.
+  - `.github/agents/planner/PROGRESS.md`: marked plan 1.98-9 **Done** (S1–S4, each slice line annotated `— Done (2026-10-22)`; S3/S4 notes record that the `problemsEnabled` config field was pulled into S3 so it compiles standalone); Status Current item → 1.98-9 Done, Next step → plan backlog item 1.98-10 (`#folder:` tag); Done section entry added; Todo updated.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **294 assertions** (290 prior + 4 new `problems-s4:`); `package.json` parses via `JSON.parse`.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-9.S3** (2026-10-22) — `#problems` wiring: `problemsEnabled` field + ChatViewProvider integration. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: added `problemsEnabled: boolean;` to `LlmSettings` (next to `codebaseSearchEnabled`), with doc comment "Enable the `#problems` chat tag (diagnostics injected as context).".
   - `src/config.ts`: `readSettings()` now returns `problemsEnabled: c.get<boolean>("chat.problems.enabled", true)` (next to `codebaseSearchEnabled`).
