@@ -3292,6 +3292,38 @@ function assert(cond, label) {
   Module._load = originalLoadUsages;
   fs.rmSync(usagesRoot, { recursive: true, force: true });
 
+  // 23) Usages tag context (1.99-5.S3)
+  const {
+    extractUsagesTag,
+    formatUsagesTagBlock,
+  } = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    extractUsagesTag("explain #usages myFunc please") === "myFunc",
+    "usages-s3: extractUsagesTag extracts symbol after #usages",
+  );
+  assert(
+    extractUsagesTag("no tag") === null &&
+      extractUsagesTag("end #usages") === null &&
+      extractUsagesTag("#usagesfoo x") === null,
+    "usages-s3: extractUsagesTag null for absent / bare / no-space tag",
+  );
+  const usagesTagBlock = formatUsagesTagBlock("f", "body");
+  assert(
+    usagesTagBlock.startsWith("Usages for `f`:") &&
+      usagesTagBlock.includes("body") &&
+      formatUsagesTagBlock("f", "   ") === "",
+    "usages-s3: formatUsagesTagBlock header + body; whitespace body → ''",
+  );
+  const longUsagesTagBlock = formatUsagesTagBlock(
+    "f",
+    "z".repeat(25000),
+  );
+  assert(
+    longUsagesTagBlock.length <= 20050 &&
+      longUsagesTagBlock.endsWith("(truncated)"),
+    "usages-s3: 25k-char body truncated to ≤20050 chars ending with (truncated)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

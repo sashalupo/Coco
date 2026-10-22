@@ -6,6 +6,7 @@
 // testable. The vscode-specific gathering lives in the ChatViewProvider.
 
 import { formatNotebookForContext } from "./notebook";
+import { USAGES_BLOCK_MAX_CHARS } from "./usages";
 
 /** A single diagnostic (error/warning/info) on a file. */
 export interface ContextDiagnostic {
@@ -392,4 +393,51 @@ export function formatFetchBlock(url: string, text: string): string {
   return (
     block.slice(0, FETCH_BLOCK_MAX_CHARS) + FETCH_BLOCK_TRUNCATED_SUFFIX
   );
+}
+
+// ---------------------------------------------------------------------------
+// #usages tag (1.99-5): attach find_usages results as chat context. The actual
+// search is wired up in a later slice; these functions only parse the tag and
+// render the block.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#usages` tag symbol from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#usages` occurrence
+ * (`#usagesfoo` does NOT match; `#Usages` DOES). Returns the trimmed symbol
+ * token (must be a valid identifier: `[A-Za-z_$][A-Za-z0-9_$]*`) after the
+ * tag, or `null` when the tag is absent, bare (no symbol follows), or the
+ * token is not a valid identifier. Pure and testable.
+ */
+export function extractUsagesTag(text: string): string | null {
+  const m = /#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  return m[1].trim();
+}
+
+/**
+ * Render a `#usages` result as a stable context block:
+ *
+ * ```
+ * Usages for `symbol`:
+ *
+ * <body>
+ * ```
+ *
+ * The whole block is truncated to `USAGES_BLOCK_MAX_CHARS` chars with a
+ * `… (truncated)` suffix. Returns `""` when `body` is empty/whitespace.
+ * Pure and testable.
+ */
+export function formatUsagesTagBlock(symbol: string, body: string): string {
+  if (body.trim() === "") {
+    return "";
+  }
+  const block = `Usages for \`${symbol}\`:\n\n${body}`;
+  if (block.length <= USAGES_BLOCK_MAX_CHARS) {
+    return block;
+  }
+  return block.slice(0, USAGES_BLOCK_MAX_CHARS) + "… (truncated)";
 }

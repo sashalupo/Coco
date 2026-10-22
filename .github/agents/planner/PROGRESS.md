@@ -902,7 +902,7 @@ mirroring the existing `search_files` CODE_TOOL walk (`ToolExecutor.searchMatche
   `buildRequestBody` `toolsEnabled: true` → `body.tools.length === 14` incl. `find_usages`.
   Expected smoke total: **433**.
 
-- **1.99-5.S3 — `src/context.ts`: `#usages` tag extract + block format.**
+- **1.99-5.S3 — `src/context.ts`: `#usages` tag extract + block format.** — Done (2026-10-22, PASS, 439 assertions)
   File: `src/context.ts`.
   (a) `export function extractUsagesTag(text: string): string | null` —
   `/#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i`; trimmed symbol or `null`.

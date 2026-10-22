@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-5 (Usages tool `#usages`) — S2 done (2026-10-22)
-- **Next step:** 1.99-5.S3 (`src/context.ts`: extractUsagesTag + formatUsagesTagBlock)
+- **Current item:** 1.99-5 (Usages tool `#usages`) — S3 done (2026-10-22)
+- **Next step:** 1.99-5.S4 (FINAL: `#usages` tag wiring + setting: ChatViewProvider, config.ts, package.json)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (435 PASS lines, incl. 4 `usages-s1:` + 5 `usages-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (439 PASS lines, incl. 4 `usages-s1:` + 5 `usages-s2:` + 4 `usages-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-5.S3** (2026-10-22) — `src/context.ts`: `#usages` tag extract + block format. Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/context.ts`: (a) `import { USAGES_BLOCK_MAX_CHARS } from "./usages"`; (b) `extractUsagesTag(text)` — regex `/#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i`, returns trimmed captured symbol or `null` (absent / bare `#usages` / `#usagesfoo` no-space / non-identifier token); (c) `formatUsagesTagBlock(symbol, body)` — `""` on empty/whitespace body, else `` `Usages for \`${symbol}\`:\n\n` + body `` truncated to `USAGES_BLOCK_MAX_CHARS` (20000) with `… (truncated)` suffix — mirrors `extractFetchTag`/`formatFetchBlock` style exactly.
+  - `scripts/smoke-test.js`: new section `// 23) Usages tag context (1.99-5.S3)` with 4 `usages-s3:` assertions (require `out/context.js`): (a) `extractUsagesTag("explain #usages myFunc please") === "myFunc"`; (b) `null` for `"no tag"`, `"end #usages"` (bare), `"#usagesfoo x"` (no space); (c) `formatUsagesTagBlock("f", "body")` starts with `` Usages for `f`: `` and includes `body`; `formatUsagesTagBlock("f", "   ") === ""`; (d) 25,000-char body → length ≤ 20050 and ends with `(truncated)`. Total PASS lines now 439 (435 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 439 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 code files + this PROGRESS.md.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-5.S2** (2026-10-22) — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `find_usages` tool schema + executor case. Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools.ts`: appended 14th `CODE_TOOLS` entry after `fetch_url` — `find_usages` with description (whole-word symbol search, grouped by file, first match = likely definition, reference count), parameters `symbol` (string, required) + `path` (string, optional, workspace-relative dir); `isMutatingTool` untouched (`find_usages` is read-only).
   - `src/tools/ToolExecutor.ts`: (a) `import { buildUsagesRegex, formatUsagesBlock, type UsagesMatch } from "../usages"`; (b) `case "find_usages": return await this.findUsages(call, String(args.symbol ?? ""), args.path ? String(args.path) : undefined);` before `default:`; (c) private `async findUsages(call, symbol, relPath?)` — empty symbol → `Error: symbol is required`; `resolveSafe(relPath ?? ".")` guard (same pattern as `searchFiles`); `buildUsagesRegex` in try/catch → `Error: <msg>`; walks the tree with the same `SKIP_DIRS` / `MAX_READ_BYTES` guards (via new private `usagesFile` helper mirroring `searchFile`), collecting `UsagesMatch[]` capped at **200**; first match marked `isDefinition: true`; zero matches → `No usages found for <symbol>`, else `formatUsagesBlock(symbol, matches)`; whole body in try/catch → `find_usages failed: <msg>` (never throws).

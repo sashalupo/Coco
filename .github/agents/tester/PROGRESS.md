@@ -12,12 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-5.S2 (find_usages tool schema + executor) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-5.S3 (next slice of Usages tool)
+- **Current item:** 1.99-5.S3 (usages tag context) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-5.S4 (FINAL slice of Usages tool)
 - **Last updated:** 2026-10-22
-- **Last commit:** 2c84ea8 (coder: 1.99-5.S1)
-- **Build state:** 435/435 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 8539470 (coder: 1.99-5.S2)
+- **Build state:** 439/439 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-5.S3 — usages tag context (src/context.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **439 PASS lines** (435 prior + 4 new `usages-s3:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 439 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 23) Usages tag context (1.99-5.S3)` section (smoke-test.js:3295, diff +32/−0) has 4 genuine `usages-s3:` assertions vs `out/context.js`: (a) `extractUsagesTag("explain #usages myFunc please") === "myFunc"`; (b) `null` for `"no tag"` / `"end #usages"` (bare) / `"#usagesfoo x"` (no space); (c) `formatUsagesTagBlock("f","body")` starts with `` Usages for `f`: ``, includes `body`, `("f","   ") === ""`; (d) 25,000-char body → `length <= 20050` + `endsWith("(truncated)")`. PASS
+  - (4) Source: `git diff src/context.ts` = 2 hunks, +48/−0, purely additive — `import { USAGES_BLOCK_MAX_CHARS } from "./usages";` + `extractUsagesTag` (regex `/#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i`, returns `m[1].trim()` or `null`) + `formatUsagesTagBlock` (whitespace-only → `""`, truncates to `USAGES_BLOCK_MAX_CHARS` + `… (truncated)` — same pattern as `formatFetchBlock`). File remains pure (no `vscode` import; only pre-existing comment mentions). PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/context.ts`. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `8539470` (feat(llm): usages tool — find_usages tool schema + executor (1.99-5.S2)). No coder commit. PASS
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-5.S2 — find_usages tool schema + executor (2026-10-22) — **PASS**
 
