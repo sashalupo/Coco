@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-12** — Reusable prompt files (5-slice plan; S1+S2+S3 DONE)
-- **Current slice:** 1.99-12.S3 DONE — 1.99-12.S4 next
+- **Current item:** **1.99-12** — Reusable prompt files (5-slice plan; S1+S2+S3+S4 DONE)
+- **Current slice:** 1.99-12.S4 DONE — 1.99-12.S5 (FINAL) next
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-12.S4** (webview.ts: prompt_inject handler), then Tester, memory, commit
+- **Next step:** dispatch Coder for slice **1.99-12.S5** (FINAL: package.json + final smoke + PROGRESS), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** 3b59647 (feat: reusable prompt files — settings plumbing (1.99-12.S2)); S3 commit pending
-- **Build state:** compiles clean; smoke test passes (491 assertions); 1.99-12.S3 done
+- **Last commit:** 3a1ddf7 (feat: reusable prompt files — llm.usePrompt command (1.99-12.S3)); S4 commit pending
+- **Build state:** compiles clean; smoke test passes (493 assertions); 1.99-12.S4 done
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

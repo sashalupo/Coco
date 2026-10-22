@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-12 — Reusable prompt files — **IN PROGRESS** (S1+S2+S3 PASS, 2026-10-22)
-- **Next step:** 1.99-12.S4 (webview prompt_inject handler)
+- **Current item:** 1.99-12 — Reusable prompt files — **IN PROGRESS** (S1+S2+S3+S4 PASS, 2026-10-22)
+- **Next step:** 1.99-12.S5 (package.json + final smoke assertions + PROGRESS.md)
 - **Last updated:** 2026-10-22
-- **Last commit:** 3b59647 (feat(llm): reusable prompt files — settings plumbing (1.99-12.S2)); S3 commit pending
-- **Build state:** 491/491 PASS
+- **Last commit:** 3a1ddf7 (feat(llm): reusable prompt files — llm.usePrompt command (1.99-12.S3)); S4 commit pending
+- **Build state:** 493/493 PASS
 
 
 ### 1.99-12.S1 — pure prompt-file helpers (src/prompts.ts, NEW) (2026-10-22) — **PASS**
@@ -38,6 +38,13 @@ acceptance checks, and reports a clear pass/fail.
 - **Build:** `npm run compile` → exit 0, zero errors.
 - **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **491 PASS lines** (486 prior + 5 new `rp-s3:`), 0 FAIL.
 - **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 491/491 with 5 genuine `rp-s3:` static-source assertions in new `// 38) Reusable prompt files — usePrompt command (1.99-12.S3a)` section (smoke-test.js:3734) all passing: `rp-s3: extension.ts imports from ./prompts` (L3736), `rp-s3: extension.ts registers llm.usePrompt` (L3738), `rp-s3: extension.ts uses workspace.findFiles` (L3739), `rp-s3: extension.ts posts prompt_inject` (L3740), `rp-s3: extension.ts uses PROMPT_TEMPLATE` (L3741) PASS; (3) `src/extension.ts` handler at L184: L18 imports `promptTitle, stripPromptComments, PROMPT_TEMPLATE, MAX_PROMPT_CHARS` from `./prompts`; L185–193 reads `readSettings().promptFiles`, filters non-empty strings, empty → info message "No prompt file locations configured (llm.promptFiles.locations)."; L195–207 per-glob `workspace.findFiles(glob, "**/node_modules/**", 200)` loop with `Set<string>` dedup on `uri.fsPath` (accepted deviation from plan's `new vscode.GlobPattern(globs)` — type alias, not constructable); L208–224 QuickPick items `{ label: promptTitle("", uri.fsPath), description: asRelativePath(uri), uri }` + `$(new-file) New Prompt File…` item, title "LLM: Use Prompt", placeHolder "Select a reusable prompt to use in chat"; L227–244 existing pick: readFile → utf8 → `slice(0, MAX_PROMPT_CHARS)` → `stripPromptComments`, empty → info message, else `provider.postMessage({ type: "prompt_inject", title: promptTitle(content, uri.fsPath), content: stripped })` + `executeCommand("workbench.view.llm")`; L246–281 New Prompt File…: `showInputBox` with `/^[a-zA-Z0-9._-]+$/` validation, no workspace folder → error message, `target = Uri.joinPath(root, ".prompts", name + ".prompt.md")`, stat-exists guard (exists → info message, no overwrite), else `createDirectory(.prompts)` + `writeFile(PROMPT_TEMPLATE)`, opens document PASS; (4) scope: exactly ` M src/extension.ts`, ` M scripts/smoke-test.js` (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 4 criteria met.
+
+### 1.99-12.S4 — `prompt_inject` webview handler (src/chat/webview.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **493 PASS lines** (491 prior + 2 new `rp-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 493/493 with 2 genuine `rp-s4:` static-source assertions in new `// 39) Reusable prompt files — prompt_inject webview handler (1.99-12.S4)` section (smoke-test.js:3743–3746) all passing: `rp-s4: webview.ts handles prompt_inject` (L3745), `rp-s4: webview.ts has case 'prompt_inject'` (L3746) PASS; (3) `src/chat/webview.ts:1978–1987`: `case 'prompt_inject':` sibling to `case 'vision_warning':` (L1973) in `handleHostMessage` — `const text = String(msg.content ?? ''); if (!text) break;` + defensive `if (!inputEl) break;` + reuses IIFE-scoped `inputEl` (L1180, accepted deviation from re-querying DOM) + prepend semantics `inputEl.value = existing ? text + '\n\n' + existing : text` (prompt leads, draft preserved after blank line) + `inputEl.focus()`; diff +9/−0, no new HTML/CSS PASS; (4) scope: exactly ` M src/chat/webview.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` (ninfer submodule marker ignored); no package-lock.json drift PASS.
 - **Verdict:** **PASS** — all 4 criteria met.
 
 ### 1.99-10.S4 — FINAL: final smoke assertions (2026-10-22) — **PASS**

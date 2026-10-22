@@ -3740,6 +3740,11 @@ function assert(cond, label) {
   assert(extSrcRpS3b.includes("prompt_inject"), "rp-s3: extension.ts posts prompt_inject");
   assert(extSrcRpS3b.includes("PROMPT_TEMPLATE"), "rp-s3: extension.ts uses PROMPT_TEMPLATE");
 
+  // 39) Reusable prompt files — prompt_inject webview handler (1.99-12.S4)
+  const webviewSrcRpS4 = fs.readFileSync(path.join(__dirname, "..", "src", "chat", "webview.ts"), "utf8");
+  assert(webviewSrcRpS4.includes("prompt_inject"), "rp-s4: webview.ts handles prompt_inject");
+  assert(webviewSrcRpS4.includes("case 'prompt_inject'"), "rp-s4: webview.ts has case 'prompt_inject'");
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

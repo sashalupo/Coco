@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-12 (Reusable prompt files) — S2 done
-- **Next step:** 1.99-12.S3 (`src/extension.ts`: `llm.usePrompt` command)
+- **Current item:** 1.99-12 (Reusable prompt files) — S4 done
+- **Next step:** 1.99-12.S5 (FINAL: `package.json` + final smoke assertions + PROGRESS.md)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (486 assertions)
+- **Build state:** compiles clean; smoke test passes (493 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-12.S4** (2026-10-22) — `src/chat/webview.ts`: `prompt_inject` handler. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: new `case 'prompt_inject':` in `handleHostMessage` as a sibling right after `case 'vision_warning':` (now lines 1978–1986): `const text = String(msg.content ?? ''); if (!text) break;` then reuses the IIFE-scoped `inputEl` (the `#input` textarea, same element other code uses — no new `getElementById`); `if (!inputEl) break;` guard; prepend semantics: `inputEl.value = existing ? text + '\n\n' + existing : text;` (prompt leads, existing draft preserved after a blank line); `inputEl.focus(); break;`. No new HTML/CSS.
+  - `scripts/smoke-test.js`: new section `// 39) Reusable prompt files — prompt_inject webview handler (1.99-12.S4)` after section 38, before the final summary print; 2 `rp-s4:` static-source assertions via `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcRpS4`): (a) contains `prompt_inject`; (b) contains `case 'prompt_inject'`. Total PASS lines now 493 (491 + 2).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 493 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-12.S2** (2026-10-22) — settings plumbing: `src/presets.ts` + `src/config.ts`. Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `LlmSettings` gains `promptFiles: string[]` (doc comment "Glob patterns (workspace-relative) for reusable prompt files.") immediately after `instructionFiles` (now line 96).
   - `src/config.ts`: `readSettings()` gains `promptFiles: c.get<string[]>("promptFiles.locations", [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"])` immediately after `instructionFiles` (now line 74).

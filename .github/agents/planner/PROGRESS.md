@@ -1360,7 +1360,7 @@ User Prompt (user-data-folder prompts). Text-only section (no images).
   Smoke (`rp-s3:`, 4): `extension.ts` source contains `llm.usePrompt`,
   `workspace.findFiles`, `prompt_inject`, `PROMPT_TEMPLATE`.
 
-- **1.99-12.S4 — `src/chat/webview.ts`: `prompt_inject` handler.**
+- **1.99-12.S4 — `src/chat/webview.ts`: `prompt_inject` handler.** — Done (2026-10-22, PASS, 493 assertions)
   File: `src/chat/webview.ts`. In `handleHostMessage` (sibling to `case 'vision_warning':`):
   `case 'prompt_inject':` — `const text = String(msg.content ?? ''); if (!text) break;`
   get `#input`; `inputEl.value = existing ? text + '\n\n' + existing : text;`

@@ -1975,6 +1975,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					visionWarning.hidden = false;
 					setTimeout(function () { visionWarning.hidden = true; }, 8000);
 					break;
+				case 'prompt_inject': {
+					const text = String(msg.content ?? '');
+					if (!text) break;
+					if (!inputEl) break;
+					const existing = inputEl.value;
+					inputEl.value = existing ? text + '\n\n' + existing : text;
+					inputEl.focus();
+					break;
+				}
 				case 'restore':
 					messagesEl.innerHTML = '';
 					(msg.messages || []).forEach(function (m) {
