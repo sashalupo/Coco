@@ -14,15 +14,15 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** none — item 1.98-2 complete; next item **1.98-8** (`#codebase` tag)
+- **Current slice:** **1.98-8.S1** — `src/context.ts`: `extractCodebaseQuery` + `formatCodebaseSweep` (pure)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
   `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
   within the active window)
 - **Last updated:** 2026-10-22
-- **Last commit:** `1a50cad` — feat(llm): render tagged .ipynb files as cells in context (1.98-2.S5)
-- **Build state:** compiles clean; smoke test passes (item 1.98-2 fully verified, S1–S6; 245 assertions)
+- **Last commit:** `d5ddeba` — chore(llm): settings + smoke assertions; mark item 1.98-2 complete (1.98-2.S6)
+- **Build state:** compiles clean; smoke test passes (245 assertions); 1.98-8 planned (4 slices)
 
 ## Team
 

@@ -240,3 +240,25 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 - **Cell metadata/metadata preservation:** `applyNotebookEdit` preserves all existing notebook fields (it only touches `cells`); new cells get minimal metadata. No nbformat validation beyond `cells` array shape — engines produce valid-enough output for VS Code's notebook renderer.
 
 **Slice count:** 6 (S1–S6), each ≤1 source file + its smoke-test additions, independently compilable/committable. No host (`ChatViewProvider.ts`) or webview changes required — the approval gate is inherited via `isMutatingTool`.
+
+# Plan: 1.98-8 — `#codebase` tag: advanced codebase search in chat (Planned 2026-10-22)
+
+**Changelog:** VS Code 1.98 — "More advanced codebase search in Copilot Chat (`#codebase`)". Embeddings-based semantic search sub-item DROPPED (paid service).
+
+## Decisions
+1. Setting: `llm.chat.codebaseSearch.enabled` (boolean, default `true`); read as `codebaseSearchEnabled`. When false, `#codebase` is inert.
+2. Sweep REUSES existing ToolExecutor logic via new public `codebaseSweep(query: string): Promise<string>`: project structure (SKIP_DIRS, depth ≤ 3, cap 100 entries), git status (reuse `gitStatusText()`, cap 50 lines, `git exited…` → ""), text search (shared private `searchMatches(pattern, rootAbs, cap)` extracted from `searchFiles`; sweep cap 20, tool keeps 50). Total block cap 12,000 chars with `… (truncated)` suffix.
+3. Workspace symbol search DROPPED (no symbol provider; model has search tools in the loop).
+4. `extractCodebaseQuery(text): string | null` — null = tag absent; "" = tag with no query; else trimmed same-line remainder. Case-insensitive, word-bounded (`#codebasefoo` no match).
+5. Sweep runs regardless of `llm.tools.enabled` (context injection, not tool calling); only gate is the new setting.
+6. Injection in `ChatViewProvider.runStream` after the `@file` block: append `Codebase sweep:` section after `buildContextBlock` output.
+7. Pure formatting in `src/context.ts` (`formatCodebaseSweep`); ToolExecutor only gathers raw data.
+
+## Slices
+- **S1** `src/context.ts`: `extractCodebaseQuery` (string | null) + `CodebaseSweepData` interface + `formatCodebaseSweep(data, query?)` — stable block with `### Project structure` / `### Git status (modified files)` / `### Search: <query>` headers, placeholders for empty fields, 12,000-char truncation, `""` when all empty. Smoke section `// 12) codebase sweep (1.98-8)`.
+- **S2** `src/tools/ToolExecutor.ts`: public `codebaseSweep(query)` — structure walk (depth ≤ 3, cap 100), `gitStatusText()` (cap 50 lines, `git exited` → ""), search via new private `searchMatches` (cap 20; `searchFiles` refactored to use it, cap 50); composes `formatCodebaseSweep`. Static smoke: source contains `codebaseSweep(`, `formatCodebaseSweep`, `gitStatusText`; `searchMatches(` ≥ 2 occurrences.
+- **S3** `src/chat/ChatViewProvider.ts`: in `runStream` after `@file` block — if `settings.codebaseSearchEnabled` and tag present, `codebaseBlock = await this.toolExecutor.codebaseSweep(q)`; append to contextBlock. Import `extractCodebaseQuery`. Static smoke: source contains `extractCodebaseQuery` and `codebaseSweep(`.
+- **S4** `package.json` + `src/config.ts` + `src/presets.ts` + `scripts/smoke-test.js` + planner PROGRESS.md: add `llm.chat.codebaseSearch.enabled` (default true), `codebaseSearchEnabled` in `readSettings()` + `LlmSettings` (presets.ts), final static smoke assertions, mark 1.98-8 Done.
+
+## Overall acceptance
+1. compile clean + smoke fully green. 2. `#codebase <q>` → `Codebase sweep` section (structure, git status when dirty, search matches), ≤12,000 chars. 3. setting false → inert. 4. `#codebase` no query → structure + git status, search placeholder. 5. `@file` tagging, section order, 11 tools unaffected.
