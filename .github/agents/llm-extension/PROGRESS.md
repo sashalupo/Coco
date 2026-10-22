@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 17 complete** — Agent todos checklist (17.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `d52a396` — feat(llm): streaming tool-call progress indicator (Phase 16.1)
+- **Last commit:** `6989c02` — feat(llm): agent todos checklist via manage_todos tool (Phase 17.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); todos card verified
 
 > **Phase 17 — Agent todos checklist (2026-10-22):**
