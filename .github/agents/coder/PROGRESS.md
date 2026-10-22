@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-16 (Copilot status menu) — **Done** (all 3 slices S1–S3)
-- **Next step:** await next backlog item (1.99-19)
+- **Current item:** 1.99-19 (`#searchResults` tag) — in progress (S1 done)
+- **Next step:** 1.99-19.S2 (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (518 assertions)
+- **Build state:** compiles clean; smoke test passes (523 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-19.S1** (2026-10-22) — pure `#searchResults` parse/format helpers in `src/context.ts`. Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/context.ts`: new section appended at end of file (after the `#newWorkspace` block) with the standard section comment (`#searchResults tag (1.99-19): attach workspace text-search results as chat context. The actual search is wired up in a later slice; these functions only parse the tag and render the block.`): (a) `export function extractSearchResultsTag(text: string): string | null` — regex `/#searchResults(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i` (mirrors `extractFolderTag` exactly); returns `(m[1] ?? m[2] ?? "").trim()` — `""` for the bare tag, `null` when absent; `#searchResultsfoo` does NOT match (word-bounded); (b) `export const SEARCH_RESULTS_BLOCK_MAX_CHARS = 8000;` + `const SEARCH_RESULTS_TRUNCATED_SUFFIX = "… (truncated)";`; (c) `export function formatSearchResultsBlock(query: string, body: string): string` — header `Search results (query: ${q}):` with `q = query.trim() !== "" ? query : "(none)"`; body = `body` when non-empty after trim else `"(no matches)"`; NEVER returns `""` (explicit tag → header always shown, same rule as `formatFolderBlock`); truncates total to `SEARCH_RESULTS_BLOCK_MAX_CHARS` with the `… (truncated)` suffix.
+  - `scripts/smoke-test.js`: new section `// 47) #searchResults tag — pure parse/format helpers (1.99-19.S1)` at end (after section 46, before final summary print); `require` of `out/context.js` (local `sresS1`); 5 `sres-s1:` assertions: (a) space + colon query forms (`"foo"`/`"bar"`); (b) bare tag → `""` (incl. `"#searchResults\nmore"`); (c) absent → `null` and `#searchResultsfoo x` → `null`; (d) header + body, empty body → `(no matches)`, hint body rendered, never `""`; (e) 20000-char body truncated to ≤ 8000 + suffix length, ends with `… (truncated)`, empty query renders `(none)`, `SEARCH_RESULTS_BLOCK_MAX_CHARS === 8000`. Total PASS lines now 523 (518 + 5).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 523 PASS, 0 FAIL; `git status --short` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-16.S3** (2026-10-22, FINAL) — package.json contributions for `llm.toggleCompletions`. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: (a) `contributes.commands` gains `{ "command": "llm.toggleCompletions", "title": "Toggle Completions", "category": "LLM" }` right after the `llm.changeCompletionsModel` entry; (b) top-level `activationEvents` gains `onCommand:llm.toggleCompletions` after `onCommand:llm.mcp.listServers` (note: this package keeps activation events at the top level, not under `contributes`); (c) `llm.inline.enabled` description replaced with "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect. Toggle it from the LLM status menu ('LLM: Toggle Completions'); the status bar icon shows whether completions are enabled for the active editor." (`type`/`default` unchanged). JSON validated with `JSON.parse` → `json ok`.
   - `scripts/smoke-test.js`: new section `// 46) Copilot status menu — package.json contributions (1.99-16.S3)` at end (after section 45, before final summary print); `JSON.parse` of `package.json` (local `pkgStmenuS3`); 3 `stmenu-s3:` assertions: (a) `contributes.commands` contains `llm.toggleCompletions` with a non-empty `title`; (b) activation events contain `onCommand:llm.toggleCompletions` (checks top-level `activationEvents`, falling back to `contributes.activationEvents`); (c) `llm.inline.enabled` description mentions the status menu ("status menu" or "Toggle Completions") AND "active editor". Total PASS lines now 518 (515 + 3).

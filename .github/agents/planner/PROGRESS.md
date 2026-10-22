@@ -1929,7 +1929,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 
 **Slices:**
 
-- **1.99-19.S1** — Pure `#searchResults` parse + format helpers in `src/context.ts`
+- **1.99-19.S1** — Pure `#searchResults` parse + format helpers in `src/context.ts` — Done (2026-10-22, PASS, 523 assertions)
   - Files: `src/context.ts`
   - Changes:
     - New section at the end of the file (after the `#newWorkspace` block, ~line 505) with the standard section comment `// #searchResults tag (1.99-19): attach workspace text-search results as chat context. The actual search is wired up in a later slice; these functions only parse the tag and render the block.`

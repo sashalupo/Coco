@@ -502,3 +502,57 @@ export function formatWorkspaceBlock(
   }
   return block.slice(0, WORKSPACE_BLOCK_MAX_CHARS) + "… (truncated)";
 }
+
+// ---------------------------------------------------------------------------
+// #searchResults tag (1.99-19): attach workspace text-search results as chat
+// context. The actual search is wired up in a later slice; these functions
+// only parse the tag and render the block.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#searchResults` tag query from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#searchResults` occurrence.
+ * Both `#searchResults:query` (colon) and `#searchResults query` (space) are
+ * accepted; `#searchResultsfoo` does NOT match (a colon or end/whitespace
+ * must follow `searchResults`). Returns the trimmed query token (up to the
+ * next whitespace/newline — same-line semantics), `""` for the bare tag, and
+ * `null` when the tag is absent. Pure and testable.
+ */
+export function extractSearchResultsTag(text: string): string | null {
+  const m = /#searchResults(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  return (m[1] ?? m[2] ?? "").trim();
+}
+
+/** Hard cap for the rendered search-results block. */
+export const SEARCH_RESULTS_BLOCK_MAX_CHARS = 8000;
+const SEARCH_RESULTS_TRUNCATED_SUFFIX = "… (truncated)";
+
+/**
+ * Render `#searchResults` matches as a stable context block:
+ *
+ * ```
+ * Search results (query: <query or "(none)">):
+ * <body or "(no matches)">
+ * ```
+ *
+ * The whole block is truncated to `SEARCH_RESULTS_BLOCK_MAX_CHARS` chars with
+ * a `… (truncated)` suffix. Unlike `formatProblemsBlock`, this NEVER returns
+ * `""` — the tag was explicit, so the header is always shown. Pure and
+ * testable.
+ */
+export function formatSearchResultsBlock(query: string, body: string): string {
+  const q = query.trim() !== "" ? query : "(none)";
+  const b = body.trim() !== "" ? body : "(no matches)";
+  const block = `Search results (query: ${q}):\n${b}`;
+  if (block.length <= SEARCH_RESULTS_BLOCK_MAX_CHARS) {
+    return block;
+  }
+  return (
+    block.slice(0, SEARCH_RESULTS_BLOCK_MAX_CHARS) +
+    SEARCH_RESULTS_TRUNCATED_SUFFIX
+  );
+}

@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-19** — Semantic text search improvements: `#searchResults` tool — planned (4 slices S1–S4)
-- **Current slice:** none yet (S1 next)
+- **Current item:** **1.99-19** — Semantic text search improvements: `#searchResults` tool — in progress (S1 done, S2–S4 pending)
+- **Current slice:** 1.99-19.S1 DONE
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-19.S1 (pure parse/format helpers in src/context.ts), then Tester
+- **Next step:** dispatch Coder for 1.99-19.S2 (ToolExecutor.searchResults + LlmSettings.searchResultsEnabled + readSettings), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** fa3987f (feat: copilot status menu — package.json contributions + item complete (1.99-16.S3, item complete)); plan commit pending
-- **Build state:** compiles clean; smoke test passes (518 assertions); 1.99-16 complete
+- **Last commit:** 47a1675 (chore: record 1.99-19 plan (4 slices)); S1 commit pending
+- **Build state:** compiles clean; smoke test passes (523 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

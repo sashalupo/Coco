@@ -12,12 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-16 — Copilot status menu (completions indicator + toggle) — S1+S2+S3 PASS (2026-10-22) — ITEM COMPLETE
-- **Next step:** verify next changelog item after 1.99-16 (oldest-to-newest)
+- **Current item:** 1.99-19 — #searchResults tag — S1 PASS (2026-10-22)
+- **Next step:** verify 1.99-19.S2 (next slice of #searchResults)
 - **Last updated:** 2026-10-22
-- **Last commit:** 6ca092a (feat(llm): copilot status menu — host indicator + toggle command (1.99-16.S2))
-- **Build state:** 518/518 PASS
+- **Last commit:** fa3987f (feat(llm): copilot status menu — package.json contributions + item complete (1.99-16.S3, item complete))
+- **Build state:** 523/523 PASS
 
+
+
+### 1.99-19.S1 — Pure `#searchResults` parse + format helpers in `src/context.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **523 PASS lines** (518 prior + 5 new `sres-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 523/523 PASS; (3) 5 genuine `sres-s1:` assertions in new final section `// 47) #searchResults tag — pure parse/format helpers (1.99-19.S1)` (smoke-test.js:3972, last section before `ALL SMOKE TESTS PASSED`), requiring `out/context.js`: space+colon query extraction (L3974–3978), bare tag → `""` (L3979–3983), absent/`#searchResultsfoo` → null (L3984–3988), header+body/`(no matches)`/never-`""` (L3989–3998), 8000-char truncation + `… (truncated)` suffix + `SEARCH_RESULTS_BLOCK_MAX_CHARS === 8000` (L3999–4007) PASS; (4) `src/context.ts`: `extractSearchResultsTag` (L522–525) with regex `/#searchResults(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i`, returns `(m[1] ?? m[2] ?? "").trim()`; `SEARCH_RESULTS_BLOCK_MAX_CHARS = 8000` (L528) + `SEARCH_RESULTS_TRUNCATED_SUFFIX = "… (truncated)"` (L529); `formatSearchResultsBlock` (L547–553) header `Search results (query: <q>):` with `(none)`, `(no matches)` for empty body, never `""`, truncates to 8000 + suffix; `git diff --stat src/context.ts` → 54 insertions, 0 deletions (purely additive, new section at end of file) PASS; (5) scope exactly ` M src/context.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 
 ### 1.99-13.S3 — FINAL: host sanitize .bmp + setting description (2026-10-22) — **PASS**

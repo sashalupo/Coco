@@ -3969,6 +3969,42 @@ function assert(cond, label) {
     "stmenu-s3: llm.inline.enabled description mentions the status menu / active editor",
   );
 
+  // 47) #searchResults tag — pure parse/format helpers (1.99-19.S1)
+  const sresS1 = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    sresS1.extractSearchResultsTag("explain #searchResults foo") === "foo" &&
+      sresS1.extractSearchResultsTag("#searchResults:bar") === "bar",
+    "sres-s1: extractSearchResultsTag extracts query after #searchResults (space and colon forms)",
+  );
+  assert(
+    sresS1.extractSearchResultsTag("#searchResults") === "" &&
+      sresS1.extractSearchResultsTag("#searchResults\nmore") === "",
+    "sres-s1: extractSearchResultsTag returns '' for the bare tag",
+  );
+  assert(
+    sresS1.extractSearchResultsTag("no tag") === null &&
+      sresS1.extractSearchResultsTag("#searchResultsfoo x") === null,
+    "sres-s1: extractSearchResultsTag null for absent / no-boundary tag",
+  );
+  const sresBlock = sresS1.formatSearchResultsBlock("foo", "a.ts:1: x");
+  assert(
+    sresBlock.startsWith("Search results (query: foo):") &&
+      sresBlock.includes("a.ts:1: x") &&
+      sresS1.formatSearchResultsBlock("", "   ").includes("(no matches)") &&
+      sresS1.formatSearchResultsBlock("", "hint").includes("hint") &&
+      sresS1.formatSearchResultsBlock("", "hint") !== "",
+    "sres-s1: formatSearchResultsBlock header + body; empty body → '(no matches)'; never ''",
+  );
+  const sresLong = sresS1.formatSearchResultsBlock("", "x".repeat(20000));
+  assert(
+    sresLong.length <=
+      sresS1.SEARCH_RESULTS_BLOCK_MAX_CHARS + "… (truncated)".length &&
+      sresLong.endsWith("… (truncated)") &&
+      sresLong.startsWith("Search results (query: (none)):") &&
+      sresS1.SEARCH_RESULTS_BLOCK_MAX_CHARS === 8000,
+    "sres-s1: formatSearchResultsBlock truncates long bodies with the suffix",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
