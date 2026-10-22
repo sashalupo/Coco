@@ -2387,6 +2387,52 @@ function assert(cond, label) {
     "vision-s4: host reads the llm.chat.vision.enabled gate",
   );
 
+  // 17) engine status helpers (1.98-15.S1): compiled out/presets.js.
+  const p = require(path.join(__dirname, "..", "out", "presets.js"));
+  assert(
+    typeof p.statusLabel === "function" &&
+      typeof p.statusTooltip === "function" &&
+      typeof p.statusOverviewItems === "function" &&
+      Array.isArray(p.STATUS_COMMANDS) &&
+      p.STATUS_COMMANDS.length === 4,
+    "status-s1: statusLabel/statusTooltip/statusOverviewItems exported, STATUS_COMMANDS has 4 entries",
+  );
+  assert(
+    JSON.stringify(p.statusLabel({ ok: true, status: 200, statusText: "OK" })) ===
+      JSON.stringify({ icon: "$(check)", text: "LLM" }) &&
+      JSON.stringify(p.statusLabel({ ok: false, status: 0, statusText: "" })) ===
+        JSON.stringify({ icon: "$(error)", text: "LLM" }),
+    "status-s1: statusLabel returns $(check)/$(error) with text LLM",
+  );
+  const tipOk = p.statusTooltip({ ok: true, status: 200, statusText: "OK" }, "http://localhost:8080");
+  const tipOff = p.statusTooltip(
+    { ok: false, status: 0, statusText: "", error: "fetch failed" },
+    "http://localhost:8080",
+  );
+  assert(
+    tipOk.includes("http://localhost:8080") &&
+      tipOk.includes("200") &&
+      tipOff.includes("unreachable") &&
+      tipOff.includes("fetch failed"),
+    "status-s1: statusTooltip ok-case has baseUrl+status, offline-case has unreachable+error",
+  );
+  const items = p.statusOverviewItems(
+    { ok: true, status: 200, statusText: "OK" },
+    "http://localhost:8080",
+    "",
+    "",
+  );
+  assert(
+    items.length === 4 &&
+      items[0].label.startsWith("Engine: ") &&
+      items[1].label.startsWith("Endpoint") &&
+      items[2].label.startsWith("Chat model") &&
+      items[3].label.startsWith("Completions model") &&
+      items[2].description === "default (engine)" &&
+      items[3].description === "chat model (default)",
+    "status-s1: statusOverviewItems returns 4 rows with expected labels and empty-model fallbacks",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

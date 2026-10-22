@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-14.S5 done (FINAL) — `package.json`: `llm.chat.vision.enabled` setting + planner memory
-- **Next step:** 1.98-15 (next backlog item — await planner plan)
+- **Current item:** 1.98-15 (Engine status indicator) — S1 done
+- **Next step:** 1.98-15.S2 (extension.ts: gate + pure helpers + focus refresh)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (357 assertions, incl. 3 new `vision-s4:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (361 assertions, incl. 4 new `status-s1:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-15.S1** (2026-10-22) — `src/presets.ts`: pure status helpers. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts` (appended after `isVisionCapableModel`, module stays vscode-free/dependency-free): (a) `EngineStatus { ok; status; statusText; error? }` — structural subset of `HealthResult` (no import from `client.ts`); (b) `statusLabel(s)` → `{ icon: "$(check)", text: "LLM" }` when ok else `{ icon: "$(error)", text: "LLM" }`; (c) `statusTooltip(s, baseUrl)` → ok: `` `LLM engine healthy (${s.status} ${s.statusText}) — ${baseUrl}` ``, offline: `` `LLM engine unreachable — ${baseUrl}${s.error ? `: ${s.error}` : ` (${s.status})`}` ``; (d) `StatusOverviewItem { label; description?; detail?; command? }` + `statusOverviewItems(s, baseUrl, chatModel, completionsModel)` → exactly 4 items: `Engine: running` (description = statusText) / `Engine: stopped` (description = error || statusText), `Endpoint` (baseUrl), `Chat model` (chatModel || "default (engine)"), `Completions model` (completionsModel || "chat model (default)"); (e) `STATUS_COMMANDS` readonly array of exactly 4: Open Chat → `llm.openChat`, Test Connection → `llm.testConnection`, Refresh Models → `llm.refreshModels`, Change Completions Model → `llm.changeCompletionsModel` (with the spec's detail strings).
+  - `scripts/smoke-test.js`: new subsection `// 17) engine status helpers (1.98-15.S1)` requiring compiled `out/presets.js` (same pattern as `vision-s2:`); 4 assertions (`status-s1:` labels): exports present (3 functions + `STATUS_COMMANDS` array of 4), `statusLabel` ok/offline icons (strict JSON compare), `statusTooltip` ok-case contains baseUrl + `200` / offline-case contains `unreachable` + `fetch failed`, `statusOverviewItems` returns 4 items with the 4 label prefixes and the empty-model fallback descriptions.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **361 assertions** (357 prior + 4 new `status-s1:`); `git status` shows only the 3 in-scope files modified (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` setting + planner memory. Files: `package.json`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: added `llm.chat.vision.enabled` (boolean, default `true`) to `contributes.configuration.properties` right after `llm.chat.folderContext.enabled`, with description "Allow attaching images (JPEG/PNG/GIF/WEBP) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)." — makes the gate read inline in S4 (`chat.vision.enabled`, default `true`) user-visible in the settings UI. JSON validated via `JSON.parse`.
   - `.github/agents/planner/PROGRESS.md`: Status Current item → 1.98-14 **Done** (5 slices S1–S5), Next step → plan the next pending backlog item (1.98-15 — Engine status indicator); all 5 slice headers (1.98-14.S1–S5) annotated ` — Done (2026-10-22)`; Todo `- [ ] Dispatch slices 1.98-14.S1 → S5 (one per session).` → `- [x]`.

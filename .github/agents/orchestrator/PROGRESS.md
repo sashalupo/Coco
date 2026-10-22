@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-15** — Engine status indicator (status-bar overview, reframed from Copilot status) (VS Code 1.98)
-- **Current slice:** — (none yet; item not planned)
+- **Current slice:** **1.98-15.S1** — done (pure status helpers in `src/presets.ts`); next: 1.98-15.S2
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item 1.98-15 (Engine status indicator), then record plan + commit
+- **Next step:** dispatch Coder for slice 1.98-15.S2 (`src/extension.ts`: gate + pure helpers + focus refresh), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `3d169f6` — feat(llm): Copilot Vision — host send flow (1.98-14.S4)
-- **Build state:** compiles clean; smoke test passes (357 assertions); item 1.98-14 fully verified (S1–S5)
+- **Last commit:** `a02e4c1` — chore(llm): record 1.98-15 plan (4 slices)
+- **Build state:** compiles clean; smoke test passes (361 assertions); 1.98-15.S1 verified
 
 ## Team
 
@@ -69,12 +69,13 @@ pending item** (the oldest).
 - **1.98-12.S2** (2026-10-22) — `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts`: `completionsModel` field (`llm.completions.model`, default `""`) + conditional model override in the inline provider (empty → keeps `llm.model`); 5 `compm-s2:` smoke assertions. Fallback bug (unconditional override) found by orchestrator, fixed by Coder before verification. Tester PASS. Commit `3c03b59`.
 - **1.98-12.S3** (2026-10-22) — `src/extension.ts`: `llm.changeCompletionsModel` QuickPick command (registered after `llm.commitChanges`; list via `buildCompletionsModelList`; engine-unreachable → warning + configured-only list; cancel = no-op; write to `ConfigurationTarget.Workspace`/`Global`); 5 `compm-s3:` smoke assertions. Tester PASS. Commit pending.
 - **1.98-12.S4** (2026-10-22) — `package.json`: `llm.completions.model` setting (string, default `""`) + `llm.changeCompletionsModel` command contribution; 5 `compm-s4:` parsed-JSON smoke assertions; planner PROGRESS.md marks 1.98-12 Done. Tester PASS. **Item 1.98-12 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit `486dde2`.
-- **1.98-14 plan** (2026-10-22) — Planner produced 5-slice plan: Copilot Vision image attachments — S1 `src/request.ts` multimodal (`ChatMessage.images`, `toContentParts`, body mapping, +1000 tokens/image), S2 `src/presets.ts` `isVisionCapableModel` (static marker list), S3 `src/chat/webview.ts` attachment UI (📎/paste/drag-drop, thumbnail strip, inline render + hover zoom, `vision_warning` notice), S4 `src/chat/ChatViewProvider.ts` send flow + validation + non-blocking warning, S5 `package.json` `llm.chat.vision.enabled` + 15 `vision-sN:` smoke assertions (342 → 357). Plan recorded in planner PROGRESS.md. Commit pending.
+- **1.98-14 plan** (2026-10-22) — Planner produced 5-slice plan: Copilot Vision image attachments — S1 `src/request.ts` multimodal (`ChatMessage.images`, `toContentParts`, body mapping, +1000 tokens/image), S2 `src/presets.ts` `isVisionCapableModel` (static marker list), S3 `src/chat/webview.ts` attachment UI (📎/paste/drag-drop, thumbnail strip, inline render + hover zoom, `vision_warning` notice), S4 `src/chat/ChatViewProvider.ts` send flow + validation + non-blocking warning, S5 `package.json` `llm.chat.vision.enabled` + 15 `vision-sN:` smoke assertions (342 → 357). Plan recorded in planner PROGRESS.md. Commit `ad2b295`.
 - **1.98-14.S1** (2026-10-22) — `src/request.ts`: `ChatMessage.images?: string[]`, `ContentPart` + pure `toContentParts` (plain string when no images; text part first + one `image_url` part per data URL), `RequestMessage` type widening (`content: string | ContentPart[]`), `buildRequestBody` maps image messages after `trimHistory` (text-only byte-identical), `estimateMessageTokens` +1000/image; 4 `vision-s1:` behavior smoke assertions. Tester PASS. Commit `9d847c1`.
 - **1.98-14.S2** (2026-10-22) — `src/presets.ts`: `VISION_MODEL_MARKERS` (16 family markers) + pure `isVisionCapableModel` (empty → false; case-insensitive substring match); 3 `vision-s2:` behavior smoke assertions. Tester PASS. Commit `2d0497b`.
 - **1.98-14.S3** (2026-10-22) — `src/chat/webview.ts`: attachment UI — paperclip button + hidden file input (jpeg/png/gif/webp, multiple), `pendingImages` state, `addImageFiles` (4 mimes, 4-image / 10 MB caps, `readAsDataURL`), `renderAttachStrip` (48px thumbs + × remove), paste (`clipboardData.items`) + drag-drop wiring, `doSend` posts `images` data URLs (captured before reset), `addUserMessage(text, images)` renders `.msg-images`/`.msg-img` (hover zoom 1.6), `stream_start`/`restore` pass images, `case 'vision_warning'` amber notice (8 s auto-hide); 5 `vision-s3:` static smoke assertions. Tester PASS. Commit `4bd7775`.
 - **1.98-14.S4** (2026-10-22) — `src/chat/ChatViewProvider.ts`: host send flow — `case "send"` passes `msg.images` through; `handleSend(text, images)` reads `chat.vision.enabled` gate (default true), sanitizes (data-URL regex, ~14 MB cap, max 4; gate off → drop silently), pushes `images` into history, non-blocking `vision_warning` post when `!isVisionCapableModel(this.toolbarStore.get().model ?? settings.model)`; 3 `vision-s4:` static smoke assertions. Tester PASS. Commit `3d169f6`.
-- **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` (boolean, default true) setting contribution; planner PROGRESS.md marks 1.98-14 Done (Status + 5 slice annotations + Todo checked). No new smoke assertions (total stays 357). Tester PASS. Commit pending.
+- **1.98-14.S5** (2026-10-22, FINAL) — `package.json`: `llm.chat.vision.enabled` (boolean, default true) setting contribution; planner PROGRESS.md marks 1.98-14 Done (Status + 5 slice annotations + Todo checked). No new smoke assertions (total stays 357). Tester PASS. Commit `4e5e56b`.
+- **1.98-15.S1** (2026-10-22) — `src/presets.ts`: pure status helpers (`EngineStatus`, `statusLabel`, `statusTooltip`, `StatusOverviewItem`/`statusOverviewItems`, `STATUS_COMMANDS`); 4 `status-s1:` smoke assertions (357 → 361). Tester PASS.
 - **1.98-14** — Copilot Vision (image attachments) — **COMPLETE** (all slices S1–S5 PASS, 2026-10-22; commits `9d847c1`, `2d0497b`, `4bd7775`, `3d169f6` + S5). No tag — `changelog-1.98` already exists.
 
 ## Tags (changelog-version tags on completed items)

@@ -188,3 +188,89 @@ export function isVisionCapableModel(model: string): boolean {
   }
   return VISION_MODEL_MARKERS.some((marker) => m.includes(marker));
 }
+
+/**
+ * Engine health snapshot for the status indicator.
+ * Structural subset of `HealthResult` in `client.ts` — declared here so this
+ * module stays vscode-free and dependency-free.
+ */
+export interface EngineStatus {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  error?: string;
+}
+
+/**
+ * Status-bar label for the engine indicator.
+ * `$(check) LLM` when healthy, `$(error) LLM` otherwise.
+ */
+export function statusLabel(s: EngineStatus): { icon: string; text: string } {
+  return s.ok ? { icon: "$(check)", text: "LLM" } : { icon: "$(error)", text: "LLM" };
+}
+
+/**
+ * Status-bar tooltip for the engine indicator.
+ * Healthy: `LLM engine healthy (<status> <statusText>) — <baseUrl>`.
+ * Unreachable: `LLM engine unreachable — <baseUrl>: <error>` (or `(<status>)`
+ * when no error text is available).
+ */
+export function statusTooltip(s: EngineStatus, baseUrl: string): string {
+  if (s.ok) {
+    return `LLM engine healthy (${s.status} ${s.statusText}) — ${baseUrl}`;
+  }
+  return `LLM engine unreachable — ${baseUrl}${s.error ? `: ${s.error}` : ` (${s.status})`}`;
+}
+
+/** One row in the status overview QuickPick. */
+export interface StatusOverviewItem {
+  label: string;
+  description?: string;
+  detail?: string;
+  command?: string;
+}
+
+/**
+ * Build the 4 info rows of the status overview:
+ * engine state, endpoint, chat model, completions model.
+ * Pure: no vscode, no network.
+ */
+export function statusOverviewItems(
+  s: EngineStatus,
+  baseUrl: string,
+  chatModel: string,
+  completionsModel: string,
+): StatusOverviewItem[] {
+  return [
+    s.ok
+      ? { label: "Engine: running", description: s.statusText }
+      : { label: "Engine: stopped", description: s.error || s.statusText },
+    { label: "Endpoint", description: baseUrl },
+    { label: "Chat model", description: chatModel || "default (engine)" },
+    { label: "Completions model", description: completionsModel || "chat model (default)" },
+  ];
+}
+
+/** Useful commands listed in the status overview QuickPick. */
+export const STATUS_COMMANDS: readonly {
+  label: string;
+  command: string;
+  detail: string;
+}[] = [
+  { label: "Open Chat", command: "llm.openChat", detail: "Open the LLM chat panel" },
+  {
+    label: "Test Connection",
+    command: "llm.testConnection",
+    detail: "Ping the engine health endpoint",
+  },
+  {
+    label: "Refresh Models",
+    command: "llm.refreshModels",
+    detail: "Re-fetch the model list from the engine",
+  },
+  {
+    label: "Change Completions Model",
+    command: "llm.changeCompletionsModel",
+    detail: "Pick the model used for inline completions",
+  },
+];

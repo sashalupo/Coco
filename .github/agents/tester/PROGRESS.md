@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-14 (multimodal message support) — **DONE** (all slices S1–S5 verified)
-- **Next step:** verify 1.98-15 (Engine status indicator) — await planner plan
+- **Current item:** 1.98-15.S1 (engine status helpers, pure) — **verified PASS** (2026-10-22)
+- **Next step:** verify 1.98-15.S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 357/357 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 361/361 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -286,6 +286,15 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** exactly 3 files modified: `package.json`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md`. `package-lock.json` NOT modified; `scripts/smoke-test.js` NOT modified. PASS
 - **1.98-14 fully verified (all slices S1–S5 PASS).**
 
+### 1.98-15.S1 — pure status helpers in `src/presets.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **361 assertions** (357 prior + 4 new `status-s1:` in section 17; 0 FAIL).
+- **Static checks in `src/presets.ts`:** (a) `EngineStatus` interface — standalone structural subset (`ok`, `status`, `statusText`, `error?`), no `client.ts` import. PASS (b) `statusLabel`: `$(check) LLM` / `$(error) LLM`. PASS (c) `statusTooltip`: ok → `LLM engine healthy (<status> <statusText>) — <baseUrl>`; offline → `LLM engine unreachable — <baseUrl>: <error>` (or `(<status>)` fallback). PASS (d) `statusOverviewItems`: 4 rows — `Engine: running|stopped`, `Endpoint`, `Chat model` (fallback `default (engine)`), `Completions model` (fallback `chat model (default)`). PASS (e) `STATUS_COMMANDS`: 4 entries (Open Chat / Test Connection / Refresh Models / Change Completions Model). PASS
+- **Purity:** `src/presets.ts` has zero import statements — no `vscode`, no `client.ts` import. PASS
+- **Smoke 17:** 4 genuine behavior assertions on compiled `out/presets.js` (require + strict value checks: export types, JSON.stringify equality on statusLabel, concrete tooltip content, 4-row shape + empty-model fallbacks). Not tautologies. PASS
+- **Scope check:** `git status --short | grep -v ninfer` → only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. `package-lock.json` NOT modified. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -342,6 +351,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14.S4** — host send flow + image validation + vision warning — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S5** — `package.json`: `llm.chat.vision.enabled` + planner memory (FINAL) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14** — Copilot Vision (image attachments) — **fully verified** (all slices S1–S5 PASS, 2026-10-22)
+- [x] **1.98-15.S1** — pure status helpers in `src/presets.ts` (statusLabel/statusTooltip/statusOverviewItems/STATUS_COMMANDS) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
