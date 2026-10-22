@@ -163,7 +163,7 @@
         "llm.tools.requireApproval": {
           "type": "boolean",
           "default": false,
-          "description": "Require user approval before mutating tools (write_file, edit_file) are applied."
+          "description": "Require user approval before mutating tools (write_file, edit_file, run_command) are applied. run_command shows an editable command card (Ctrl+Enter to run)."
         },
         "llm.context.includeFile": {
           "type": "boolean",

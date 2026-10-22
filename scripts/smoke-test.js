@@ -1184,6 +1184,29 @@ function assert(cond, label) {
   const s4 = diffStats("old\nline", "");
   assert(s4.added === 0 && s4.removed === 2, "diffStats: deleted file -> 0/2");
 
+  // 9) command approval gate (1.98-1): static source checks that the editable
+  // run_command approval feature is wired end-to-end (webview card + host gate).
+  const webviewSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  const hostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrc.includes("case 'command_approval':"),
+    "cmd-approval: webview handles command_approval host message",
+  );
+  assert(
+    webviewSrc.includes("type: 'commandApproval'"),
+    "cmd-approval: webview posts commandApproval message type",
+  );
+  assert(
+    hostSrc.includes("waitForCommandApproval"),
+    "cmd-approval: host has waitForCommandApproval",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-1.S4 done (webview "modified by user" badge on the tool card)
-- **Next step:** 1.98-1.S5 — Settings description + smoke test + PROGRESS.md
+- **Current step:** 1.98-1.S5 done (settings description + smoke test + planner PROGRESS.md)
+- **Next step:** item 1.98-1 complete — awaiting Tester verification
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes after 1.98-1.S4
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. 3 new cmd-approval assertions)
 
 ## Plan pointer
 
@@ -67,10 +67,15 @@ by step, one step per session.
     - Fallback-card branch: `tcSummary.appendChild(tcBadge)` after the tool name, before `tcDetails.appendChild(tcSummary)`.
   - Added one CSS rule `.tool-modified` (font-size 10px, weight 600, `var(--vscode-descriptionForeground, #9d9d9d)` muted color) in the existing style block next to `.tool-card summary .tool-name`.
   - Verified: `npm run compile` passes clean.
+- **1.98-1.S5** (2026-10-22) — Settings description + smoke test + planner PROGRESS.md. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  - `package.json`: updated `llm.tools.requireApproval` description to "Require user approval before mutating tools (write_file, edit_file, run_command) are applied. run_command shows an editable command card (Ctrl+Enter to run)." Nothing else changed.
+  - `scripts/smoke-test.js`: new section 9 (after the diffStats block, before the final "ALL SMOKE TESTS PASSED") with 3 static source assertions using the existing `assert(cond, label)` helper and `fs.readFileSync` (fs already required in the file): (a) `src/chat/webview.ts` contains `case 'command_approval':`, (b) webview source contains `type: 'commandApproval'` (the postMessage type), (c) `src/chat/ChatViewProvider.ts` contains `waitForCommandApproval`. All fail (process.exit(1)) if the feature is removed.
+  - `.github/agents/planner/PROGRESS.md`: marked item 1.98-1 **Done** (S1–S5 complete) in the Status block, the item heading, and the Done section; Status Next step now points to planning backlog item 1.98-2 (notebook support in chat); Todo "Dispatch slices 1.98-1.S1 → S5" checked off.
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` passes with the 3 new `cmd-approval:` assertions (ALL SMOKE TESTS PASSED).
 
 ## Todo
 
-- [ ] 1.98-1.S5 — Settings description + smoke test + PROGRESS.md.
+- [ ] Item 1.98-1 complete — awaiting Tester verification.
 
 ## Notes / decisions
 

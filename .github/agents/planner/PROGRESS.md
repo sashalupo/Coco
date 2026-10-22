@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-1 (VS Code 1.98 — Agent mode improvements: editable terminal command approval)
-- **Next step:** dispatch slice 1.98-1.S1 (webview `command_approval` card)
+- **Current item:** 1.98-1 (VS Code 1.98 — Agent mode improvements: editable terminal command approval) — **Done** (S1–S5 complete)
+- **Next step:** plan backlog item 1.98-2 (notebook support in chat)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -26,7 +26,7 @@ item** (the oldest) that the orchestrator dispatches.
 
 ## Plans
 
-### Item 1.98-1 — Editable terminal command approval in chat (planned 2026-10-22)
+### Item 1.98-1 — Editable terminal command approval in chat (planned 2026-10-22) — **Done** (2026-10-22, slices S1–S5 complete)
 
 **Changelog reference:** VS Code 1.98, "Agent mode improvements" — terminal commands shown
 inline in the chat response; user can edit the suggested command before running; Ctrl+Enter
@@ -124,13 +124,17 @@ unchanged; `npm run compile` clean.
 
 ## Done
 
-_(none yet)_
+- **1.98-1** (2026-10-22) — Editable terminal command approval in chat. All slices S1–S5
+  implemented and committed (webview `command_approval` card with editable command +
+  Ctrl+Enter; host `commandApproval` handler + `waitForCommandApproval`; agentic loop routes
+  `run_command` through the editable gate with edited-command rewrite + "modified by user"
+  badge; settings description updated; smoke-test source assertions added).
 
 ## Todo
 
 - [x] Wait for the Changelog Researcher to populate the backlog.
 - [x] Plan backlog item 1.98-1 (editable terminal command approval) — planned 2026-10-22.
-- [ ] Dispatch slices 1.98-1.S1 → S5 (one per session).
+- [x] Dispatch slices 1.98-1.S1 → S5 (one per session).
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
       the real codebase, break it into tiny slices (one file / one concern each), write the
       plan, record it here.
