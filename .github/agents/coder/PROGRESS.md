@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-2.S1 done (notebook_edit tool schema + mutating flag)
-- **Next step:** slice 1.98-2.S2 — src/notebook.ts pure parse/format/create helpers
+- **Current step:** 1.98-2.S2 done (src/notebook.ts pure parse/format/create helpers)
+- **Next step:** slice 1.98-2.S3 — applyNotebookEdit (the 5 actions) in src/notebook.ts
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
@@ -77,6 +77,11 @@ by step, one step per session.
   - `src/tools.ts`: added `notebook_edit` entry to `CODE_TOOLS` after `manage_todos` (now 11 tools). Schema: `path` (string, workspace-relative .ipynb path), `action` (string enum: `create`, `modify_cell`, `insert_cell`, `delete_cell`, `change_cell_type`), `cell_index` (number, 0-based; required for modify/delete/change_cell_type; for insert_cell the new cell takes this index), `cell_type` (string enum `code`|`markdown`, for create/insert/change_cell_type), `source` (string; for `create` multiple cells separated by the marker line `<<<CELL>>>`). `required: ["path", "action"]`. Extended `isMutatingTool()` to return true for `notebook_edit`.
   - `scripts/smoke-test.js`: tools section updated — `CODE_TOOLS.length === 11`; tool-name order string now ends `...,manage_todos,notebook_edit`; new assertions `byName.notebook_edit.function.parameters.required.join(",") === "path,action"` and `action.enum.length === 5`; `isMutatingTool("notebook_edit")` true in the approval section; also fixed the pre-existing `toolBody.tools.length === 10` assertion to `11` (it hardcodes the tool count and would otherwise fail).
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. `tools: notebook_edit required=[path,action]`, `tools: notebook_edit action enum has 5 values`, `approval: notebook_edit is mutating`).
+  - Not committed (per task instruction — orchestrator commits).
+- **1.98-2.S2** (2026-10-22) — `src/notebook.ts` pure parse/format/create helpers. Files: `src/notebook.ts` (new), `scripts/smoke-test.js`.
+  - `src/notebook.ts` (new, pure module — no `vscode` import, no deps): `NbCell`/`NbDoc` interfaces (source normalized to a single string); `parseNotebook(text): NbDoc | null` (JSON.parse, validates `cells` array + cell shape, joins `string[]` sources, keeps `outputs` arrays, `null` on any failure); `formatNotebookForContext(text): string` (per-cell `### Cell N (code|markdown)` heading + source in a fenced block — fence switches to `~~~~` when source contains triple backticks — + one-line `outputs: N (kinds)` / `outputs: none` summary; returns `Error: …` string on parse failure); `createNotebook(source): string` (minimal nbformat-4/minor-5 JSON, empty metadata + `language_info` for python, splits `source` on the `<<<CELL>>>` marker line into `code` cells); exports `CELL_MARKER`.
+  - `scripts/smoke-test.js`: new section 10 (before the final ALL PASSED) requiring `out/notebook.js` — 16 assertions: parse round-trips a 2-cell fixture (string + string[] sources both normalize), `null` for bad JSON and missing `cells`, context output contains `### Cell 0 (code)` / source text / `outputs: 2 (stream, error)` / `outputs: none`, bad-JSON context is an `Error:` string, `createNotebook` output re-parses with 3 cells all `code` and correct sources (multi-cell `<<<CELL>>>` split).
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 16 `notebook:` assertions).
   - Not committed (per task instruction — orchestrator commits).
 
 ## Todo

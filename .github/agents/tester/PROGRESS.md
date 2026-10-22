@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-2 (notebook support in chat) — slice S1 verified
-- **Next step:** verify slice 1.98-2.S2 (`src/notebook.ts` pure parse/format/create helpers)
+- **Current item:** 1.98-2 (notebook support in chat) — slices S1–S2 verified
+- **Next step:** verify slice 1.98-2.S3 (`applyNotebookEdit` — the 5 actions)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -105,7 +105,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
 - [x] **1.98-1** — fully verified (all slices S1–S5 PASS)
 - [x] **1.98-2.S1** — `notebook_edit` tool schema + mutating flag — **PASS** (2026-10-22, see Verifications)
-- [ ] Verify slice **1.98-2.S2** — `src/notebook.ts` pure parse/format/create helpers.
+- [x] **1.98-2.S2** — `src/notebook.ts` pure parse/format/create helpers — **PASS** (2026-10-22)
+- [ ] Verify slice **1.98-2.S3** — `applyNotebookEdit` (the 5 actions).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -115,3 +116,7 @@ acceptance checks, and reports a clear pass/fail.
 - Always run the build first. If it fails, report fail immediately.
 - Always run the smoke test. Record the assertion count.
 - Report, don't fix.
+
+### 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (196 assertions; 17 new `notebook:` green). Static checks a–d PASS (pure module, null on bad JSON/missing cells, string[] join, nbformat-4 re-parse, `<<<CELL>>>` split, fence switching). Scope: only `src/notebook.ts` (new) + `scripts/smoke-test.js` (+88).

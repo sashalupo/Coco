@@ -30,6 +30,11 @@ const { unifiedDiff, diffStats } = require(
 const { scanForSecrets } = require(
   path.join(__dirname, "..", "out", "secrets.js"),
 );
+const {
+  parseNotebook,
+  formatNotebookForContext,
+  createNotebook,
+} = require(path.join(__dirname, "..", "out", "notebook.js"));
 
 const PORT = 18099;
 
@@ -1213,6 +1218,89 @@ function assert(cond, label) {
     webviewSrc.includes("type: 'commandApproval'"),
     "cmd-approval: webview posts commandApproval message type",
   );
+  // 10) notebook helpers (1.98-2): pure parse/format/create in out/notebook.js
+  const nbFixture = JSON.stringify({
+    cells: [
+      {
+        cell_type: "code",
+        source: "print('hi')\n",
+        outputs: [
+          { output_type: "stream", name: "stdout", text: "hi\n" },
+          { output_type: "error", ename: "ValueError", evalue: "boom" },
+        ],
+      },
+      {
+        cell_type: "markdown",
+        source: ["# Title\n", "Some text\n"],
+      },
+    ],
+    metadata: {},
+    nbformat: 4,
+    nbformat_minor: 5,
+  });
+  const nbDoc = parseNotebook(nbFixture);
+  assert(nbDoc !== null, "notebook: parseNotebook parses valid doc");
+  assert(nbDoc.cells.length === 2, "notebook: parse round-trips 2 cells");
+  assert(
+    nbDoc.cells[0].source === "print('hi')\n",
+    "notebook: string source preserved",
+  );
+  assert(
+    nbDoc.cells[1].source === "# Title\nSome text\n",
+    "notebook: string[] source joined to single string",
+  );
+  assert(
+    nbDoc.cells[0].outputs && nbDoc.cells[0].outputs.length === 2,
+    "notebook: outputs array preserved",
+  );
+  assert(parseNotebook("not json") === null, "notebook: bad JSON -> null");
+  assert(
+    parseNotebook(JSON.stringify({ metadata: {} })) === null,
+    "notebook: missing cells array -> null",
+  );
+  const nbCtx = formatNotebookForContext(nbFixture);
+  assert(
+    nbCtx.includes("### Cell 0 (code)"),
+    "notebook: context has Cell 0 (code) heading",
+  );
+  assert(
+    nbCtx.includes("print('hi')"),
+    "notebook: context contains source text",
+  );
+  assert(
+    nbCtx.includes("outputs: 2 (stream, error)"),
+    "notebook: context has outputs summary line",
+  );
+  assert(
+    nbCtx.includes("outputs: none"),
+    "notebook: context has outputs: none for output-less cell",
+  );
+  assert(
+    formatNotebookForContext("not json").startsWith("Error:"),
+    "notebook: context of bad JSON is an error string",
+  );
+  const nbCreated = createNotebook(
+    "import os\n<<<CELL>>>\nprint(1)\n<<<CELL>>>\n# md cell",
+  );
+  const nbCreatedDoc = parseNotebook(nbCreated);
+  assert(nbCreatedDoc !== null, "notebook: createNotebook output parses");
+  assert(
+    nbCreatedDoc.cells.length === 3,
+    "notebook: createNotebook splits on <<<CELL>>> into 3 cells",
+  );
+  assert(
+    nbCreatedDoc.cells.every((c) => c.cell_type === "code"),
+    "notebook: createNotebook default cell type is code",
+  );
+  assert(
+    nbCreatedDoc.cells[0].source === "import os\n",
+    "notebook: createNotebook first cell source",
+  );
+  assert(
+    nbCreatedDoc.cells[2].source === "# md cell",
+    "notebook: createNotebook last cell source",
+  );
+
   assert(
     hostSrc.includes("waitForCommandApproval"),
     "cmd-approval: host has waitForCommandApproval",
