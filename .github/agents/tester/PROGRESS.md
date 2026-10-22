@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-5.S4 (FINAL: `#usages` tag wiring + setting) — **PASS** (2026-10-22) — item 1.99-5 complete
-- **Next step:** verify next item in planner backlog (1.99-5 done)
+- **Current item:** 1.99-6.S1 (workspace scaffold templates) — **PASS** (2026-10-22)
+- **Next step:** 1.99-6.S2 (extractNewWorkspaceTag + formatWorkspaceBlock)
 - **Last updated:** 2026-10-22
-- **Last commit:** 84ecb31 (coder: 1.99-5.S3)
-- **Build state:** 441/441 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** f5df1af (orchestrator: record 1.99-6 plan)
+- **Build state:** 446/446 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-6.S1 — workspace scaffold templates (src/workspaceScaffold.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **446 PASS lines** (441 prior + 5 new `ws-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 446/446 PASS; (3) 5 genuine `ws-s1:` assertions all passing (exports/4 templates/types list; template shape; extension template package.json+src/extension.ts; mcp-server src/server.ts tools/list+stdin; buildScaffoldPrompt content, unknown type → '', generic no npm install) PASS; (4) `src/workspaceScaffold.ts` pure module — zero real imports (grep hits only inside template-string contents) PASS; (5) scope: only `src/workspaceScaffold.ts` (new), `scripts/smoke-test.js`, coder PROGRESS.md modified; no package-lock drift PASS; (6) last commit f5df1af, no coder commit PASS.
+- **Verdict:** **PASS** — all criteria met.
 
 ### 1.99-5.S4 — #usages tag wiring + setting (2026-10-22) — **PASS**
 

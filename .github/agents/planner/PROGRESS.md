@@ -968,7 +968,7 @@ reference if the definition file sorts later); tag runs regardless of
 
 **Slices:**
 
-- **1.99-6.S1 — `src/workspaceScaffold.ts` (new): templates + prompt builder (pure).**
+- **1.99-6.S1 — `src/workspaceScaffold.ts` (new): templates + prompt builder (pure) — Done (2026-10-22, PASS, 446 assertions).**
   Files: `src/workspaceScaffold.ts` (new), `scripts/smoke-test.js`.
   `WorkspaceTemplate` interface, `WORKSPACE_TEMPLATES` (4 templates), `listWorkspaceTypes()`, `buildScaffoldPrompt(type, folder)`.
   Smoke (`ws-s1:`, 5). Acceptance: compile clean; smoke 441 → **446**.

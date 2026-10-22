@@ -3343,6 +3343,63 @@ function assert(cond, label) {
     "usages-s4: config reads chat.usages.enabled setting",
   );
 
+  // 25) Workspace scaffold templates (1.99-6.S1)
+  const {
+    WORKSPACE_TEMPLATES,
+    listWorkspaceTypes,
+    buildScaffoldPrompt,
+  } = require(path.join(__dirname, "..", "out", "workspaceScaffold.js"));
+  assert(
+    WORKSPACE_TEMPLATES.length === 4 &&
+      JSON.stringify(listWorkspaceTypes()) ===
+        JSON.stringify(["extension", "mcp-server", "dev-env", "generic"]) &&
+      typeof buildScaffoldPrompt === "function",
+    "ws-s1: exports present + 4 templates + types list",
+  );
+  assert(
+    WORKSPACE_TEMPLATES.every(
+      (t) =>
+        t.files.length >= 2 &&
+        t.files.every(
+          (f) =>
+            typeof f.path === "string" &&
+            !f.path.startsWith("/") &&
+            typeof f.content === "string" &&
+            f.content.length > 0,
+        ),
+    ),
+    "ws-s1: template shape (≥2 files, relative paths, non-empty contents)",
+  );
+  const wsExt = WORKSPACE_TEMPLATES.find((t) => t.type === "extension");
+  assert(
+    wsExt !== undefined &&
+      wsExt.files.some(
+        (f) => f.path === "package.json" && f.content.includes("activationEvents"),
+      ) &&
+      wsExt.files.some((f) => f.path === "src/extension.ts"),
+    "ws-s1: extension template has package.json (activationEvents) + src/extension.ts",
+  );
+  const wsMcp = WORKSPACE_TEMPLATES.find((t) => t.type === "mcp-server");
+  const wsMcpServer = wsMcp.files.find((f) => f.path === "src/server.ts");
+  assert(
+    wsMcpServer !== undefined &&
+      wsMcpServer.content.includes("tools/list") &&
+      wsMcpServer.content.includes("stdin"),
+    "ws-s1: mcp-server template src/server.ts contains tools/list + stdin",
+  );
+  const wsPromptExt = buildScaffoldPrompt("extension", "my-ext");
+  const wsPromptGeneric = buildScaffoldPrompt("generic", "g");
+  assert(
+    wsPromptExt.includes("my-ext") &&
+      wsPromptExt.includes("write_file") &&
+      wsPromptExt.includes("list_dir") &&
+      wsPromptExt.includes("npm install") &&
+      wsPromptExt.includes("### package.json") &&
+      buildScaffoldPrompt("nope", "x") === "" &&
+      !wsPromptGeneric.includes("npm install"),
+    "ws-s1: buildScaffoldPrompt content; unknown type → ''; generic has no npm install",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
