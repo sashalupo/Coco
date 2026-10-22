@@ -19,8 +19,8 @@ dispatches, verifies each stage, records, and commits.
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch Coder for slice 1.98-12.S1, then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `5d2517d` — chore(llm): record 1.98-12 plan (4 slices) — Change Completions Model command
-- **Build state:** compiles clean; smoke test passes (319 assertions); item 1.98-10 fully verified (S1–S4)
+- **Last commit:** `f33c3a4` — feat(llm): Change Completions Model — pure buildCompletionsModelList (1.98-12.S1)
+- **Build state:** compiles clean; smoke test passes (327 assertions); 1.98-12.S1 verified
 
 ## Team
 
@@ -64,6 +64,8 @@ pending item** (the oldest).
 - **1.98-10.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `folderSweep(folderName)` (resolveSafe guard chain + tree walk depth ≤ 3 / cap 100, mirrors `codebaseSweep`); 4 smoke assertions. Tester PASS. Commit `9311ae0`.
 - **1.98-10.S3** (2026-10-22) — `ChatViewProvider.runStream`: `#folder:` wiring (after `#problems`, before `composeSystemPrompt`); `folderContextEnabled` field in `LlmSettings` + `readSettings()`; 5 smoke assertions. Tester PASS. Commit `95ffaaf`.
 - **1.98-10.S4** (2026-10-22) — `package.json`: `llm.chat.folderContext.enabled` (boolean, default true); 4 `folder-s4:` parsed-JSON smoke assertions; planner PROGRESS.md marks 1.98-10 Done; researcher backlog updated. Tester PASS. **Item 1.98-10 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit `8192065`.
+- **1.98-12 plan** (2026-10-22) — Planner produced 4-slice plan: Change Completions Model command — pure `buildCompletionsModelList` in `src/presets.ts`, `completionsModel` setting (`llm.completions.model`, empty → chat model fallback) + InlineCompletionProvider wiring, `llm.changeCompletionsModel` QuickPick command in `extension.ts` (workspace-scope write), package.json contributions + smoke. Plan recorded in planner PROGRESS.md. Commit `5d2517d`.
+- **1.98-12.S1** (2026-10-22) — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList` (default entry first, dedup by value, `picked` on active); 8 `compm-s1:` smoke assertions. Tester PASS. Commit `f33c3a4`.
 
 ## Tags (changelog-version tags on completed items)
 
