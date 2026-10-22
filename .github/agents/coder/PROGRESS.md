@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-12.S1 done — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList` quick-pick builder
-- **Next step:** 1.98-12.S2 (per planner plan in `.github/agents/planner/PROGRESS.md`)
+- **Current step:** 1.98-12.S2 done — `completionsModel` setting field + inline provider wiring (fallback bug fixed)
+- **Next step:** 1.98-12.S3 (per planner plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (327 assertions, incl. 8 new `compm-s1:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (332 assertions, incl. 5 new `compm-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,14 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-12.S2** (2026-10-22) — `completionsModel` setting field + inline provider wiring. Files: `src/presets.ts`, `src/config.ts`, `src/inline/InlineCompletionProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: added `completionsModel: string;` to `LlmSettings` (after `folderContextEnabled`), doc comment "Model for inline completions. Empty = use the main chat model."
+  - `src/config.ts`: `readSettings()` now returns `completionsModel: c.get<string>("completions.model", "")` (after `folderContextEnabled`).
+  - `src/inline/InlineCompletionProvider.ts`: in `provideInlineCompletionItems`, `const settings = readSettings();` replaced with `const base = readSettings(); const settings = base.completionsModel ? { ...base, model: base.completionsModel } : base;` (+ explanatory comment). `toolbar` and `buildRequestBody` lines untouched — toolbar model override still wins (consistent with chat, since `buildRequestBody` does `toolbar.model ?? settings.model`). `request.ts` NOT modified.
+  - **Fallback bug fixed (2026-10-22):** the original unconditional `{ ...base, model: base.completionsModel }` set `settings.model = ""` when `llm.completions.model` was empty, so `buildRequestBody` omitted `body.model` entirely (dropping `llm.model`). Now the override is conditional on `completionsModel` being non-empty — empty keeps `llm.model` / engine default (no behavior change from before).
+  - `scripts/smoke-test.js`: new subsection `// 15b) change completions model (1.98-12.S2)` with 5 static source checks (`compm-s2:` labels): `presets.ts` contains `completionsModel`, `config.ts` contains `completions.model`, `InlineCompletionProvider.ts` contains `completionsModel`, `InlineCompletionProvider.ts` still contains `buildRequestBody(`, `InlineCompletionProvider.ts` contains `base.completionsModel` (fallback guard present).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **332 assertions** (327 prior + 5 new `compm-s2:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-12.S1** (2026-10-22) — `src/presets.ts`: `CompletionsModelOption` interface + pure `buildCompletionsModelList(current, chatModel, engineModels)` quick-pick list builder for the Change Completions Model command. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: appended after `ToolbarState` — `CompletionsModelOption { value; label; picked }` (value `""` = use chat model) and `buildCompletionsModelList`: first entry always `{ value: "", label: "Use chat model (default)", picked: current === "" }`; then candidates in order (a) `current` (if non-empty and ≠ chatModel), (b) `chatModel` (if non-empty), (c) each `engineModels` entry — each appended only if non-empty and not already seen (dedup by value via `Set`); appended entries get `label = value`, `picked = value === current`. Pure — no vscode, no network. Module stays vscode-free.
   - `scripts/smoke-test.js`: new section `// 15) change completions model (1.98-12)` with subsection `15a` importing compiled `out/presets.js`; 8 assertions (`compm-s1:` labels): default entry first with `value === ""` + label, `picked` on default when `current === ""`, order `["", "m-a", "m-b", "m-c"]` for `current="m-a"`/`chatModel="m-b"`/`engineModels=["m-c"]`, exactly one `picked` on `m-a`, `current === chatModel` dedups to single picked entry, engine models deduped against earlier entries, empty inputs → exactly one entry, `picked` false on all non-active entries.

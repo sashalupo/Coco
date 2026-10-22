@@ -67,7 +67,12 @@ export class InlineCompletionProvider
 
     // Reuse the chat settings + toolbar (model/context), but force thinking
     // off so ghost text stays fast and direct (reasoning is discarded anyway).
-    const settings = readSettings();
+    // 1.98-12: the completions model (llm.completions.model) replaces the chat
+    // model for this request; empty → keep llm.model (falls back to engine default).
+    const base = readSettings();
+    const settings = base.completionsModel
+      ? { ...base, model: base.completionsModel }
+      : base;
     const toolbar = { ...this.toolbarStore.get(), thinking: "off" as const };
     const { body } = buildRequestBody({ settings, toolbar }, [
       { role: "user", content: prompt },

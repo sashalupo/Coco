@@ -94,6 +94,8 @@ export interface LlmSettings {
   problemsEnabled: boolean;
   /** Enable the `#folder:` chat tag (folder tree injected as context). */
   folderContextEnabled: boolean;
+  /** Model for inline completions. Empty = use the main chat model. */
+  completionsModel: string;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */

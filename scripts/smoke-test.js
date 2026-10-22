@@ -2206,6 +2206,32 @@ function assert(cond, label) {
     "compm-s1: picked false on all non-active entries",
   );
 
+  // 15b) change completions model (1.98-12.S2): setting field + provider wiring.
+  const inlineSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "inline", "InlineCompletionProvider.ts"),
+    "utf8",
+  );
+  assert(
+    presetsSrc.includes("completionsModel"),
+    "compm-s2: presets.ts LlmSettings has completionsModel",
+  );
+  assert(
+    configSrc.includes("completions.model"),
+    "compm-s2: config.ts reads completions.model",
+  );
+  assert(
+    inlineSrc.includes("completionsModel"),
+    "compm-s2: InlineCompletionProvider uses completionsModel",
+  );
+  assert(
+    inlineSrc.includes("buildRequestBody("),
+    "compm-s2: InlineCompletionProvider still calls buildRequestBody(",
+  );
+  assert(
+    inlineSrc.includes("base.completionsModel"),
+    "compm-s2: InlineCompletionProvider guards empty completionsModel (keeps llm.model)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

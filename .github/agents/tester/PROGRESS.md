@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-12 (completions model quick pick) — S1 verified
-- **Next step:** verify 1.98-12 S2
+- **Current item:** 1.98-12 (completions model quick pick) — S2 verified
+- **Next step:** verify 1.98-12 S3
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 327/327 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 332/332 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -211,6 +211,16 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 15a:** 8 genuine assertions (not tautologies). PASS
 - **Scope check:** only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ `ninfer` marker, ignored). PASS
 
+### 1.98-12.S2 — `completionsModel` field + InlineCompletionProvider wiring (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **332 assertions** (327 prior + 5 new `compm-s2:` in subsection 15b).
+- **Settings field:** `src/presets.ts` `completionsModel: string;` after `folderContextEnabled`; `src/config.ts` `completionsModel: c.get<string>("completions.model", "")`. PASS
+- **Provider wiring:** conditional override `const settings = base.completionsModel ? { ...base, model: base.completionsModel } : base;` — buggy unconditional form NOT present; `toolbar`/`buildRequestBody` unchanged; `git diff src/request.ts` empty. PASS
+- **Smoke 15b:** 5 genuine static checks (`compm-s2:`), incl. `base.completionsModel` fallback-guard check. PASS
+- **Scope check:** only the 5 in-scope files (+ `ninfer` marker, ignored). PASS
+- **Note:** fallback bug (unconditional override → empty `model` omitted from request body) found by orchestrator, fixed by Coder before verification.
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -220,6 +230,7 @@ acceptance checks, and reports a clear pass/fail.
 ## Todo
 
 - [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12.S2** — `completionsModel` field + provider wiring (fallback fix) — **PASS** (2026-10-22, see Verifications)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -247,6 +258,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-10.S4** — `package.json` settings schema + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — `#folder:` tag — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-12.S1** — pure `buildCompletionsModelList` — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-12.S2** — `completionsModel` field + provider wiring (fallback fix) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
@@ -316,3 +328,13 @@ acceptance checks, and reports a clear pass/fail.
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**280 assertions**; 10 new `problems:` green in section `// 13) problems tag (1.98-9)` / subsection `13a`).
 - Static checks: (a) `extractProblemsTag(text: string): string | null` — regex `/#problems(?!\w)/i` (case-insensitive, word-bounded); first match; trimmed same-line remainder; `""` bare tag; null absent. (b) `ProblemsBlockData` interface with `text: string`. (c) `export const PROBLEMS_BLOCK_MAX_CHARS = 8000`. (d) `formatProblemsBlock(data, scope?)` — header `Problems (scope: workspace)` default / `Problems (scope: <scope>)`; body text or `(no problems — clean)`; 8,000-char truncation + `… (truncated)`; `""` only when text empty AND default scope. (e) Purity: no `vscode` import. All PASS.
 - Scope: only `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS
+
+### 1.98-12.S2 — `completionsModel` setting field + InlineCompletionProvider wiring (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **332 assertions** (327 prior + 5 new `compm-s2:`; 0 FAIL).
+- **Settings field:** `src/presets.ts` `LlmSettings` gains `completionsModel: string;` immediately after `folderContextEnabled` (+ doc comment). `src/config.ts` `readSettings()` returns `completionsModel: c.get<string>("completions.model", "")` (single additive line). PASS
+- **Provider wiring (`src/inline/InlineCompletionProvider.ts`, git diff = 1 hunk, +6/−1):** (a) override is CONDITIONAL — `const base = readSettings(); const settings = base.completionsModel ? { ...base, model: base.completionsModel } : base;` — the buggy unconditional `{ ...base, model: base.completionsModel }` is NOT present (empty `llm.completions.model` keeps `llm.model` fallback). PASS (b) `const toolbar = { ...this.toolbarStore.get(), thinking: "off" as const };` and `buildRequestBody({ settings, toolbar }, [...])` unchanged (context lines in diff). PASS (c) `git diff src/request.ts` → empty (0 lines). PASS
+- **Smoke 15b:** 5 genuine static checks labeled `compm-s2:` — `presetsSrc` contains `completionsModel`; `configSrc` contains `completions.model`; `inlineSrc` contains `completionsModel`; `inlineSrc` contains `buildRequestBody(`; `inlineSrc` contains `base.completionsModel` (fallback guard). Not tautologies. PASS
+- **Scope check:** `git status --short` (ignoring `ninfer` submodule marker) → only `src/presets.ts` (+2), `src/config.ts` (+1), `src/inline/InlineCompletionProvider.ts` (+6/−1), `scripts/smoke-test.js` (+26), `.github/agents/coder/PROGRESS.md`. PASS
+- **Note:** the fallback bug (unconditional `model: base.completionsModel` → empty string omits `model` from the request body, breaking the `llm.model` fallback) was found by the orchestrator and fixed by the Coder (conditional override) BEFORE this verification. Verified state is the FIXED one.
