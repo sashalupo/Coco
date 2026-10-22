@@ -284,3 +284,71 @@ export const STATUS_COMMANDS: readonly {
     detail: "Pick the model used for inline completions",
   },
 ];
+
+/** Scope a remembered tool approval applies to. */
+export type ApprovalScope = "session" | "workspace" | "global";
+
+/** Structural memento (workspaceState / globalState) — keeps this module vscode-free. */
+export interface MementoLike {
+  get(key: string): unknown;
+  update(key: string, value: unknown): Promise<void>;
+}
+
+/**
+ * Remembered tool approvals (1.99-8). Session approvals live in memory (cleared on
+ * reload); workspace/global approvals persist as JSON string arrays in the given
+ * mementos. Pure — no vscode import, smoke-testable via out/presets.js.
+ */
+export class ApprovalStore {
+  private static readonly WORKSPACE_KEY = "llm.approvals.workspace";
+  private static readonly GLOBAL_KEY = "llm.approvals.global";
+  private readonly session = new Set<string>();
+
+  constructor(
+    private readonly workspace: MementoLike,
+    private readonly global: MementoLike,
+  ) {}
+
+  /** True if the tool is approved for this session, workspace, or globally. */
+  isApproved(tool: string): boolean {
+    if (this.session.has(tool)) return true;
+    return (
+      this.readArray(ApprovalStore.WORKSPACE_KEY, this.workspace).includes(tool) ||
+      this.readArray(ApprovalStore.GLOBAL_KEY, this.global).includes(tool)
+    );
+  }
+
+  /** Remember an approval at the given scope (dedupes persisted arrays). */
+  remember(tool: string, scope: ApprovalScope): void {
+    if (scope === "session") {
+      this.session.add(tool);
+      return;
+    }
+    const memento = scope === "workspace" ? this.workspace : this.global;
+    const key =
+      scope === "workspace"
+        ? ApprovalStore.WORKSPACE_KEY
+        : ApprovalStore.GLOBAL_KEY;
+    const arr = this.readArray(key, memento);
+    if (!arr.includes(tool)) arr.push(tool);
+    void memento.update(key, arr);
+  }
+
+  /** Sorted union of all approved tool names (session ∪ workspace ∪ global). */
+  listApproved(): string[] {
+    const set = new Set<string>(this.session);
+    for (const t of this.readArray(ApprovalStore.WORKSPACE_KEY, this.workspace)) {
+      set.add(t);
+    }
+    for (const t of this.readArray(ApprovalStore.GLOBAL_KEY, this.global)) {
+      set.add(t);
+    }
+    return [...set].sort();
+  }
+
+  private readArray(key: string, memento: MementoLike): string[] {
+    const v = memento.get(key);
+    if (!Array.isArray(v)) return [];
+    return v.filter((x): x is string => typeof x === "string");
+  }
+}

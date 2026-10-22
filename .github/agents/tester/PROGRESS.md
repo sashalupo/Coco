@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-6.S4 (FINAL: new workspace wiring smoke) — **PASS** (2026-10-22) — item 1.99-6 complete
-- **Next step:** verify next item in planner backlog (1.99-8 Agent mode tool approvals)
+- **Current item:** 1.99-8.S1 (pure ApprovalStore in src/presets.ts) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-8.S2 (next slice of Agent mode tool approvals)
 - **Last updated:** 2026-10-22
-- **Last commit:** 2d0a5df (coder: 1.99-6.S3)
-- **Build state:** 453/453 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 5fdca80 (chore: record 1.99-8 plan)
+- **Build state:** 458/458 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-8.S1 — pure ApprovalStore (src/presets.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **458 PASS lines** (453 prior + 5 new `appr-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 458/458 PASS PASS; (3) 5 genuine `appr-s1:` assertions all passing: `presets exports ApprovalStore`; `workspace remember → isApproved`; `session remember → isApproved`; `global remember → isApproved`; `unremembered tool not approved + listApproved sorted` PASS; (4) `src/presets.ts` pure — only import is `import type { McpServerConfig } from "./mcp"` (L8), no `vscode` import (all other "vscode" hits are comments); `ApprovalStore` class at L302 with `isApproved` (L313), `remember` (L322), `listApproved` (L338) PASS; (5) scope: exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/presets.ts` (ninfer submodule marker ignored); no `package-lock.json` drift PASS; (6) last commit `5fdca80` (chore: record 1.99-8 plan), no coder commit for S1 PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-6.S4 — FINAL: new workspace wiring smoke + PROGRESS.md (2026-10-22) — **PASS**
 

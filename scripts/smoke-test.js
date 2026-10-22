@@ -3466,6 +3466,47 @@ function assert(cond, label) {
     "ws-s4: package.json setting",
   );
 
+  // 28) Tool approvals — ApprovalStore (1.99-8.S1)
+  const presets = require(path.join(__dirname, "..", "out", "presets.js"));
+  assert(
+    typeof presets.ApprovalStore === "function",
+    "appr-s1: presets exports ApprovalStore",
+  );
+  function fakeMemento() {
+    const store = {};
+    return {
+      store,
+      get: (k) => store[k],
+      update: async (k, v) => {
+        store[k] = v;
+      },
+    };
+  }
+  const apprWs = fakeMemento();
+  const apprGlobal = fakeMemento();
+  const apprStore = new presets.ApprovalStore(apprWs, apprGlobal);
+  apprStore.remember("write_file", "workspace");
+  assert(
+    apprStore.isApproved("write_file") === true,
+    "appr-s1: workspace remember → isApproved",
+  );
+  apprStore.remember("run_command", "session");
+  assert(
+    apprStore.isApproved("run_command") === true,
+    "appr-s1: session remember → isApproved",
+  );
+  apprStore.remember("edit_file", "global");
+  assert(
+    apprStore.isApproved("edit_file") === true,
+    "appr-s1: global remember → isApproved",
+  );
+  assert(
+    apprStore.isApproved("notebook_edit") === false &&
+      JSON.stringify(apprStore.listApproved()) ===
+        JSON.stringify(["edit_file", "run_command", "write_file"]),
+    "appr-s1: unremembered tool not approved + listApproved sorted",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

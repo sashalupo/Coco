@@ -1023,7 +1023,7 @@ tools (`write_file`, `edit_file`, `run_command`, `notebook_edit`, `mcp__*`) +
 
 **Slices:**
 
-- **1.99-8.S1 — `src/presets.ts`: pure `ApprovalStore`.**
+- **1.99-8.S1 — `src/presets.ts`: pure `ApprovalStore`.** — Done (2026-10-22, PASS, 458 assertions)
   File: `src/presets.ts`. `export type ApprovalScope = "session" | "workspace" |
   "global"`; `export interface MementoLike { get(key: string): unknown; update(key:
   string, value: unknown): Promise<void> }`; `export class ApprovalStore` —

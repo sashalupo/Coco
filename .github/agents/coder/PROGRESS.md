@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-6 (Create a new workspace with agent mode) — **DONE** (2026-10-22, all 4 slices S1–S4)
-- **Next step:** 1.99-8 (Agent mode tool approvals) — next item in backlog
+- **Current item:** 1.99-8 (Agent mode tool approvals) — S1 done (2026-10-22)
+- **Next step:** 1.99-8.S2 (host wiring: ChatViewProvider + config.ts + presets.ts autoApprove)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (453 assertions)
+- **Build state:** compiles clean; smoke test passes (458 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-8.S1** (2026-10-22) — `src/presets.ts`: pure `ApprovalStore`. Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts` (pure — no `vscode` import): appended at end: (a) `export type ApprovalScope = "session" | "workspace" | "global"`; (b) `export interface MementoLike { get(key): unknown; update(key, value): Promise<void> }` (structural — matches `workspaceState`/`globalState`); (c) `export class ApprovalStore` — constructor `(workspace: MementoLike, global: MementoLike)`, private `session = new Set<string>()`, keys `llm.approvals.workspace` / `llm.approvals.global`; `isApproved(tool)` — session set ∪ either persisted array (private `readArray` tolerates non-array garbage, filters to strings); `remember(tool, scope)` — session: add to set; workspace/global: read array, dedupe, push, `void memento.update(key, arr)`; `listApproved()` — sorted union of all three sources.
+  - `scripts/smoke-test.js`: new section `// 28) Tool approvals — ApprovalStore (1.99-8.S1)` after section 27, before the final summary print; fresh `require` of `out/presets.js` (local `presets`), `fakeMemento()` factory (`{ store, get, update }`); 5 `appr-s1:` assertions: (a) `typeof presets.ApprovalStore === "function"`; (b) `remember("write_file","workspace")` → `isApproved` true; (c) `remember("run_command","session")` → true; (d) `remember("edit_file","global")` → true; (e) `isApproved("notebook_edit") === false` AND `listApproved()` deep-equals `["edit_file","run_command","write_file"]`. Total PASS lines now 458 (453 + 5).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 458 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-6.S4** (2026-10-22, FINAL) — final smoke assertions + PROGRESS.md. Files: `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `scripts/smoke-test.js`: new section `// 27) New workspace wiring (1.99-6.S4)` with 3 `ws-s4:` assertions (static source checks via `fs.readFileSync` for vscode-importing compiled files, same pattern as `usages-s4:`): (a) `out/chat/ChatViewProvider.js` source (local `chatViewSrcWsS4`) includes `extractNewWorkspaceTag` AND `buildScaffoldPrompt`; (b) `out/config.js` source (local `configSrcWsS4`) includes `"chat.newWorkspace.enabled"`; (c) parsed `package.json` (local `pkgJsonWsS4`) has `llm.chat.newWorkspace.enabled` with `type === "boolean"` and `default === true`, AND `llm.chat.usages.enabled` still present (regression guard). Total PASS lines now 453 (450 + 3).
   - `.github/agents/planner/PROGRESS.md`: S4 slice header annotated `— Done (2026-10-22, PASS, 453 assertions)`; item section header annotated `— **DONE** (2026-10-22, all 4 slices S1–S4)`.
