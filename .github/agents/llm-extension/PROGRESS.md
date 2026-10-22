@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 14 complete** — Per-file keep/undo in the change footer (14.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `a92b0e7` — feat(llm): per-file keep/undo in change footer (Phase 14.1)
+- **Last commit:** `3e63a40` — feat(llm): per-file keep/undo in change footer (Phase 14.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); per-file keep/undo functionally tested
 
 > **Numbering note (2026-10-12):** the previous session skipped PLAN.md **12.5**
