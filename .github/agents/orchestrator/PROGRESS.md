@@ -13,15 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-9.S2** — `src/tools/ToolExecutor.ts`: `collectDiagnostics` shared helper (refactor of `get_diagnostics`)
+- **Current item:** **1.98-12** — Change Completions Model command (VS Code 1.98)
+- **Current slice:** **1.98-12.S1** — `src/presets.ts`: `CompletionsModelOption` + pure `buildCompletionsModelList`
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
-  `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
-  within the active window)
+- **Next step:** dispatch Coder for slice 1.98-12.S1, then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `b6001e1` — chore(llm): record 1.98-9 plan (4 slices) — #problems tag
+- **Last commit:** `5d2517d` — chore(llm): record 1.98-12 plan (4 slices) — Change Completions Model command
 - **Build state:** compiles clean; smoke test passes (319 assertions); item 1.98-10 fully verified (S1–S4)
 
 ## Team
@@ -58,6 +56,14 @@ pending item** (the oldest).
 - **1.98-8.S3** (2026-10-22) — `ChatViewProvider.runStream`: after `buildContextBlock`, if `settings.codebaseSearchEnabled` and `#codebase` tag present, append `codebaseSweep(q)` result to context (`finalContextBlock` → `composeSystemPrompt`); `codebaseSearchEnabled` field added to `LlmSettings` (presets.ts) + `readSettings()` (config.ts, default true); 4 static smoke assertions. Tester PASS.
 - **1.98-8.S4** (2026-10-22) — `package.json`: `llm.chat.codebaseSearch.enabled` (boolean, default true); 4 `codebase-s4:` smoke assertions; planner PROGRESS.md marks 1.98-8 Done. Tester PASS. **Item 1.98-8 complete** (no tag — `changelog-1.98` already exists from 1.98-1).
 - **1.98-9.S1** (2026-10-22) — `src/context.ts`: `extractProblemsTag` (string | null, word-bounded, case-insensitive) + `ProblemsBlockData` + `PROBLEMS_BLOCK_MAX_CHARS = 8000` + `formatProblemsBlock` (scope header, clean placeholder, 8,000-char cap); 10 smoke assertions. Tester PASS.
+- **1.98-9.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `collectDiagnostics` shared helper (50-problem cap) extracted for `#problems` reuse; 4 smoke assertions. Tester PASS. Commit `bc7ed0d`.
+- **1.98-9.S3** (2026-10-22) — `ChatViewProvider.runStream`: `#problems` wiring (detect tag, collect diagnostics, inject context; "Path not allowed" qualifier fallback); `problemsEnabled` field in `LlmSettings` + `readSettings()`; 5 smoke assertions. Tester PASS. Commit `0bc9279`.
+- **1.98-9.S4** (2026-10-22) — `package.json`: `llm.chat.problems.enabled` (boolean, default true); 4 `problems-s4:` smoke assertions; planner PROGRESS.md marks 1.98-9 Done. Tester PASS. **Item 1.98-9 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit `97a4676`.
+- **1.98-10 plan** (2026-10-22) — Planner produced 4-slice plan: `#folder:<name>` tag (bare = workspace root) — pure `extractFolderTag`/`formatFolderBlock` in `src/context.ts`, `ToolExecutor.folderSweep` (resolveSafe guard + tree walk depth ≤ 3 / cap 100), ChatViewProvider wiring gated on `llm.chat.folderContext.enabled`, package.json + smoke. Plan recorded in planner PROGRESS.md. Commit `d721e94`.
+- **1.98-10.S1** (2026-10-22) — `src/context.ts`: `extractFolderTag` (string | null; `#folder:<name>` / `#folder <name>`; bare → `""`) + `FolderBlockData` + `FOLDER_BLOCK_MAX_CHARS = 8000` + `formatFolderBlock` (header, notFound, 8,000-char cap); 12 smoke assertions. Approved deviation: plan's literal regex broken for space form — corrected alternation used. Tester PASS. Commit `c4a07b0`.
+- **1.98-10.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `folderSweep(folderName)` (resolveSafe guard chain + tree walk depth ≤ 3 / cap 100, mirrors `codebaseSweep`); 4 smoke assertions. Tester PASS. Commit `9311ae0`.
+- **1.98-10.S3** (2026-10-22) — `ChatViewProvider.runStream`: `#folder:` wiring (after `#problems`, before `composeSystemPrompt`); `folderContextEnabled` field in `LlmSettings` + `readSettings()`; 5 smoke assertions. Tester PASS. Commit `95ffaaf`.
+- **1.98-10.S4** (2026-10-22) — `package.json`: `llm.chat.folderContext.enabled` (boolean, default true); 4 `folder-s4:` parsed-JSON smoke assertions; planner PROGRESS.md marks 1.98-10 Done; researcher backlog updated. Tester PASS. **Item 1.98-10 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit `8192065`.
 
 ## Tags (changelog-version tags on completed items)
 
