@@ -2960,6 +2960,40 @@ function assert(cond, label) {
     "think-s2: invalid JSON arguments never throws (error ToolResult)",
   );
 
+  // 19c) Thinking tool wiring (1.99-3.S3)
+  const thinkBodyOn = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(thinkBodyOn.tools) &&
+      thinkBodyOn.tools.length === 12 &&
+      thinkBodyOn.tools.some((t) => t.function.name === "think") &&
+      thinkBodyOn.tool_choice === "auto",
+    "think-s3: toolsEnabled=true → body.tools has 12 tools incl. think, tool_choice auto",
+  );
+  const thinkBodyOff = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: false }, toolbar },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    thinkBodyOff.tools === undefined,
+    "think-s3: toolsEnabled=false → body.tools is undefined",
+  );
+  const chatViewSrcS3 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcS3.includes("isMutatingTool") &&
+      chatViewSrcS3.includes("toolExecutor.execute("),
+    "think-s3: ChatViewProvider.js routes non-MCP tools through toolExecutor.execute (regression guard)",
+  );
+  assert(
+    !chatViewSrcS3.includes('name === "think"'),
+    "think-s3: ChatViewProvider.js has no special-casing of think in the chat loop",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -12,12 +12,24 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-3.S2 (ToolExecutor think echo handler) — **PASS** (2026-10-22)
+- **Current item:** 1.99-3.S3 (FINAL — request-body + loop verification) — **PASS** (2026-10-22); item 1.99-3 fully verified (S1–S3)
 - **Next step:** verify next slice of 1.99-2 (per planner backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** 576adfe (coder: 1.99-3.S1)
-- **Build state:** 407/407 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 469123c (coder: 1.99-3.S2)
+- **Build state:** 411/411 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-3.S3 (FINAL) — request-body + loop verification (scripts/smoke-test.js only) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **411 PASS lines** (407 prior + 4 new `think-s3:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 411 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 19c) Thinking tool wiring (1.99-3.S3)` section (single diff hunk, +34/−0) has 4 genuine `think-s3:` assertions: (a) real `buildRequestBody` call with `toolsEnabled: true` → `body.tools.length === 12`, `some(t => t.function.name === "think")`, `tool_choice === "auto"`; (b) `toolsEnabled: false` → `body.tools === undefined`; (c) static source on `out/chat/ChatViewProvider.js`: contains `isMutatingTool` AND `toolExecutor.execute(`; (d) static source: does NOT contain `name === "think"`. PASS
+  - (4) Scope: `git status --short | grep -v ninfer` → exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`. No source files changed; `package-lock.json` untouched. PASS
+  - (5) `git log --oneline -1` → `469123c` (feat(llm): thinking tool — ToolExecutor think echo handler (1.99-3.S2)). No coder commit for S3. PASS
+- **Verdict:** **PASS** — all 5 criteria met. **Item 1.99-3 (Thinking tool) fully verified (S1–S3).**
 
 ### 1.99-3.S2 — ToolExecutor think echo handler (src/tools/ToolExecutor.ts) (2026-10-22) — **PASS**
 

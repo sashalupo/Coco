@@ -12,7 +12,7 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-3 (Thinking tool) — **planned** (2026-10-22, 3 slices S1–S3)
+- **Current item:** 1.99-3 (Thinking tool) — **DONE** (2026-10-22, S1–S3 all PASS, 411 assertions); next: 1.99-4 (Fetch tool)
 - **Next step:** orchestrator runs the slice pipeline starting at 1.99-3.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)

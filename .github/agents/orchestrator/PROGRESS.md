@@ -13,15 +13,16 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-3** — Thinking tool (3-slice plan recorded; 1.99-2 DONE, tag `changelog-1.99`)
-- **Current slice:** 1.99-3.S2 — **DONE** (PASS, 407 assertions); next: 1.99-3.S3 (FINAL)
+- **Current item:** **1.99-3** — Thinking tool — **DONE** (S1–S3, 2026-10-22; commits
+  576adfe, 469123c + S3 commit; no tag — `changelog-1.99` already exists)
+- **Current slice:** 1.99-3 complete; next item: **1.99-4** (Fetch tool `#fetch`)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-3.S3** (FINAL — `scripts/smoke-test.js`
-  only: request-body + loop verification assertions), then Tester, memory, commit
+- **Next step:** dispatch Planner for item **1.99-4** (Fetch tool `#fetch`), record
+  plan, commit, then run the slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** `576adfe` — feat(llm): thinking tool — think schema in CODE_TOOLS (1.99-3.S1)
-- **Build state:** compiles clean; smoke test passes (407 assertions); 1.99-3.S2 verified
+- **Last commit:** `469123c` — feat(llm): thinking tool — ToolExecutor think echo handler (1.99-3.S2)
+- **Build state:** compiles clean; smoke test passes (411 assertions); 1.99-3 fully verified (S1–S3)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -43,6 +44,12 @@ The ordered backlog (oldest → newest) lives in
 pending item** (the oldest).
 
 ## Done
+
+- **1.99-2** (2026-10-22) — MCP server support, 6 slices S1–S6: `src/mcp.ts` (pure JSON-RPC stdio client), `src/mcpManager.ts` (lazy lifecycle + registry), `mcpTools` in request body, chat tool-loop wiring (approval gate + MCP routing), commands + manifest. Commits c8222cb, 94a7965, 851b1b2, ffee7e4, 9783237, 1adefb6. **Item complete — tagged `changelog-1.99` (commit `1adefb6`).**
+- **1.99-3 plan** (2026-10-22) — Planner produced 3-slice plan: `think` tool schema in `CODE_TOOLS` (S1) + ToolExecutor echo handler (S2) + request-body/loop verification assertions (S3). No request.ts/webview changes needed (wiring automatic). Commit de1a302.
+- **1.99-3.S1** (2026-10-22) — `think` tool schema in `CODE_TOOLS` (12 tools) + 3 `think-s1:` smoke assertions + 3 regression-guard bumps (11→12). Tester PASS (404 assertions).
+- **1.99-3.S2** (2026-10-22) — ToolExecutor `case "think"` + private `think` echo handler (`Thought recorded[: <text>]`), 3 `think-s2:` smoke assertions. Tester PASS (407 assertions).
+- **1.99-3.S3 (FINAL)** (2026-10-22) — 4 `think-s3:` verification assertions (request body tools incl. think + tool_choice auto; tools off → undefined; ChatViewProvider routes via toolExecutor.execute; no special-casing). Tester PASS (411 assertions). **Item 1.99-3 complete — no tag (changelog-1.99 already exists).**
 
 - **1.98-1.S1** (2026-10-22) — webview `command_approval` card: editable textarea (value-set, no innerHTML), Run/Cancel, Ctrl+Enter, double-decide guard, CSS. Tester PASS (compile + smoke + 6 static checks).
 - **1.98-1.S2** (2026-10-22) — host `commandApproval` message case + `pendingCommandApproval` field + `waitForCommandApproval(signal)` (abort-safe, mirrors `waitForApproval`). Pure additions (+37/−0). Tester PASS.

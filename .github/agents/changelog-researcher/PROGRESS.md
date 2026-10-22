@@ -269,7 +269,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Description:** A `think` tool that gives any model the opportunity to think between tool
   calls (Anthropic-inspired); improves agent performance on complex tasks.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** **done** (2026-10-22, 3 slices S1–S3; commits 576adfe, 469123c + S3 commit; no tag — `changelog-1.99` already exists)
 - **Gap vs existing:** none — add a `think` tool to the agent tool loop (model calls it with
   its reasoning; result echoed back; no side effects).
 
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-3** Thinking tool
 - **1.99-4** Fetch tool (`#fetch`)
 - **1.99-5** Usages tool (`#usages`)
 - **1.99-6** Create a new workspace with agent mode

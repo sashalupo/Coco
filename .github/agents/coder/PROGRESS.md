@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-3 (Thinking tool) — S2 done (2026-10-22)
-- **Next step:** 1.99-3.S3 (final smoke assertions, `scripts/smoke-test.js` only)
+- **Current item:** 1.99-3 (Thinking tool) — **DONE** (S1–S3, 2026-10-22); next item: 1.99-4 (Fetch tool)
+- **Next step:** await next item (1.99-4 Fetch tool) plan from the Planner
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (407 PASS lines, incl. 3 `think-s1:` + 3 `think-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (411 PASS lines, incl. 3 `think-s1:` + 3 `think-s2:` + 4 `think-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,10 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-3.S3** (2026-10-22, FINAL) — `scripts/smoke-test.js` only: request-body + loop verification, final smoke assertions. No source changes — `think` wiring is automatic (in `CODE_TOOLS`, spread into `body.tools` by `buildRequestBody`; chat loop routes non-MCP tools through `toolExecutor.execute`).
+  - `scripts/smoke-test.js`: new section `// 19c) Thinking tool wiring (1.99-3.S3)` with 4 `think-s3:` assertions: (a) `buildRequestBody` with `toolsEnabled: true` → `body.tools` has 12 tools incl. `function.name === "think"` and `body.tool_choice === "auto"`; (b) `toolsEnabled: false` → `body.tools === undefined`; (c) static source assertion on `out/chat/ChatViewProvider.js`: contains `isMutatingTool` AND `toolExecutor.execute(` (regression guard that `think` flows through the existing non-MCP path); (d) static source assertion: `out/chat/ChatViewProvider.js` does NOT contain `name === "think"` (no special-casing of think in the chat loop). Total PASS lines now 411 (407 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 411 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-3.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `case "think"` echo handler. Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools/ToolExecutor.ts`: (a) added `case "think": return this.think(call, String(args.thought ?? ""));` to `execute`'s switch, immediately before `default:`; (b) added private `think(call: ToolCall, thought: string): ToolResult` (no I/O, no state, no throw) returning `"Thought recorded."` for blank/whitespace thoughts and `"Thought recorded: " + thought` otherwise, placed just above the `result` helper.
   - `scripts/smoke-test.js`: new section `// 19b) Thinking tool executor (1.99-3.S2)` with 3 `think-s2:` assertions: (a) `execute` of a `think` call with `thought: "plan step 1"` → `tool_call_id === "t1"` and `content === "Thought recorded: plan step 1"`; (b) empty thought → `content === "Thought recorded."`; (c) invalid JSON arguments (`"{not json"`) → content starts with `Invalid JSON arguments` (never throws). Total PASS lines now 407 (404 + 3).
