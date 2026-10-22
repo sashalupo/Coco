@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-5 (Usages tool `#usages`) — **planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-5.S1
+- **Current item:** 1.99-6 (Create a new workspace with agent mode) — **planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-6.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -953,6 +953,41 @@ imports and dynamic references; "definition" = first match in walk order (may be
 reference if the definition file sorts later); tag runs regardless of
 `llm.tools.enabled` (consistent with `#fetch`/`#codebase`); no webview chip/indicator
 (matches `#fetch` precedent).
+
+### Item 1.99-6 — Create a new workspace with agent mode (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Create a new workspace with agent mode (Experimental)" — agent mode initializes, configures, and launches new projects (extension, MCP server, dev environment) with dependencies and settings. Local reframe: a `#newWorkspace <type> [folder]` chat tag that injects a scaffold prompt instructing the agent to create the project files via the existing file tools (`write_file`, `list_dir`, `run_command`). No new dependencies, no webview redesign.
+
+**Design decisions:**
+1. **Tag, not command** — `#newWorkspace <type> [folder]` follows the `#fetch`/`#usages` pattern.
+2. **Prompt-driven scaffolding, no direct file seeding** — the scaffold prompt instructs the agent to create files via `write_file`/`run_command`.
+3. **Four small templates** in new pure module `src/workspaceScaffold.ts`: `extension`, `mcp-server`, `dev-env`, `generic`. Each ≤5 files, ≤~40 lines/file.
+4. **Tag grammar:** `/#newWorkspace(?!\w)\s+([a-z-]+)(?:\s+(\S+))?/i` — type required, validated; folder optional, defaults to `<type>-project`.
+5. **Setting `llm.chat.newWorkspace.enabled`** (boolean, default `true`).
+6. **No webview change, no new tools, no new dependencies.**
+
+**Slices:**
+
+- **1.99-6.S1 — `src/workspaceScaffold.ts` (new): templates + prompt builder (pure).**
+  Files: `src/workspaceScaffold.ts` (new), `scripts/smoke-test.js`.
+  `WorkspaceTemplate` interface, `WORKSPACE_TEMPLATES` (4 templates), `listWorkspaceTypes()`, `buildScaffoldPrompt(type, folder)`.
+  Smoke (`ws-s1:`, 5). Acceptance: compile clean; smoke 441 → **446**.
+
+- **1.99-6.S2 — `src/context.ts`: `#newWorkspace` tag extract + block format (pure).**
+  Files: `src/context.ts`, `scripts/smoke-test.js`.
+  `extractNewWorkspaceTag(text)`, `formatWorkspaceBlock(type, folder, prompt)`.
+  Smoke (`ws-s2:`, 4). Acceptance: compile clean; smoke 446 → **450**.
+
+- **1.99-6.S3 — wiring: `ChatViewProvider` + `config.ts` + `presets.ts` + `package.json`.**
+  Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `package.json`.
+  `newWorkspaceEnabled` setting; `#newWorkspace` block in `runStream` after `#usages`.
+  Acceptance: compile clean; tag injects scaffold block.
+
+- **1.99-6.S4 — final smoke assertions + PROGRESS.md (FINAL).**
+  Files: `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  Smoke (`ws-s4:`, 3). Acceptance: compile + smoke pass (**453 assertions**).
+
+**Risks:** agent needs `llm.tools.enabled: true` to create files; folder paths workspace-relative (`resolveSafe` guard); template `package.json` names use fixed placeholder.
 
 ## Done
 
