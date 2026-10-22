@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-10 (`#folder:` tag) — **Done** (2026-10-22, slices S1–S4)
-- **Next step:** plan backlog item 1.98-12 (Change completions model)
+- **Current item:** 1.98-12 (Change completions model) — **Planned** (2026-10-22, slices S1–S4)
+- **Next step:** dispatch Coder for slice 1.98-12.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -188,6 +188,7 @@ unchanged; `npm run compile` clean.
 - [x] Plan backlog item 1.98-8 (`#codebase` tag — advanced codebase search; drop the embeddings sub-item) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [x] Plan backlog item 1.98-9 (`#problems` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
 - [x] Plan backlog item 1.98-10 (`#folder:` tag) — planned 2026-10-22; slices S1–S4 dispatched and done.
+- [x] Plan backlog item 1.98-12 (Change completions model) — planned 2026-10-22; slices S1–S4 ready for dispatch.
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
       the real codebase, break it into tiny slices (one file / one concern each), write the
       plan, record it here.
@@ -475,3 +476,32 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
   folder` attaches `my`. Documented limitation (same as `#problems <path>`); acceptable.
 - **Bare `#folder` = workspace root** overlaps with `#codebase`'s structure walk —
   intentional (root tree without git status/search); no conflict.
+
+# Plan: 1.98-12 — Change completions model (Planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.98 — "Change the model used for inline code completions via the **Change Completions Model** command in the Command Palette (or 'Configure Code Completions' in the Copilot title-bar menu)." Relevance: `keep (capability/context)` — selecting which local engine/model serves completions is a capability control. Gap: no such command exists yet.
+
+## Decisions
+1. **Setting:** `llm.completions.model` (string, default `""`). Empty = "use the main chat model" (`llm.model`), which itself falls back to the engine default. Fallback chain: `llm.completions.model` → `llm.model` → engine default. Mirrors existing `llm.model` semantics.
+2. **Config field:** `completionsModel: string` in `LlmSettings` (presets.ts) + `readSettings()` (config.ts). Pulled into **S2** (first slice that needs it to compile) — same pattern as 1.98-10.S3.
+3. **Provider wiring (S2):** `InlineCompletionProvider` builds `settings = { ...readSettings(), model: readSettings().completionsModel }` before `buildRequestBody` — the completions model replaces the chat model for the request body; `buildRequestBody`'s existing `toolbar.model ?? settings.model` (request.ts ~line 180) does the rest with **zero changes to request.ts**. Toolbar override still wins (consistent with chat).
+4. **Command:** `llm.changeCompletionsModel` ("LLM: Change Completions Model") in `extension.ts`. `vscode.window.showQuickPick` list built by pure `buildCompletionsModelList(current, chatModel, engineModels)` in `presets.ts`: first entry always "Use chat model (default)" (value `""`), then current completions model (if non-empty and ≠ chat model), then chat model (if non-empty), then engine models — deduped by value, `picked: true` on the active value. Engine models via `client.listModels()`; on failure a warning is shown and the list falls back to current + chat model only (command never hard-fails).
+5. **Write target:** `ConfigurationTarget.Workspace` (or `Global` when no workspace folder). Justification: per-project capability choice (different projects may want a smaller/faster local model for ghost text); visible in `.vscode/settings.json`.
+6. **No webview changes, no new dependencies.** The chat toolbar Model dropdown is NOT touched (it controls the chat model).
+
+## Slices
+- **S1** `src/presets.ts` (+ smoke): `CompletionsModelOption` interface + pure `buildCompletionsModelList(current, chatModel, engineModels)` (default entry first, dedup, `picked` on active). Smoke section **15a** (labels `compm-s1:`, ~8 assertions). — Pending
+- **S2** `src/presets.ts` + `src/config.ts` + `src/inline/InlineCompletionProvider.ts` (+ smoke): `completionsModel` field in `LlmSettings` + `readSettings()` (`c.get<string>("completions.model", "")`); provider swaps `settings.model` for `completionsModel` before `buildRequestBody` (toolbar override still wins). Smoke **15b** (labels `compm-s2:`): static checks — `presets.ts` has `completionsModel`, `config.ts` has `completions.model`, `InlineCompletionProvider.ts` has `completionsModel` + `buildRequestBody(`. — Pending
+- **S3** `src/extension.ts` (+ smoke): register `llm.changeCompletionsModel` — read `completions.model` + `model`, `client.listModels()` (failure → warning + configured-only list), `buildCompletionsModelList` → QuickPick (default entry `$(symbol-inherit) Use chat model (default)`, `description: "active"` on picked), write to `ConfigurationTarget.Workspace` (or `Global`), info message; cancel = no-op. Smoke **15c** (labels `compm-s3:`): static checks — `llm.changeCompletionsModel`, `buildCompletionsModelList`, `showQuickPick`, `completions.model`, `ConfigurationTarget.Workspace`. — Pending
+- **S4** `package.json` + `scripts/smoke-test.js` + planner PROGRESS.md: `contributes.commands` entry `{ "command": "llm.changeCompletionsModel", "title": "LLM: Change Completions Model" }`; `contributes.configuration.properties["llm.completions.model"]` (string, default `""`, description mentions completions + the command). Smoke **15d** (labels `compm-s4:`): parsed-JSON checks (setting exists/type/default/description; command entry exists with title). Mark 1.98-12 Done. — Pending
+
+## Overall acceptance (Tester)
+1. `npm run compile` clean; `node scripts/smoke-test.js` fully green.
+2. Command Palette → "LLM: Change Completions Model" shows a QuickPick: "Use chat model (default)" first, active model badged `active`, engine models listed; picking writes `llm.completions.model` (workspace scope in a workspace, global otherwise) + confirmation; cancel is a no-op.
+3. With `llm.completions.model` set, inline completions send that model in the request body; with it empty, completions use `llm.model` / engine default (no behavior change).
+4. Chat model selection (toolbar dropdown, `llm.model`) unaffected.
+
+## Risks / open questions
+- **Engine unreachable when the command runs:** QuickPick still works with configured models only (warning shown); the command never hard-fails.
+- **Toolbar model override still wins over `llm.completions.model`** in the inline provider (reuses chat toolbar state) — consistent with chat; a per-feature toolbar override is out of scope.
+- **Multi-root workspaces:** `ConfigurationTarget.Workspace` writes to the first workspace folder's settings (VS Code default); acceptable, consistent with the rest of the extension.
