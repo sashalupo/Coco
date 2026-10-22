@@ -91,11 +91,20 @@ For each item, produce a plan with these sections:
 2. **Changelog reference** — version/date + a one-line summary of what the changelog says.
 3. **UI/behavior notes** — what the images show (layout, buttons, styling, interactions).
 4. **Files to touch** — the exact source files and what changes in each.
-5. **Steps** — an ordered list of small, independently-compilable steps. Each step has:
+5. **Slices** — an ordered list of **tiny slices**. Each slice is the smallest unit that is
+   independently implementable, independently compilable (`npm run compile` passes),
+   independently testable, and independently committable. **A slice touches at most ONE file
+   and ONE concern.** If a change would touch more than one file, split it into multiple
+   slices. Each slice has:
+   - a **slice ID** (e.g. `S-001`, `S-002`, …),
    - a one-line description,
-   - the file(s) it touches,
-   - an **acceptance check** (how to verify this step is done).
-6. **Acceptance criteria** — the overall check the Tester will run for the whole item.
+   - the **single file** it touches,
+   - an **acceptance check** (how to verify this slice is done).
+   > **Why so small:** the orchestrator dispatches ONE slice per session through the full
+   > Planner → Coder → Tester pipeline. A large slice consumes many tokens. Keep each slice
+   > to a single file / single concern so each session stays well within the token budget.
+6. **Acceptance criteria** — the overall check the Tester will run for the whole item (all
+   slices combined).
 7. **Risks / open questions** — anything ambiguous that needs a decision.
 
 ## Session workflow (one item)

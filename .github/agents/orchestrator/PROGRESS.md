@@ -13,6 +13,7 @@ writes code — it dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **none** — awaiting the Changelog Researcher to populate the backlog
+- **Current slice:** **none**
 - **Next step:** dispatch the **Changelog Researcher** to study the changelog and build the
   ordered backlog (oldest → newest)
 - **Last updated:** 2026-10-22
@@ -41,8 +42,9 @@ _(none yet)_
 ## Todo
 
 - [ ] Dispatch the Changelog Researcher to study the changelog and build the backlog.
-- [ ] For each backlog item (oldest → newest): dispatch Planner → Coder → Tester, verify,
-      record, commit.
+- [ ] For each backlog item (oldest → newest): dispatch Planner (first slice only) → Coder
+      (one slice) → Tester, verify, record, commit. Repeat one slice per session until the
+      item is complete, then move to the next item.
 
 ## Notes / decisions
 
@@ -54,3 +56,7 @@ _(none yet)_
   cost/money-driven features (token-spend guards, dollar budgets, paid-API rate limits). Only
   `pending` items with `Relevance: keep (capability/context)` are implemented. See the full
   filter in `.github/agents/changelog-researcher.agent.md`.
+- **One slice per session:** a feature is broken into tiny slices (one file / one concern
+  each). The orchestrator dispatches ONE slice per session through Planner → Coder → Tester.
+  This keeps each session's token consumption low. A slice touching >3 files is too big —
+  split it further.

@@ -26,7 +26,7 @@ item** (the oldest) that the orchestrator dispatches.
 
 ## Plans
 
-_(none yet — each planned item is recorded here with its step list and acceptance criteria)_
+_(none yet — each planned item is recorded here with its slice list and acceptance criteria)_
 
 ## Done
 
@@ -36,12 +36,15 @@ _(none yet)_
 
 - [ ] Wait for the Changelog Researcher to populate the backlog.
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
-      the real codebase, write the plan, record it here.
+      the real codebase, break it into tiny slices (one file / one concern each), write the
+      plan, record it here.
 
 ## Notes / decisions
 
 - The planner does NOT write code. Only the Coder writes code.
 - Every plan must reference real file paths and existing patterns (read the relevant source
   files read-only first).
-- Every plan step must be independently compilable (`npm run compile`) and committable.
+- Every slice must touch **at most one file and one concern** and be independently compilable
+  (`npm run compile`) and committable. The orchestrator dispatches ONE slice per session, so
+  keep slices tiny to limit token consumption.
 - Always plan oldest → newest. Never skip ahead.

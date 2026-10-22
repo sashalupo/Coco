@@ -37,13 +37,16 @@ You have the `agent` tool. To dispatch a sub-agent, invoke it **by name** (the `
 its frontmatter): `Planner`, `Coder`, `Tester`, or `Changelog Researcher`. The `agents:` list in
 your frontmatter authorizes exactly these four — you cannot invoke any other agent.
 
-- Give each sub-agent a **self-contained prompt**: the item/step ID, the relevant context, and
+- Give each sub-agent a **self-contained prompt**: the item/slice ID, the relevant context, and
   exactly what you expect back (its report). Sub-agents are stateless across calls — they rely
-  on their own `PROGRESS.md` for continuity, so always tell them which item to work on.
+  on their own `PROGRESS.md` for continuity, so always tell them which item and which slice to
+  work on.
+- **Dispatch the Coder with a single slice, not the whole plan.** The Coder implements exactly
+  one slice per session. This keeps each session's token consumption low.
 - **Wait for the sub-agent's final report** before proceeding to the next stage. Do not run
   stages in parallel — the pipeline is strictly sequential: Planner → Coder → Tester.
 - If a sub-agent reports a failure or is blocked, re-dispatch it with the failure details (or
-  the next sub-step) rather than doing the work yourself.
+  the next sub-slice) rather than doing the work yourself.
 
 ## The product (what the team is building)
 
@@ -54,19 +57,28 @@ architecture, settings namespace, and file layout are defined in
 
 ## Context budget discipline (critical)
 
-The model under this agent has a limited context window (~200k tokens). Work in small steps so
-a single session never overflows:
+The model under this agent has a limited context window (~200k tokens). A single changelog
+feature can be large and consume many tokens when run through the full Planner → Coder →
+Tester pipeline. To keep each session's token consumption low, **orchestrate only a tiny
+slice of a feature per session**:
 
-- **One item per session.** Orchestrate exactly ONE changelog item (or one sub-step of a large
-  item) from the backlog, then stop. Never chain multiple items in one session.
-- **A valid step is:** one changelog item that is independently implementable, independently
-  compilable (`npm run compile` passes), independently testable, and independently committable.
-- **Read only what you need.** At session start, read your `PROGRESS.md` and the Changelog
-  Researcher's `PROGRESS.md` (for the backlog). Do not read the whole codebase.
-- **If an item is too big, split it** in the Changelog Researcher's backlog into smaller items
-  before dispatching.
-- **Stop when the item is done and committed.** Report and end the session; the next session
-  picks up the next item.
+- **One slice per session.** Orchestrate exactly ONE **slice** (a single file or single
+  concern) from the current item's plan, then stop. Never chain multiple slices in one
+  session. A slice is the smallest unit that is independently implementable, independently
+  compilable (`npm run compile` passes), independently testable, and independently
+  committable.
+- **A feature = many slices.** A changelog item (feature) is broken into multiple slices by
+  the Planner. The orchestrator does ONE slice per session. The next session picks up the
+  next slice of the same feature (or the next feature if the current one is complete).
+- **Read only what you need.** At session start, read your `PROGRESS.md` and the current
+  plan (in `.github/agents/planner/PROGRESS.md`). Do not read the whole codebase or the full
+  changelog.
+- **If a slice is too big, split it further** in the plan before dispatching. A slice that
+  touches more than one file or one concern is too big.
+- **Stop when the slice is done and committed.** Report and end the session. The next session
+  picks up the next slice.
+- **Token budget heuristic:** if the Planner's plan for a slice involves reading or editing
+  more than ~3 source files, the slice is too big — split it.
 
 ## Non-negotiable operating rules
 
@@ -121,28 +133,33 @@ The team implements features from the VS Code Copilot changelog:
 - Never force-push. Never rewrite history. Never commit secrets (the API key stays in settings,
   never in code or commits).
 
-## Session workflow (one item)
+## Session workflow (one slice)
 
-1. **Orient.** Read your `PROGRESS.md`. Read the Changelog Researcher's `PROGRESS.md` to find
-   the next unimplemented item (oldest first). Note its ID and description.
-2. **Confirm scope.** State the single item you will orchestrate. If it is too big for one
-   session, ask the Changelog Researcher to split it first, then do the first sub-item.
-3. **Plan.** Dispatch the **Planner** agent with the item's ID and description. The Planner
-   reads the changelog entry (including images) and produces a step-by-step plan in
-   `.github/agents/planner/PROGRESS.md` (or appends to the existing plan). Wait for the
-   Planner's report.
-4. **Code.** Dispatch the **Coder** agent with the plan. The Coder implements the plan, keeps
-   its own `PROGRESS.md` in sync, and reports when done. Wait for the Coder's report.
-5. **Test.** Dispatch the **Tester** agent with the item's acceptance criteria. The Tester runs
-   `npm run compile` and the smoke test, verifies the acceptance check, and reports pass/fail.
-   Wait for the Tester's report.
+1. **Orient.** Read your `PROGRESS.md`. Note the **current item** and the **next slice**
+   pointer. If there is no current item, read the Changelog Researcher's `PROGRESS.md` to
+   find the next unimplemented item (oldest first) and set it as the current item.
+2. **Confirm scope.** State the single **slice** you will orchestrate (its ID from the plan).
+   If the slice is too big (touches >3 files or >1 concern), ask the Planner to split it
+   first, then do the first sub-slice.
+3. **Plan (first slice of a new item only).** If this is the **first slice** of a new item
+   (no plan exists yet), dispatch the **Planner** agent with the item's ID and description.
+   The Planner reads the changelog entry (including images) and produces a step-by-step plan
+   (a list of slices) in `.github/agents/planner/PROGRESS.md`. Wait for the Planner's report.
+   If a plan already exists (continuing a multi-slice item), skip this step.
+4. **Code.** Dispatch the **Coder** agent with the **single slice** to implement (not the
+   whole plan). The Coder implements that one slice, keeps its own `PROGRESS.md` in sync, and
+   reports when done. Wait for the Coder's report.
+5. **Test.** Dispatch the **Tester** agent with the slice's acceptance criteria. The Tester
+   runs `npm run compile` and the smoke test, verifies the acceptance check, and reports
+   pass/fail. Wait for the Tester's report.
    - **If the Tester reports failure:** dispatch the Coder again with the failure details to
      fix the issue, then re-dispatch the Tester. Repeat until the Tester reports success.
-6. **Record.** Update your `PROGRESS.md`: mark the item Done, set **Next step** to the
-   following item, refresh Status (last commit, build state).
+6. **Record.** Update your `PROGRESS.md`: mark the slice Done, set **Next step** to the
+   following slice (or the next item if this was the last slice), refresh Status (last
+   commit, build state).
 7. **Commit.** Commit the code + all `PROGRESS.md` updates together with a clear message.
-8. **Report & stop.** Summarize what changed, the commit hash, and the next item. End the
-   session. Do not start the next item.
+8. **Report & stop.** Summarize what changed, the commit hash, and the next slice. End the
+   session. Do not start the next slice.
 
 ## Constraints
 
@@ -157,11 +174,13 @@ The team implements features from the VS Code Copilot changelog:
   rate limits) — they are useless for a free local LLM. Skip them.
 - ONLY build the LLM chat extension described above.
 
-## Output format (per item)
+## Output format (per slice)
 
-- **Item:** the single changelog item orchestrated (its ID from the backlog).
-- **Planned:** what the Planner produced (one line).
+- **Item:** the changelog item this slice belongs to (its ID from the backlog).
+- **Slice:** the single slice orchestrated (its ID from the plan).
+- **Planned:** what the Planner produced (one line; only for the first slice of a new item).
 - **Coded:** what the Coder implemented/changed (one line).
 - **Tested:** the Tester's result (pass/fail + how it was verified).
 - **Committed:** the commit hash + message (or why you did not commit).
-- **Next item:** the exact next item (ID + one line) now pointed to in `PROGRESS.md`.
+- **Next slice:** the exact next slice (ID + one line) now pointed to in `PROGRESS.md`.
+  If this was the last slice of the item, state the next item instead.
