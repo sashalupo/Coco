@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S1** verified
-- **Next step:** test slice **1.98-1.S2** (host-side `commandApproval` handling in `ChatViewProvider.ts`)
+- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S2** verified
+- **Next step:** test slice **1.98-1.S3** (post `command_approval` from host — wire `waitForCommandApproval` into the `run_command` tool flow)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -40,13 +40,27 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/webview.ts` (+83) among source files; also `.github/agents/coder/PROGRESS.md` and `.github/agents/planner/PROGRESS.md` (memory updates, expected). `ninfer` shows a submodule dirty marker (`m`), not a source-file change. PASS
 - **Note:** host-side `commandApproval` handling intentionally absent (slice S2) — expected, not a failure.
 
+
+### 1.98-1.S2 — host-side `commandApproval` plumbing (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (23 assertions in tail; full suite green).
+- **Static checks in `src/chat/ChatViewProvider.ts`:**
+  - (a) `private pendingCommandApproval: ((approved: boolean, command: string) => void) | null = null;` present next to `pendingApproval`. PASS
+  - (b) `case "commandApproval":` in `onMessage` switch calls `this.pendingCommandApproval?.(msg.approved === true, String(msg.command ?? ""))`. PASS
+  - (c) `waitForCommandApproval(signal: AbortSignal): Promise<{ approved: boolean; command: string }>` present: resolves `{approved:false, command:""}` when already aborted; abort listener (`{ once: true }`) resolves `{approved:false, command:""}` and clears `pendingCommandApproval`; normal resolver removes the abort listener and clears `pendingCommandApproval` before resolving. PASS
+  - (d) `git diff src/chat/ChatViewProvider.ts` → 3 hunks, additions only (+37 lines, 0 deletions); existing `waitForApproval` / `toolApproval` logic untouched. PASS
+- **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/ChatViewProvider.ts` (+37) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
+- **Note:** behaviorally a no-op by design — nothing posts `command_approval` yet (that is slice S3). Expected, not a failure.
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-1.S2** — host-side `commandApproval` plumbing — **PASS** (2026-10-22, see Verifications)
 
 ## Todo
 
-- [ ] Test slice **1.98-1.S2** (host-side `commandApproval` handling).
+- [ ] Test slice **1.98-1.S3** (post `command_approval` from host / wire `waitForCommandApproval` into `run_command` flow).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions

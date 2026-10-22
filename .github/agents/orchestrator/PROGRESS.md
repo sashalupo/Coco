@@ -13,14 +13,14 @@ writes code — it dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-1.S2** — Host: `commandApproval` handler + `waitForCommandApproval`
+- **Current slice:** **1.98-1.S3** — Host: route `run_command` through the editable approval gate
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the changelog and build the
   ordered backlog (oldest → newest)
 - **Last updated:** 2026-10-22
-- **Last commit:** `e3553d4` — chore(llm): build v1.98 changelog backlog (17 items, 6 pending)
-- **Build state:** compiles clean; smoke test passes (S1 verified)
+- **Last commit:** `016e6ce` — feat(llm): editable command approval card in webview (1.98-1.S1)
+- **Build state:** compiles clean; smoke test passes (S1+S2 verified)
 
 ## Team
 
@@ -40,6 +40,7 @@ pending item** (the oldest).
 ## Done
 
 - **1.98-1.S1** (2026-10-22) — webview `command_approval` card: editable textarea (value-set, no innerHTML), Run/Cancel, Ctrl+Enter, double-decide guard, CSS. Tester PASS (compile + smoke + 6 static checks).
+- **1.98-1.S2** (2026-10-22) — host `commandApproval` message case + `pendingCommandApproval` field + `waitForCommandApproval(signal)` (abort-safe, mirrors `waitForApproval`). Pure additions (+37/−0). Tester PASS.
 
 ## Tags (changelog-version tags on completed items)
 

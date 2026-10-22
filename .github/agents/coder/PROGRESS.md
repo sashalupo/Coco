@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-1.S1 done (webview `command_approval` card)
-- **Next step:** 1.98-1.S2 — Host: `commandApproval` message handler + `waitForCommandApproval` (src/chat/ChatViewProvider.ts)
+- **Current step:** 1.98-1.S2 done (host `commandApproval` handler + `waitForCommandApproval`)
+- **Next step:** 1.98-1.S3 — Host: route `run_command` through the editable approval gate (src/chat/ChatViewProvider.ts)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes after 1.98-1.S1
+- **Build state:** `npm run compile` passes after 1.98-1.S2
 
 ## Plan pointer
 
@@ -39,10 +39,21 @@ by step, one step per session.
     `.message.approval`), `.command-approval .cmd-input` (monospace, full width, VS Code input
     CSS variables), `.cmd-run`/`.cmd-cancel` mirroring `.approve`/`.reject`, `.status`.
   - Verified: `npm run compile` passes. Host-side handling is slice S2 (not yet implemented).
+- **1.98-1.S2** (2026-10-22) — Host `commandApproval` handler + `waitForCommandApproval`. File: `src/chat/ChatViewProvider.ts` only.
+  - Added field `private pendingCommandApproval: ((approved: boolean, command: string) => void) | null = null;` next to `pendingApproval`.
+  - Added `case "commandApproval":` in the `onMessage` switch (sibling to `toolApproval`): calls
+    `this.pendingCommandApproval?.(msg.approved === true, String(msg.command ?? ""))`.
+  - Added `private waitForCommandApproval(signal: AbortSignal): Promise<{ approved: boolean; command: string }>`
+    mirroring `waitForApproval`: resolves `{ approved: false, command: "" }` if the signal is already
+    aborted or aborts while waiting (abort listener wired with `{ once: true }`, removed on resolve,
+    `pendingCommandApproval` cleared on both paths); otherwise stores the resolver in
+    `pendingCommandApproval` and resolves with the webview's decision + (possibly edited) command.
+  - Verified: `npm run compile` passes. No behavior change yet — nothing posts `command_approval`
+    (that is slice S3); this slice is plumbing only.
 
 ## Todo
 
-- [ ] 1.98-1.S2 — Host: `commandApproval` message handler + `waitForCommandApproval` (src/chat/ChatViewProvider.ts).
+- [ ] 1.98-1.S3 — Host: route `run_command` through the editable approval gate (src/chat/ChatViewProvider.ts).
 - [ ] 1.98-1.S3 — Host: route `run_command` through the editable approval gate.
 - [ ] 1.98-1.S4 — Webview: "modified by user" badge on the tool card.
 - [ ] 1.98-1.S5 — Settings description + smoke test + PROGRESS.md.

@@ -84,6 +84,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Resolver for the pending tool approval (null when no approval is pending). */
   private pendingApproval: ((approved: boolean) => void) | null = null;
 
+  /**
+   * Resolver for the pending editable command approval (null when none is
+   * pending). Resolves with the user's decision and the (possibly edited)
+   * command string.
+   */
+  private pendingCommandApproval: ((approved: boolean, command: string) => void) | null = null;
+
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
 
@@ -174,6 +181,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "toolApproval":
         this.pendingApproval?.(msg.approved === true);
+        break;
+      case "commandApproval":
+        this.pendingCommandApproval?.(msg.approved === true, String(msg.command ?? ""));
         break;
       case "revertLast":
         void this.revertLastChange();
@@ -655,6 +665,33 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         signal.removeEventListener("abort", onAbort);
         this.pendingApproval = null;
         resolve(approved);
+      };
+    });
+  }
+
+  /**
+   * Wait for the user to approve or reject a pending editable command
+   * (run_command). Resolves `{ approved: false, command: "" }` if the stream
+   * is aborted while waiting; otherwise resolves with the user's decision and
+   * the (possibly edited) command string.
+   */
+  private waitForCommandApproval(
+    signal: AbortSignal,
+  ): Promise<{ approved: boolean; command: string }> {
+    return new Promise<{ approved: boolean; command: string }>((resolve) => {
+      if (signal.aborted) {
+        resolve({ approved: false, command: "" });
+        return;
+      }
+      const onAbort = () => {
+        this.pendingCommandApproval = null;
+        resolve({ approved: false, command: "" });
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      this.pendingCommandApproval = (approved: boolean, command: string) => {
+        signal.removeEventListener("abort", onAbort);
+        this.pendingCommandApproval = null;
+        resolve({ approved, command });
       };
     });
   }
