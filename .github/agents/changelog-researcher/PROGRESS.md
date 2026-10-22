@@ -20,13 +20,16 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Status
 
-- **Last processed version:** **1.98** (February 2025) — GitHub Copilot section fully studied
-- **Next step:** the v1.98 Copilot backlog is complete. Next session: study the **next
-  (newer) release** (1.99, March 2025) GitHub Copilot section at
-  `https://code.visualstudio.com/updates/v1_99`, reverse into oldest→newest, and append to the
-  backlog. Do NOT re-study v1.98.
+- **Last processed version:** **1.99** (March 2025) — GitHub Copilot section fully studied
+- **Next step:** the v1.99 backlog is built (14 pending keep-items, oldest first). The
+  orchestrator dispatches the Planner for the first pending item (**1.99-2** MCP server
+  support). Do NOT re-study v1.98/v1.99.
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no researcher commits yet)
+- **Note (2026-10-22):** the v1.99 research was done **inline by the orchestrator** — the
+  researcher sub-agent dispatch failed with `context_length_exceeded` (~145k tokens needed vs
+  131k budget; deterministic, its memory file is too large). Source:
+  `https://code.visualstudio.com/updates/v1_99` (GitHub Copilot sections).
 
 ## Backlog (oldest → newest)
 
@@ -238,6 +241,243 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Status:** `skipped (not relevant: local LLM)`
 - **Implemented in:** —
 
+### VS Code 1.99 — March 2025 (GitHub Copilot section)
+
+#### 1.99-1 · Agent mode available in VS Code Stable
+- **Description:** Agent mode GA in Stable (`chat.agent.enabled`); mode picker in the Chat view.
+- **Relevance:** keep (capability/context)
+- **Status:** done (already built) — the extension's chat is already agent-capable (tool loop
+  via `ToolExecutor`, agent mode in the chat panel).
+- **Gap vs existing:** none.
+
+#### 1.99-2 · Model Context Protocol (MCP) server support
+- **Description:** MCP servers in agent mode — standardized external tools. Config under an
+  `mcp` settings section or `.vscode/mcp.json` (stdio command servers; input variables like
+  `${env:API_KEY}`); `MCP: Add Server` / `MCP: List Servers` commands; refresh action to start
+  a server and discover its tools; servers started on-demand; Select Tools button to pick
+  which MCP tools are available in chat.
+- **Image notes:** `copilot-edits-agent-mode.png` (mode picker), MCP docs screenshots.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** none — new subsystem. Local reframe: `llm.mcp.servers` setting
+  (name → {command, args, env}), spawn stdio child process, JSON-RPC over stdio
+  (initialize → tools/list → tools/call), expose discovered tools to the agent tool loop
+  behind the existing approval gate, `llm.mcp.addServer` / `llm.mcp.listServers` commands.
+  No runtime npm deps (hand-rolled JSON-RPC framing over stdio).
+
+#### 1.99-3 · Agent mode tools — Thinking tool (Experimental)
+- **Description:** A `think` tool that gives any model the opportunity to think between tool
+  calls (Anthropic-inspired); improves agent performance on complex tasks.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** none — add a `think` tool to the agent tool loop (model calls it with
+  its reasoning; result echoed back; no side effects).
+
+#### 1.99-4 · Agent mode tools — Fetch tool (`#fetch`)
+- **Description:** `#fetch` includes content from a publicly accessible webpage in the
+  prompt; in agent mode picked up automatically, referenceable explicitly via `#fetch <url>`
+  in other modes. VS Code renders the page in a headless browser and caches it.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** none. Local reframe (no headless browser available): plain HTTP
+  `fetch` + HTML→text extraction (strip script/style/tags), size cap, cache per URL.
+
+#### 1.99-5 · Agent mode tools — Usages tool (`#usages`)
+- **Description:** `#usages` combines Find All References + Find Implementation + Go to
+  Definition so chat can learn about a function/class/interface (sample implementations,
+  refactor impact).
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** none — add a `usages` tool: given a symbol name + file, grep-based
+  reference search across the workspace (workspace has no LSP; text search is the
+  established approach).
+
+#### 1.99-6 · Create a new workspace with agent mode (Experimental)
+- **Description:** Scaffold a new VS Code workspace in agent mode — initialize, configure,
+  and launch new projects (extension, MCP server, dev environment) with dependencies and
+  settings.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** none. Local reframe: a "new workspace" chat flow — agent mode with a
+  scaffold prompt that creates files/dirs in a chosen folder via the existing file tools.
+
+#### 1.99-7 · VS Code extension tools in agent mode
+- **Description:** LM tools contributed by extensions (`toolReferenceName`,
+  `canBeReferencedInPrompt`) are automatically available in agent mode.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core) — the extension is a chat client, not a
+  VS Code LM-tool provider.
+
+#### 1.99-8 · Agent mode tool approvals
+- **Description:** Remember tool approvals at session, workspace, or application level
+  (Continue-button dropdown); experimental `chat.tools.autoApprove` auto-approves all tools.
+- **Image notes:** `chat-tool-approval.png` (Continue button dropdown options).
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** the extension has a single `llm.tools.requireApproval` boolean gate.
+  Extend with remembered approvals: per-tool allow-list persisted at workspace
+  (`.vscode/llm.json`-style) / global (storage) scope + an `llm.tools.autoApprove` setting.
+
+#### 1.99-9 · Agent evaluation on SWE-bench
+- **Description:** VS Code agent achieves 56.0% on `swebench-verified` (Claude 3.7 Sonnet).
+- **Relevance:** skip (benchmark, not a feature)
+- **Status:** skipped (not relevant: benchmark)
+
+#### 1.99-10 · Unified Chat view
+- **Description:** Merges the Chat and Copilot Edits views into one Chat view with a mode
+  picker (Ask / Agent / Edit); switch modes mid-conversation; edit sessions in history
+  (Show Chats restores past edit sessions); move chat to a new editor or window; multiple
+  agent sessions at once.
+- **Image notes:** `chat-modes.png` (mode picker dropdown).
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** the extension has one chat panel with an agent tool loop but no
+  explicit Ask/Agent/Edit mode picker, no per-mode behavior switch, and no session history
+  restore. Local reframe: mode picker in the chat header (Ask = no tools, Agent = full tool
+  loop, Edit = file-edit tools only), mode switchable mid-conversation, chat history list
+  with restore.
+
+#### 1.99-11 · Bring Your Own Key (BYOK) (Preview)
+- **Description:** Use own API keys for Azure/Anthropic/Gemini/OpenAI/Ollama/OpenRouter via
+  Manage Models in the model picker.
+- **Relevance:** skip (not relevant: local LLM)
+- **Status:** skipped (not relevant: local LLM) — the extension already points at a local
+  engine via `llm.baseUrl`; no provider keys involved.
+
+#### 1.99-12 · Reusable prompt files
+- **Description:** `chat.promptFilesLocations` supports glob patterns; `.prompt.md` editing
+  improvements (path autocompletion, broken-link diagnostics, edit/delete actions, folder
+  references valid, markdown comments ignored); `.github/copilot-instructions.md` behaves
+  like any `.prompt.md`; Create User Prompt (user-data-folder prompts).
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** the extension has `llm.instructions` (custom instructions file).
+  Extend: discover `.prompt.md` files via glob patterns from a
+  `llm.promptFiles.locations` setting, list them in a `llm.usePrompt` command (pick →
+  inject as context), treat `.github/copilot-instructions.md` as one of them.
+
+#### 1.99-13 · Improved vision support (Preview)
+- **Description:** Attach images from any browser via drag and drop; URL extensions
+  `.jpg`, `.png`, `.gif`, `.webp`, `.bmp` accepted.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** 1.98-14 added image attachments (file picker + drag-drop of files).
+  Extend: accept dropped image URLs (browser drag) and add `.bmp` to the accepted
+  extensions; fetch URL images to base64 data URLs.
+
+#### 1.99-14 · Unified chat experience (Configure the editor)
+- **Description:** Duplicate of the Unified Chat view entry (Chat section).
+- **Relevance:** skip (duplicate)
+- **Status:** skipped (not relevant: duplicate of 1.99-10)
+
+#### 1.99-15 · Faster workspace searches with instant indexing
+- **Description:** Remote workspace indexes (GitHub-only) built automatically on first
+  `#codebase`/`@workspace` question.
+- **Relevance:** skip (GitHub-service)
+- **Status:** skipped (not relevant: GitHub-service)
+
+#### 1.99-16 · Copilot status menu
+- **Description:** Status-bar menu: workspace index status; icon showing whether code
+  completions are enabled for the active editor; enable/disable code completions and NES
+  from the menu.
+- **Image notes:** `copilot-workspace-index-remote.png`, `copilot-disabled-status.png`.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** 1.98-15 added the engine status indicator + overview QuickPick.
+  Extend: completions-enabled indicator in the status bar (reflects
+  `llm.completions.enabled` + active editor language) and a "Completions: on/off" toggle in
+  the status overview QuickPick.
+
+#### 1.99-17 · Out of the box Copilot setup (Experimental)
+- **Description:** `chat.setupFromDialog` — first chat request guides sign-in/sign-up.
+- **Relevance:** skip (GitHub-service)
+- **Status:** skipped (not relevant: GitHub-service/auth)
+
+#### 1.99-18 · Chat prerelease channel mismatch
+- **Description:** Welcome screen when the prerelease Copilot Chat extension is installed in
+  VS Code Stable.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core)
+
+#### 1.99-19 · Semantic text search improvements (Experimental) — `#searchResults`
+- **Description:** AI semantic search in the Search view (Ctrl+I); `#searchResults` tool
+  references the current search results in a chat prompt.
+- **Relevance:** keep (capability/context) — the `#searchResults` tool part only
+- **Status:** pending
+- **Gap vs existing:** none — add a `searchResults` context source: read the current Search
+  view results (or run a workspace text search for the query) and attach them as chat
+  context. The semantic Search-view AI part is VS Code core (skipped).
+
+#### 1.99-20 · Settings editor search updates
+- **Description:** Settings editor search uses the key-matching algorithm by default.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core)
+
+#### 1.99-21 · New setting for window controls (Linux, Windows)
+- **Description:** `window.controlsStyle` — native/custom/hidden window controls.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core)
+
+#### 1.99-22 · Next Edit Suggestions general availability
+- **Description:** NES GA (`github.copilot.nextEditSuggestions.enabled`), compact
+  suggestions, updated gutter indicator.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core) — consistent with the 1.98-11 NES skip.
+
+#### 1.99-23 · AI edits improvements
+- **Description:** Mute diagnostics events outside the editor while AI edits are applied
+  (less Problems-panel flicker, no quick-fix requests); explicitly save the file when the
+  user keeps the AI edits.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** the extension applies edits via `WorkspaceEdit` and saves; verify the
+  keep-path explicitly saves (`document.save()`) and that no stray diagnostics-triggered
+  work happens while an edit is pending. Small change.
+
+#### 1.99-24 · Tool-based edit mode
+- **Description:** Edit mode uses the same tool-calling approach as agent mode
+  (`chat.edits2.enabled`).
+- **Relevance:** keep (capability/context)
+- **Status:** done (already built) — the extension's chat edits are already tool-based
+  (`ToolExecutor` file-edit tools); there is no separate non-tool edit path.
+
+#### 1.99-25 · Inline suggestion syntax highlighting
+- **Description:** Syntax highlighting for inline (ghost) suggestions enabled by default.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core)
+
+#### 1.99-26 · Tree-Sitter based syntax highlighting (Preview)
+- **Description:** Experimental Tree-Sitter highlighting for CSS and TS regexes.
+- **Relevance:** skip (VS Code core)
+- **Status:** skipped (not relevant: VS Code core)
+
+#### 1.99-27 · Minimal nbformat version 4.5
+- **Description:** New notebooks default to `nbformat` 4.5 — each cell gets an `id` field to
+  help calculate diffs.
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** `src/notebook.ts` `createNotebook` — set `nbformat: 4`,
+  `nbformat_minor: 5` and stable cell `id` fields. Small change.
+
+#### 1.99-28 · AI notebook editing improvements — new notebook tool
+- **Description:** A dedicated tool that plans and creates a new Jupyter notebook from a
+  chat query; `/newNotebook` in ask mode; notebook tool in agent/edit mode. (Navigate
+  through AI edits / undo AI edits sub-features are VS Code core notebook UI — skipped.)
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** `src/notebook.ts` exists (create/modify notebooks). Add a
+  `new_notebook` agent tool + `/newNotebook` chat command that plans cells from the query
+  and creates the notebook.
+
+#### 1.99-29 · Text and image output support in chat (notebooks)
+- **Description:** Add notebook cell outputs (text, errors, images) to chat as context via
+  the "Add cell output to chat" action (triple-dot menu / right-click).
+- **Relevance:** keep (capability/context)
+- **Status:** pending
+- **Gap vs existing:** image attachments exist (1.98-14). Add a command
+  `llm.addCellOutput` that reads the active notebook cell's outputs (text/error → text
+  context; image → base64 attachment) and injects them into the chat input.
+
 ## Done
 
 - 1.98-3 Refined editor integration — `done (already built)` (keep/undo, multi-file diff view)
@@ -261,7 +501,21 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-_(empty — v1.98 window complete; next: research v1.99 changelog)_
+- **1.99-2** MCP server support
+- **1.99-3** Thinking tool
+- **1.99-4** Fetch tool (`#fetch`)
+- **1.99-5** Usages tool (`#usages`)
+- **1.99-6** Create a new workspace with agent mode
+- **1.99-8** Agent mode tool approvals
+- **1.99-10** Unified Chat view (mode picker + history)
+- **1.99-12** Reusable prompt files
+- **1.99-13** Improved vision support (URL images, `.bmp`)
+- **1.99-16** Copilot status menu (completions indicator + toggle)
+- **1.99-19** `#searchResults` tool
+- **1.99-23** AI edits improvements (explicit save on keep)
+- **1.99-27** Minimal nbformat 4.5 (cell `id` fields)
+- **1.99-28** New notebook tool (`/newNotebook`)
+- **1.99-29** Cell output to chat (text/image)
 
 ## Todo
 

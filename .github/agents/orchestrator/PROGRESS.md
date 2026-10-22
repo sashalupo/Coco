@@ -13,14 +13,19 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **v1.98 window COMPLETE** — all keep-items done (1.98-15 was the last); next: research v1.99 changelog
-- **Current slice:** — (none; 1.98-15 complete)
+- **Current item:** **1.99-2** — MCP server support (first pending v1.99 keep-item)
+- **Current slice:** — (none yet; plan not recorded)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Changelog Researcher to research the v1.99 changelog and build the next ordered backlog, then continue the slice pipeline
+- **Next step:** dispatch Planner for item **1.99-2** (MCP server support), record the plan,
+  then run the slice pipeline (Coder → Tester → memory → commit per slice)
 - **Last updated:** 2026-10-22
-- **Last commit:** `2f22531` — feat(llm): Engine status indicator — llm.showStatusOverview QuickPick overview (1.98-15.S3)
+- **Last commit:** `4306c0b` — chore(llm): settings schema; mark item 1.98-15 complete (1.98-15.S4)
 - **Build state:** compiles clean; smoke test passes (371 assertions); item 1.98-15 fully verified (S1–S4)
+- **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
+  with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
+  researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
+  done-already-built (1.99-1, 1.99-24).
 
 ## Team
 
