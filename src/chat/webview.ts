@@ -840,6 +840,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				<span id="cf-chevron" class="cf-chevron" title="Expand/collapse changed files">▾</span>
 				<span id="cf-summary" class="cf-summary"></span>
 				<span class="cf-actions">
+					<button id="cf-diff" class="cf-btn" title="Show combined diff of all changes">Diff</button>
 					<button id="cf-keep" class="cf-btn cf-keep" title="Keep changes">Keep</button>
 					<button id="cf-undo" class="cf-btn" title="Undo all changes">Undo</button>
 				</span>
@@ -874,6 +875,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var cfChevron = document.getElementById('cf-chevron');
 		var cfSummary = document.getElementById('cf-summary');
 		var cfFileList = document.getElementById('cf-file-list');
+		var cfDiff = document.getElementById('cf-diff');
 		var cfKeep = document.getElementById('cf-keep');
 		var cfUndo = document.getElementById('cf-undo');
 		var ctxFile = document.getElementById('ctx-file');
@@ -1065,9 +1067,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (streaming) { return; }
 			if (vscode) { vscode.postMessage({ type: 'revertLast' }); }
 		});
-		// Change toolbox footer bar (Phase 12): Keep dismisses the bar (host
-		// clears the snapshots); Undo reverts all changed files (host calls
-		// revertAll() and posts a revert_result confirmation).
+		// Change toolbox footer bar (Phase 12): Diff opens a combined unified
+		// diff of all changed files in a VS Code text document (host builds it
+		// from the per-run snapshots). Keep dismisses the bar (host clears the
+		// snapshots); Undo reverts all changed files (host calls revertAll()
+		// and posts a revert_result confirmation).
+		cfDiff.addEventListener('click', function () {
+			if (streaming) { return; }
+			if (vscode) { vscode.postMessage({ type: 'showDiff' }); }
+		});
 		cfKeep.addEventListener('click', function () {
 			if (streaming) { return; }
 			hideChangeFooter();

@@ -6,6 +6,7 @@
 // steps (S9–S11) extend `onDidReceiveMessage` with the real chat/toolbar flow.
 
 import * as vscode from "vscode";
+import * as fs from "fs";
 import { buildWebviewHtml } from "./webview";
 import { LlmClient, type UsageInfo } from "../client";
 import {
@@ -22,7 +23,7 @@ import {
 import { buildContextBlock, type ContextInput } from "../context";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
-import { changedNewLines } from "../diff";
+import { changedNewLines, unifiedDiff } from "../diff";
 import type {
   ContextFlags,
   ContextLevel,
@@ -172,6 +173,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // agent changed/created (Phase 12.5).
         void this.openChangedFile(String(msg.path ?? ""));
         break;
+      case "showDiff":
+        // Open a combined unified diff of all changed files (Phase 13).
+        void this.showCombinedDiff();
+        break;
       default:
         // Unknown message types are ignored for now.
         break;
@@ -281,10 +286,69 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     const decorations: vscode.DecorationOptions[] = lines.map((lineNo) => {
       const line = Math.min(lineNo, doc.lineCount);
       const range = new vscode.Range(line - 1, 0, line - 1, 0);
-      return { range, hoverMessage: created ? "Created by LLM" : "Changed by LLM" };
+      return {
+        range,
+        hoverMessage: created ? "Created by LLM" : "Changed by LLM",
+      };
     });
     editor.setDecorations(type, decorations);
     this.decoratedDoc = doc;
+  }
+
+  /**
+   * Open a combined unified diff of all files changed in the current run
+   * (Phase 13). Reads each snapshotted file's current content from disk,
+   * computes a unified diff against the pre-run snapshot, and opens the
+   * combined result as a read-only untitled text document. Files that no
+   * longer exist (e.g. deleted after creation) are shown as fully removed.
+   */
+  private async showCombinedDiff(): Promise<void> {
+    const changes = this.toolExecutor.getChangeSummary();
+    if (changes.length === 0) {
+      vscode.window.showInformationMessage("LLM: no changes to diff.");
+      return;
+    }
+    const sections: string[] = [];
+    for (const change of changes) {
+      const snap = this.toolExecutor.getSnapshot(change.path);
+      if (!snap) {
+        continue;
+      }
+      const abs = await this.toolExecutor.resolveSafe(change.path);
+      let newContent = "";
+      let exists = true;
+      if (abs) {
+        try {
+          newContent = await fs.promises.readFile(abs, "utf8");
+        } catch {
+          exists = false;
+        }
+      } else {
+        exists = false;
+      }
+      // Old label: /dev/null when the file was newly created this run.
+      // New label: /dev/null when the file no longer exists on disk.
+      const oldLabel = snap.existed ? change.path : "/dev/null";
+      const newLabel = exists ? change.path : "/dev/null";
+      const diff = unifiedDiff(
+        snap.oldContent,
+        exists ? newContent : "",
+        oldLabel,
+        newLabel,
+      );
+      sections.push(diff || `(no diff for ${change.path})`);
+    }
+    if (sections.length === 0) {
+      vscode.window.showInformationMessage("LLM: no changes to diff.");
+      return;
+    }
+    const header = `# Combined diff — ${changes.length} file(s) changed\n\n`;
+    const body = sections.join("\n\n");
+    const doc = await vscode.workspace.openTextDocument({
+      content: header + body,
+      language: "diff",
+    });
+    await vscode.window.showTextDocument(doc, { preview: true });
   }
 
   /** Create the change-decoration types on first use. */
@@ -308,9 +372,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Remove the change decorations from the currently decorated document. */
   private clearChangeDecorations(): void {
     if (this.decoratedDoc && this.changeDecorations) {
-      const editors = vscode.window
-        .visibleTextEditors
-        .filter((e: vscode.TextEditor) => e.document === this.decoratedDoc);
+      const editors = vscode.window.visibleTextEditors.filter(
+        (e: vscode.TextEditor) => e.document === this.decoratedDoc,
+      );
       for (const e of editors) {
         e.setDecorations(this.changeDecorations.added, []);
         e.setDecorations(this.changeDecorations.created, []);

@@ -12,11 +12,11 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 12 complete** — Change toolbox footer bar (12.1–12.7 done, incl. the previously-skipped 12.5)
-- **Next step:** **none** — all planned phases (1–12) are complete; awaiting new direction
-- **Last updated:** 2026-10-12
-- **Last commit:** `099a474` — feat(llm): clickable change-footer file rows + editor change highlight (Phase 12.5)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); `changedNewLines` unit-checked
+- **Current phase:** **Phase 13 complete** — Multi-file diff view (13.1 done)
+- **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
+- **Last updated:** 2026-10-22
+- **Last commit:** (this session) — feat(llm): multi-file diff view (Phase 13.1)
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions)
 
 > **Numbering note (2026-10-12):** the previous session skipped PLAN.md **12.5**
 > (clickable file rows + editor change highlight) and recorded PLAN 12.6/12.7 as
@@ -266,6 +266,7 @@ src/
 | 10    | Git integration (status/diff, commit)           | complete |
 | 11    | Sessions side panel (conversation management)   | complete |
 | 12    | Change toolbox footer bar                       | complete |
+| 13    | Multi-file diff view                            | complete |
 
 ## Done
 
@@ -1020,19 +1021,36 @@ args)` helper that spawns `git` with a **fixed argv array** (never user-controll
     the path via `toolExecutor.resolveSafe` (rejects traversal / no-workspace with an error toast),
     opens the doc (`openTextDocument` + `showTextDocument` preview), then computes the highlight:
     created file (`existed === false`) → whole file; edited file → `changedNewLines(snap.oldContent,
-    doc.getText())`; no snapshot (after Keep/Undo) → open without highlighting. Highlights via two
+doc.getText())`; no snapshot (after Keep/Undo) → open without highlighting. Highlights via two
     lazily-created `TextEditorDecorationType`s (a subtle green tint, stronger for created files)
     applied with `setDecorations`; decorations are cleared on a new `openFile` and on `dispose()`.
     New `dispose()` disposes the decoration types; registered in `extension.ts` via
     `context.subscriptions.push(provider)`.
   - `src/chat/webview.ts`: each `.cf-file-row` is now clickable (`cursor: pointer`, hover underline
-    + link color on `.cf-path`, a `title` tooltip). Clicking (when not streaming) posts
-    `{ type: 'openFile', path }`. All dynamic text still set via `textContent`.
+    - link color on `.cf-path`, a `title` tooltip). Clicking (when not streaming) posts
+      `{ type: 'openFile', path }`. All dynamic text still set via `textContent`.
   - Verified: `npm run compile` clean; the built inline webview script passes `node --check`;
     `changedNewLines` unit-checked (6 cases); smoke test green (173 assertions); compiled output
     verified to contain the `openFile` case, `openChangedFile`, `changedNewLines`, `getSnapshot`,
     the decoration types, `setDecorations`, `dispose`, and the webview `openFile` post + clickable
     row. **Phase 12 is now fully complete including the previously-skipped 12.5.**
+- **13.1 — Multi-file diff view** (2026-10-22): added a "Diff" button to the change toolbox
+  footer bar that opens a combined unified diff of all files changed in the current run as a
+  read-only VS Code text document.
+  - `src/chat/webview.ts`: new `#cf-diff` button in the `.cf-actions` row (before Keep/Undo).
+    Clicking (when not streaming) posts `{ type: 'showDiff' }`. Styled like the other `.cf-btn`
+    buttons.
+  - `src/chat/ChatViewProvider.ts`: new `case "showDiff"` → `showCombinedDiff()`. Iterates
+    `getChangeSummary()`, reads each file's current content from disk (via `fs.promises.readFile`
+    on the `resolveSafe`-resolved path), computes `unifiedDiff(snap.oldContent, newContent,
+    oldLabel, newLabel)` per file (using `/dev/null` labels for newly-created or deleted files),
+    and opens the combined result as an untitled `diff`-language text document with a header
+    (`# Combined diff — N file(s) changed`). Files that no longer exist on disk are shown as
+    fully removed. No snapshots → info toast.
+  - Verified: `npm run compile` clean; the built inline webview script passes `node --check`;
+    smoke test green (173 assertions); compiled output verified to contain the `showDiff` case,
+    `showCombinedDiff`, `unifiedDiff` import, and the webview `cf-diff` button + handler.
+    **Phase 13 complete.**
 
 ## Steps — Phase 1 (one per session)
 
@@ -1265,6 +1283,17 @@ run, with Keep / Undo actions. See PLAN.md, Phase 12.
 - [x] **12.7 — Polish + verify + record** (PLAN 12.7; recorded as "12.6" in the first pass). Match
       the reference UI styling, run the smoke test, update `PROGRESS.md`. _Accept: the footer bar
       matches the reference layout; smoke test green; `PROGRESS.md` in sync; committed._
+
+## Steps — Phase 13 (one per session)
+
+Multi-file diff view: a "Diff" button in the change footer opens a combined unified diff of all
+files changed in the current run as a read-only VS Code text document.
+
+- [x] **13.1 — Diff button + combined diff document.** Add a "Diff" button to the change footer
+      (`.cf-actions`, before Keep/Undo). Clicking posts `showDiff`; the host reads each
+      snapshotted file's current content, computes `unifiedDiff` per file (with `/dev/null`
+      labels for new/deleted files), and opens the combined result as an untitled `diff`-language
+      text document. _Accept: clicking Diff opens a combined diff of all changed files; compiles._
 
 ## Decisions
 
