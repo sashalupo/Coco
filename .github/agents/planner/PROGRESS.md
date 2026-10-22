@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-19 (`#searchResults` tool) — **complete** (2026-10-22, 4 slices S1–S4 all done)
-- **Next step:** item 1.99-19 complete — orchestrator moves to next backlog item (1.99-23)
+- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **planned** (2026-10-22, 2 slices S1–S2)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-23.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -2013,3 +2013,152 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 **Deviations/skips (documented):**
 1. **AI semantic search in the Search view (Ctrl+I) — skipped**: VS Code core UI backed by the Copilot service; no analogue for a free local engine.
 2. **Reading the actual Search view state — skipped**: no public VS Code API exposes the Search view's current query/results; the documented fallback (run a workspace text search for the query and attach results) is what is planned.
+
+### Item 1.99-23 — AI edits improvements (explicit save on keep)
+
+**Changelog:** VS Code 1.99 — "Mute diagnostics events outside the editor while AI edits are applied; explicitly save the file when the user keeps the AI edits."
+**Planned:** 2026-10-22, 2 slices S1–S2
+**Baseline smoke:** 531 assertions
+
+**Design decisions (justified):**
+1. **Explicit save = `TextDocument.save()` on the keep path.** Edits already land on disk via `fs.promises.writeFile`, so "save" here means: for each kept file, if it exists in the workspace, `vscode.workspace.openTextDocument(uri)` + `doc.save()` so the open editor's in-memory document is synced and VS Code's save pipeline (format-on-save, watchers, SCM dirty-state) runs explicitly. This is the only part of the changelog an extension can implement.
+2. **`keepFile` becomes async** (returns `Promise<string>`) so it can await the save. `keepAll()` is added for the keep-all path: it captures the changed paths, clears the maps (existing `clearChangeSummary()` behavior), then saves each file.
+3. **Save failures never block keep.** A save error is appended to the returned message (`(save failed: …)`) but the keep itself succeeds — the file is already on disk.
+4. **Diagnostics muting: not implemented (deviation, see below).** No `onDidChangeDiagnostics` listener exists in the extension, so there is no diagnostics-triggered work to mute while an edit is pending. The "mute diagnostics events outside the editor" behavior is VS Code core (Copilot's own edit session) with no public extension API.
+
+- **1.99-23.S1** — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper)
+  - Files: `src/tools/ToolExecutor.ts`
+  - Changes:
+    1. Add a private helper (place near `resolveSafe`):
+       ```ts
+       /**
+        * Explicitly save a workspace file's open document (item 1.99-23):
+        * syncs the in-memory TextDocument with the on-disk content the
+        * agent wrote and runs VS Code's save pipeline. No-op (returns
+        * false) when the file does not exist on disk (e.g. already
+        * reverted) or the path is outside the workspace. Never throws.
+        */
+       private async saveDocument(relPath: string): Promise<boolean> {
+         const abs = await this.resolveSafe(relPath);
+         if (!abs) return false;
+         try {
+           await fs.promises.access(abs);
+         } catch {
+           return false; // file gone (reverted/deleted) — nothing to save
+         }
+         try {
+           const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(abs));
+           await doc.save();
+           return true;
+         } catch {
+           return false;
+         }
+       }
+       ```
+    2. Change `keepFile` (L233) from `public keepFile(relPath: string): string` to `public async keepFile(relPath: string): Promise<string>`:
+       ```ts
+       public async keepFile(relPath: string): Promise<string> {
+         if (!this.runSnapshots.has(relPath)) {
+           return `No pending changes for ${relPath}.`;
+         }
+         this.runSnapshots.delete(relPath);
+         this.runChanges.delete(relPath);
+         // 1.99-23: explicitly save the file when the user keeps the edits.
+         const saved = await this.saveDocument(relPath);
+         return saved
+           ? `Kept ${relPath} (saved).`
+           : `Kept ${relPath}.`;
+       }
+       ```
+    3. Add `keepAll` right after `keepFile`:
+       ```ts
+       /**
+        * Accept (keep) ALL of the current run's changes (item 1.99-23):
+        * clear the snapshot + change maps (as `clearChangeSummary()` did)
+        * and explicitly save every changed file that still exists on disk.
+        * Returns a human-readable message.
+        */
+       public async keepAll(): Promise<string> {
+         const paths = Array.from(this.runChanges.keys());
+         this.runSnapshots = new Map();
+         this.runChanges = new Map();
+         if (paths.length === 0) {
+           return "Kept all changes (no pending changes).";
+         }
+         let savedCount = 0;
+         for (const p of paths) {
+           if (await this.saveDocument(p)) savedCount++;
+         }
+         return `Kept ${paths.length} file${paths.length === 1 ? "" : "s"} (${savedCount} saved).`;
+       }
+       ```
+       (Note: `keepAll` replaces the maps wholesale, matching `clearChangeSummary()`'s existing semantics; do NOT modify `clearChangeSummary()` itself — other callers may rely on it.)
+  - Smoke: none in this slice (covered by S2's static assertions; S1 must still compile and pass the existing 531).
+  - Expected total: 531 (unchanged).
+
+- **1.99-23.S2** — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions
+  - Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`
+  - Changes:
+    1. `ChatViewProvider.ts` — `keepChanges` case (L236–240): replace the body
+       ```ts
+       case "keepChanges":
+         // Keep (Phase 12): accept the changes — clear the per-run snapshots
+         // and change summary so a subsequent run starts fresh.
+         this.toolExecutor.clearChangeSummary();
+         break;
+       ```
+       with
+       ```ts
+       case "keepChanges":
+         // Keep (Phase 12): accept the changes — clear the per-run snapshots
+         // and change summary so a subsequent run starts fresh. 1.99-23:
+         // keepAll() also explicitly saves each kept file.
+         void this.handleKeepAll();
+         break;
+       ```
+       and add the handler next to `handleKeepFile` (~L629):
+       ```ts
+       /**
+        * Accept all of the current run's changes (Phase 12 / 1.99-23):
+        * clear the snapshots + change summary and explicitly save every
+        * kept file, then refresh the footer.
+        */
+       private async handleKeepAll(): Promise<void> {
+         const message = await this.toolExecutor.keepAll();
+         this.postMessage({ type: "revert_result", message });
+         this.pushChangeFooter();
+       }
+       ```
+    2. `ChatViewProvider.ts` — `handleKeepFile` (L629): make it async and await the now-async `keepFile`:
+       ```ts
+       private async handleKeepFile(relPath: string): Promise<void> {
+         if (!relPath) {
+           return;
+         }
+         const message = await this.toolExecutor.keepFile(relPath);
+         this.postMessage({ type: "revert_result", message });
+         this.pushChangeFooter();
+       }
+       ```
+       and update the `keepFile` case (L255–257) to `void this.handleKeepFile(String(msg.path ?? ""));` (matching the `undoFile` case style).
+    3. `scripts/smoke-test.js` — add section **`// 51) AI edits improvements — explicit save on keep (1.99-23)`** after the section-50 block (before `console.log("\nALL SMOKE TESTS PASSED")`), following the existing static-source pattern (read `out/tools/ToolExecutor.js` and `src/chat/ChatViewProvider.ts` the way sections 49/50 read `cvpSrcSresS3`/`pkgJson`):
+       - `aedits-s1:` (4 assertions) on the compiled `out/tools/ToolExecutor.js` source:
+         1. contains `async keepFile(` (keepFile is now async);
+         2. contains `async keepAll(` (new keep-all method);
+         3. contains `saveDocument` and `openTextDocument` (explicit-save helper present);
+         4. `keepFile` body references `saveDocument` (regex `/async keepFile\([\s\S]{0,400}?saveDocument/`).
+       - `aedits-s2:` (3 assertions) on the `ChatViewProvider.ts` source:
+         1. contains `handleKeepAll` and `keepAll()` (keep-all routed through the saving keeper);
+         2. `keepChanges` case no longer calls `clearChangeSummary` directly — regex test that the `case "keepChanges":` block (next ~200 chars) contains `handleKeepAll` and NOT `clearChangeSummary`;
+         3. `handleKeepFile` awaits `keepFile` (regex `/async handleKeepFile[\s\S]{0,300}?await this\.toolExecutor\.keepFile\(/`).
+       - Total: **7 new assertions**.
+  - Smoke: `aedits-s1:` ×4, `aedits-s2:` ×3 (section 51).
+  - Expected total: **538**.
+
+**Deviations:**
+- **"Mute diagnostics events outside the editor while AI edits are applied" — NOT implemented.** (a) It is a VS Code core behavior of Copilot's own edit sessions; there is no public extension API to suppress or mute `DiagnosticsChangedEvent` for other extensions' diagnostics. (b) Verified by grep: the `llm` extension registers **no** `onDidChangeDiagnostics` listener anywhere in `src/` — diagnostics are only read on-demand (`get_diagnostics` tool, `#problems` tag, context injection at send time), so no diagnostics-triggered work (no Problems-panel flicker, no quick-fix requests) can run while an edit is pending. Nothing to mute; the "no stray diagnostics-triggered work" half of the gap check passes as-is.
+- **No `WorkspaceEdit` migration.** The changelog mentions `WorkspaceEdit`, but the extension deliberately writes via `fs.promises.writeFile` (keeps `ToolExecutor` testable under plain Node). Changing the write mechanism is out of scope for this small item; the explicit `TextDocument.save()` on keep achieves the user-visible behavior (file saved when edits are kept).
+
+**Total expected assertions after all slices:** 531 → **538** (+7, all in S2).
+
+**Overall acceptance (Tester):** with pending run changes, clicking Keep (per-file or keep-all) results in each kept file's open document being explicitly saved (`TextDocument.save()`); keep messages reflect the save; revert/undo paths unchanged; `npm run compile` clean; `node scripts/smoke-test.js` passes with 538 assertions.
