@@ -225,18 +225,66 @@ export class ToolExecutor {
   }
 
   /**
+   * Explicitly save a workspace file's open document (item 1.99-23):
+   * syncs the in-memory TextDocument with the on-disk content the
+   * agent wrote and runs VS Code's save pipeline. No-op (returns
+   * false) when the file does not exist on disk (e.g. already
+   * reverted) or the path is outside the workspace. Never throws.
+   */
+  private async saveDocument(relPath: string): Promise<boolean> {
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) return false;
+    try {
+      await fs.promises.access(abs);
+    } catch {
+      return false; // file gone (reverted/deleted) — nothing to save
+    }
+    try {
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(abs));
+      await doc.save();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Accept (keep) a single file's changes: remove it from the snapshot +
-   * change maps without touching the file on disk. Subsequent
+   * change maps, then explicitly save the file (item 1.99-23). Subsequent
    * `revertAll()` / `getChangeSummary()` calls skip it.
    * Returns a human-readable message.
    */
-  public keepFile(relPath: string): string {
+  public async keepFile(relPath: string): Promise<string> {
     if (!this.runSnapshots.has(relPath)) {
       return `No pending changes for ${relPath}.`;
     }
     this.runSnapshots.delete(relPath);
     this.runChanges.delete(relPath);
-    return `Kept ${relPath}.`;
+    // 1.99-23: explicitly save the file when the user keeps the edits.
+    const saved = await this.saveDocument(relPath);
+    return saved
+      ? `Kept ${relPath} (saved).`
+      : `Kept ${relPath}.`;
+  }
+
+  /**
+   * Accept (keep) ALL of the current run's changes (item 1.99-23):
+   * clear the snapshot + change maps (as `clearChangeSummary()` did)
+   * and explicitly save every changed file that still exists on disk.
+   * Returns a human-readable message.
+   */
+  public async keepAll(): Promise<string> {
+    const paths = Array.from(this.runChanges.keys());
+    this.runSnapshots = new Map();
+    this.runChanges = new Map();
+    if (paths.length === 0) {
+      return "Kept all changes (no pending changes).";
+    }
+    let savedCount = 0;
+    for (const p of paths) {
+      if (await this.saveDocument(p)) savedCount++;
+    }
+    return `Kept ${paths.length} file${paths.length === 1 ? "" : "s"} (${savedCount} saved).`;
   }
 
   /**

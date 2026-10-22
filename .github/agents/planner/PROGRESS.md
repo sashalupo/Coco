@@ -2026,7 +2026,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 3. **Save failures never block keep.** A save error is appended to the returned message (`(save failed: …)`) but the keep itself succeeds — the file is already on disk.
 4. **Diagnostics muting: not implemented (deviation, see below).** No `onDidChangeDiagnostics` listener exists in the extension, so there is no diagnostics-triggered work to mute while an edit is pending. The "mute diagnostics events outside the editor" behavior is VS Code core (Copilot's own edit session) with no public extension API.
 
-- **1.99-23.S1** — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper)
+- **1.99-23.S1** (Done) — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper)
   - Files: `src/tools/ToolExecutor.ts`
   - Changes:
     1. Add a private helper (place near `resolveSafe`):

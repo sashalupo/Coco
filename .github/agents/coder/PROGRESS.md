@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-19 (`#searchResults` tag) — **COMPLETE** (all 4 slices S1–S4 done)
-- **Next step:** item 1.99-19 complete — orchestrator moves to next backlog item (1.99-23)
+- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **in progress** (S1 done, S2 next)
+- **Next step:** 1.99-23.S2 — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** compiles clean; smoke test passes (531 assertions)
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-23.S1** (2026-10-22) — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper). Files: `src/tools/ToolExecutor.ts`, `src/chat/ChatViewProvider.ts` (minimal caller fix — deviation, see below), `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools/ToolExecutor.ts`: (a) new `private async saveDocument(relPath: string): Promise<boolean>` placed right before `keepFile` (near the keep/revert cluster; `resolveSafe` is public and defined later in the class — intent preserved: resolve safely, `fs.promises.access` existence check, `vscode.workspace.openTextDocument` + `doc.save()`, never throws, returns `false` when path disallowed / file missing / save fails); (b) `keepFile` changed from `public keepFile(relPath: string): string` to `public async keepFile(relPath: string): Promise<string>` — same no-pending-changes message (`No pending changes for ${relPath}.`), same map deletions, then `const saved = await this.saveDocument(relPath)` and returns `Kept ${relPath} (saved).` when saved else `Kept ${relPath}.`; (c) new `public async keepAll(): Promise<string>` right after `keepFile` — snapshots `Array.from(this.runChanges.keys())`, resets both maps to `new Map()`, returns `Kept all changes (no pending changes).` when empty, else saves each path via `saveDocument` and returns `Kept N file(s) (M saved).`.
+  - `src/chat/ChatViewProvider.ts` (MINIMAL caller fix — deviation required to keep S1 independently compilable): `handleKeepFile` made `async` and now `await`s `this.toolExecutor.keepFile(relPath)` (message wording unchanged); the `case "keepFile":` dispatch now uses `void this.handleKeepFile(...)` (matching the neighboring `undoFile`/`openFile` pattern). No other behavior changed.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 531 PASS, 0 FAIL (unchanged — no new assertions in this slice; S2 adds them).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-19.S4** (2026-10-22) — `package.json`: add the `llm.chat.searchResults.enabled` setting (FINAL slice of item 1.99-19 — item now COMPLETE). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: new `llm.chat.searchResults.enabled` property added in `contributes.configuration.properties` immediately after `llm.chat.newWorkspace.enabled`: `type: boolean`, `default: true`, description: "Allow the `#searchResults <query>` (or `#searchResults:<query>`) tag to include workspace text-search results (file:line: snippet, capped at 50 matches) in chat context. Mirrors the VS Code 1.99 `#searchResults` tool (text-search fallback — the AI semantic Search view is VS Code core).". Validated: `node -e "JSON.parse(...)"` → `json ok`.
   - `scripts/smoke-test.js`: new section `// 50) #searchResults tag — package.json setting (1.99-19.S4)` at end (after section 49, before final summary print); reuses the file-scoped parsed `pkgJson` (same pattern as other package.json assertions); 2 `sres-s4:` assertions: (a) property exists with `type === "boolean"` AND `default === true`; (b) description is a string containing `#searchResults` AND `text-search fallback`. Total PASS lines now 531 (529 + 2).
@@ -459,6 +464,8 @@ by step, one step per session.
 
 ## Todo
 
+- [x] Slice 1.99-23.S1 — `ToolExecutor`: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument` helper).
+- [ ] Slice 1.99-23.S2 — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions (next).
 - [ ] Item 1.98-1 complete — awaiting Tester verification.
 - [x] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
 - [x] Slice 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`.

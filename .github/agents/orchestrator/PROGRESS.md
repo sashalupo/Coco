@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-23** — AI edits improvements (explicit save on keep) — in progress (planned, 2 slices S1–S2)
-- **Current slice:** none yet (1.99-23.S1 next)
+- **Current item:** **1.99-23** — AI edits improvements (explicit save on keep) — in progress (S1 done, S2 pending)
+- **Current slice:** 1.99-23.S1 DONE
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-23.S1 (ToolExecutor: keepFile async + keepAll + saveDocument), then Tester
+- **Next step:** dispatch Coder for 1.99-23.S2 (ChatViewProvider: handleKeepAll + keepChanges reroute + smoke — FINAL slice), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** 3a50ab2 (feat(llm): #searchResults tag — package.json setting + item complete (1.99-19.S4, item complete)); plan commit pending
+- **Last commit:** 5231fbf (chore(llm): record 1.99-23 plan (2 slices)); S1 commit pending
 - **Build state:** compiles clean; smoke test passes (531 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the

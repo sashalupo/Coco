@@ -12,13 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-19 — #searchResults tag — ALL 4 SLICES PASS (2026-10-22) — ITEM COMPLETE
-- **Next step:** item 1.99-19 complete — next: 1.99-23
+- **Current item:** 1.99-23 — AI edits improvements (explicit save on keep) — S1 PASS (2026-10-22)
+- **Next step:** verify 1.99-23.S2
 - **Last updated:** 2026-10-22
-- **Last commit:** ab28dcd
+- **Last commit:** 3a50ab2
 - **Build state:** 531/531 PASS
 
 
+
+### 1.99-23.S1 — ToolExecutor: explicit save on keep (`keepFile` async + `keepAll` + `saveDocument`) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **531 PASS lines** (unchanged — S1 adds no new assertions), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 531/531 PASS; (3) `src/tools/ToolExecutor.ts`: `private async saveDocument(relPath: string): Promise<boolean>` (L234–249) — `resolveSafe` path check, `fs.promises.access` existence check, `vscode.workspace.openTextDocument` + `doc.save()`, try/catch everywhere → never throws, returns false on failure PASS; `public async keepFile(relPath: string): Promise<string>` (L257–268) — deletes `runSnapshots` + `runChanges` entries, awaits `saveDocument`, returns `Kept <path> (saved).` when saved else `Kept <path>.` PASS; `public async keepAll(): Promise<string>` (L276–290) — snapshots `runChanges` keys, resets both maps, saves each file, returns count message `Kept N file(s) (M saved).` PASS; `clearChangeSummary()` (L91–94) UNMODIFIED — still resets both maps with original behavior PASS; (4) `src/chat/ChatViewProvider.ts`: `handleKeepFile` now `private async` (L629) and awaits `this.toolExecutor.keepFile(relPath)` (L633); `keepFile` case dispatches via `void this.handleKeepFile(String(msg.path ?? ""))` (L257) PASS; (5) `git status --short` shows exactly ` M .github/agents/coder/PROGRESS.md`, ` M src/chat/ChatViewProvider.ts`, ` M src/tools/ToolExecutor.ts` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met. (S2 pending: `handleKeepAll` + `keepChanges` reroute + smoke assertions.)
 
 ### 1.99-19.S4 — FINAL: package.json `llm.chat.searchResults.enabled` setting (2026-10-22) — **PASS**
 

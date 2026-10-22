@@ -254,7 +254,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         break;
       case "keepFile":
         // Accept a single file's changes (Phase 14).
-        this.handleKeepFile(String(msg.path ?? ""));
+        void this.handleKeepFile(String(msg.path ?? ""));
         break;
       case "undoFile":
         // Revert a single file's changes (Phase 14).
@@ -624,13 +624,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Accept a single file's changes (Phase 14): remove it from the snapshot +
-   * change maps without touching disk, then refresh the footer.
+   * change maps, explicitly save the file (1.99-23), then refresh the footer.
    */
-  private handleKeepFile(relPath: string): void {
+  private async handleKeepFile(relPath: string): Promise<void> {
     if (!relPath) {
       return;
     }
-    const message = this.toolExecutor.keepFile(relPath);
+    const message = await this.toolExecutor.keepFile(relPath);
     this.postMessage({ type: "revert_result", message });
     this.pushChangeFooter();
   }
