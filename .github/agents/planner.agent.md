@@ -116,6 +116,9 @@ For each item, produce a plan with these sections:
 - DO NOT skip the `PROGRESS.md` read at session start or the update at session end.
 - DO NOT expand scope beyond the current changelog item without the user asking.
 - DO NOT skip ahead in the changelog — always oldest to newest.
+- DO NOT plan cost/money-driven features (token-spend guards, dollar budgets, paid-API rate
+  limits) — they are useless for a free local LLM. If the item's `Relevance` is
+  `skip (cost/money)`, stop and report that it should not be implemented.
 - ONLY plan the LLM chat extension described above.
 
 ## Output format (per item)

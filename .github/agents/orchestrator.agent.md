@@ -96,7 +96,12 @@ The team implements features from the VS Code Copilot changelog:
 - The backlog is ordered **oldest → newest**. The orchestrator always picks the **next
   unimplemented item** (the oldest one not yet done).
 - Each backlog entry has: an ID, a title, a one-line description, the changelog version/date,
-  and a status (pending / in-progress / done).
+  a **Relevance** field, and a status (pending / in-progress / done / skipped).
+- **Local LLM filter:** the extension talks to a **free local engine** — tokens are not paid
+  for. Items marked `skipped (not relevant: local LLM)` (cost/money-driven features like
+  token-spend guards, dollar budgets, paid-API rate limits) are **never dispatched**. Only
+  `pending` items with `Relevance: keep (capability/context)` are implemented. See the full
+  filter in `.github/agents/changelog-researcher.agent.md`.
 
 ## Git policy
 
@@ -148,6 +153,8 @@ The team implements features from the VS Code Copilot changelog:
 - DO NOT expand scope beyond the current changelog item without the user asking.
 - DO NOT talk to the proxy — the extension talks to the engine directly.
 - DO NOT skip ahead in the changelog — always oldest to newest.
+- DO NOT dispatch cost/money-driven features (token-spend guards, dollar budgets, paid-API
+  rate limits) — they are useless for a free local LLM. Skip them.
 - ONLY build the LLM chat extension described above.
 
 ## Output format (per item)

@@ -28,9 +28,12 @@ researcher does NOT write code — it builds and maintains the backlog.
 ## Backlog (oldest → newest)
 
 > Each entry: **ID** · **version/date** · **title** · **description** · **image notes** ·
-> **status** (`pending` | `in-progress` | `done` | `done (already built)`) · **implemented in**.
+> **relevance** (`keep (capability/context)` | `skip (cost/money)` | `ambiguous`) · **status**
+> (`pending` | `in-progress` | `done` | `done (already built)` | `skipped (not relevant: local
+> LLM)`) · **implemented in**.
 >
-> The orchestrator always picks the **first `pending` item** (the oldest).
+> The orchestrator always picks the **first `pending` item** (the oldest). Cost/money-driven
+> items are recorded as `skipped (not relevant: local LLM)` and never picked up.
 
 _(none yet — the changelog has not been studied)_
 
@@ -46,6 +49,8 @@ _(none yet)_
 - [ ] Append entries to the backlog (oldest → newest), set status to `pending`.
 - [ ] Deduplicate against `.github/agents/llm-extension/PROGRESS.md` Done list (mark already-
       built items as `done (already built)`).
+- [ ] Apply the local-LLM relevance filter: mark cost/money-driven items (token-spend guards,
+      dollar budgets, paid-API rate limits) as `skipped (not relevant: local LLM)`.
 
 ## Notes / decisions
 
@@ -55,3 +60,7 @@ _(none yet)_
 - Always keep the backlog in chronological order (oldest → newest). New (newest) entries are
   appended to the end.
 - Never reorder the backlog out of chronological order.
+- **Local LLM filter:** the engine is free — tokens are not paid for. Cost/money-driven
+  features (token-spend guards, dollar budgets, paid-API rate limits) are recorded as
+  `skipped (not relevant: local LLM)`. Capability/context-driven features (context-window
+  fitting, max output length, token estimation for context) are kept.

@@ -138,6 +138,9 @@ src/
 - DO NOT skip the `PROGRESS.md` read at session start or the update at session end.
 - DO NOT expand scope beyond the current plan without the user asking.
 - DO NOT talk to the proxy — the extension talks to the engine directly.
+- DO NOT implement cost/money-driven features (token-spend guards, dollar budgets, paid-API
+  rate limits) — they are useless for a free local LLM. If the plan asks for one, stop and
+  report that it should not be implemented.
 - ONLY build the LLM chat extension described above.
 
 ## Output format (per step)

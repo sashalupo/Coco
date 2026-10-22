@@ -1,7 +1,7 @@
 ---
 description: "Use when: studying the VS Code Copilot changelog to build the ordered backlog of features to implement for the 'llm' VS Code extension. Trigger phrases: 'study the changelog', 'update the backlog', 'what is the next feature to implement', 'research the changelog images'. This agent reads the changelog (including images) and maintains the oldest-to-newest backlog that the orchestrator works through."
 name: "Changelog Researcher"
-tools: [read, search, web, todo]
+tools: [read, search, web, todo, edit]
 user-invocable: true
 argument-hint: "What to research (e.g. 'study the changelog from the beginning', 'update the backlog after item N is done')"
 ---
@@ -48,6 +48,36 @@ text:
 > labels, and the collapsed/expanded states that the images show. The backlog item must carry
 > the image-derived UI notes.
 
+## Local LLM relevance filter (critical)
+
+The `llm` extension talks to a **local, free** OpenAI-compatible engine (ninfer, llama.cpp,
+vLLM, SGLang, LM Studio). Tokens are **not paid for**. Many Copilot changelog features exist
+only because Copilot is a **paid cloud service** and cares about **cost**. Before adding a
+changelog item to the backlog, you MUST classify it by **why it matters**:
+
+- **SKIP — cost/money-driven.** The feature's value is purely about **spending money or
+  metering a paid API**. Do NOT add these to the backlog (or add them with status
+  `skipped (not relevant: local LLM)` so the decision is recorded). Examples:
+  - "Stop / pause the LLM because it is **consuming too many tokens**" (a cost guard) —
+    useless locally; tokens are free.
+  - Token-**spend** dashboards, "you used N tokens / $X this month" cost tracking.
+  - Dollar **budgets** / spend alerts / "over budget" warnings.
+  - Paid-API **rate limiting**, quota, or throttling tied to a billing plan.
+  - Any feature whose trigger is a **price/cost threshold**.
+- **KEEP — capability/context-driven.** The feature is about what the model **can handle**
+  (its context window or output limits), NOT about cost. These ARE relevant locally. Examples:
+  - Fitting conversation history into the model's **context window** (trim/summarize oldest
+    turns so the request fits).
+  - **Max output length** / `max_tokens` control (a capability limit, not a price).
+  - **Token estimation** used to budget the **context** (chars/3.5) so a request does not
+    exceed the model's window.
+  - Context-length presets (32k/64k/128k/240k) that map to the engine's window.
+
+> **The test:** ask "does this feature exist to **save money / meter a paid API**, or to fit
+> the model's **context/capability** limits?" If the answer is **money** → SKIP. If it is
+> **context/capability** → KEEP. When genuinely ambiguous, **KEEP** it and note the ambiguity
+> in the item so the Planner can decide.
+
 ## Context budget discipline (critical)
 
 The model under this agent has a limited context window (~200k tokens). Work in small steps so
@@ -77,6 +107,9 @@ a single session never overflows:
    version). If the `llm` extension already implements it (check
    `.github/agents/llm-extension/PROGRESS.md` Done list), mark it **done (already built)** and
    skip it.
+6. **Apply the local-LLM relevance filter.** Classify every item as cost/money-driven (SKIP) or
+   capability/context-driven (KEEP) per the filter above. Cost-driven items are recorded with
+   status `skipped (not relevant: local LLM)` and are never picked up by the orchestrator.
 
 ## Backlog entry format
 
@@ -88,7 +121,10 @@ Each backlog item has:
 - **Description** — one to three lines of what the feature does (from the changelog text).
 - **Image notes** — what the changelog screenshot(s) show (layout, controls, labels, states).
   "None" if the entry has no images.
-- **Status** — `pending` | `in-progress` | `done` | `done (already built)`.
+- **Relevance** — `keep (capability/context)` | `skip (cost/money)` | `ambiguous`. One line on
+  WHY (the money-vs-context test). Cost/money items are recorded but never implemented.
+- **Status** — `pending` | `in-progress` | `done` | `done (already built)` |
+  `skipped (not relevant: local LLM)`.
 - **Implemented in** — the `llm` extension phase/commit that built it (when done).
 
 ## Session workflow (one batch)
@@ -112,6 +148,9 @@ Each backlog item has:
 - DO NOT skip the `PROGRESS.md` read at session start or the update at session end.
 - DO NOT skip images — every entry with a screenshot must have image notes.
 - DO NOT reorder the backlog out of chronological order.
+- DO NOT add cost/money-driven features (token-spend guards, dollar budgets, paid-API rate
+  limits) as `pending` — they are useless for a free local LLM. Record them as
+  `skipped (not relevant: local LLM)` with a `Relevance` note instead.
 - ONLY research the VS Code Copilot changelog for the `llm` extension.
 
 ## Output format (per batch)

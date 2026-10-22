@@ -50,3 +50,7 @@ _(none yet)_
 - Always implement oldest → newest. Never skip ahead.
 - If the Tester reports a failure, re-dispatch the Coder with the failure details, then
   re-test, until it passes.
+- **Local LLM filter:** the engine is free — tokens are not paid for. Never dispatch
+  cost/money-driven features (token-spend guards, dollar budgets, paid-API rate limits). Only
+  `pending` items with `Relevance: keep (capability/context)` are implemented. See the full
+  filter in `.github/agents/changelog-researcher.agent.md`.
