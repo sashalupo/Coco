@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-9 (`#problems` tag) — **Done** (S1–S4 complete)
-- **Next step:** plan backlog item 1.98-10 (`#folder:` tag) — awaiting planner
+- **Current item:** 1.98-10 (`#folder:` tag) — **Planned** (2026-10-22, slices S1–S4)
+- **Next step:** dispatch Coder for slice 1.98-10.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -310,3 +310,155 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 
 ## Overall acceptance
 1. compile clean + smoke all green (270 prior + section 13). 2. `#problems` → `Problems (scope: workspace)` block (≤50 problems / ≤8,000 chars); bare tag + no diagnostics → no block. 3. `#problems src/foo.ts` → file scope; outside-workspace path → not injected (workspace fallback). 4. setting false → tag inert. 5. `get_diagnostics` tool output unchanged. 6. No webview changes, no new deps.
+
+# Plan: 1.98-10 — Attach folders as context (`#folder:<name>`) — **Planned** (2026-10-22)
+
+**Changelog reference:** VS Code 1.98 — attach a folder as context via the paperclip or by
+typing `#folder:` followed by the folder name (previously only drag-and-drop from Explorer).
+Relevance: `keep (capability/context)` — context injection. Gap: no `#folder:` tag exists
+(only `@filename` single-file tags).
+
+**Key decisions (final):**
+1. **Tag syntax:** `#folder:<name>` (colon) AND `#folder <name>` (space) are both accepted,
+   mirroring `#problems <path>`. Regex: `/#folder(?::|(?=\s|$))(\S*)/i` — word-bounded
+   (`#folderfoo` does NOT match), case-insensitive (`#Folder` DOES). Only the FIRST
+   occurrence counts; only the same-line remainder is read. Bare `#folder` (no name) →
+   **workspace root** (sweep the whole first workspace folder, like `#codebase`'s structure
+   walk) — NOT ignored, so the tag is never a silent no-op.
+2. **Resolution:** folder name is workspace-root-relative, resolved via the existing
+   `ToolExecutor.resolveSafe()` (first workspace root; `..` escape → rejected). If the
+   resolved path does not exist or is not a directory → the block renders
+   `(folder not found: <name>)` so the model knows. No fallback to root (unlike `#problems`
+   path fallback) — a wrong folder name is user error the model should see.
+3. **Sweep content:** file tree ONLY (no file contents — that's what `read_file` is for).
+   Mirrors `codebaseSweep`'s structure walk: depth ≤ 3, cap 100 entries, `SKIP_DIRS`
+   skipped, `… (truncated at 100 entries)` suffix. No git status, no search.
+4. **Char cap:** `FOLDER_BLOCK_MAX_CHARS = 8000` (exported, like `PROBLEMS_BLOCK_MAX_CHARS`),
+   `… (truncated)` suffix. Smaller than the 12,000 codebase cap — a folder tree is smaller
+   and the block is additive context.
+5. **Setting:** `llm.chat.folderContext.enabled` (boolean, default `true`); config field
+   `folderContextEnabled`. Gated ONLY on this setting; runs regardless of
+   `llm.tools.enabled` (same as `#codebase`/`#problems`).
+6. **Tag-only scope:** no paperclip/drag-and-drop UI (single webview, no attachment UI —
+   same decision as 1.98-9).
+
+**Block format (S1):**
+```
+Folder: <name or (workspace root)>
+<tree lines, or "(empty folder)", or "(folder not found: <name>)">
+```
+Header uses the raw tag name; `(workspace root)` when the name is empty.
+
+## Slices
+
+### 1.98-10.S1 — Pure helpers in `src/context.ts`
+File: `src/context.ts` (append a `#folder` section after the `#problems` section, mirroring
+its style).
+- `export function extractFolderTag(text: string): string | null` — regex
+  `/#folder(?::|(?=\s|$))(\S*)/i`; returns the trimmed folder-name remainder (group 1,
+  `""` for bare tag), `null` if absent. Same-line semantics: the `(\S*)` capture naturally
+  stops at whitespace/newline.
+- `export interface FolderBlockData { tree: string; notFound?: boolean; }`
+- `export const FOLDER_BLOCK_MAX_CHARS = 8000;` + `const FOLDER_BLOCK_TRUNCATED_SUFFIX =
+  "… (truncated)";`
+- `export function formatFolderBlock(data: FolderBlockData, folder?: string): string` —
+  header `Folder: ${folder && folder.trim() !== "" ? folder : "(workspace root)"}`; body:
+  `data.notFound` → `(folder not found: ${folder})`; else `data.tree || "(empty folder)"`.
+  Truncate to `FOLDER_BLOCK_MAX_CHARS` + suffix. Never returns `""` (the tag was explicit —
+  always show the header so the model knows the folder was requested).
+Smoke (new section **14a**, labels `folder-s1:`):
+- `extractFolderTag("#folder:src") === "src"`; `extractFolderTag("#folder src") === "src"`;
+  `extractFolderTag("#folder") === ""`; `extractFolderTag("no tag") === null`;
+  `extractFolderTag("#folderfoo") === null`; `extractFolderTag("#Folder:src") === "src"`;
+  `extractFolderTag("#folder:src\nline2") === "src"`.
+- `formatFolderBlock({ tree: "a/\nb.ts" }, "src")` includes `Folder: src` and the tree;
+  `formatFolderBlock({ tree: "" }, "src")` includes `(empty folder)`;
+  `formatFolderBlock({ tree: "", notFound: true }, "nope")` includes
+  `(folder not found: nope)`; `formatFolderBlock({ tree: "x".repeat(9000) })` truncated to
+  cap + suffix; bare (no folder) header shows `(workspace root)`.
+Acceptance: `npm run compile` passes; smoke green (existing 294 + new).
+
+### 1.98-10.S2 — `ToolExecutor.folderSweep` in `src/tools/ToolExecutor.ts`
+File: `src/tools/ToolExecutor.ts` (add a public method next to `codebaseSweep`, ~line 856).
+- `public async folderSweep(folderName: string): Promise<string>` — returns the formatted
+  block (mirrors `codebaseSweep` which returns the formatted string, keeping the provider
+  wiring identical to `#codebase`/`#problems`).
+- Body: `const rootAbs = await this.resolveSafe(".");` if null →
+  `formatFolderBlock({ tree: "", notFound: true }, folderName || "(workspace root)")`
+  (no workspace). Else `const target = folderName.trim() === "" ? rootAbs :
+  await this.resolveSafe(folderName);` if null → notFound block. `fs.promises.stat(target)`
+  → on error or `!isDirectory()` → notFound block. Walk: same structure as `codebaseSweep`'s
+  inner `walk` (depth ≤ 3, cap 100, `SKIP_DIRS`, indent `"  ".repeat(depth - 1)`,
+  `… (truncated at 100 entries)`), starting at `walk(target, 1)`. Return
+  `formatFolderBlock({ tree: structure }, folderName)`.
+Smoke (new section **14b**, labels `folder-s2:`): static checks on `ToolExecutor.ts` source —
+`folderSweep(` present; `formatFolderBlock` imported/used; `resolveSafe` still present;
+`codebaseSweep(` still present (untouched).
+Acceptance: `npm run compile` passes; smoke green.
+
+### 1.98-10.S3 — Wiring in `src/chat/ChatViewProvider.ts` + `src/config.ts` + `src/presets.ts`
+Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts` (three files, one
+concern — the wiring; same shape as 1.98-9.S3 which pulled the config field in so the slice
+compiles standalone).
+- `presets.ts`: add to `LlmSettings` after `problemsEnabled` (~line 94):
+  `/** Enable the \`#folder:\` chat tag (folder tree injected as context). */
+  folderContextEnabled: boolean;`
+- `config.ts`: add after line 72:
+  `folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true),`
+- `ChatViewProvider.ts`: import `extractFolderTag` (line ~27–29 import block). In
+  `runStream`, immediately AFTER the `#problems` block (~line 973), add:
+  ```ts
+  // 1.98-10.S3: `#folder:` tag — sweep the named folder (tree only) and append
+  // the result to the context block. Gated only on settings.folderContextEnabled
+  // (runs regardless of llm.tools.enabled, same as `#codebase`/`#problems`).
+  if (settings.folderContextEnabled && lastUser && this.toolExecutor) {
+    const f = extractFolderTag(lastUser.content);
+    if (f !== null) {
+      const folderBlock = await this.toolExecutor.folderSweep(f);
+      if (folderBlock) {
+        finalContextBlock = finalContextBlock
+          ? finalContextBlock + "\n\n" + folderBlock
+          : folderBlock;
+      }
+    }
+  }
+  ```
+Smoke (new section **14c**, labels `folder-s3:`): static checks — `ChatViewProvider.ts`
+contains `extractFolderTag`, `folderSweep(`, `folderContextEnabled`; `config.ts` contains
+`chat.folderContext.enabled`; `presets.ts` contains `folderContextEnabled`.
+Acceptance: `npm run compile` passes; smoke green.
+
+### 1.98-10.S4 — `package.json` + final smoke + mark done
+Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+- `package.json`: after `llm.chat.problems.enabled` (~line 215) add:
+  ```json
+  "llm.chat.folderContext.enabled": {
+    "type": "boolean",
+    "default": true,
+    "description": "When the user types #folder:<name> (or '#folder <name>') in a chat message, attach the folder's file tree as context. Bare #folder attaches the workspace root."
+  }
+  ```
+- `smoke-test.js`: new section **14d** (labels `folder-s4:`) — parsed-JSON checks:
+  `llm.chat.folderContext.enabled` exists, `type === "boolean"`, `default === true`,
+  description is a non-empty string containing `#folder`.
+- `PROGRESS.md`: move 1.98-10 to Done, update Status/Next step.
+Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (all prior 294 + new
+assertions green); PROGRESS.md in sync.
+
+## Overall acceptance (Tester)
+Typing `#folder:src` (or `#folder src`) in a chat message injects a `Folder: src` block with
+the folder's file tree (depth ≤ 3, ≤ 100 entries, no file contents) into the system prompt;
+bare `#folder` injects the workspace-root tree; a nonexistent folder injects
+`(folder not found: <name>)`; `#folderfoo` does not trigger; the block is truncated at
+8,000 chars; with `llm.chat.folderContext.enabled: false` the tag is ignored; the tag works
+regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully green.
+
+## Risks / open questions
+- **Multi-root workspaces:** `resolveSafe` resolves against the FIRST workspace root only
+  (existing behavior, shared with `@file` tags and `#codebase`). A folder name that exists
+  only in another root → `(folder not found: <name>)`. Acceptable; consistent with the rest
+  of the extension.
+- **Folder names with spaces:** `(\S*)` captures only the first token, so `#folder:my
+  folder` attaches `my`. Documented limitation (same as `#problems <path>`); acceptable.
+- **Bare `#folder` = workspace root** overlaps with `#codebase`'s structure walk —
+  intentional (root tree without git status/search); no conflict.
