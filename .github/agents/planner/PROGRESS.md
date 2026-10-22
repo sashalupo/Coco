@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-14 (Copilot Vision — image attachments) — **Done** (2026-10-22, 5 slices S1–S5)
-- **Next step:** plan the next pending backlog item (1.98-15 — Engine status indicator)
+- **Current item:** 1.98-15 (Engine status indicator — status-bar overview) — **Planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** dispatch slice 1.98-15.S1 (pure status helpers in `src/presets.ts`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -261,6 +261,112 @@ for local engines; conversation persistence stores base64 in globalState (fine f
 possible future downscale in the webview before sending); the vision-model marker list is
 static — unknown models get the conservative non-blocking warning.
 
+### Item 1.98-15 — Engine status indicator (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.98, "Copilot status overview (Experimental)" —
+reframed as an **engine status indicator**: status-bar item reflecting local-engine
+connectivity (running/stopped, endpoint, active models) with a click-to-open overview.
+Quota/cost sub-item dropped (free local engine). `copilot-status.png`: overview panel
+opened from the status-bar icon.
+
+**Design decisions (justified):**
+1. **Reuse `client.health()`** (never throws, single `GET /health`) for the poll — not
+   `listModels()`. Keep the existing 5 s interval; add a refresh on
+   `onDidChangeWindowState` (window focused).
+2. **Pure helpers in `src/presets.ts`** (`statusLabel`, `statusTooltip`,
+   `statusOverviewItems`, `STATUS_COMMANDS`) so smoke tests exercise them via
+   `out/presets.js`; `extension.ts` stays a thin host.
+3. **Overview = QuickPick** (no new webview): engine state, endpoint, chat model,
+   completions model + a "Useful commands" section (Open Chat, Test Connection,
+   Refresh Models, Change Completions Model); picking a command executes it.
+4. **New command `llm.showStatusOverview`** becomes the status-bar item's `command`
+   (replacing `llm.testConnection`); Test Connection stays reachable inside the overview.
+5. **Setting `llm.statusBar.enabled`** (boolean, default true), read at activation
+   (same pattern as `llm.inline.enabled` — toggling requires a reload).
+
+**Slices:**
+
+- **1.98-15.S1 — `src/presets.ts`: pure status helpers.**
+  File: `src/presets.ts`. (a) `export interface EngineStatus { ok: boolean; status: number;
+  statusText: string; error?: string }` (structural subset of `HealthResult`).
+  (b) `export function statusLabel(s: EngineStatus): { icon: string; text: string }` —
+  `$(check)`/`LLM` when ok, `$(error)`/`LLM` otherwise. (c)
+  `export function statusTooltip(s: EngineStatus, baseUrl: string): string` — ok:
+  `` `LLM engine healthy (${s.status} ${s.statusText}) — ${baseUrl}` ``; offline:
+  `` `LLM engine unreachable — ${baseUrl}${s.error ? `: ${s.error}` : ` (${s.status})`}` ``.
+  (d) `export interface StatusOverviewItem { label: string; description?: string;
+  detail?: string; command?: string }` and
+  `export function statusOverviewItems(s, baseUrl, chatModel, completionsModel):
+  StatusOverviewItem[]` — 4 items: `Engine: running|stopped` (description = status text /
+  error), `Endpoint: <baseUrl>`, `Chat model: <model|default (engine)>`,
+  `Completions model: <model|chat model (default)>`. (e)
+  `export const STATUS_COMMANDS: readonly { label: string; command: string; detail: string }[]`
+  — Open Chat → `llm.openChat`, Test Connection → `llm.testConnection`, Refresh Models →
+  `llm.refreshModels`, Change Completions Model → `llm.changeCompletionsModel`.
+  Acceptance: `npm run compile` clean.
+  Smoke (`status-s1:`, 4): exports present (`statusLabel`/`statusTooltip`/
+  `statusOverviewItems` functions, `STATUS_COMMANDS` array of 4); `statusLabel` ok/offline
+  icons; `statusTooltip` ok-case contains baseUrl + `200`, offline-case contains
+  `unreachable` + error; `statusOverviewItems` returns 4 items with the 4 label prefixes
+  and the empty-model fallbacks.
+  Assertion count: 357 → 361.
+
+- **1.98-15.S2 — `src/extension.ts`: gate + pure helpers + focus refresh.**
+  File: `src/extension.ts`. (a) Read `statusBar.enabled` (default true) at activation
+  (pattern of `inlineEnabled`). (b) Wrap the existing status-bar block (createStatusBarItem
+  + `updateHealth` + poll timer) in `if (statusBarEnabled)`. (c) `updateHealth` uses
+  `statusLabel(result)` / `statusTooltip(result, readSettings().baseUrl)` instead of the
+  inline strings (keep error `backgroundColor` + `status.show()`). (d) Add
+  `vscode.window.onDidChangeWindowState((e) => { if (e.focused) void updateHealth(); })`
+  to subscriptions (inside the gate).
+  Acceptance: `npm run compile` clean; identical behavior when enabled; no item when
+  disabled.
+  Smoke (`status-s2:`, 3): `extension.ts` source contains `statusBar.enabled`,
+  `statusLabel`, `onDidChangeWindowState`.
+  Assertion count: 361 → 364.
+
+- **1.98-15.S3 — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click.**
+  File: `src/extension.ts`. (a) Register `llm.showStatusOverview`: fresh
+  `client.health()`, read `model`/`completions.model` from config, build QuickPick items
+  from `statusOverviewItems(...)` (info rows, pick = no-op) + a `Useful commands` section
+  mapping `STATUS_COMMANDS` to `{ label, detail, command }`; on pick with a `command`,
+  `vscode.commands.executeCommand(item.command)`. (b) `status.command` →
+  `"llm.showStatusOverview"`; tooltip suffix `(click for status overview)`.
+  Acceptance: `npm run compile` clean; click opens the overview; picking a command
+  executes it.
+  Smoke (`status-s3:`, 3): `extension.ts` source contains `llm.showStatusOverview`,
+  `statusOverviewItems`, `STATUS_COMMANDS`.
+  Assertion count: 364 → 367.
+
+- **1.98-15.S4 — `package.json` + final smoke assertions + PROGRESS.md.**
+  Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  (a) `package.json`: add command `llm.showStatusOverview` ("LLM: Show Status Overview"),
+  activation event `onCommand:llm.showStatusOverview`, and setting
+  `llm.statusBar.enabled` (boolean, default true, description: "Show the LLM engine status
+  indicator in the status bar. Click it for a status overview. Toggling requires a
+  reload.") next to `llm.completions.model`. (b) `smoke-test.js`: add `status-s1:` (4),
+  `status-s2:` (3), `status-s3:` (3) plus `status-s4:` (4): parsed `package.json` has the
+  `llm.showStatusOverview` command with title, the `onCommand:llm.showStatusOverview`
+  activation event, `llm.statusBar.enabled` with `type === "boolean"` and
+  `default === true`, and `llm.testConnection` still present (regression guard).
+  (c) `PROGRESS.md`: mark 1.98-15 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (371 assertions);
+  setting visible in the settings UI.
+  Assertion count: 367 → 371.
+
+**Overall acceptance (Tester):** engine running → `$(check) LLM` in the status bar;
+engine stopped → `$(error) LLM` with error background; clicking opens a QuickPick listing
+engine state, endpoint, chat model, completions model, and 4 useful commands (picking one
+executes it); indicator refreshes on window focus and every 5 s;
+`llm.statusBar.enabled: false` hides the indicator (after reload); `npm run compile`
+clean; all 371 smoke assertions pass.
+
+**Risks:** `HealthResult` is structurally compatible with `EngineStatus` (verified in
+`src/client.ts`) — no client change; the 5 s poll interval is kept (changelog suggested
+30 s, but `GET /health` is trivially cheap locally and the interval already exists);
+QuickPick info rows are pickable no-ops (no disabled items in QuickPick) — acceptable for
+v1.
+
 ## Done
 
 - **1.98-12** (2026-10-22) — Change completions model. All slices S1–S4 implemented (`buildCompletionsModelList` pure quick-pick list builder in `src/presets.ts`; `completionsModel` config field in `src/presets.ts`/`src/config.ts` with `InlineCompletionProvider` swapping `settings.model` for the completions model when non-empty (toolbar override still wins); `llm.changeCompletionsModel` QuickPick command in `src/extension.ts` (engine models via `client.listModels()`, failure → warning + configured-only list, writes `ConfigurationTarget.Workspace` or `Global`); `package.json` command + `llm.completions.model` setting schema; final smoke assertions). Key decisions:
@@ -325,6 +431,8 @@ static — unknown models get the conservative non-blocking warning.
 
 - [x] Plan backlog item 1.98-14 (Copilot Vision — image attachments) — planned 2026-10-22; 5 slices S1–S5.
 - [x] Dispatch slices 1.98-14.S1 → S5 (one per session).
+- [ ] Plan backlog item 1.98-15 (Engine status indicator) — planned 2026-10-22; 4 slices S1–S4.
+- [ ] Dispatch slices 1.98-15.S1 → S4 (one per session).
 ## Todo
 
 - [x] Wait for the Changelog Researcher to populate the backlog.
