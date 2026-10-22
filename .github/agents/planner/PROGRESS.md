@@ -1424,7 +1424,7 @@ a language-feature provider).
     - `vis-s1: IMAGE_URL_EXTENSIONS includes bmp and all five prior extensions`
   - Acceptance: `npm run compile` passes; the 4 `vis-s1:` assertions pass; no existing assertion regresses.
 
-- **1.99-13.S2** — Webview: accept `.bmp` files + handle dropped image URLs
+- **1.99-13.S2** — Webview: accept `.bmp` files + handle dropped image URLs — Done (2026-10-22, PASS, 505 assertions)
   - Files: `src/chat/webview.ts`
   - Changes (all inside the existing "Image attachments" block, ~line 1567):
     - `IMAGE_TYPES` (line 1568): add `'image/bmp'`.

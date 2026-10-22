@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-13** — Improved vision support (URL images, .bmp) — in progress (S1 done, S2–S3 pending)
-- **Current slice:** 1.99-13.S1 DONE
+- **Current item:** **1.99-13** — Improved vision support (URL images, .bmp) — in progress (S1+S2 done, S3 pending)
+- **Current slice:** 1.99-13.S2 DONE
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-13.S2 (webview .bmp + dropped image URLs), then Tester
+- **Next step:** dispatch Coder for 1.99-13.S3 (host sanitize .bmp + setting description), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** f2d9270 (feat: reusable prompt files — package.json + final smoke + item complete (1.99-12.S5)); S1 commit pending
-- **Build state:** compiles clean; smoke test passes (501 assertions)
+- **Last commit:** 7971ca4 (feat: improved vision support — URL-image helpers (1.99-13.S1)); S2 commit pending
+- **Build state:** compiles clean; smoke test passes (505 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

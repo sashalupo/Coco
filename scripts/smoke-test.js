@@ -3809,6 +3809,33 @@ function assert(cond, label) {
     "vis-s1: IMAGE_URL_EXTENSIONS includes bmp and all five prior extensions",
   );
 
+  // 42) Improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)
+  const webviewSrcVisS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcVisS2.includes("'image/bmp'") &&
+      webviewSrcVisS2.includes('accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"'),
+    "vis-s2: webview accepts image/bmp in IMAGE_TYPES and the file input accept list",
+  );
+  assert(
+    webviewSrcVisS2.includes("addImageUrl") &&
+      webviewSrcVisS2.includes("fetch(") &&
+      webviewSrcVisS2.includes(".blob()") &&
+      webviewSrcVisS2.includes("readAsDataURL"),
+    "vis-s2: webview defines addImageUrl with fetch + blob + readAsDataURL",
+  );
+  assert(
+    webviewSrcVisS2.includes("text/uri-list") &&
+      webviewSrcVisS2.includes("addImageUrl"),
+    "vis-s2: webview drop handler reads text/uri-list items and calls addImageUrl",
+  );
+  assert(
+    webviewSrcVisS2.includes("jpe?g|png|gif|webp|bmp"),
+    "vis-s2: webview URL regex covers jpg/png/gif/webp/bmp extensions",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

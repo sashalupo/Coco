@@ -1159,12 +1159,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<div id="vision-warning" class="vision-warning" hidden></div>
 		<div class="input-row">
 			<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
-			<button id="attach" title="Attach image (or paste / drag-drop)">📎</button>
+			<button id="attach" title="Attach image (paste / drag-drop file or image URL)">📎</button>
 			<button id="send">Send</button>
 			<button id="retry" title="Regenerate last response">Retry</button>
 			<button id="stop" title="Stop generating">Stop</button>
 		</div>
-		<input type="file" id="attach-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+		<input type="file" id="attach-file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp" multiple hidden>
 
 	<script>window.__llmInitial = ${JSON.stringify(initialState)};</script>
 	<script>
@@ -1565,7 +1565,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		}
 
 		// --- Image attachments (paperclip / paste / drag-drop) ---
-		var IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+		var IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
 		var MAX_IMAGES = 4;
 		var MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 		function addImageFiles(files) {
@@ -1581,6 +1581,22 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				};
 				reader.readAsDataURL(file);
 			});
+		}
+		function addImageUrl(url) {
+			if (pendingImages.length >= MAX_IMAGES) { return; }
+			fetch(url).then(function (res) {
+				if (!res.ok) { console.warn('addImageUrl: fetch failed', url); return; }
+				return res.blob();
+			}).then(function (blob) {
+				if (!blob || IMAGE_TYPES.indexOf(blob.type) === -1) { console.warn('addImageUrl: not an image', url); return; }
+				if (blob.size > MAX_IMAGE_BYTES) { console.warn('addImageUrl: too large', url); return; }
+				var reader = new FileReader();
+				reader.onload = function () {
+					pendingImages.push({ name: url, dataUrl: reader.result });
+					renderAttachStrip();
+				};
+				reader.readAsDataURL(blob);
+			}).catch(function (err) { console.warn('addImageUrl: error', url, err); });
 		}
 		function renderAttachStrip() {
 			var strip = document.getElementById('attach-strip');
@@ -1631,6 +1647,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		inputRow.addEventListener('drop', function (e) {
 			e.preventDefault();
 			addImageFiles(e.dataTransfer.files);
+			var items = e.dataTransfer.items;
+			if (!items) { return; }
+			var urlRe = /^https?:\/\/\S+\.(jpe?g|png|gif|webp|bmp)(\?.*)?$/i;
+			for (var i = 0; i < items.length; i++) {
+				var it = items[i];
+				if (it.kind !== 'string') { continue; }
+				if (it.type !== 'text/uri-list' && it.type !== '') { continue; }
+				it.getAsString(function (text) {
+					text.split('\n').forEach(function (line) {
+						var u = line.trim();
+						if (urlRe.test(u)) { addImageUrl(u); }
+					});
+				});
+			}
 		});
 		var visionWarning = document.getElementById('vision-warning');
 		visionWarning.addEventListener('click', function () {

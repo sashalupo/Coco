@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-13 (Improved vision support) — S1 done
-- **Next step:** 1.99-13.S2
+- **Current item:** 1.99-13 (Improved vision support) — S1+S2 done
+- **Next step:** 1.99-13.S3
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (501 assertions)
+- **Build state:** compiles clean; smoke test passes (505 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-13.S2** (2026-10-22) — `src/chat/webview.ts`: accept `.bmp` files + handle dropped image URLs. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: (a) `IMAGE_TYPES` gains `'image/bmp'` (now `['image/jpeg','image/png','image/gif','image/webp','image/bmp']`); (b) file input `accept` attribute gains `,image/bmp` (now `image/jpeg,image/png,image/gif,image/webp,image/bmp`); (c) attach button `title` → `"Attach image (paste / drag-drop file or image URL)"`; (d) new `addImageUrl(url)` function right after `addImageFiles` — guards `pendingImages.length >= MAX_IMAGES` (silent return), `fetch(url)` → `!res.ok` → `console.warn` + return, `res.blob()` → `blob.type` not in `IMAGE_TYPES` or `blob.size > MAX_IMAGE_BYTES` → `console.warn` + return, `FileReader.readAsDataURL(blob)` → on load pushes `{ name: url, dataUrl: reader.result }` + `renderAttachStrip()`; all failures silent (`console.warn` only, `.catch` included); (e) `drop` handler — after the existing `addImageFiles(e.dataTransfer.files)`, iterates `e.dataTransfer.items`; for each `kind === 'string'` item with `type === 'text/uri-list'` (or `type === ''`), `item.getAsString(...)` → split on `\n` → trim → test against inline regex `/^https?:\/\/\S+\.(jpe?g|png|gif|webp|bmp)(\?.*)?$/i` → `addImageUrl(u)` per match (regex inline because the webview cannot import `out/request.js`).
+  - `scripts/smoke-test.js`: new section `// 42) Improved vision support — webview .bmp + dropped image URLs (1.99-13.S2)` after section 41, before the final summary print; static `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcVisS2`); 4 `vis-s2:` assertions: (a) source contains `'image/bmp'` AND the full `accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"` attribute; (b) source contains `addImageUrl`, `fetch(`, `.blob()`, `readAsDataURL`; (c) source contains `text/uri-list` AND `addImageUrl`; (d) source contains the regex extension alternation `jpe?g|png|gif|webp|bmp`. Total PASS lines now 505 (501 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 505 PASS, 0 FAIL; `git status --short` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-13.S1** (2026-10-22) — `src/request.ts`: URL-image helpers. Files: `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/request.ts`: three new exports added right after `toContentParts` (before the `RequestMessage` type): (a) `export const IMAGE_URL_EXTENSIONS: string[] = ["jpg","jpeg","png","gif","webp","bmp"]`; (b) `export function isImageUrl(value: string): boolean` — `new URL(value)` in try/catch, requires `http:`/`https:` protocol, pathname extension (last dot segment, lowercased) must be in `IMAGE_URL_EXTENSIONS`; rejects `file:` URLs, extensionless URLs, and non-URL strings; (c) `export function mimeFromImageUrl(url: string): string` — returns `""` when `!isImageUrl(url)`, else maps jpg/jpeg→`image/jpeg`, png→`image/png`, gif→`image/gif`, webp→`image/webp`, bmp→`image/bmp`. No other changes to request.ts (`toContentParts`/`buildRequestBody` untouched).
   - `scripts/smoke-test.js`: new section `// 41) Improved vision support — URL-image helpers (1.99-13.S1)` after section 40, before the final summary print; `require(path.join(__dirname, "..", "out", "request.js"))` destructuring `{ isImageUrl, mimeFromImageUrl, IMAGE_URL_EXTENSIONS }`; 4 `vis-s1:` assertions: (a) accepts `https://example.com/a.PNG`, `https://example.com/a.jpg?x=1#f`, `http://example.com/a.bmp`; (b) rejects `a.txt`, `file:///tmp/a.png`, extensionless `https://example.com/a`, `"not a url"`; (c) `mimeFromImageUrl` maps all six extensions correctly and returns `""` for `.txt`; (d) `IMAGE_URL_EXTENSIONS` contains all of `["jpg","jpeg","png","gif","webp","bmp"]`. Total PASS lines now 501 (497 + 4).
