@@ -350,11 +350,13 @@ researcher does NOT write code — it builds and maintains the backlog.
   references valid, markdown comments ignored); `.github/copilot-instructions.md` behaves
   like any `.prompt.md`; Create User Prompt (user-data-folder prompts).
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 5 slices S1–S5; src/prompts.ts pure helpers, llm.promptFiles.locations setting, llm.usePrompt QuickPick command + New Prompt File… from template, prompt_inject webview prepend, package.json contributions; smoke 497)
 - **Gap vs existing:** the extension has `llm.instructions` (custom instructions file).
   Extend: discover `.prompt.md` files via glob patterns from a
   `llm.promptFiles.locations` setting, list them in a `llm.usePrompt` command (pick →
   inject as context), treat `.github/copilot-instructions.md` as one of them.
+  Deferred (documented): .prompt.md editor diagnostics/autocompletion, user-data-folder
+  "user prompts", edit/delete actions in picker.
 
 #### 1.99-13 · Improved vision support (Preview)
 - **Description:** Attach images from any browser via drag and drop; URL extensions
@@ -501,7 +503,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-12** Reusable prompt files
 - **1.99-13** Improved vision support (URL images, `.bmp`)
 - **1.99-16** Copilot status menu (completions indicator + toggle)
 - **1.99-19** `#searchResults` tool

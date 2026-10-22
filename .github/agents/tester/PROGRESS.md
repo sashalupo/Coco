@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-12 — Reusable prompt files — **IN PROGRESS** (S1+S2+S3+S4 PASS, 2026-10-22)
-- **Next step:** 1.99-12.S5 (package.json + final smoke assertions + PROGRESS.md)
+- **Current item:** 1.99-12 — Reusable prompt files — **DONE** (S1+S2+S3+S4+S5 PASS, 2026-10-22)
+- **Next step:** next pending changelog item (oldest first) per Changelog Researcher backlog
 - **Last updated:** 2026-10-22
-- **Last commit:** 3a1ddf7 (feat(llm): reusable prompt files — llm.usePrompt command (1.99-12.S3)); S4 commit pending
-- **Build state:** 493/493 PASS
+- **Last commit:** 5e9a402 (feat(llm): reusable prompt files — webview prompt_inject (1.99-12.S4)); S5 commit pending
+- **Build state:** 497/497 PASS
 
 
 ### 1.99-12.S1 — pure prompt-file helpers (src/prompts.ts, NEW) (2026-10-22) — **PASS**
@@ -46,6 +46,14 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **493 PASS lines** (491 prior + 2 new `rp-s4:`), 0 FAIL.
 - **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 493/493 with 2 genuine `rp-s4:` static-source assertions in new `// 39) Reusable prompt files — prompt_inject webview handler (1.99-12.S4)` section (smoke-test.js:3743–3746) all passing: `rp-s4: webview.ts handles prompt_inject` (L3745), `rp-s4: webview.ts has case 'prompt_inject'` (L3746) PASS; (3) `src/chat/webview.ts:1978–1987`: `case 'prompt_inject':` sibling to `case 'vision_warning':` (L1973) in `handleHostMessage` — `const text = String(msg.content ?? ''); if (!text) break;` + defensive `if (!inputEl) break;` + reuses IIFE-scoped `inputEl` (L1180, accepted deviation from re-querying DOM) + prepend semantics `inputEl.value = existing ? text + '\n\n' + existing : text` (prompt leads, draft preserved after blank line) + `inputEl.focus()`; diff +9/−0, no new HTML/CSS PASS; (4) scope: exactly ` M src/chat/webview.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` (ninfer submodule marker ignored); no package-lock.json drift PASS.
 - **Verdict:** **PASS** — all 4 criteria met.
+
+### 1.99-12.S5 — FINAL: `package.json` contributions + final smoke assertions (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **497 PASS lines** (493 prior + 4 new `rp-s5:`), 0 FAIL.
+- **Acceptance checks:** (1) `package.json` valid JSON (`node -e "JSON.parse(...)"` → `json ok`) PASS; (2) contributions: activation event `onCommand:llm.usePrompt` at `package.json:16` (after `onCommand:llm.showStatusOverview`), command `{ "command": "llm.usePrompt", "title": "LLM: Use Prompt" }` at L36–38 (after `llm.showStatusOverview`), setting `llm.promptFiles.locations` at L235–243 (`type: "array"`, items string, default `[".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]`, description mentions HTML comments stripped) directly after `llm.instructions.files` (L227–234) PASS; (3) build exit 0 PASS; (4) smoke 497/497 with 4 genuine `rp-s5:` assertions in new `// 40) Reusable prompt files — package.json contributions + final (1.99-12.S5)` section (smoke-test.js:3748) all passing: `rp-s5: package.json contributes the llm.usePrompt command titled 'LLM: Use Prompt'` (L3757), `rp-s5: package.json has the onCommand:llm.usePrompt activation event` (L3761), `rp-s5: package.json llm.promptFiles.locations is an array with a 2-element default containing .github/copilot-instructions.md` (L3771 — checks `type === "array"`, `Array.isArray(default)`, `default.length === 2`, `default.includes(".github/copilot-instructions.md")`), `rp-s5: package.json still contributes llm.instructions.enabled (regression guard)` (L3775) PASS; (5) scope: exactly ` M package.json`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Minor (non-blocking):** plan S5 text predicted 496 total assertions (counted 17 new: 5+2+4+2+4), but S3 shipped 5 `rp-s3:` assertions (18 new → 497); orchestrator acceptance criterion (497) is authoritative and matches.
+- **Verdict:** **PASS** — all 5 criteria met. **Item 1.99-12 (Reusable prompt files) fully verified (S1–S5).**
 
 ### 1.99-10.S4 — FINAL: final smoke assertions (2026-10-22) — **PASS**
 

@@ -1370,7 +1370,7 @@ User Prompt (user-data-folder prompts). Text-only section (no images).
   before any draft and is focused.
   Smoke (`rp-s4:`, 2): webview source contains `prompt_inject` and `case 'prompt_inject'`.
 
-- **1.99-12.S5 — `package.json` + final smoke assertions + PROGRESS.md.**
+- **1.99-12.S5 — `package.json` + final smoke assertions + PROGRESS.md.** — Done (2026-10-22, PASS, 497 assertions; item 1.99-12 complete)
   Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
   (a) `package.json`: command `{ "command": "llm.usePrompt", "title": "LLM: Use Prompt" }`
   (after `llm.showStatusOverview`); activation event `onCommand:llm.usePrompt`; setting

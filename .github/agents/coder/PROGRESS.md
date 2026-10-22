@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-12 (Reusable prompt files) — S4 done
-- **Next step:** 1.99-12.S5 (FINAL: `package.json` + final smoke assertions + PROGRESS.md)
+- **Current item:** 1.99-12 (Reusable prompt files) — COMPLETE (S1–S5 done)
+- **Next step:** item 1.99-12 complete — next item 1.99-13 (Improved vision support)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (493 assertions)
+- **Build state:** compiles clean; smoke test passes (497 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-12.S5** (2026-10-22, FINAL) — `package.json` contributions + final smoke assertions. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: (a) activation event `"onCommand:llm.usePrompt"` added after `"onCommand:llm.showStatusOverview"`; (b) command contribution `{ "command": "llm.usePrompt", "title": "LLM: Use Prompt" }` added after the `llm.showStatusOverview` command; (c) setting `llm.promptFiles.locations` (array of strings, default `[".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]`) added after `llm.instructions.files`. JSON validated with `JSON.parse`.
+  - `scripts/smoke-test.js`: new section `// 40) Reusable prompt files — package.json contributions + final (1.99-12.S5)` after section 39, before the final summary print; 4 `rp-s5:` assertions on the parsed `package.json` (local `pkgRpS5`, same pattern as the `pkgS4` section): (a) `llm.usePrompt` command exists with title "LLM: Use Prompt"; (b) `onCommand:llm.usePrompt` in activation events; (c) `llm.promptFiles.locations` exists with `type === "array"` and a 2-element default containing `.github/copilot-instructions.md`; (d) `llm.instructions.enabled` still present (regression guard). Total PASS lines now 497 (493 + 4).
+  - Verified: `node -e "JSON.parse(...)"` → json ok; `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 497 PASS, 0 FAIL; `git status --short` → only the 3 in-scope files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
+  - **Item 1.99-12 (Reusable prompt files) complete** — all 5 slices S1–S5 done.
 - **1.99-12.S4** (2026-10-22) — `src/chat/webview.ts`: `prompt_inject` handler. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/webview.ts`: new `case 'prompt_inject':` in `handleHostMessage` as a sibling right after `case 'vision_warning':` (now lines 1978–1986): `const text = String(msg.content ?? ''); if (!text) break;` then reuses the IIFE-scoped `inputEl` (the `#input` textarea, same element other code uses — no new `getElementById`); `if (!inputEl) break;` guard; prepend semantics: `inputEl.value = existing ? text + '\n\n' + existing : text;` (prompt leads, existing draft preserved after a blank line); `inputEl.focus(); break;`. No new HTML/CSS.
   - `scripts/smoke-test.js`: new section `// 39) Reusable prompt files — prompt_inject webview handler (1.99-12.S4)` after section 38, before the final summary print; 2 `rp-s4:` static-source assertions via `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcRpS4`): (a) contains `prompt_inject`; (b) contains `case 'prompt_inject'`. Total PASS lines now 493 (491 + 2).

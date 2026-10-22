@@ -13,6 +13,7 @@
     "onView:llm.chat",
     "onCommand:llm.testConnection",
     "onCommand:llm.showStatusOverview",
+    "onCommand:llm.usePrompt",
     "onCommand:llm.mcp.addServer",
     "onCommand:llm.mcp.listServers"
   ],
@@ -30,6 +31,10 @@
       {
         "command": "llm.showStatusOverview",
         "title": "LLM: Show Status Overview"
+      },
+      {
+        "command": "llm.usePrompt",
+        "title": "LLM: Use Prompt"
       },
       {
         "command": "llm.refreshModels",
@@ -226,6 +231,14 @@
           },
           "default": [],
           "description": "Extra workspace-relative instruction file paths to load (in addition to the defaults)."
+        },
+        "llm.promptFiles.locations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"],
+          "description": "Glob patterns (workspace-relative) for reusable prompt files. Pick one via the 'LLM: Use Prompt' command to prepend it to the chat input. HTML comments in prompt files are stripped before sending."
         },
         "llm.chat.codebaseSearch.enabled": {
           "type": "boolean",

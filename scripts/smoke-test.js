@@ -3745,6 +3745,36 @@ function assert(cond, label) {
   assert(webviewSrcRpS4.includes("prompt_inject"), "rp-s4: webview.ts handles prompt_inject");
   assert(webviewSrcRpS4.includes("case 'prompt_inject'"), "rp-s4: webview.ts has case 'prompt_inject'");
 
+  // 40) Reusable prompt files — package.json contributions + final (1.99-12.S5)
+  const pkgRpS5 = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const usePromptCmd = (pkgRpS5.contributes.commands || []).find(
+    (c) => c.command === "llm.usePrompt",
+  );
+  assert(
+    usePromptCmd && usePromptCmd.title === "LLM: Use Prompt",
+    "rp-s5: package.json contributes the llm.usePrompt command titled 'LLM: Use Prompt'",
+  );
+  assert(
+    (pkgRpS5.activationEvents || []).includes("onCommand:llm.usePrompt"),
+    "rp-s5: package.json has the onCommand:llm.usePrompt activation event",
+  );
+  const promptFilesSetting =
+    pkgRpS5.contributes.configuration.properties["llm.promptFiles.locations"];
+  assert(
+    promptFilesSetting &&
+      promptFilesSetting.type === "array" &&
+      Array.isArray(promptFilesSetting.default) &&
+      promptFilesSetting.default.length === 2 &&
+      promptFilesSetting.default.includes(".github/copilot-instructions.md"),
+    "rp-s5: package.json llm.promptFiles.locations is an array with a 2-element default containing .github/copilot-instructions.md",
+  );
+  assert(
+    pkgRpS5.contributes.configuration.properties["llm.instructions.enabled"],
+    "rp-s5: package.json still contributes llm.instructions.enabled (regression guard)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
