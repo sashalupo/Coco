@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-13 (Improved vision support: URL images, .bmp) — **planned** (2026-10-22, 3 slices S1–S3)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-13.S1
+- **Current item:** 1.99-16 (Copilot status menu) — **planned** (2026-10-22, 3 slices S1–S3)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-16.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -1455,6 +1455,67 @@ a language-feature provider).
 - No new setting is introduced; `llm.chat.vision.enabled` remains the single gate (description-only change).
 
 **Total expected assertions after all slices: 507** (baseline 497 + 10 new: 4 `vis-s1` + 4 `vis-s2` + 2 `vis-s3`).
+
+### Item 1.99-16 — Copilot status menu (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99 (March 2025), "Configure the editor" — "Copilot status menu": the status-bar menu is now enabled for all users; new features: (1) view workspace index status at any time; (2) a new icon reflects whether code completions are enabled for the active editor (`copilot-disabled-status.png` shows the dimmed/disabled icon); (3) enable or disable code completions and NES from the menu.
+
+**Summary & approach:** 1.98-15 already shipped the engine status indicator (`statusLabel`/`statusTooltip` in `src/presets.ts`, status bar item + `/health` poll in `src/extension.ts`) and the status overview QuickPick (`statusOverviewItems` + `STATUS_COMMANDS`, `llm.showStatusOverview` command). This item extends that surface with a **completions-enabled indicator** and a **completions on/off toggle**. Two documented deviations: (a) **workspace index status is skipped** — it is a GitHub-service feature (remote indexes for GitHub-hosted repos) with no analogue for a free local engine; (b) **NES is skipped** — this extension has no next-edit-suggestions feature, so the menu covers code completions only. The indicator reflects `llm.inline.enabled` (the existing gate for the inline completion provider) plus the active editor's language: enabled + active editor present → `$(pass-filled) LLM` (completions on); disabled or no active editor → `$(pass-filled~strikethrough) LLM` (completions off for this editor). The toggle is a new `llm.toggleCompletions` command (QuickPick "Enable/Disable inline completions") that writes `llm.inline.enabled` to the workspace (or global) configuration target, plus a new row in the status overview QuickPick. The pure label/row logic lands in `src/presets.ts` (require-able from smoke tests via `out/presets.js`); host wiring is static-source-asserted. No new dependencies.
+
+**Design decisions (justified):**
+1. **Reuse `llm.inline.enabled` as the completions gate** — it is the existing opt-in for `InlineCompletionProvider` (read at activation in `src/extension.ts` ~line 44). No new setting for the toggle itself; the toggle just writes this existing setting. Toggling still requires a reload to (un)register the provider (documented in the setting description, matching existing behavior).
+2. **Indicator = gate AND active editor** — mirrors the changelog's "enabled for the active editor": the provider registers on `[{ pattern: "**" }]`, so with no active editor there is nothing to complete. Pure helper takes `(enabled: boolean, hasActiveEditor: boolean)` so it is unit-testable without vscode.
+3. **Icon choice:** `$(pass-filled)` when on, `$(pass-filled~strikethrough)` when off (Codicon supports the `~strikethrough` modifier; matches the "dimmed icon" in `copilot-disabled-status.png`). Text stays `LLM` so the existing `statusLabel` engine indicator is untouched — the completions icon is appended to the same status bar item's text.
+4. **Toggle via QuickPick, not a bare command flip** — `llm.toggleCompletions` shows a 2-item QuickPick ("Enable inline completions" / "Disable inline completions", current state marked `active`) so the user confirms the target state; on pick it writes `llm.inline.enabled` via `cfg.update(..., target)` (Workspace when a workspace folder exists, else Global — same pattern as `llm.changeCompletionsModel`) and shows an info message noting a reload is required.
+5. **Overview row + command entry** — `statusOverviewItems` gains a 5th row "Completions: on/off" (description: "for the active editor" / "disabled (llm.inline.enabled)"), and `STATUS_COMMANDS` gains a "Toggle Completions" entry pointing at `llm.toggleCompletions`. Both are pure and covered by `out/presets.js` assertions.
+
+- **1.99-16.S1** — Pure completions-status helpers in `src/presets.ts`
+  - Files: `src/presets.ts`
+  - Changes:
+    - New exported pure helper near `statusLabel` (~line 230): `export function completionsStatusLabel(enabled: boolean, hasActiveEditor: boolean): { icon: string; text: string; tooltip: string }` — returns `{ icon: "$(pass-filled)", text: "LLM", tooltip: "Code completions enabled for the active editor" }` when `enabled && hasActiveEditor`, else `{ icon: "$(pass-filled~strikethrough)", text: "LLM", tooltip: enabled ? "No active editor — code completions idle" : "Code completions disabled (llm.inline.enabled)" }`.
+    - `statusOverviewItems` (~line 253): add a 5th row after "Completions model": `{ label: "Completions", description: enabled ? "on (active editor)" : "off" }` — extend the signature with a trailing `completionsEnabled: boolean` parameter (callers updated in S3; to keep S1 independently compilable, make the parameter optional with default `false` and have S3 pass it explicitly).
+    - `STATUS_COMMANDS` (~line 275): append `{ label: "Toggle Completions", command: "llm.toggleCompletions", detail: "Enable/disable inline code completions (reload required)" }` (length becomes 5).
+  - Smoke: prefix `stmenu-s1:` (4 assertions, `require` of `out/presets.js`):
+    - `stmenu-s1: completionsStatusLabel on-case returns $(pass-filled) icon + enabled tooltip`
+    - `stmenu-s1: completionsStatusLabel off-case (disabled) returns strikethrough icon + disabled tooltip`
+    - `stmenu-s1: completionsStatusLabel enabled-but-no-editor returns strikethrough icon + idle tooltip`
+    - `stmenu-s1: statusOverviewItems has 5 rows with a Completions row reflecting the flag; STATUS_COMMANDS has 5 entries incl. llm.toggleCompletions`
+  - Acceptance: `npm run compile` passes; the 4 `stmenu-s1:` assertions pass; existing `status-s1:` assertions still pass (they assert 4 rows / 4 commands — **update those two existing assertions in the same slice** to expect 5 rows / 5 commands, since `out/presets.js` is the same module; this keeps the suite green).
+
+- **1.99-16.S2** — Host: completions indicator in the status bar + `llm.toggleCompletions` command
+  - Files: `src/extension.ts`
+  - Changes:
+    - Import `completionsStatusLabel` from `./presets` (line ~15 import block).
+    - In the status-bar block (~line 80–130): after `updateHealth` computes the engine `statusLabel`, also compute `const cs = completionsStatusLabel(inlineEnabled, vscode.window.activeTextEditor !== undefined);` and set `status.text = \`${icon} ${text} ${cs.icon} ${cs.text}\``; append `cs.tooltip` to `status.tooltip`. Add a `vscode.window.onDidChangeActiveTextEditor(() => void updateHealth())` subscription (inside the `statusBarEnabled` block) so the indicator flips when the editor changes. Note: `inlineEnabled` is already read at activation (~line 44) — hoist that read above the status-bar block if needed so both blocks share it.
+    - New command registration next to `llm.changeCompletionsModel` (~line 280): `vscode.commands.registerCommand("llm.toggleCompletions", async () => { ... })` — read current `llm.inline.enabled`; build a 2-item QuickPick (`$(check) Enable inline completions` / `$(x) Disable inline completions`, current state gets `description: "active"`); on pick, `cfg.update("inline.enabled", pickedValue, target)` with `target = workspaceFolders ? Workspace : Global` (same pattern as `llm.changeCompletionsModel`); `showInformationMessage` noting "Reload the window to apply."
+    - In the `llm.showStatusOverview` handler (~line 155): pass the completions-enabled flag into `statusOverviewItems(...)` (read `llm.inline.enabled` there) so the new 5th row reflects reality.
+  - Smoke: prefix `stmenu-s2:` (4 assertions, static `fs.readFileSync` on `src/extension.ts` — `out/extension.js` imports vscode and cannot be required):
+    - `stmenu-s2: extension imports and uses completionsStatusLabel in the status bar text`
+    - `stmenu-s2: extension refreshes the status bar on onDidChangeActiveTextEditor`
+    - `stmenu-s2: extension registers the llm.toggleCompletions command writing inline.enabled`
+    - `stmenu-s2: showStatusOverview passes the completions-enabled flag to statusOverviewItems`
+  - Acceptance: `npm run compile` passes; the 4 `stmenu-s2:` assertions pass; no existing assertion regresses.
+
+- **1.99-16.S3** — `package.json`: command contribution + setting description
+  - Files: `package.json`
+  - Changes:
+    - `contributes.commands`: add `{ "command": "llm.toggleCompletions", "title": "Toggle Completions", "category": "LLM" }` (next to `llm.changeCompletionsModel`).
+    - `contributes.activationEvents`: add `onCommand:llm.toggleCompletions` (matching the existing `onCommand:llm.showStatusOverview` pattern).
+    - `llm.inline.enabled` description (~line 212): update to "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect. Toggle it from the LLM status menu ('LLM: Toggle Completions'); the status bar icon shows whether completions are enabled for the active editor."
+  - Smoke: prefix `stmenu-s3:` (3 assertions, parsed `package.json`):
+    - `stmenu-s3: package.json contributes the llm.toggleCompletions command with a title`
+    - `stmenu-s3: package.json has the onCommand:llm.toggleCompletions activation event`
+    - `stmenu-s3: llm.inline.enabled description mentions the status menu / active editor`
+  - Acceptance: `npm run compile` passes; the 3 `stmenu-s3:` assertions pass; existing `status-s4:`/`compm-s4:` package.json assertions still pass.
+
+**Overall acceptance (Tester):** with `llm.inline.enabled: true` and a code editor focused, the status bar shows the engine indicator plus a lit completions icon; with the setting `false` (or no active editor) the icon is strikethrough; switching the active editor updates the icon; clicking the status bar opens the overview QuickPick showing a "Completions: on/off" row and a "Toggle Completions" command; running `LLM: Toggle Completions` flips `llm.inline.enabled` (workspace-scoped when a workspace is open) and notes that a reload is required; `npm run compile` clean; full smoke suite green.
+
+**Risks / open questions:**
+- `$(pass-filled~strikethrough)` modifier rendering is theme-dependent — acceptable; the tooltip carries the unambiguous text.
+- Toggling requires a window reload to (un)register the provider (existing documented behavior of `llm.inline.enabled`); the toggle message states this. No live re-registration is attempted (would require holding the provider registration disposable — out of scope).
+- The existing `status-s1:` assertions hard-code 4 overview rows / 4 commands; S1 updates them to 5 in the same slice so the suite stays green.
+
+**Total expected assertions after all slices: 518** (baseline 507 + 11 new: 4 `stmenu-s1` + 4 `stmenu-s2` + 3 `stmenu-s3`; the two `status-s1:` assertions updated in S1 are replacements, not additions).
 
 ## Done
 
