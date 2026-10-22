@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 19 complete** — Compact conversation (19.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `bd4191e` — feat(llm): restore checkpoints (Phase 18.1)
+- **Last commit:** `20229a4` — feat(llm): compact conversation history (Phase 19.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); compact verified
 
 > **Phase 19 — Compact conversation (2026-10-22):**
