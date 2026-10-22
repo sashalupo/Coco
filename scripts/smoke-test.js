@@ -3775,6 +3775,40 @@ function assert(cond, label) {
     "rp-s5: package.json still contributes llm.instructions.enabled (regression guard)",
   );
 
+  // 41) Improved vision support — URL-image helpers (1.99-13.S1)
+  const { isImageUrl, mimeFromImageUrl, IMAGE_URL_EXTENSIONS } = require(
+    path.join(__dirname, "..", "out", "request.js"),
+  );
+  assert(
+    isImageUrl("https://example.com/a.PNG") === true &&
+      isImageUrl("https://example.com/a.jpg?x=1#f") === true &&
+      isImageUrl("http://example.com/a.bmp") === true,
+    "vis-s1: isImageUrl accepts https .png/.jpg/.bmp URLs (case-insensitive, ignores query)",
+  );
+  assert(
+    isImageUrl("https://example.com/a.txt") === false &&
+      isImageUrl("file:///tmp/a.png") === false &&
+      isImageUrl("https://example.com/a") === false &&
+      isImageUrl("not a url") === false,
+    "vis-s1: isImageUrl rejects non-image URLs, file: URLs, and extensionless URLs",
+  );
+  assert(
+    mimeFromImageUrl("https://e.com/a.jpg") === "image/jpeg" &&
+      mimeFromImageUrl("https://e.com/a.jpeg") === "image/jpeg" &&
+      mimeFromImageUrl("https://e.com/a.png") === "image/png" &&
+      mimeFromImageUrl("https://e.com/a.gif") === "image/gif" &&
+      mimeFromImageUrl("https://e.com/a.webp") === "image/webp" &&
+      mimeFromImageUrl("https://e.com/a.bmp") === "image/bmp" &&
+      mimeFromImageUrl("https://e.com/a.txt") === "",
+    "vis-s1: mimeFromImageUrl maps each accepted extension to the right MIME type",
+  );
+  assert(
+    ["jpg", "jpeg", "png", "gif", "webp", "bmp"].every((e) =>
+      IMAGE_URL_EXTENSIONS.includes(e),
+    ),
+    "vis-s1: IMAGE_URL_EXTENSIONS includes bmp and all five prior extensions",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -1410,7 +1410,7 @@ a language-feature provider).
 
 **Summary & approach:** 1.98-14 already shipped image attachments (file picker, clipboard paste, file drag-drop, base64 data URLs → `image_url` content parts, `llm.chat.vision.enabled` gate, vision-capable-model warning). This item adds two capabilities: (1) **URL drag-and-drop** — when a browser drags an image URL into the chat input, the webview fetches it (webview fetch → blob → FileReader → data URL) and attaches it like any other image, gated on the URL having an accepted image extension; (2) **`.bmp` support** — added to the webview's accepted MIME list, the file-picker `accept` attribute, the host's sanitize regex, and the setting description. A small pure helper (`isImageUrl` + `mimeFromImageUrl`) lands in `src/request.ts` so the URL-extension logic is unit-testable via `out/request.js`. No new settings, no new dependencies.
 
-- **1.99-13.S1** — URL-image helpers in `src/request.ts`
+- **1.99-13.S1** — URL-image helpers in `src/request.ts` — Done (2026-10-22, PASS, 501 assertions)
   - Files: `src/request.ts`
   - Changes: Add two exported pure helpers near `toContentParts` (line ~40):
     - `export const IMAGE_URL_EXTENSIONS: string[] = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];`

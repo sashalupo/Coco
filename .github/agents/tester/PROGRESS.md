@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-12 — Reusable prompt files — **DONE** (S1+S2+S3+S4+S5 PASS, 2026-10-22)
-- **Next step:** next pending changelog item (oldest first) per Changelog Researcher backlog
+- **Current item:** 1.99-13 — Improved vision support (URL images, .bmp) — S1 PASS (2026-10-22)
+- **Next step:** verify 1.99-13.S2 (webview .bmp + dropped image URLs)
 - **Last updated:** 2026-10-22
-- **Last commit:** 5e9a402 (feat(llm): reusable prompt files — webview prompt_inject (1.99-12.S4)); S5 commit pending
-- **Build state:** 497/497 PASS
+- **Last commit:** f2d9270 (feat(llm): reusable prompt files — package.json + final smoke + item complete (1.99-12.S5, item complete))
+- **Build state:** 501/501 PASS
 
+
+### 1.99-13.S1 — URL-image helpers in `src/request.ts` (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **501 PASS lines** (497 prior + 4 new `vis-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 501/501 PASS; (3) 4 genuine `vis-s1:` assertions in new `// 41) Improved vision support — URL-image helpers (1.99-13.S1)` section (smoke-test.js:3778) requiring `out/request.js`: accepts (case-insensitive .PNG, query/hash ignored .jpg?x=1#f, http .bmp) L3784–3786; rejects (.txt, file:///tmp/a.png, extensionless, "not a url") L3788–3793; MIME mapping (jpg/jpeg→image/jpeg, png, gif, webp, bmp, .txt→"") L3795–3803; IMAGE_URL_EXTENSIONS includes all six L3805–3809 PASS; (4) `src/request.ts` exports IMAGE_URL_EXTENSIONS/isImageUrl/mimeFromImageUrl; `git diff --stat` → 48 insertions, 0 deletions (additions only, toContentParts/buildRequestBody untouched) PASS; (5) scope exactly ` M src/request.ts`, ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` + ninfer marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-12.S1 — pure prompt-file helpers (src/prompts.ts, NEW) (2026-10-22) — **PASS**
 

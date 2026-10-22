@@ -48,6 +48,54 @@ export function toContentParts(content: string, images?: string[]): string | Con
   return parts;
 }
 
+/** File extensions accepted as remote image URLs (case-insensitive). */
+export const IMAGE_URL_EXTENSIONS: string[] = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
+
+/**
+ * True iff `value` parses as an `http:`/`https:` URL whose pathname ends with
+ * one of {@link IMAGE_URL_EXTENSIONS} (case-insensitive; query/hash ignored).
+ * Rejects everything else, including `file:` URLs and extensionless URLs.
+ */
+export function isImageUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return false;
+  }
+  const ext = url.pathname.split(".").pop()?.toLowerCase() ?? "";
+  return IMAGE_URL_EXTENSIONS.includes(ext);
+}
+
+/**
+ * Map a remote image URL to its MIME type by extension. Returns `""` when
+ * `isImageUrl(url)` is false.
+ */
+export function mimeFromImageUrl(url: string): string {
+  if (!isImageUrl(url)) {
+    return "";
+  }
+  const ext = new URL(url).pathname.split(".").pop()!.toLowerCase();
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "bmp":
+      return "image/bmp";
+    default:
+      return "";
+  }
+}
+
 /** A message as sent in the request body (content may be a multimodal parts array). */
 export type RequestMessage = Omit<ChatMessage, "content"> & {
   content: string | ContentPart[];

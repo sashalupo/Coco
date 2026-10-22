@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-12 (Reusable prompt files) — COMPLETE (S1–S5 done)
-- **Next step:** item 1.99-12 complete — next item 1.99-13 (Improved vision support)
+- **Current item:** 1.99-13 (Improved vision support) — S1 done
+- **Next step:** 1.99-13.S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (497 assertions)
+- **Build state:** compiles clean; smoke test passes (501 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-13.S1** (2026-10-22) — `src/request.ts`: URL-image helpers. Files: `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/request.ts`: three new exports added right after `toContentParts` (before the `RequestMessage` type): (a) `export const IMAGE_URL_EXTENSIONS: string[] = ["jpg","jpeg","png","gif","webp","bmp"]`; (b) `export function isImageUrl(value: string): boolean` — `new URL(value)` in try/catch, requires `http:`/`https:` protocol, pathname extension (last dot segment, lowercased) must be in `IMAGE_URL_EXTENSIONS`; rejects `file:` URLs, extensionless URLs, and non-URL strings; (c) `export function mimeFromImageUrl(url: string): string` — returns `""` when `!isImageUrl(url)`, else maps jpg/jpeg→`image/jpeg`, png→`image/png`, gif→`image/gif`, webp→`image/webp`, bmp→`image/bmp`. No other changes to request.ts (`toContentParts`/`buildRequestBody` untouched).
+  - `scripts/smoke-test.js`: new section `// 41) Improved vision support — URL-image helpers (1.99-13.S1)` after section 40, before the final summary print; `require(path.join(__dirname, "..", "out", "request.js"))` destructuring `{ isImageUrl, mimeFromImageUrl, IMAGE_URL_EXTENSIONS }`; 4 `vis-s1:` assertions: (a) accepts `https://example.com/a.PNG`, `https://example.com/a.jpg?x=1#f`, `http://example.com/a.bmp`; (b) rejects `a.txt`, `file:///tmp/a.png`, extensionless `https://example.com/a`, `"not a url"`; (c) `mimeFromImageUrl` maps all six extensions correctly and returns `""` for `.txt`; (d) `IMAGE_URL_EXTENSIONS` contains all of `["jpg","jpeg","png","gif","webp","bmp"]`. Total PASS lines now 501 (497 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 501 PASS, 0 FAIL; `git status --short` → only the 3 in-scope files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-12.S5** (2026-10-22, FINAL) — `package.json` contributions + final smoke assertions. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: (a) activation event `"onCommand:llm.usePrompt"` added after `"onCommand:llm.showStatusOverview"`; (b) command contribution `{ "command": "llm.usePrompt", "title": "LLM: Use Prompt" }` added after the `llm.showStatusOverview` command; (c) setting `llm.promptFiles.locations` (array of strings, default `[".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]`) added after `llm.instructions.files`. JSON validated with `JSON.parse`.
   - `scripts/smoke-test.js`: new section `// 40) Reusable prompt files — package.json contributions + final (1.99-12.S5)` after section 39, before the final summary print; 4 `rp-s5:` assertions on the parsed `package.json` (local `pkgRpS5`, same pattern as the `pkgS4` section): (a) `llm.usePrompt` command exists with title "LLM: Use Prompt"; (b) `onCommand:llm.usePrompt` in activation events; (c) `llm.promptFiles.locations` exists with `type === "array"` and a 2-element default containing `.github/copilot-instructions.md`; (d) `llm.instructions.enabled` still present (regression guard). Total PASS lines now 497 (493 + 4).

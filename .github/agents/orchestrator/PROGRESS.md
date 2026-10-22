@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-12** — Reusable prompt files — **DONE** (S1–S5, 2026-10-22)
-- **Current slice:** 1.99-12.S5 DONE — item complete
+- **Current item:** **1.99-13** — Improved vision support (URL images, .bmp) — in progress (S1 done, S2–S3 pending)
+- **Current slice:** 1.99-13.S1 DONE
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-13** (Improved vision support: URL images, .bmp), record plan, commit, run slice pipeline
+- **Next step:** dispatch Coder for 1.99-13.S2 (webview .bmp + dropped image URLs), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** 5e9a402 (feat: reusable prompt files — webview prompt_inject (1.99-12.S4)); S5 commit pending
-- **Build state:** compiles clean; smoke test passes (497 assertions); 1.99-12 complete
+- **Last commit:** f2d9270 (feat: reusable prompt files — package.json + final smoke + item complete (1.99-12.S5)); S1 commit pending
+- **Build state:** compiles clean; smoke test passes (501 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
