@@ -630,7 +630,7 @@ the reasoning is echoed back as the tool result, no side effects.
   `CODE_TOOLS.length === 11` → `12`** (same slice, keeps suite green).
   Acceptance: compile clean; smoke 401 → 404.
 
-- **1.99-3.S2 — `src/tools/ToolExecutor.ts`: `case "think"` echo handler.**
+- **1.99-3.S2 — `src/tools/ToolExecutor.ts`: `case "think"` echo handler.** — Done (2026-10-22, PASS, 407 assertions)
   Files: `src/tools/ToolExecutor.ts` (modify), `scripts/smoke-test.js` (modify).
   In `execute`'s switch (before `default:`): `case "think": return
   this.think(call, String(args.thought ?? ""));` + private method

@@ -2923,6 +2923,43 @@ function assert(cond, label) {
     "think-s1: think tool has type=function and name=think",
   );
 
+  // 19b) Thinking tool executor (1.99-3.S2)
+  const { ToolExecutor: ThinkExecutor } = require(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+  );
+  const thinkExecutor = new ThinkExecutor();
+  const thinkRes1 = await thinkExecutor.execute({
+    id: "t1",
+    type: "function",
+    function: {
+      name: "think",
+      arguments: JSON.stringify({ thought: "plan step 1" }),
+    },
+  });
+  assert(
+    thinkRes1.tool_call_id === "t1" &&
+      thinkRes1.content === "Thought recorded: plan step 1",
+    "think-s2: think echoes thought with matching tool_call_id",
+  );
+  const thinkRes2 = await thinkExecutor.execute({
+    id: "t2",
+    type: "function",
+    function: { name: "think", arguments: JSON.stringify({ thought: "" }) },
+  });
+  assert(
+    thinkRes2.content === "Thought recorded.",
+    "think-s2: empty thought returns 'Thought recorded.'",
+  );
+  const thinkRes3 = await thinkExecutor.execute({
+    id: "t3",
+    type: "function",
+    function: { name: "think", arguments: "{not json" },
+  });
+  assert(
+    thinkRes3.content.startsWith("Invalid JSON arguments"),
+    "think-s2: invalid JSON arguments never throws (error ToolResult)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

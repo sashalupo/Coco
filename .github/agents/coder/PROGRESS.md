@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-3 (Thinking tool) — S1 done (2026-10-22)
-- **Next step:** 1.99-3.S2 (`src/tools/ToolExecutor.ts`: `case "think"` echo handler)
+- **Current item:** 1.99-3 (Thinking tool) — S2 done (2026-10-22)
+- **Next step:** 1.99-3.S3 (final smoke assertions, `scripts/smoke-test.js` only)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (371 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 `status-s3:` + 4 `status-s4:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (407 PASS lines, incl. 3 `think-s1:` + 3 `think-s2:`)
 
 ## Plan pointer
 
@@ -25,6 +25,10 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-3.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `case "think"` echo handler. Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools/ToolExecutor.ts`: (a) added `case "think": return this.think(call, String(args.thought ?? ""));` to `execute`'s switch, immediately before `default:`; (b) added private `think(call: ToolCall, thought: string): ToolResult` (no I/O, no state, no throw) returning `"Thought recorded."` for blank/whitespace thoughts and `"Thought recorded: " + thought` otherwise, placed just above the `result` helper.
+  - `scripts/smoke-test.js`: new section `// 19b) Thinking tool executor (1.99-3.S2)` with 3 `think-s2:` assertions: (a) `execute` of a `think` call with `thought: "plan step 1"` → `tool_call_id === "t1"` and `content === "Thought recorded: plan step 1"`; (b) empty thought → `content === "Thought recorded."`; (c) invalid JSON arguments (`"{not json"`) → content starts with `Invalid JSON arguments` (never throws). Total PASS lines now 407 (404 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 407 PASS, 0 FAIL.
 - **1.98-15.S4** (2026-10-22, FINAL) — `package.json` contributions + final smoke assertions + planner memory. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: (a) added `{ "command": "llm.showStatusOverview", "title": "LLM: Show Status Overview" }` to `contributes.commands` (after `llm.testConnection`); (b) added `"onCommand:llm.showStatusOverview"` to `activationEvents` (after `onCommand:llm.testConnection`); (c) added `llm.statusBar.enabled` (boolean, default `true`, description "Show the LLM engine status indicator in the status bar. Click it for a status overview. Toggling requires a reload.") to `contributes.configuration.properties` after `llm.completions.model`. JSON validated via `JSON.parse` (smoke test parses it).
   - `scripts/smoke-test.js`: new subsection `// 17d) package.json contributions (1.98-15.S4)` with 4 parsed-JSON assertions (`status-s4:` labels) on a fresh `pkgS4` parse of `package.json`: (a) `contributes.commands` contains `command === "llm.showStatusOverview"` with a non-empty `title`, (b) `activationEvents` contains `"onCommand:llm.showStatusOverview"`, (c) `contributes.configuration.properties["llm.statusBar.enabled"]` exists with `type === "boolean"` and `default === true`, (d) `contributes.commands` still contains `command === "llm.testConnection"` (regression guard).

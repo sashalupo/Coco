@@ -332,6 +332,8 @@ export class ToolExecutor {
               : undefined,
             typeof args.source === "string" ? args.source : undefined,
           );
+        case "think":
+          return this.think(call, String(args.thought ?? ""));
         default:
           return this.result(call, `Unknown tool: ${name}`);
       }
@@ -1184,6 +1186,14 @@ export class ToolExecutor {
       idx = haystack.indexOf(needle, idx + needle.length);
     }
     return count;
+  }
+
+  /** Echo a thought back (no I/O, no state). */
+  private think(call: ToolCall, thought: string): ToolResult {
+    if (thought.trim() === "") {
+      return this.result(call, "Thought recorded.");
+    }
+    return this.result(call, "Thought recorded: " + thought);
   }
 
   /** Build a `ToolResult` for the given call. */
