@@ -124,3 +124,86 @@ export function buildContextBlock(input: ContextInput): string {
 
   return sections.join("\n\n");
 }
+
+// ---------------------------------------------------------------------------
+// #codebase tag (1.98-8): pure parsing + formatting helpers. The actual
+// workspace sweep (structure / git status / text search) is wired up in a
+// later slice; these functions only parse the tag and render the block.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#codebase` tag query from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#codebase` occurrence
+ * (`#codebasefoo` does NOT match; `#Codebase` DOES). Returns the trimmed
+ * text after the tag on the SAME line (up to the next newline). Returns
+ * `""` when the tag is present but nothing follows on that line, and
+ * `null` when the tag is absent. Pure and testable.
+ */
+export function extractCodebaseQuery(text: string): string | null {
+  const m = /#codebase(?!\w)/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  const rest = text.slice(m.index + m[0].length);
+  const nl = rest.indexOf("\n");
+  const sameLine = nl === -1 ? rest : rest.slice(0, nl);
+  return sameLine.trim();
+}
+
+/** The three pieces of data a workspace sweep produces. */
+export interface CodebaseSweepData {
+  /** Project structure listing (relative paths). */
+  structure: string;
+  /** Git status text (modified files); "" when clean / not a repo. */
+  gitStatus: string;
+  /** Text-search matches for the query; "" when none. */
+  search: string;
+}
+
+/** Hard cap for the rendered sweep block. */
+const CODEBASE_SWEEP_MAX_CHARS = 12000;
+const CODEBASE_SWEEP_TRUNCATED_SUFFIX = "… (truncated)";
+
+/**
+ * Render a `#codebase` sweep result as a stable context block:
+ *
+ * ```
+ * Codebase sweep (query: <query>)
+ * ### Project structure
+ * <structure>
+ * ### Git status (modified files)
+ * <gitStatus or "(clean or not a git repo)">
+ * ### Search: <query>
+ * <search or "(no matches)">
+ * ```
+ *
+ * The header query is `(none)` when the query is empty/undefined. Empty
+ * sub-sections render their placeholder line (never a dangling header).
+ * The whole block is truncated to 12,000 chars with a `… (truncated)`
+ * suffix. Returns `""` when all three fields are empty. Pure and testable.
+ */
+export function formatCodebaseSweep(
+  data: CodebaseSweepData,
+  query?: string,
+): string {
+  const q = query && query.trim() !== "" ? query : "(none)";
+  if (!data.structure && !data.gitStatus && !data.search && q === "(none)") {
+    return "";
+  }
+  const block = [
+    `Codebase sweep (query: ${q})`,
+    "### Project structure",
+    data.structure,
+    "### Git status (modified files)",
+    data.gitStatus || "(clean or not a git repo)",
+    `### Search: ${q}`,
+    data.search || "(no matches)",
+  ].join("\n");
+  if (block.length <= CODEBASE_SWEEP_MAX_CHARS) {
+    return block;
+  }
+  return (
+    block.slice(0, CODEBASE_SWEEP_MAX_CHARS) + CODEBASE_SWEEP_TRUNCATED_SUFFIX
+  );
+}

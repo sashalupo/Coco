@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-2 (notebook support in chat) — **fully verified** (S1–S6 all PASS)
-- **Next step:** verify first slice of item 1.98-8 (`#codebase` tag — advanced codebase search)
+- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — S1 verified
+- **Next step:** verify next slice of item 1.98-8 (workspace sweep wiring: structure / git status / text search)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -111,7 +111,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-2.S5** — context: render tagged .ipynb files as cells in `src/context.ts` — **PASS** (2026-10-22)
 - [x] **1.98-2.S6** — package.json descriptions + final smoke assertions + PROGRESS.md — **PASS** (2026-10-22)
 - [x] **1.98-2** — fully verified (all slices S1–S6 PASS)
-- [ ] Verify first slice of item **1.98-8** (`#codebase` tag — advanced codebase search).
+- [x] **1.98-8.S1** — `src/context.ts`: `extractCodebaseQuery` + `formatCodebaseSweep` (pure) — **PASS** (2026-10-22, see Verifications)
+- [ ] Verify next slice of item **1.98-8** (workspace sweep wiring).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -142,3 +143,9 @@ acceptance checks, and reports a clear pass/fail.
 
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED (245 assertions; 4 new `nb-final:` green). Static checks 3–6 PASS: package.json single 1-line hunk (requireApproval lists notebook_edit); 4 new assertions are genuine feature references; planner PROGRESS.md marks 1.98-2 Done, next → 1.98-8; scope = package.json (±1) + smoke-test.js (+33) + memory files only.
 - **Item 1.98-2 fully verified (S1–S6 all PASS).**
+
+### 1.98-8.S1 — `src/context.ts`: `extractCodebaseQuery` + `formatCodebaseSweep` (pure) (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**257 assertions**; 12 new `codebase:` green in section `// 12) codebase sweep (1.98-8)`).
+- Static checks in `src/context.ts`: (a) `extractCodebaseQuery(text: string): string | null` — regex `/#codebase(?!\w)/i` (case-insensitive, word-bounded; `#codebasefoo` no match); null when absent, "" for bare tag, trimmed same-line remainder. (b) `CodebaseSweepData` interface with `structure`, `gitStatus`, `search`. (c) `formatCodebaseSweep(data, query?)` — header `Codebase sweep (query: <q|none>)`; three `###` headers in order; placeholders `(clean or not a git repo)` / `(no matches)`; 12,000-char cap with `… (truncated)`; `""` only when all-empty AND no query. (d) Purity: no `vscode` import. All PASS.
+- Scope: only `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS

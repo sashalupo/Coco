@@ -1750,6 +1750,80 @@ function assert(cond, label) {
     "nb-final: src/notebook.ts (or compiled out/notebook.js) exists",
   );
 
+  // 12) codebase sweep (1.98-8): pure #codebase tag parsing + block formatting.
+  const {
+    extractCodebaseQuery,
+    formatCodebaseSweep,
+  } = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    extractCodebaseQuery("#codebase where is auth?") === "where is auth?",
+    "codebase: tag with query returns trimmed same-line remainder",
+  );
+  assert(
+    extractCodebaseQuery("hi #codebase") === "",
+    "codebase: tag with nothing after returns empty string",
+  );
+  assert(
+    extractCodebaseQuery("no tag") === null,
+    "codebase: absent tag returns null",
+  );
+  assert(
+    extractCodebaseQuery("use #codebasefoo here") === null,
+    "codebase: word-bounded — #codebasefoo does not match",
+  );
+  assert(
+    extractCodebaseQuery("#Codebase hello") === "hello",
+    "codebase: match is case-insensitive",
+  );
+  assert(
+    extractCodebaseQuery("#codebase q1\nline2 q2") === "q1",
+    "codebase: only same-line remainder (next line ignored)",
+  );
+  const sweepBlock = formatCodebaseSweep(
+    { structure: "a/\nb.ts", gitStatus: "M x.ts", search: "x.ts:1: hit" },
+    "myq",
+  );
+  const hStruct = sweepBlock.indexOf("### Project structure");
+  const hGit = sweepBlock.indexOf("### Git status (modified files)");
+  const hSearch = sweepBlock.indexOf("### Search: myq");
+  assert(
+    hStruct !== -1 && hGit !== -1 && hSearch !== -1 &&
+      hStruct < hGit && hGit < hSearch,
+    "codebase: three ### headers present in order (structure < git < search)",
+  );
+  assert(
+    sweepBlock.includes("Codebase sweep (query: myq)"),
+    "codebase: header shows the query",
+  );
+  const sweepEmpty = formatCodebaseSweep(
+    { structure: "", gitStatus: "", search: "" },
+    "q",
+  );
+  assert(
+    sweepEmpty.includes("(clean or not a git repo)") &&
+      sweepEmpty.includes("(no matches)"),
+    "codebase: empty fields render placeholder lines",
+  );
+  assert(
+    formatCodebaseSweep({ structure: "", gitStatus: "", search: "" }) === "",
+    "codebase: all-empty data returns empty string",
+  );
+  const bigStructure = "x".repeat(13000);
+  const sweepTrunc = formatCodebaseSweep(
+    { structure: bigStructure, gitStatus: "", search: "" },
+  );
+  assert(
+    sweepTrunc.endsWith("… (truncated)") &&
+      sweepTrunc.length <= 12000 + "… (truncated)".length,
+    "codebase: oversized block truncated to 12,000 chars + suffix",
+  );
+  assert(
+    formatCodebaseSweep({ structure: "a", gitStatus: "", search: "" }).includes(
+      "(query: (none))",
+    ),
+    "codebase: header shows (none) when no query",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
