@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-1 (webview `command_approval` card) — **fully verified** (S1–S5)
-- **Next step:** verify first slice of item 1.98-2 (notebook support in chat)
+- **Current item:** 1.98-2 (notebook support in chat) — slice S1 verified
+- **Next step:** verify slice 1.98-2.S2 (`src/notebook.ts` pure parse/format/create helpers)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -81,6 +81,18 @@ acceptance checks, and reports a clear pass/fail.
   - (d) `git diff src/chat/webview.ts` → exactly 3 hunks, all additions (+17/-0): CSS rule + 2 badge blocks. No other behavior in the `tool_result` handler changed. PASS
 - **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/webview.ts` (+17) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
 
+### 1.98-2.S1 — `notebook_edit` tool schema + mutating flag (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (exit 0). New assertions confirmed in output: `tools: CODE_TOOLS has 11 tools`, `tools: tool names in order` (ends `...,manage_todos,notebook_edit`), `tools: notebook_edit required=[path,action]`, `tools: notebook_edit action enum has 5 values`, `approval: notebook_edit is mutating`.
+- **Static checks in `src/tools.ts` (via `git diff`):**
+  - (a) `notebook_edit` appended to `CODE_TOOLS` after `manage_todos` (now 11 tools); `required: ["path", "action"]`; `action` enum exactly 5 values: create, modify_cell, insert_cell, delete_cell, change_cell_type; `path` string, `cell_index` number, `cell_type` enum code|markdown, `source` string. PASS
+  - (b) `isMutatingTool` extended: `name === "notebook_edit"` added to the OR chain (existing three tools unchanged). PASS
+  - (c) `git diff src/tools.ts` → exactly 2 hunks, additions only (+58/-1): new tool entry + `isMutatingTool` extension. No other tool schemas touched. PASS
+- **Scope check:** `git status --short` / `git diff --stat` → only `src/tools.ts` (+58/-1) and `scripts/smoke-test.js` (+17/-4) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
+- **Smoke-test diff note:** pre-existing hardcoded `toolBody.tools.length === 10` correctly updated to `11`; tool-name order assertion extended with `notebook_edit`.
+
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -92,7 +104,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
 - [x] **1.98-1** — fully verified (all slices S1–S5 PASS)
-- [ ] Verify first slice of item **1.98-2** (notebook support in chat).
+- [x] **1.98-2.S1** — `notebook_edit` tool schema + mutating flag — **PASS** (2026-10-22, see Verifications)
+- [ ] Verify slice **1.98-2.S2** — `src/notebook.ts` pure parse/format/create helpers.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions

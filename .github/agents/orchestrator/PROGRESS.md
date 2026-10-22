@@ -13,14 +13,14 @@ writes code — it dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-2.S1** — `notebook_edit` tool schema + mutating flag (src/tools.ts)
+- **Current slice:** **1.98-2.S2** — `src/notebook.ts` pure parse/format/create helpers
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the changelog and build the
   ordered backlog (oldest → newest)
 - **Last updated:** 2026-10-22
-- **Last commit:** `4b22983` — chore(llm): mark item 1.98-1 complete (S5 verified) and record tag
-- **Build state:** compiles clean; smoke test passes (item 1.98-1 done; 1.98-2 planned, no code yet)
+- **Last commit:** `199c534` — chore(llm): record 1.98-2 notebook support plan (6 slices)
+- **Build state:** compiles clean; smoke test passes (1.98-2.S1 verified)
 
 ## Team
 
@@ -45,6 +45,7 @@ pending item** (the oldest).
 - **1.98-1.S4** (2026-10-22) — webview "modified by user" badge (`.tool-modified`) on the tool card in both found-card and fallback branches + CSS. Pure additions (+17/−0). Tester PASS.
 - **1.98-1.S5** (2026-10-22) — `llm.tools.requireApproval` description updated; 3 new `cmd-approval:` smoke-test assertions; planner PROGRESS.md marks 1.98-1 Done. Tester PASS. **Item 1.98-1 complete — tagged `changelog-1.98` (commit `ba127fd`).**
 - **1.98-2 plan** (2026-10-22) — Planner produced 6-slice plan: single `notebook_edit` tool (5 actions) + pure `src/notebook.ts` module + ToolExecutor case + `.ipynb` context rendering + settings/smoke/PROGRESS. No host/webview changes (approval gate inherited via `isMutatingTool`). Plan recorded in planner PROGRESS.md.
+- **1.98-2.S1** (2026-10-22) — `notebook_edit` tool schema in `CODE_TOOLS` (11 tools) + `isMutatingTool` flag + 5 smoke assertions (also fixed pre-existing hardcoded tool count 10→11). Tester PASS.
 
 ## Tags (changelog-version tags on completed items)
 

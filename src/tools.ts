@@ -302,6 +302,59 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "notebook_edit",
+      description:
+        "Edit a Jupyter notebook (.ipynb) file. Actions: `create` (create a " +
+        "new notebook with the given cells), `modify_cell` (replace a cell's " +
+        "source), `insert_cell` (insert a new cell at cell_index), " +
+        "`delete_cell` (remove a cell), `change_cell_type` (switch a cell " +
+        "between `code` and `markdown`). Cell indices are 0-based. Use this " +
+        "instead of write_file/edit_file for .ipynb files.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Workspace-relative .ipynb file path.",
+          },
+          action: {
+            type: "string",
+            enum: [
+              "create",
+              "modify_cell",
+              "insert_cell",
+              "delete_cell",
+              "change_cell_type",
+            ],
+            description: "The notebook operation to perform.",
+          },
+          cell_index: {
+            type: "number",
+            description:
+              "0-based cell index. Required for modify_cell, delete_cell, " +
+              "and change_cell_type; for insert_cell the new cell takes this " +
+              "index.",
+          },
+          cell_type: {
+            type: "string",
+            enum: ["code", "markdown"],
+            description:
+              "Cell type. Used for create, insert_cell, and change_cell_type.",
+          },
+          source: {
+            type: "string",
+            description:
+              "Cell source text. For create, multiple cells are separated by " +
+              "the marker line <<<CELL>>>.",
+          },
+        },
+        required: ["path", "action"],
+      },
+    },
+  },
 ];
 
 /**
@@ -327,6 +380,9 @@ export function toolResultMessage(
  */
 export function isMutatingTool(name: string): boolean {
   return (
-    name === "write_file" || name === "edit_file" || name === "run_command"
+    name === "write_file" ||
+    name === "edit_file" ||
+    name === "run_command" ||
+    name === "notebook_edit"
   );
 }

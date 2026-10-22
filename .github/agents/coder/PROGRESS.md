@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-1.S5 done (settings description + smoke test + planner PROGRESS.md)
-- **Next step:** item 1.98-1 complete — awaiting Tester verification
+- **Current step:** 1.98-2.S1 done (notebook_edit tool schema + mutating flag)
+- **Next step:** slice 1.98-2.S2 — src/notebook.ts pure parse/format/create helpers
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. 3 new cmd-approval assertions)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
 
 ## Plan pointer
 
@@ -73,9 +73,16 @@ by step, one step per session.
   - `.github/agents/planner/PROGRESS.md`: marked item 1.98-1 **Done** (S1–S5 complete) in the Status block, the item heading, and the Done section; Status Next step now points to planning backlog item 1.98-2 (notebook support in chat); Todo "Dispatch slices 1.98-1.S1 → S5" checked off.
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` passes with the 3 new `cmd-approval:` assertions (ALL SMOKE TESTS PASSED).
 
+- **1.98-2.S1** (2026-10-22) — `notebook_edit` tool schema + mutating flag. Files: `src/tools.ts`, `scripts/smoke-test.js`.
+  - `src/tools.ts`: added `notebook_edit` entry to `CODE_TOOLS` after `manage_todos` (now 11 tools). Schema: `path` (string, workspace-relative .ipynb path), `action` (string enum: `create`, `modify_cell`, `insert_cell`, `delete_cell`, `change_cell_type`), `cell_index` (number, 0-based; required for modify/delete/change_cell_type; for insert_cell the new cell takes this index), `cell_type` (string enum `code`|`markdown`, for create/insert/change_cell_type), `source` (string; for `create` multiple cells separated by the marker line `<<<CELL>>>`). `required: ["path", "action"]`. Extended `isMutatingTool()` to return true for `notebook_edit`.
+  - `scripts/smoke-test.js`: tools section updated — `CODE_TOOLS.length === 11`; tool-name order string now ends `...,manage_todos,notebook_edit`; new assertions `byName.notebook_edit.function.parameters.required.join(",") === "path,action"` and `action.enum.length === 5`; `isMutatingTool("notebook_edit")` true in the approval section; also fixed the pre-existing `toolBody.tools.length === 10` assertion to `11` (it hardcodes the tool count and would otherwise fail).
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. `tools: notebook_edit required=[path,action]`, `tools: notebook_edit action enum has 5 values`, `approval: notebook_edit is mutating`).
+  - Not committed (per task instruction — orchestrator commits).
+
 ## Todo
 
 - [ ] Item 1.98-1 complete — awaiting Tester verification.
+- [ ] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
 
 ## Notes / decisions
 

@@ -408,10 +408,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 10, "tools: CODE_TOOLS has 10 tools");
+  assert(CODE_TOOLS.length === 11, "tools: CODE_TOOLS has 11 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit",
     "tools: tool names in order",
   );
   assert(
@@ -440,6 +440,16 @@ function assert(cond, label) {
   assert(
     byName.search_files.function.parameters.required.join(",") === "pattern",
     "tools: search_files required=[pattern]",
+  );
+  assert(
+    byName.notebook_edit.function.parameters.required.join(",") ===
+      "path,action",
+    "tools: notebook_edit required=[path,action]",
+  );
+  assert(
+    byName.notebook_edit.function.parameters.properties.action.enum.length ===
+      5,
+    "tools: notebook_edit action enum has 5 values",
   );
   assert(
     byName.run_command.function.parameters.required.join(",") === "command",
@@ -522,7 +532,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 10,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 11,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -1128,6 +1138,7 @@ function assert(cond, label) {
   assert(isMutatingTool("write_file"), "approval: write_file is mutating");
   assert(isMutatingTool("edit_file"), "approval: edit_file is mutating");
   assert(isMutatingTool("run_command"), "approval: run_command is mutating");
+  assert(isMutatingTool("notebook_edit"), "approval: notebook_edit is mutating");
   assert(!isMutatingTool("read_file"), "approval: read_file is not mutating");
   assert(!isMutatingTool("list_dir"), "approval: list_dir is not mutating");
   assert(
