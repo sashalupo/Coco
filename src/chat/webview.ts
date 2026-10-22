@@ -313,6 +313,48 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	.message.approval .status { font-size: 12px; color: var(--muted); }
 
+	/* Command approval card (1.98-1): editable command input + Run/Cancel */
+	.message.command-approval {
+		border: 1px solid var(--vscode-focusBorder, #007fd4);
+		border-radius: 4px;
+		padding: 8px;
+		background: var(--vscode-editorWidget-background, #252526);
+	}
+	.message.command-approval .role {
+		color: var(--vscode-focusBorder, #007fd4);
+		font-weight: 600;
+	}
+	.message.command-approval .cmd-input {
+		width: 100%;
+		box-sizing: border-box;
+		margin: 4px 0 8px;
+		padding: 4px 6px;
+		font-family: var(--vscode-editor-font-family, monospace);
+		font-size: 12px;
+		color: var(--vscode-input-foreground, #ccc);
+		background: var(--vscode-input-background, #3c3c3c);
+		border: 1px solid var(--vscode-input-border, #3c3c3c);
+		border-radius: 3px;
+		resize: vertical;
+	}
+	.message.command-approval .actions { display: flex; gap: 8px; align-items: center; }
+	.message.command-approval .actions button {
+		padding: 4px 12px;
+		border: none;
+		border-radius: 3px;
+		cursor: pointer;
+		font-size: 12px;
+	}
+	.message.command-approval .cmd-run {
+		background: var(--vscode-button-background, #0e639c);
+		color: var(--vscode-button-foreground, #fff);
+	}
+	.message.command-approval .cmd-cancel {
+		background: var(--vscode-button-secondaryBackground, #3a3d41);
+		color: var(--vscode-button-secondaryForeground, #fff);
+	}
+	.message.command-approval .status { font-size: 12px; color: var(--muted); }
+
 	/* Revert result (Phase 7.3) */
 	.message.revert-result {
 		font-size: 12px;
@@ -1931,6 +1973,47 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					rejectBtn.addEventListener('click', function () { decide(false); });
 					messagesEl.appendChild(apEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
+				case 'command_approval':
+					// 1.98-1: editable terminal command approval card.
+					var caEl = document.createElement('div');
+					caEl.className = 'message command-approval';
+					caEl.innerHTML =
+						'<div class="role">Run command?</div>' +
+						'<textarea class="cmd-input" rows="2" spellcheck="false"></textarea>' +
+						'<div class="actions">' +
+						'<button class="cmd-run">Run</button>' +
+						'<button class="cmd-cancel">Cancel</button>' +
+						'</div>' +
+						'<div class="status" style="display:none"></div>';
+					var cmdInput = caEl.querySelector('.cmd-input');
+					cmdInput.value = msg.command || '';
+					var runBtn = caEl.querySelector('.cmd-run');
+					var cancelBtn = caEl.querySelector('.cmd-cancel');
+					var caStatus = caEl.querySelector('.status');
+					var decided = false;
+					function decideCmd(approved) {
+						if (decided) { return; }
+						decided = true;
+						runBtn.disabled = true;
+						cancelBtn.disabled = true;
+						cmdInput.disabled = true;
+						caStatus.textContent = approved ? 'Ran' : 'Cancelled';
+						caStatus.style.display = 'inline';
+						vscode.postMessage({ type: 'commandApproval', id: msg.id, approved: approved, command: cmdInput.value });
+					}
+					runBtn.addEventListener('click', function () { decideCmd(true); });
+					cancelBtn.addEventListener('click', function () { decideCmd(false); });
+					cmdInput.addEventListener('keydown', function (e) {
+						if (e.key === 'Enter' && e.ctrlKey) {
+							e.preventDefault();
+							decideCmd(true);
+						}
+					});
+					messagesEl.appendChild(caEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					cmdInput.focus();
+					cmdInput.select();
 					break;
 				case 'revert_result':
 					var rvEl = document.createElement('div');

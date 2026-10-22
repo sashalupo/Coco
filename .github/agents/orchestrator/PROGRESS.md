@@ -12,15 +12,15 @@ writes code — it dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **none** — awaiting the Changelog Researcher to populate the backlog
-- **Current slice:** **none**
+- **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
+- **Current slice:** **1.98-1.S2** — Host: `commandApproval` handler + `waitForCommandApproval`
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the changelog and build the
   ordered backlog (oldest → newest)
 - **Last updated:** 2026-10-22
-- **Last commit:** — (no orchestrator commits yet)
-- **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
+- **Last commit:** `e3553d4` — chore(llm): build v1.98 changelog backlog (17 items, 6 pending)
+- **Build state:** compiles clean; smoke test passes (S1 verified)
 
 ## Team
 
@@ -39,7 +39,7 @@ pending item** (the oldest).
 
 ## Done
 
-_(none yet)_
+- **1.98-1.S1** (2026-10-22) — webview `command_approval` card: editable textarea (value-set, no innerHTML), Run/Cancel, Ctrl+Enter, double-decide guard, CSS. Tester PASS (compile + smoke + 6 static checks).
 
 ## Tags (changelog-version tags on completed items)
 

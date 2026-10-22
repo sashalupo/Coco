@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** **none** — awaiting a plan from the Planner
-- **Next step:** implement the first step of the current plan (once a plan exists)
+- **Current step:** 1.98-1.S1 done (webview `command_approval` card)
+- **Next step:** 1.98-1.S2 — Host: `commandApproval` message handler + `waitForCommandApproval` (src/chat/ChatViewProvider.ts)
 - **Last updated:** 2026-10-22
-- **Last commit:** — (no coder commits yet)
-- **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
+- **Last commit:** — (orchestrator commits; no coder commits yet)
+- **Build state:** `npm run compile` passes after 1.98-1.S1
 
 ## Plan pointer
 
@@ -25,12 +25,27 @@ by step, one step per session.
 
 ## Done
 
-_(none yet)_
+- **1.98-1.S1** (2026-10-22) — Webview `command_approval` card. File: `src/chat/webview.ts` only.
+  - Added `case 'command_approval':` in the host-message handler, sibling to `approval_request`.
+    Builds a `.message.command-approval` card: role line "Run command?", a
+    `<textarea class="cmd-input" rows="2">` pre-filled via `.value = msg.command` (never
+    innerHTML), actions row with `Run` (`.cmd-run`) / `Cancel` (`.cmd-cancel`) buttons and a
+    hidden `.status` div. `decideCmd(approved)` guards double-decide (`decided` flag),
+    disables both buttons + the textarea, sets status ("Ran" / "Cancelled"), then
+    `vscode.postMessage({ type: 'commandApproval', id: msg.id, approved, command: cmdInput.value })`.
+    Wired `click` on both buttons and `keydown` on the textarea (`Enter` + `Ctrl` →
+    `preventDefault(); decideCmd(true)`). Focuses and selects the textarea on render.
+  - Added CSS in the existing style block: `.message.command-approval` (bordered card mirroring
+    `.message.approval`), `.command-approval .cmd-input` (monospace, full width, VS Code input
+    CSS variables), `.cmd-run`/`.cmd-cancel` mirroring `.approve`/`.reject`, `.status`.
+  - Verified: `npm run compile` passes. Host-side handling is slice S2 (not yet implemented).
 
 ## Todo
 
-- [ ] Wait for a plan from the Planner.
-- [ ] For each plan step: implement, verify (`npm run compile`), record, commit.
+- [ ] 1.98-1.S2 — Host: `commandApproval` message handler + `waitForCommandApproval` (src/chat/ChatViewProvider.ts).
+- [ ] 1.98-1.S3 — Host: route `run_command` through the editable approval gate.
+- [ ] 1.98-1.S4 — Webview: "modified by user" badge on the tool card.
+- [ ] 1.98-1.S5 — Settings description + smoke test + PROGRESS.md.
 
 ## Notes / decisions
 
