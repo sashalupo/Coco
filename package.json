@@ -184,6 +184,11 @@
           "default": false,
           "description": "Require user approval before mutating tools (write_file, edit_file, run_command, notebook_edit) are applied. run_command shows an editable command card (Ctrl+Enter to run)."
         },
+        "llm.tools.autoApprove": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-approve all mutating tools without asking (experimental). Overrides llm.tools.requireApproval. Remembered approvals (session/workspace/global) also skip the prompt."
+        },
         "llm.context.includeFile": {
           "type": "boolean",
           "default": true,

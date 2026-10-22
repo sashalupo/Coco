@@ -313,7 +313,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   (Continue-button dropdown); experimental `chat.tools.autoApprove` auto-approves all tools.
 - **Image notes:** `chat-tool-approval.png` (Continue button dropdown options).
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 4 slices S1–S4; ApprovalStore + autoApprove + scope dropdown; smoke 466)
 - **Gap vs existing:** the extension has a single `llm.tools.requireApproval` boolean gate.
   Extend with remembered approvals: per-tool allow-list persisted at workspace
   (`.vscode/llm.json`-style) / global (storage) scope + an `llm.tools.autoApprove` setting.
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-8** Agent mode tool approvals
 - **1.99-10** Unified Chat view (mode picker + history)
 - **1.99-12** Reusable prompt files
 - **1.99-13** Improved vision support (URL images, `.bmp`)

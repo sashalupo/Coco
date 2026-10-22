@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-8 (Agent mode tool approvals) — S3 done (2026-10-22)
-- **Next step:** 1.99-8.S4 (FINAL: package.json autoApprove setting + final smoke + PROGRESS)
+- **Current item:** 1.99-8 (Agent mode tool approvals) — **DONE** (2026-10-22, all 4 slices S1–S4)
+- **Next step:** 1.99-10 (Unified Chat view) — next item in backlog
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (464 assertions)
+- **Build state:** compiles clean; smoke test passes (466 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-8.S4** (2026-10-22, FINAL) — `package.json` + final smoke assertions + PROGRESS.md. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: added `llm.tools.autoApprove` (boolean, default `false`) immediately after `llm.tools.requireApproval`, description: "Auto-approve all mutating tools without asking (experimental). Overrides llm.tools.requireApproval. Remembered approvals (session/workspace/global) also skip the prompt."
+  - `scripts/smoke-test.js`: new section `// 31) Tool approvals — final (1.99-8.S4)` after section 30, before the final summary print; 2 `appr-s4:` assertions on the parsed `package.json` (local `pkgJsonApprS4`): (a) `properties["llm.tools.autoApprove"]` exists with `type === "boolean"` and `default === false`; (b) regression guard — `properties["llm.tools.requireApproval"]` still exists. Total PASS lines now 466 (464 + 2).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 466 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
+  - **Item 1.99-8 (Agent mode tool approvals) complete** — all 4 slices S1–S4 done.
 - **1.99-8.S3** (2026-10-22) — `src/chat/webview.ts`: scope dropdown on both approval cards. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/webview.ts`: (a) CSS: new `.approve-scope` rule (after `.message.approval .status`, before the command-approval block) reusing the existing input conventions — `var(--vscode-input-background, #3c3c3c)` bg, `var(--vscode-input-foreground, #ccc)` color, `var(--vscode-input-border, #3c3c3c)` 1px border, 3px radius, 2px 4px padding, 12px font, `max-width: 200px`, `:focus` outline `var(--focus)` (same pattern as `.toolbar select`); (b) `case 'approval_request':` — added `<select class="approve-scope">` with 4 options (`once` "Run once" / `session` "Remember for session" / `workspace` "Remember for workspace" / `global` "Remember globally") inside `.actions` after the Reject button; `decide(approved)` now also disables the select and posts `{ type: 'toolApproval', id: msg.id, approved, scope: scopeEl.value }` (default selected = `once`); (c) `case 'command_approval':` — same dropdown added to `.actions` after Cancel; `decideCmd(approved)` disables `cmdScopeEl` and posts `scope: cmdScopeEl.value` alongside the existing `command` field (reject path includes scope too — harmless, host ignores it on reject).
   - `scripts/smoke-test.js`: new section `// 30) Tool approvals — webview scope dropdown (1.99-8.S3)` after section 29, before the final summary print; 3 `appr-s3:` static-source assertions via `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcApprS3`): (a) contains `approve-scope`; (b) contains `Remember for workspace`; (c) contains `Remember globally`. Total PASS lines now 464 (461 + 3).

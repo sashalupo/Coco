@@ -1074,7 +1074,7 @@ tools (`write_file`, `edit_file`, `run_command`, `notebook_edit`, `mcp__*`) +
   Smoke (`appr-s3:`, 3): webview HTML source contains `approve-scope`,
   `Remember for workspace`, `Remember globally`.
 
-- **1.99-8.S4 — `package.json` + final smoke assertions + PROGRESS.md.**
+- **1.99-8.S4 — `package.json` + final smoke assertions + PROGRESS.md.** — Done (2026-10-22, PASS, 466 assertions)
   Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
   (a) `package.json`: add `llm.tools.autoApprove` (boolean, default `false`,
   description: "Auto-approve all mutating tools without asking (experimental).

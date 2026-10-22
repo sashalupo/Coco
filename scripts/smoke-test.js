@@ -3557,6 +3557,22 @@ function assert(cond, label) {
     "appr-s3: webview has global scope option",
   );
 
+  // 31) Tool approvals — final (1.99-8.S4)
+  const pkgJsonApprS4 = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const pkgPropsApprS4 = pkgJsonApprS4.contributes.configuration.properties;
+  assert(
+    pkgPropsApprS4["llm.tools.autoApprove"] &&
+      pkgPropsApprS4["llm.tools.autoApprove"].type === "boolean" &&
+      pkgPropsApprS4["llm.tools.autoApprove"].default === false,
+    "appr-s4: package.json has llm.tools.autoApprove",
+  );
+  assert(
+    pkgPropsApprS4["llm.tools.requireApproval"] !== undefined,
+    "appr-s4: package.json still has llm.tools.requireApproval",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

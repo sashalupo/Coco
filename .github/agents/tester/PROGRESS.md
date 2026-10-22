@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-8.S3 (webview scope dropdown on both approval cards) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-8.S4 (next slice of Agent mode tool approvals)
+- **Current item:** 1.99-8.S4 (FINAL) — `package.json` + final smoke assertions — **PASS** (2026-10-22) — item 1.99-8 complete
+- **Next step:** item 1.99-8 complete (S1–S4); pick next changelog item (oldest to newest)
 - **Last updated:** 2026-10-22
-- **Last commit:** aabc2d3 (feat: 1.99-8.S2 host wiring + autoApprove)
-- **Build state:** 464/464 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 0c9bfbf (feat: 1.99-8.S3 webview scope dropdown); S4 commit pending
+- **Build state:** 466/466 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-8.S4 — FINAL: `package.json` + final smoke assertions (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **466 PASS lines** (464 prior + 2 new `appr-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 466/466 PASS; (3) 2 genuine `appr-s4:` assertions passing: `package.json has llm.tools.autoApprove`; `package.json still has llm.tools.requireApproval` PASS; (4) `package.json` valid JSON — `llm.tools.autoApprove` = `{type: "boolean", default: false, description: "Auto-approve all mutating tools without asking (experimental). Overrides llm.tools.requireApproval. Remembered approvals (session/workspace/global) also skip the prompt."}`, adjacent to `llm.tools.requireApproval` in `contributes.configuration.properties` PASS; (5) full-item regression: all 11 earlier `appr-s*:` assertions pass — `appr-s1:` ×5, `appr-s2:` ×3, `appr-s3:` ×3 PASS; (6) scope: exactly ` M .github/agents/coder/PROGRESS.md`, ` M package.json`, ` M scripts/smoke-test.js` (ninfer submodule marker ignored); no `package-lock.json` drift PASS.
+- **Verdict:** **PASS** — all 6 criteria met. **Item 1.99-8 (Agent mode tool approvals) fully verified (S1–S4).**
 
 ### 1.99-8.S3 — webview scope dropdown on both approval cards (src/chat/webview.ts) (2026-10-22) — **PASS**
 
