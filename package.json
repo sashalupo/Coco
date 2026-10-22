@@ -242,6 +242,11 @@
           "default": true,
           "description": "Allow attaching images (JPEG/PNG/GIF/WEBP) to chat messages. Images are sent to the engine as base64 data URLs (OpenAI multimodal format)."
         },
+        "llm.chat.fetch.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the `#fetch <url>` tag to include webpage content in chat context. The page is fetched over plain HTTP and converted to plain text (cached for 10 minutes)."
+        },
         "llm.completions.model": {
           "type": "string",
           "default": "",

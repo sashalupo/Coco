@@ -278,7 +278,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   prompt; in agent mode picked up automatically, referenceable explicitly via `#fetch <url>`
   in other modes. VS Code renders the page in a headless browser and caches it.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** **done** (2026-10-22, 4 slices S1–S4; commits e6017e9, 23e40d4, 03d6da3 + S4 commit; no tag — `changelog-1.99` already exists)
 - **Gap vs existing:** none. Local reframe (no headless browser available): plain HTTP
   `fetch` + HTML→text extraction (strip script/style/tags), size cap, cache per URL.
 
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-4** Fetch tool (`#fetch`)
 - **1.99-5** Usages tool (`#usages`)
 - **1.99-6** Create a new workspace with agent mode
 - **1.99-8** Agent mode tool approvals

@@ -96,6 +96,8 @@ export interface LlmSettings {
   problemsEnabled: boolean;
   /** Enable the `#folder:` chat tag (folder tree injected as context). */
   folderContextEnabled: boolean;
+  /** Enable the `#fetch` chat tag (webpage content injected as context). */
+  fetchEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
   /** MCP server configurations (name → command/args/env). */

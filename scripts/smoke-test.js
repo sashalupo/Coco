@@ -3143,6 +3143,17 @@ function assert(cond, label) {
     "fetch-s3: 25k-char body truncated to ≤20050 chars ending with (truncated)",
   );
 
+  // 20d) Fetch tag wiring (1.99-4.S4)
+  const chatViewSrcFetchS4 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcFetchS4.includes("extractFetchTag") &&
+      chatViewSrcFetchS4.includes("fetchUrl("),
+    "fetch-s4: ChatViewProvider wires #fetch tag via extractFetchTag + toolExecutor.fetchUrl",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

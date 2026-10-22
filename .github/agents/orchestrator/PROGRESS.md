@@ -13,15 +13,15 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-4** — Fetch tool (`#fetch`) (4-slice plan recorded; 1.99-3 DONE)
-- **Current slice:** 1.99-4.S3 — **DONE** (PASS, 425 assertions); next: 1.99-4.S4 (FINAL)
+- **Current item:** **1.99-4** — Fetch tool (`#fetch`) — **DONE** (2026-10-22, 4 slices S1–S4; no tag — `changelog-1.99` already exists)
+- **Current slice:** 1.99-4.S4 (FINAL) — **DONE** (PASS, 426 assertions); item 1.99-4 complete
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-4.S4** (FINAL: `#fetch` tag wiring in
-  ChatViewProvider + `llm.chat.fetch.enabled` setting), then Tester, memory, commit
+- **Next step:** dispatch Planner for item **1.99-5** (Usages tool `#usages`), record plan,
+  commit plan, then run the slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** `23e40d4` — feat(llm): fetch tool — fetch_url schema + executor case (1.99-4.S2)
-- **Build state:** compiles clean; smoke test passes (425 assertions); 1.99-4.S3 verified
+- **Last commit:** `03d6da3` — feat(llm): fetch tool — extractFetchTag + formatFetchBlock (1.99-4.S3)
+- **Build state:** compiles clean; smoke test passes (426 assertions); 1.99-4 complete
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -49,6 +49,12 @@ pending item** (the oldest).
 - **1.99-3.S1** (2026-10-22) — `think` tool schema in `CODE_TOOLS` (12 tools) + 3 `think-s1:` smoke assertions + 3 regression-guard bumps (11→12). Tester PASS (404 assertions).
 - **1.99-3.S2** (2026-10-22) — ToolExecutor `case "think"` + private `think` echo handler (`Thought recorded[: <text>]`), 3 `think-s2:` smoke assertions. Tester PASS (407 assertions).
 - **1.99-3.S3 (FINAL)** (2026-10-22) — 4 `think-s3:` verification assertions (request body tools incl. think + tool_choice auto; tools off → undefined; ChatViewProvider routes via toolExecutor.execute; no special-casing). Tester PASS (411 assertions). **Item 1.99-3 complete — no tag (changelog-1.99 already exists).**
+- **1.99-4 plan** (2026-10-22) — Planner produced 4-slice plan: pure `src/fetchTool.ts` module (S1) + `fetch_url` schema/executor (S2) + `extractFetchTag`/`formatFetchBlock` in `src/context.ts` (S3) + `#fetch` tag wiring + `llm.chat.fetch.enabled` setting (S4). Commit 62d0036.
+- **1.99-4.S1** (2026-10-22) — `src/fetchTool.ts` pure module (fetch + HTML→text + cache + truncation, never throws) + 8 `fetch-s1:` smoke assertions. Tester PASS (419 assertions). Commit e6017e9.
+- **1.99-4.S2** (2026-10-22) — 13th `CODE_TOOLS` entry `fetch_url` + ToolExecutor `case "fetch_url"` + public `fetchUrl` wrapper + 3 `fetch-s2:` smoke assertions + 5 count-guard bumps (12→13). Tester PASS (422 assertions). Commit 23e40d4.
+- **1.99-4.S3** (2026-10-22) — `extractFetchTag` + `formatFetchBlock` (pure, `src/context.ts`) + 3 `fetch-s3:` smoke assertions. Tester PASS (425 assertions). Commit 03d6da3.
+- **1.99-4.S4 (FINAL)** (2026-10-22) — `#fetch` tag wiring in ChatViewProvider (after `#folder:` block, gated on `settings.fetchEnabled`) + `fetchEnabled` in presets/config + `llm.chat.fetch.enabled` setting (default true) + 1 `fetch-s4:` static assertion. Tester PASS (426 assertions). **Item 1.99-4 complete — no tag (changelog-1.99 already exists).**
+
 
 - **1.98-1.S1** (2026-10-22) — webview `command_approval` card: editable textarea (value-set, no innerHTML), Run/Cancel, Ctrl+Enter, double-decide guard, CSS. Tester PASS (compile + smoke + 6 static checks).
 - **1.98-1.S2** (2026-10-22) — host `commandApproval` message case + `pendingCommandApproval` field + `waitForCommandApproval(signal)` (abort-safe, mirrors `waitForApproval`). Pure additions (+37/−0). Tester PASS.

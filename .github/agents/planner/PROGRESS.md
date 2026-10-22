@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-4 (Fetch tool `#fetch`) — **planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-4.S1
+- **Current item:** 1.99-4 (Fetch tool `#fetch`) — **done** (2026-10-22, 4 slices S1–S4, all PASS)
+- **Next step:** plan item 1.99-5 (Usages tool `#usages`) when dispatched
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -791,7 +791,7 @@ HTML→text extraction, size cap, per-URL in-memory cache. No headless browser.
   body → length ≤ 20,050, ends with `(truncated)`.
   Acceptance: compile clean; smoke 422 → 425.
 
-- **1.99-4.S4 — `#fetch` tag wiring + setting (FINAL).**
+- **1.99-4.S4 — `#fetch` tag wiring + setting (FINAL)** — Done (2026-10-22, PASS, 426 assertions).
   Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`,
   `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`
   (modify).

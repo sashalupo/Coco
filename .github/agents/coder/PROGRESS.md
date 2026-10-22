@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-4 (Fetch tool `#fetch`) — S3 done (2026-10-22)
-- **Next step:** 1.99-4.S4 (FINAL: `#fetch` tag wiring in ChatViewProvider + `llm.chat.fetch.enabled` setting)
+- **Current item:** 1.99-4 (Fetch tool `#fetch`) — **DONE** (2026-10-22, 4 slices S1–S4)
+- **Next step:** 1.99-5 (Usages tool `#usages`) — await planner
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (425 PASS lines, incl. 8 `fetch-s1:` + 3 `fetch-s2:` + 3 `fetch-s3:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (426 PASS lines, incl. 8 `fetch-s1:` + 3 `fetch-s2:` + 3 `fetch-s3:` + 1 `fetch-s4:`)
 
 ## Plan pointer
 
@@ -25,6 +25,15 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-4.S4** (2026-10-22, FINAL) — `#fetch` tag wiring + `llm.chat.fetch.enabled` setting. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `fetchEnabled: boolean` on `LlmSettings` (comment: "Enable the `#fetch` chat tag (webpage content injected as context)."), after `folderContextEnabled`.
+  - `src/config.ts`: `readSettings()` adds `fetchEnabled: c.get<boolean>("chat.fetch.enabled", true)` after `folderContextEnabled`.
+  - `src/chat/ChatViewProvider.ts`: (a) extended the `../context` import with `extractFetchTag` + `formatFetchBlock`; (b) in `runStream`, after the `#folder:` block: `if (settings.fetchEnabled && lastUser && this.toolExecutor)` → `const fetchUrl_ = extractFetchTag(lastUser.content)`; if non-null: `const fetched = await this.toolExecutor.fetchUrl(fetchUrl_)`; `const fetchBlock = formatFetchBlock(fetchUrl_, fetched)`; appended to `finalContextBlock` with the same `? + "\n\n" + :` pattern (gated regardless of `llm.tools.enabled`, same as the other tags).
+  - `package.json`: added `llm.chat.fetch.enabled` (boolean, default `true`) after `llm.chat.vision.enabled`, description: "Allow the `#fetch <url>` tag to include webpage content in chat context. The page is fetched over plain HTTP and converted to plain text (cached for 10 minutes)."
+  - `scripts/smoke-test.js`: new section `// 20d) Fetch tag wiring (1.99-4.S4)` with 1 `fetch-s4:` static-source assertion on `out/chat/ChatViewProvider.js` (contains `extractFetchTag` AND `fetchUrl(`). Local named `chatViewSrcFetchS4` (the existing `chatViewSrcS4` from 1.98-14.S4 was already declared in the same scope). Total PASS lines now 426 (425 + 1).
+  - `.github/agents/planner/PROGRESS.md`: `1.99-4.S4` slice header annotated ` — Done (2026-10-22, PASS, 426 assertions)`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 426 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-4.S3** (2026-10-22) — `src/context.ts`: `extractFetchTag` + `formatFetchBlock` (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/context.ts`: appended a `#fetch` tag section after the `#folder` section, matching existing style (JSDoc, `(?!\w)` word-bound regex, `… (truncated)` suffix pattern): (a) `export function extractFetchTag(text: string): string | null` — regex `/#fetch(?!\w)\s+(\S+)/i`, returns first match's trimmed URL token, `null` when absent, bare (no URL), or `#fetchfoo` (guard prevents); (b) `export const FETCH_BLOCK_MAX_CHARS = 20000;` + private `FETCH_BLOCK_TRUNCATED_SUFFIX = "… (truncated)"`; (c) `export function formatFetchBlock(url: string, text: string): string` — `""` when `text.trim() === ""`, else `Fetched page: <url>\n\n<text>` capped at `FETCH_BLOCK_MAX_CHARS` with the truncated suffix.
   - `scripts/smoke-test.js`: new section `// 20c) Fetch tag context (1.99-4.S3)` requiring `out/context.js` (existing pattern); 3 `fetch-s3:` assertions: (a) `extractFetchTag` URL / absent→null / bare-at-end→null / `#fetchfoo`→null; (b) `formatFetchBlock("https://x","body")` starts with `Fetched page: https://x` + contains `body`, whitespace-only text → `""`; (c) 25,000-char body → length ≤ 20050, ends with `(truncated)`, `FETCH_BLOCK_MAX_CHARS === 20000`. Total PASS lines now 425 (422 + 3).

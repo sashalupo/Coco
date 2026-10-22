@@ -29,6 +29,8 @@ import {
   formatProblemsBlock,
   extractFolderTag,
   extractTaggedFiles,
+  extractFetchTag,
+  formatFetchBlock,
   type ContextFile,
   type ContextInput,
 } from "../context";
@@ -1041,6 +1043,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + folderBlock
               : folderBlock;
+          }
+        }
+      }
+
+      // 1.99-4.S4: `#fetch` tag — fetch the tagged URL (plain HTTP, cached)
+      // and append the page text to the context block. Gated only on
+      // settings.fetchEnabled (runs regardless of llm.tools.enabled, same
+      // as `#codebase`/`#problems`/`#folder:`).
+      if (settings.fetchEnabled && lastUser && this.toolExecutor) {
+        const fetchUrl_ = extractFetchTag(lastUser.content);
+        if (fetchUrl_ !== null) {
+          const fetched = await this.toolExecutor.fetchUrl(fetchUrl_);
+          const fetchBlock = formatFetchBlock(fetchUrl_, fetched);
+          if (fetchBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + fetchBlock
+              : fetchBlock;
           }
         }
       }

@@ -72,6 +72,7 @@ export function readSettings(): LlmSettings {
     codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true),
     problemsEnabled: c.get<boolean>("chat.problems.enabled", true),
     folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true),
+    fetchEnabled: c.get<boolean>("chat.fetch.enabled", true),
     completionsModel: c.get<string>("completions.model", ""),
     mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),
   };

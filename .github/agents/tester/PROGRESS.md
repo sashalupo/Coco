@@ -12,12 +12,26 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-4.S3 (extractFetchTag + formatFetchBlock) — **PASS** (2026-10-22)
-- **Next step:** verify next slice of 1.99-4 (per planner backlog)
+- **Current item:** 1.99-4.S4 (FINAL: `#fetch` tag wiring + setting) — **PASS** (2026-10-22) — item 1.99-4 complete
+- **Next step:** verify next item in planner backlog (1.99-4 done)
 - **Last updated:** 2026-10-22
-- **Last commit:** 23e40d4 (coder: 1.99-4.S2)
-- **Build state:** 425/425 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 03d6da3 (coder: 1.99-4.S3)
+- **Build state:** 426/426 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-4.S4 — #fetch tag wiring + llm.chat.fetch.enabled setting (FINAL) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **426 PASS lines** (425 prior + 1 new `fetch-s4:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 426 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 20d) Fetch tag wiring (1.99-4.S4)` section (single diff hunk, +11/−0) has 1 genuine `fetch-s4:` static-source assertion vs `out/chat/ChatViewProvider.js`: contains `extractFetchTag` AND `fetchUrl(` (confirmed at compiled lines 955/957). PASS
+  - (4) Source: `src/presets.ts` 1 hunk +2/−0 (`fetchEnabled: boolean` after `folderContextEnabled`); `src/config.ts` 1 hunk +1/−0 (`fetchEnabled: c.get<boolean>("chat.fetch.enabled", true)`); `src/chat/ChatViewProvider.ts` 2 hunks +19/−0 — `../context` import extended with `extractFetchTag`/`formatFetchBlock`, new `#fetch` block after the `#folder:` block (L1038), gated on `settings.fetchEnabled`, calls `this.toolExecutor.fetchUrl(...)`, uses `formatFetchBlock`, same `? + "\n\n" + :` append pattern; zero deletions. `package.json` 1 hunk +5/−0 — `llm.chat.fetch.enabled` (boolean, default `true`, description mentions `#fetch <url>`); valid JSON. PASS
+  - (5) Scope: `git status --short | grep -v ninfer` → exactly the 6 in-scope files + coder PROGRESS.md. `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `03d6da3` (feat(llm): fetch tool — extractFetchTag + formatFetchBlock (1.99-4.S3)). No coder commit. PASS
+  - (7) Planner memory: line 794 — `1.99-4.S4 — #fetch tag wiring + setting (FINAL) — Done (2026-10-22, PASS, 426 assertions)`. PASS
+- **Verdict:** **PASS** — all 7 criteria met. **Item 1.99-4 (Fetch tool `#fetch`) fully verified (S1–S4).**
 
 ### 1.99-4.S3 — extractFetchTag + formatFetchBlock (src/context.ts) (2026-10-22) — **PASS**
 
