@@ -14,15 +14,15 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** none — item 1.98-8 complete; next item **1.98-9** (`#problems` tag)
+- **Current slice:** **1.98-9.S1** — `src/context.ts`: `extractProblemsTag` + `formatProblemsBlock` (pure)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
   `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
   within the active window)
 - **Last updated:** 2026-10-22
-- **Last commit:** `21c82a6` — feat(llm): #codebase tag — chat wiring (1.98-8.S3)
-- **Build state:** compiles clean; smoke test passes (270 assertions); item 1.98-8 fully verified (S1–S4)
+- **Last commit:** `c7cc43b` — chore(llm): settings schema + smoke assertions; mark item 1.98-8 complete (1.98-8.S4)
+- **Build state:** compiles clean; smoke test passes (270 assertions); 1.98-9 planned (4 slices)
 
 ## Team
 

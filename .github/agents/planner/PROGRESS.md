@@ -13,7 +13,7 @@ code — only the Coder writes code.
 ## Status
 
 - **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — **Done** (S1–S4 complete)
-- **Next step:** plan backlog item 1.98-9 (`#problems` tag)
+- **Next step:** dispatch Coder for slice 1.98-9.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -275,3 +275,27 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
 
 ## Overall acceptance
 1. compile clean + smoke fully green. 2. `#codebase <q>` → `Codebase sweep` section (structure, git status when dirty, search matches), ≤12,000 chars. 3. setting false → inert. 4. `#codebase` no query → structure + git status, search placeholder. 5. `@file` tagging, section order, 11 tools unaffected.
+
+# Plan: 1.98-9 — Attach problems as chat context (`#problems`) (Planned 2026-10-22)
+
+**Changelog:** VS Code 1.98 — "Attach problems from the Problems panel as chat context — type `#problems` (or paperclip / drag). Specific problems, all problems in a file, or all files in the codebase."
+
+## Decisions
+1. Tag-only scope — no paperclip/drag-and-drop (single webview, no attachment UI).
+2. Follow the `#codebase` pattern exactly: pure extraction + formatting in `src/context.ts`, vscode collection in ToolExecutor, wiring in `runStream` appended after the codebase block.
+3. Tag grammar: `extractProblemsTag(text): string | null` — `/#problems(?!\w)/i`, first match, trimmed same-line remainder as qualifier: `""` = bare tag = all workspace problems; non-empty = workspace-relative file path; `null` = absent.
+4. REUSE diagnostics collection: extract `getDiagnostics` body into `public async collectDiagnostics(relPath?: string): Promise<string>` (same guards/formatting/empty strings); `getDiagnostics` becomes a thin wrapper. New cap: 50 problems + `… (showing first 50 of N)` note.
+5. Bounded output: 50 problems (in collectDiagnostics) + 8,000 chars (in pure `formatProblemsBlock`, `… (truncated)` suffix).
+6. New setting `llm.chat.problems.enabled` (default true) — mirrors `llm.chat.codebaseSearch.enabled`.
+7. `formatProblemsBlock(data: { text: string }, scope?: string): string` — header `Problems (scope: workspace|<path>)`, body = text or `(no problems — clean)`, 8,000-char cap, `""` when text empty AND scope is workspace.
+8. No webview changes.
+9. Qualifier fallback (S3): if the qualifier is non-empty and path resolution rejects it, fall back to workspace scope (avoids rendering "Path not allowed" as body).
+
+## Slices
+- **S1** `src/context.ts` (+ smoke): `extractProblemsTag` + `ProblemsBlockData` + `PROBLEMS_BLOCK_MAX_CHARS = 8000` + `formatProblemsBlock`. Smoke section 13a (~10 assertions).
+- **S2** `src/tools/ToolExecutor.ts` (+ smoke): `public async collectDiagnostics(relPath?)` extracted from `getDiagnostics` (thin wrapper, tool behavior byte-identical); 50-problem cap. Smoke 13b static: `collectDiagnostics(` ≥ 2, `getDiagnostics` intact, `showing first 50`.
+- **S3** `src/chat/ChatViewProvider.ts` + `src/config.ts` + `src/presets.ts` (+ smoke): `problemsEnabled` field (presets + config, default true); in `runStream` after the `#codebase` block: if `settings.problemsEnabled` and tag present, `collectDiagnostics(p || undefined)` → `formatProblemsBlock` → append to `finalContextBlock`; qualifier path-rejection → workspace fallback. Smoke 13c static (5 checks).
+- **S4** `package.json` + `scripts/smoke-test.js` + planner PROGRESS.md: `llm.chat.problems.enabled` (boolean, default true); smoke 13d; mark 1.98-9 Done.
+
+## Overall acceptance
+1. compile clean + smoke all green (270 prior + section 13). 2. `#problems` → `Problems (scope: workspace)` block (≤50 problems / ≤8,000 chars); bare tag + no diagnostics → no block. 3. `#problems src/foo.ts` → file scope; outside-workspace path → not injected (workspace fallback). 4. setting false → tag inert. 5. `get_diagnostics` tool output unchanged. 6. No webview changes, no new deps.
