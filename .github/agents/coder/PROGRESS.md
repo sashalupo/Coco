@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-10 (Unified Chat view — mode picker) — S2 done
-- **Next step:** 1.99-10.S3 (webview mode picker: src/chat/webview.ts)
+- **Current item:** 1.99-10 (Unified Chat view — mode picker) — S3 done
+- **Next step:** 1.99-10.S4 (FINAL: final smoke assertions + PROGRESS.md)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (475 assertions)
+- **Build state:** compiles clean; smoke test passes (478 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-10.S3** (2026-10-22) — `src/chat/webview.ts`: mode picker in the toolbar. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: (a) HTML — `<label>Mode <select id="mode-select"><option value="ask">Ask</option><option value="agent" selected>Agent</option><option value="edit">Edit</option></select></label>` added as the FIRST control in `.toolbar` (after `#quick-new-chat`, before the Model label), same label/select markup style as Model/Thinking; (b) JS — `var modeSelect = document.getElementById('mode-select');` added before the `modelSelect` lookup; `modeSelect.addEventListener('change', postToolbar);` added before the `manualInput` listener (mirrors the other selects); (c) `getToolbar()` returns `mode: modeSelect.value` (first field of the returned object); (d) `setToolbar(state)` sets `modeSelect.value = state.mode` guarded by `state.mode === 'ask' || state.mode === 'agent' || state.mode === 'edit'` (before the model block); (e) `postToolbar()` payload gains `mode: state.mode` (first field, before `model`); (f) `case 'toolbar':` in `handleHostMessage` passes `mode: msg.mode` into `setToolbar` (first field, mirroring the existing fields).
+  - `scripts/smoke-test.js`: new section `// 34) Unified chat mode — webview picker (1.99-10.S3)` after section 33, before the final summary print; 3 `unif-s3:` static-source assertions via `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcUnifS3`, same pattern as sections 30/33): (a) contains `id="mode-select"`; (b) contains `value="ask"` AND `value="edit"`; (c) contains `mode: state.mode` (postToolbar payload) AND `mode: modeSelect.value` (getToolbar return). Total PASS lines now 478 (475 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 478 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-10.S2** (2026-10-22) — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts` `ToolbarState.mode`. Files: `src/presets.ts`, `src/config.ts`, `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `mode: ChatMode` field added to `ToolbarState` (one-line addition after `contextFlags`).
   - `src/config.ts`: (a) `ChatMode` added to the `./presets` type import; `normalizeChatMode` added to the value import; (b) `DEFAULT_TOOLBAR` gains `mode: "agent"`; (c) `ToolbarStateStore.get()` backfills `mode: normalizeChatMode(state.mode)` (mirrors the `contextFlags` backfill); (d) new `setMode(mode: ChatMode)` setter mirroring `setThinking`.

@@ -1105,6 +1105,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<div class="toolbar">
 			<button id="sessions-toggle" title="Toggle sessions panel" aria-expanded="false">☰</button>
 			<button id="quick-new-chat" title="Start a new conversation">+ New</button>
+			<label>Mode
+				<select id="mode-select"><option value="ask">Ask</option><option value="agent" selected>Agent</option><option value="edit">Edit</option></select>
+			</label>
 			<label>Model
 				<select id="model-select">${modelOptions}</select>
 			</label>
@@ -1167,6 +1170,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	<script>
 	(function () {
 		var vscode = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+		var modeSelect = document.getElementById('mode-select');
 		var modelSelect = document.getElementById('model-select');
 		var manualWrap = document.getElementById('model-manual-wrap');
 		var manualInput = document.getElementById('model-manual');
@@ -1298,6 +1302,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			syncManual();
 			postToolbar();
 		});
+		modeSelect.addEventListener('change', postToolbar);
 		manualInput.addEventListener('change', postToolbar);
 		thinkingSelect.addEventListener('change', postToolbar);
 		contextSelect.addEventListener('change', postToolbar);
@@ -1457,6 +1462,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			var state = getToolbar();
 			vscode.postMessage({
 				type: 'toolbar',
+				mode: state.mode,
 				model: state.model,
 				thinking: state.thinking,
 				context: state.context,
@@ -1827,6 +1833,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		// --- Toolbar state access (used by S10) ---
 		window.getToolbar = function () {
 			return {
+				mode: modeSelect.value,
 				model: (modelSelect.value === '__manual__') ? manualInput.value : modelSelect.value,
 				thinking: thinkingSelect.value,
 				context: contextSelect.value,
@@ -1839,6 +1846,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		};
 		window.setToolbar = function (state) {
 			if (!state) { return; }
+			if (state.mode === 'ask' || state.mode === 'agent' || state.mode === 'edit') { modeSelect.value = state.mode; }
 			if (state.model != null) {
 				if (state.model === '__manual__') {
 					modelSelect.value = '__manual__';
@@ -1931,6 +1939,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					break;
 				case 'toolbar':
 					setToolbar({
+						mode: msg.mode,
 						model: msg.model,
 						thinking: msg.thinking,
 						context: msg.context,

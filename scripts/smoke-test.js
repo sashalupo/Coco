@@ -3652,6 +3652,28 @@ function assert(cond, label) {
     "unif-s2: presets ToolbarState.mode",
   );
 
+  // 34) Unified chat mode — webview picker (1.99-10.S3)
+  // src/chat/webview.ts cannot be required (single self-contained HTML/CSS/JS
+  // template string) — static source assertions (same pattern as sections 30/33).
+  const webviewSrcUnifS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcUnifS3.includes('id="mode-select"'),
+    "unif-s3: mode-select element",
+  );
+  assert(
+    webviewSrcUnifS3.includes('value="ask"') &&
+      webviewSrcUnifS3.includes('value="edit"'),
+    "unif-s3: mode options",
+  );
+  assert(
+    webviewSrcUnifS3.includes("mode: state.mode") &&
+      webviewSrcUnifS3.includes("mode: modeSelect.value"),
+    "unif-s3: mode in toolbar payload",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

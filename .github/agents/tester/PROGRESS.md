@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-10.S2 — host wiring — **PASS** (2026-10-22)
-- **Next step:** 1.99-10.S3 — next slice of item 1.99-10 (Unified Chat view — mode picker + history)
+- **Current item:** 1.99-10.S3 — webview mode picker — **PASS** (2026-10-22)
+- **Next step:** 1.99-10.S4 — next slice of item 1.99-10 (Unified Chat view — history)
 - **Last updated:** 2026-10-22
-- **Last commit:** 0fbd12e (feat(llm): unified chat — pure mode logic (1.99-10.S1)); S2 commit pending
-- **Build state:** 475/475 PASS
+- **Last commit:** e281b7f (feat(llm): unified chat — host wiring + toolbar mode (1.99-10.S2)); S3 commit pending
+- **Build state:** 478/478 PASS
 
+
+### 1.99-10.S3 — webview mode picker (src/chat/webview.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **478 PASS lines** (475 prior + 3 new `unif-s3:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 478/478 with 3 genuine `unif-s3:` static-source assertions in new `// 34) Unified chat mode — webview picker (1.99-10.S3)` section (smoke-test.js:3655) all passing: `unif-s3: mode-select element`, `unif-s3: mode options`, `unif-s3: mode in toolbar payload` PASS; (3) `src/chat/webview.ts`: HTML L1109 `<select id="mode-select">` with options Ask / Agent (selected) / Edit, placed as first labeled control in `.toolbar` after `#quick-new-chat` and before the Model label; JS L1173 `var modeSelect = document.getElementById('mode-select')` + L1305 `modeSelect.addEventListener('change', postToolbar)`; `getToolbar()` L1836 returns `mode: modeSelect.value`; `setToolbar(state)` L1849 sets `modeSelect.value = state.mode` guarded to `'ask' | 'agent' | 'edit'`; `postToolbar()` L1465 payload includes `mode: state.mode`; `case 'toolbar':` in `handleHostMessage` L1942 passes `mode: msg.mode` into `setToolbar` PASS; (4) scope: exactly coder PROGRESS.md, smoke-test.js, webview.ts modified (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 4 criteria met.
 
 ### 1.99-10.S2 — host wiring: presets + config + ChatViewProvider (2026-10-22) — **PASS**
 

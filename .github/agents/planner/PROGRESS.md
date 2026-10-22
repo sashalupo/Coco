@@ -1396,7 +1396,7 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
   - `createNotebook(source: string): string` — build a minimal valid nbformat-4 `.ipynb` JSON string (nbformat 4, nbformat_minor 5, empty metadata, `language_info` for code cells); splits `source` on the `<<<CELL>>>` marker into cells.
 - **Acceptance:** `npm run compile` passes. Smoke test (new section, e.g. `// 10) notebook helpers (1.98-2)`): `parseNotebook` round-trips a 2-cell doc (string and string[] sources); `parseNotebook("not json") === null`; `formatNotebookForContext` output contains `Cell 0 (code)`, the source text, and an `outputs:` line; `createNotebook` output parses via `parseNotebook` with the expected cell count/types.
 
-### S3 — `src/notebook.ts`: `applyNotebookEdit` (the 5 actions)
+### S3 — `src/notebook.ts`: `applyNotebookEdit` (the 5 actions) — Done (2026-10-22, PASS, 478 assertions)
 - **File:** `src/notebook.ts`
 - **What:** Add `applyNotebookEdit(text: string, edit: { action: string; cellIndex?: number; cellType?: "code" | "markdown"; source?: string }): { ok: boolean; message: string; newContent?: string }`:
   - `create`: ignore `text`; `newContent = createNotebook(source ?? "")`; message `Created notebook with N cell(s).`
