@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S2** verified
-- **Next step:** test slice **1.98-1.S3** (post `command_approval` from host — wire `waitForCommandApproval` into the `run_command` tool flow)
+- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S3** verified
+- **Next step:** test slice **1.98-1.S4**
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -53,14 +53,31 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/ChatViewProvider.ts` (+37) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
 - **Note:** behaviorally a no-op by design — nothing posts `command_approval` yet (that is slice S3). Expected, not a failure.
 
+### 1.98-1.S3 — host: route `run_command` through editable approval gate (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (full suite green).
+- **Static checks in `src/chat/ChatViewProvider.ts`:**
+  - (a) `if (call.function.name === "run_command")` branch exists inside `settings.requireApproval && isMutating` block. PASS
+  - (b) `command_approval` postMessage includes `id: call.id`, `tool: "run_command"`, `command`. PASS
+  - (c) `await this.waitForCommandApproval(signal)` present in `run_command` path. PASS
+  - (d) Rejection path pushes "User rejected…" `toolResultMessage` and `continue`s. PASS
+  - (e) On approval with non-empty edited command differing from original: `call.function.arguments = JSON.stringify({...parsed, command: edited})` and `commandModified = true`. PASS
+  - (f) Empty edited command (`edited.trim() === ""`) does NOT modify arguments (guarded by `edited.trim() !== ""`). PASS
+  - (g) After `toolExecutor.execute`, if `commandModified`: model-facing content prefixed with `"Note: the user modified the command before running it.\n"`; `tool_result` postMessage gains `modified: true`. PASS
+  - (h) `git diff` confirms old `approval_request`/`waitForApproval` logic moved verbatim into `else` branch (unchanged for `write_file`/`edit_file`). PASS
+  - (i) When `requireApproval` is false, the entire `if (settings.requireApproval && isMutating)` block is skipped — no `command_approval` post, no `waitForCommandApproval` call. PASS
+- **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/ChatViewProvider.ts` (+81/-21) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S2** — host-side `commandApproval` plumbing — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-1.S3** — host: route `run_command` through editable approval gate — **PASS** (2026-10-22, see Verifications)
 
 ## Todo
 
-- [ ] Test slice **1.98-1.S3** (post `command_approval` from host / wire `waitForCommandApproval` into `run_command` flow).
+- [ ] Test slice **1.98-1.S4**.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions

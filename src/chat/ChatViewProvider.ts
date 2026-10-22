@@ -1026,22 +1026,66 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // are held: post an approval card and await the user's decision.
         for (const call of toolCalls) {
           const isMutating = isMutatingTool(call.function.name);
+          // 1.98-1.S3: run_command goes through the editable command
+          // approval gate (command_approval card); other mutating tools
+          // keep the plain approval_request path unchanged.
+          let commandModified = false;
           if (settings.requireApproval && isMutating) {
-            this.postMessage({
-              type: "approval_request",
-              id: call.id,
-              tool: call.function.name,
-              args: call.function.arguments,
-            });
-            const approved = await this.waitForApproval(signal);
-            if (!approved) {
-              // User rejected (or aborted): feed a "user rejected" result
-              // back to the model so it can adapt.
-              const rejectContent =
-                `User rejected the ${call.function.name} operation. ` +
-                `Do not retry the same change; ask the user what to do instead.`;
-              this.history.push(toolResultMessage(call, rejectContent));
-              continue;
+            if (call.function.name === "run_command") {
+              let parsed: Record<string, unknown> = {};
+              try {
+                parsed = JSON.parse(call.function.arguments) as Record<
+                  string,
+                  unknown
+                >;
+              } catch {
+                parsed = {};
+              }
+              const command =
+                typeof parsed.command === "string" ? parsed.command : "";
+              this.postMessage({
+                type: "command_approval",
+                id: call.id,
+                tool: "run_command",
+                command,
+              });
+              const { approved, command: edited } =
+                await this.waitForCommandApproval(signal);
+              if (!approved) {
+                // User rejected (or aborted): feed a "user rejected" result
+                // back to the model so it can adapt.
+                const rejectContent =
+                  `User rejected the ${call.function.name} operation. ` +
+                  `Do not retry the same change; ask the user what to do instead.`;
+                this.history.push(toolResultMessage(call, rejectContent));
+                continue;
+              }
+              // Approved: apply the (possibly edited) command. An empty
+              // edited command falls back to the original.
+              if (edited.trim() !== "" && edited !== command) {
+                call.function.arguments = JSON.stringify({
+                  ...parsed,
+                  command: edited,
+                });
+                commandModified = true;
+              }
+            } else {
+              this.postMessage({
+                type: "approval_request",
+                id: call.id,
+                tool: call.function.name,
+                args: call.function.arguments,
+              });
+              const approved = await this.waitForApproval(signal);
+              if (!approved) {
+                // User rejected (or aborted): feed a "user rejected" result
+                // back to the model so it can adapt.
+                const rejectContent =
+                  `User rejected the ${call.function.name} operation. ` +
+                  `Do not retry the same change; ask the user what to do instead.`;
+                this.history.push(toolResultMessage(call, rejectContent));
+                continue;
+              }
             }
           }
           // Post a tool_start so the webview can show a running indicator
@@ -1053,13 +1097,18 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             args: call.function.arguments,
           });
           const result = await this.toolExecutor.execute(call);
-          this.history.push(toolResultMessage(call, result.content));
+          // If the user edited the command, tell the model about it.
+          const modelContent = commandModified
+            ? `Note: the user modified the command before running it.\n${result.content}`
+            : result.content;
+          this.history.push(toolResultMessage(call, modelContent));
           this.postMessage({
             type: "tool_result",
             id: call.id,
             tool: call.function.name,
             args: call.function.arguments,
             output: result.content,
+            ...(commandModified ? { modified: true } : {}),
           });
           // Phase 17: push the updated todo list to the webview.
           if (call.function.name === "manage_todos") {

@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-1.S2 done (host `commandApproval` handler + `waitForCommandApproval`)
-- **Next step:** 1.98-1.S3 — Host: route `run_command` through the editable approval gate (src/chat/ChatViewProvider.ts)
+- **Current step:** 1.98-1.S3 done (host routes `run_command` through the editable approval gate)
+- **Next step:** 1.98-1.S4 — Webview: "modified by user" badge on the tool card (src/chat/webview.ts)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes after 1.98-1.S2
+- **Build state:** `npm run compile` passes after 1.98-1.S3
 
 ## Plan pointer
 
@@ -50,11 +50,20 @@ by step, one step per session.
     `pendingCommandApproval` and resolves with the webview's decision + (possibly edited) command.
   - Verified: `npm run compile` passes. No behavior change yet — nothing posts `command_approval`
     (that is slice S3); this slice is plumbing only.
+- **1.98-1.S3** (2026-10-22) — Host: route `run_command` through the editable approval gate. File: `src/chat/ChatViewProvider.ts` only.
+  - In the agentic loop's tool-call `for` loop, inside the existing `settings.requireApproval && isMutating` block, added a branch on `call.function.name === "run_command"`:
+    - Parses `call.function.arguments` as JSON (tolerant: falls back to `{}` on parse error), extracts the `command` string.
+    - Posts `{ type: "command_approval", id: call.id, tool: "run_command", command }` to the webview (same postMessage pattern as `approval_request`).
+    - `const { approved, command: edited } = await this.waitForCommandApproval(signal);`
+    - Rejected → pushes the same "User rejected the run_command operation…" `toolResultMessage` as the existing approval path and `continue`s (skips execution).
+    - Approved → if `edited.trim()` is non-empty AND differs from the original command, rewrites `call.function.arguments = JSON.stringify({ ...parsed, command: edited })` and sets `commandModified = true` for this call. Empty edited command → falls back to the original (arguments untouched).
+  - Non-`run_command` mutating tools keep the existing `approval_request` / `waitForApproval` path completely unchanged (moved into the `else` branch, logic identical).
+  - After `toolExecutor.execute(call)`: if `commandModified`, the content fed back to the model is prefixed with `"Note: the user modified the command before running it.\n"` (history only — the webview `tool_result` output stays the raw result), and the `tool_result` postMessage includes `modified: true` (badge rendering is slice S4).
+  - `settings.requireApproval` false → `run_command` executes immediately with no card (no behavior change).
+  - Verified: `npm run compile` passes clean.
 
 ## Todo
 
-- [ ] 1.98-1.S3 — Host: route `run_command` through the editable approval gate (src/chat/ChatViewProvider.ts).
-- [ ] 1.98-1.S3 — Host: route `run_command` through the editable approval gate.
 - [ ] 1.98-1.S4 — Webview: "modified by user" badge on the tool card.
 - [ ] 1.98-1.S5 — Settings description + smoke test + PROGRESS.md.
 
