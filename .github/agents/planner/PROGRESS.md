@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-15 (Engine status indicator — status-bar overview) — **Done** (2026-10-22, 4 slices S1–S4)
-- **Next step:** plan the next backlog item (v1.98 window complete — pending list empty; next: research v1.99 changelog)
+- **Current item:** 1.99-2 (MCP server support) — **planned** (2026-10-22, 6 slices S1–S6)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-2.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -366,6 +366,192 @@ clean; all 371 smoke assertions pass.
 30 s, but `GET /health` is trivially cheap locally and the interval already exists);
 QuickPick info rows are pickable no-ops (no disabled items in QuickPick) — acceptable for
 v1.
+
+### Item 1.99-2 — MCP server support (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Model Context Protocol server support" —
+reframed for the local extension: **stdio MCP servers only** (no SSE/HTTP transports),
+configured via the `llm.mcp.servers` setting (object: name → `{ command, args?, env? }`),
+hand-rolled newline-delimited JSON-RPC 2.0 (no runtime deps), discovered tools exposed to
+the agent tool loop as `mcp__<server>__<tool>` behind the existing approval gate, plus
+`llm.mcp.addServer` / `llm.mcp.listServers` commands. The changelog's "Select Tools"
+webview button is out of scope (all discovered tools are exposed; per-tool toggling is a
+follow-up).
+
+**Assumptions verified (real code):**
+- Tool shape: `interface Tool` at `src/tools.ts:12` (OpenAI function-calling schema);
+  `CODE_TOOLS` at `src/tools.ts:48`; `toolResultMessage` at `src/tools.ts:365`;
+  `isMutatingTool` at `src/tools.ts:381` (hardcoded list — `mcp__*` names will NOT match).
+- Tool injection point: `src/request.ts:272-275` (`buildRequestBody`, `RequestConfig` at
+  `src/request.ts:56`) — `body.tools = CODE_TOOLS` when `settings.toolsEnabled`.
+- Tool loop: `src/chat/ChatViewProvider.ts` — agentic loop ~line 1098, approval gate
+  line 1139 (`settings.requireApproval && isMutating`), execution line 1205
+  (`this.toolExecutor.execute(call)`); `ToolExecutor.execute`
+  (`src/tools/ToolExecutor.ts:267`) is a name-based switch that never throws.
+- Settings: `readSettings()` at `src/config.ts:33`; `LlmSettings` at `src/presets.ts:65`
+  (pure, vscode-free).
+- Commands: `src/extension.ts:112-174` (7 commands); `package.json` contributes the same.
+- Smoke test: `scripts/smoke-test.js` — 371 assertions, `assert(cond, label)` at line 187,
+  static `package.json` section pattern `pkgS4` near line 2480.
+
+**Design decisions (justified):**
+1. **Protocol logic is pure and stream-injected** — `McpJsonRpc` takes
+   `(input: ReadableStream, output: WritableStream)`; the smoke test simulates a server
+   with `stream.PassThrough` pairs. `McpClient` (spawn) and `McpManager` are thin; the
+   smoke test never spawns a process.
+2. **All MCP tools are treated as mutating** for the approval gate (they can do anything
+   external) — with `llm.tools.requireApproval` on, every MCP call goes through the
+   existing `approval_request` path. No edit to `tools.ts`.
+3. **Lazy start** — servers start only on (a) first `mcp__` tool call or (b) user picking
+   a server in `llm.mcp.listServers` (refresh). `listServers()` never spawns.
+4. **Schema mapping** — MCP `inputSchema` → OpenAI `parameters`, forcing
+   `type: "object"` (some servers omit it).
+5. **Never throw** — `McpManager.execute` returns an error `ToolResult` on any failure
+   (mirrors `ToolExecutor.execute`); a dead server must not poison the tool loop.
+6. **Name collisions** — `mcp__<server>__<tool>`; `parseMcpToolName` splits on the first
+   and last `__` only; server/tool names containing `__` are unsupported (documented).
+7. **Setting target** — `llm.mcp.addServer` writes `ConfigurationTarget.Workspace`; the
+   manager re-reads settings each turn (no reload needed).
+8. **Shared `McpManager`** — created in `activate()`, passed to the ChatViewProvider
+   constructor and the commands; `dispose()` on deactivate.
+
+**Slices:**
+
+- **1.99-2.S1 — `src/mcp.ts` (new): pure MCP JSON-RPC client + tool mapping.**
+  File: create `src/mcp.ts`; modify `scripts/smoke-test.js`.
+  (a) `export interface McpServerConfig { command: string; args?: string[];
+  env?: Record<string, string> }` + `export function parseMcpServers(raw: unknown):
+  Record<string, McpServerConfig>` (pure validation: object only; each entry needs a
+  non-empty string `command`; `args` coerced to string[] or undefined; `env` to string
+  map; invalid entries dropped).
+  (b) `export class McpJsonRpc` — newline-delimited JSON-RPC 2.0 over injected streams
+  (`constructor(input: NodeJS.ReadableStream, output: NodeJS.WritableStream)`; no
+  `child_process`). `request(method, params): Promise<unknown>` (id counter, pending map,
+  resolves on matching `id`, rejects on JSON-RPC `error`); `notify(method, params)`;
+  line-buffered reader (split on `\n`, ignore blank lines, tolerate partial lines).
+  (c) `export class McpClient` — wraps `child_process.spawn(config.command, config.args,
+  { env: { ...process.env, ...config.env } })`, pipes stdio into `McpJsonRpc`, handshake:
+  `initialize` (params: `protocolVersion: "2024-11-05"`, `capabilities: {}`,
+  `clientInfo: { name: "llm-vscode", version }`) → `notifications/initialized` →
+  `tools/list`. Exposes `tools: McpTool[]` (`{ name, description?, inputSchema }`),
+  `callTool(name, args): Promise<McpToolResult>` (`tools/call` with
+  `{ name, arguments }`), `close()` (kills child), initialize timeout 10 s → reject +
+  mark dead.
+  (d) Pure mappers: `mcpToolName(server, tool)` → `` `mcp__${server}__${tool}` ``;
+  `parseMcpToolName(name): { server, tool } | null`; `isMcpToolName(name)` (prefix
+  `mcp__`); `mcpToolsToOpenAITools(server, tools): Tool[]` (maps `inputSchema` →
+  `parameters`, forcing `type: "object"`); `mcpResultToText(result): string` (joins
+  `content[]` parts where `type === "text"`; prefixes `Error: ` when `isError`).
+  Acceptance: `npm run compile` clean.
+  Smoke (`mcp-s1:`, ~10): framing (two messages in one chunk split correctly; partial
+  line buffered); full handshake + `tools/list` + `tools/call` against a fake server from
+  `stream.PassThrough` pairs (no real process); JSON-RPC error → rejection;
+  `mcpToolName`/`parseMcpToolName` round-trip; `mcpToolsToOpenAITools` shape;
+  `mcpResultToText` (multi-part + `isError`); `parseMcpServers` validation.
+  Assertion count: 371 → ~381.
+
+- **1.99-2.S2 — settings plumbing (`src/presets.ts`, `src/config.ts`).**
+  Files: modify `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`.
+  (a) `presets.ts`: add `mcpServers: Record<string, McpServerConfig>` to `LlmSettings`
+  (import the type from `./mcp` — `mcp.ts` is vscode-free, keeps `presets.ts` pure).
+  (b) `config.ts`: `readSettings()` adds
+  `mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {}))`.
+  Acceptance: compiles.
+  Smoke (`mcp-s2:`, 2): `out/presets.js`/`out/config.js` still load cleanly (regression
+  guard).
+  Assertion count: ~381 → ~383.
+
+- **1.99-2.S3 — `src/mcpManager.ts` (new): lazy lifecycle + registry.**
+  File: create `src/mcpManager.ts`; modify `scripts/smoke-test.js`.
+  `export class McpManager` (no `vscode` import — pass a `notify` callback in the
+  constructor to stay smoke-testable):
+  - `setServers(servers: Record<string, McpServerConfig>)` (called each turn; drops
+    clients for removed servers).
+  - `ensureStarted(name): Promise<McpClient>` — lazy start on first need, cached; on
+    failure records status `error`, no retry within the same turn.
+  - `listServers(): McpServerStatus[]` — `{ name, status: "stopped" | "running" |
+    "error", toolCount, error? }`; pure status read, does NOT auto-start.
+  - `refresh(name): Promise<McpServerStatus>` — start/restart + discover tools (the
+    changelog "refresh action").
+  - `getTools(): Tool[]` — all discovered MCP tools as OpenAI `Tool`s (only successfully
+    started servers).
+  - `execute(name: string, args: Record<string, unknown>): Promise<ToolResult>` — full
+    `mcp__server__tool` name; `ensureStarted` + `callTool`; returns `{ content }`, never
+    throws.
+  - `dispose()` — closes all clients.
+  Acceptance: compiles; constructible without vscode at require-time.
+  Smoke (`mcp-s3:`, ~4): `setServers` + `getTools` empty before start; `execute` with
+  unknown server → error content (no throw); `listServers` reflects stopped status.
+  Assertion count: ~383 → ~387.
+
+- **1.99-2.S4 — extra tools in the request body (`src/request.ts`).**
+  File: modify `src/request.ts`, `scripts/smoke-test.js`.
+  (a) Add `mcpTools?: Tool[]` to `RequestConfig` (`src/request.ts:56`).
+  (b) At `src/request.ts:272-275`: when `toolsEnabled`,
+  `body.tools = mcpTools && mcpTools.length > 0 ? [...CODE_TOOLS, ...mcpTools] :
+  CODE_TOOLS`.
+  Acceptance: compiles.
+  Smoke (`mcp-s4:`, 3): `buildRequestBody` with `mcpTools` → `body.tools` = built-in + N
+  MCP tools with `mcp__` names; without `mcpTools` → exactly `CODE_TOOLS` (regression);
+  `toolsEnabled: false` → no `tools` key.
+  Assertion count: ~387 → ~390.
+
+- **1.99-2.S5 — wire MCP into the chat tool loop (`src/chat/ChatViewProvider.ts`).**
+  File: modify `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`.
+  (a) Accept an `McpManager` (constructor param, field next to `toolExecutor`); call
+  `setServers(settings.mcpServers)` at the top of the send flow (where `readSettings()`
+  is already called).
+  (b) Pass `mcpTools: manager.getTools()` into both `buildRequestBody` calls (initial
+  body + the rebuild at ~line 1230).
+  (c) In the tool-call loop (~line 1131): if `isMcpToolName(call.function.name)` → treat
+  as mutating for the approval gate (existing plain `approval_request` path, no command
+  card) and route execution to `manager.execute(...)` instead of
+  `this.toolExecutor.execute(call)` at line 1205. `tool_start`/`tool_result`
+  postMessages unchanged.
+  (d) `dispose()`/webview dispose: `manager.dispose()`.
+  Acceptance: compiles.
+  Smoke (`mcp-s5:`, 3): static source assertions on `out/chat/ChatViewProvider.js`
+  (`isMcpToolName` usage, `mcpTools` passed to `buildRequestBody`, `manager.execute`
+  routing).
+  Assertion count: ~390 → ~393.
+
+- **1.99-2.S6 — commands + manifest (`src/extension.ts`, `package.json`).**
+  Files: modify `src/extension.ts`, `package.json`, `scripts/smoke-test.js`,
+  `.github/agents/planner/PROGRESS.md`.
+  (a) `package.json`: commands `llm.mcp.addServer` ("LLM: MCP: Add Server") and
+  `llm.mcp.listServers` ("LLM: MCP: List Servers"); `onCommand` activation events for
+  both; setting `llm.mcp.servers` (`type: "object"`, `default: {}`, description: stdio
+  MCP servers, each `{ command, args?, env? }`).
+  (b) `extension.ts`: create ONE shared `McpManager` in `activate()` (pass a `notify`
+  callback using `vscode.window.showErrorMessage`), pass it to the ChatViewProvider
+  constructor; `manager.dispose()` in `deactivate`.
+  - `llm.mcp.addServer`: `showInputBox` flow name → command → args (space-separated,
+    optional) → read current `llm.mcp.servers`, add entry, write via
+    `workspace.getConfiguration("llm").update("mcp.servers", next,
+    ConfigurationTarget.Workspace)`.
+  - `llm.mcp.listServers`: QuickPick of `manager.listServers()` entries (label = name,
+    description = status, detail = tool count); picking a server runs
+    `manager.refresh(name)` and shows a second QuickPick / info message listing its tools
+    (name + one-line description).
+  (c) `smoke-test.js`: static section (mirroring `pkgS4`): both commands contributed
+  with titles, both `onCommand` activation events, `llm.mcp.servers` schema `object`
+  defaulting to `{}`, existing commands still present (regression guard).
+  (d) `PROGRESS.md`: mark 1.99-2 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (~397 assertions).
+  Assertion count: ~393 → ~397.
+
+**Overall acceptance (Tester):** `npm run compile` clean; all smoke assertions pass;
+`llm.mcp.servers` with a stdio server → its tools appear in the request body as
+`mcp__<server>__<tool>`; with `llm.tools.requireApproval` on, MCP tool calls go through
+the approval card; `llm.mcp.listServers` shows status without spawning, picking a server
+starts it and lists its tools; `llm.mcp.addServer` writes the workspace setting; a dead
+server returns an error tool result (never crashes the loop); child processes killed on
+deactivate.
+
+**Risks:** JSON-RPC framing must tolerate partial lines and multi-message chunks (covered
+by S1 framing tests); `McpClient` spawn is untested in the smoke test by design (thin
+wrapper); `__` in server/tool names unsupported (documented); the shared `McpManager`
+must be created before the ChatViewProvider in `activate()`.
 
 ## Done
 
