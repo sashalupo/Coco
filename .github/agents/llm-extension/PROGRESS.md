@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 18 complete** — Restore checkpoints (18.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `6989c02` — feat(llm): agent todos checklist via manage_todos tool (Phase 17.1)
+- **Last commit:** `bd4191e` — feat(llm): restore checkpoints (Phase 18.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); restore checkpoint verified
 
 > **Phase 18 — Restore checkpoints (2026-10-22):**
