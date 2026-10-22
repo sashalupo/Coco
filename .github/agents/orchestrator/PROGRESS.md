@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-2 DONE** (2026-10-22, 6 slices S1–S6, tag `changelog-1.99`); next: **1.99-3** — Thinking tool
-- **Current slice:** 1.99-2.S6 (FINAL) — **DONE** (PASS, 401 assertions); item 1.99-2 complete
+- **Current item:** **1.99-3** — Thinking tool (3-slice plan recorded; 1.99-2 DONE, tag `changelog-1.99`)
+- **Current slice:** 1.99-3.S1 — **next** (think tool schema in CODE_TOOLS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-3** (Thinking tool), record plan, commit,
-  then run the slice pipeline
+- **Next step:** dispatch Coder for slice **1.99-3.S1** (`src/tools.ts`: think
+  tool schema in CODE_TOOLS + bump 11→12 guard), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `9783237` — feat(llm): MCP server support — wire MCP into the chat tool loop (1.99-2.S5)
+- **Last commit:** `1adefb6` — feat(llm): MCP server support — commands + manifest (1.99-2.S6, item complete) [tag changelog-1.99]
 - **Build state:** compiles clean; smoke test passes (401 assertions); 1.99-2 fully verified (S1–S6)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the

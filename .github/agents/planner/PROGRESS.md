@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-2 (MCP server support) — **planned** (2026-10-22, 6 slices S1–S6)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-2.S1
+- **Current item:** 1.99-3 (Thinking tool) — **planned** (2026-10-22, 3 slices S1–S3)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-3.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -552,6 +552,125 @@ deactivate.
 by S1 framing tests); `McpClient` spawn is untested in the smoke test by design (thin
 wrapper); `__` in server/tool names unsupported (documented); the shared `McpManager`
 must be created before the ChatViewProvider in `activate()`.
+
+### Item 1.99-3 — Thinking tool (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Thinking tool (Experimental)" — a `think`
+tool that gives any model the opportunity to think between tool calls
+(Anthropic-inspired); improves agent performance on complex tasks. Local reframe:
+add a `think` tool to the agent tool loop — the model calls it with its reasoning,
+the reasoning is echoed back as the tool result, no side effects.
+
+**Verified code assumptions (file:line):**
+- `src/tools.ts:12` — `interface Tool`; `src/tools.ts:48` — `CODE_TOOLS: Tool[]`
+  (currently **11 tools**: read_file, write_file, edit_file, list_dir,
+  search_files, run_command, get_diagnostics, git_status, git_diff,
+  manage_todos, notebook_edit); `src/tools.ts:365` — `toolResultMessage(call,
+  content)`; `src/tools.ts:381` — `isMutatingTool(name)` hardcoded list
+  (`write_file`, `edit_file`, `run_command`, `notebook_edit`) — `think` NOT in it
+  → returns false.
+- `src/tools/ToolExecutor.ts:267` — `execute(call)` name-based `switch`, never
+  throws (JSON parse errors + outer `catch` return error `ToolResult`s);
+  `default:` → `Unknown tool: <name>`; private `result(call, content)` at 1190.
+- `src/request.ts:272-279` — `buildRequestBody`: when `toolsEnabled`,
+  `body.tools = mcpTools?.length ? [...CODE_TOOLS, ...mcpTools] : CODE_TOOLS`;
+  `tool_choice = "auto"`. **No change needed** — `think` in `CODE_TOOLS` flows
+  through automatically.
+- `src/chat/ChatViewProvider.ts` — agentic loop ~1098; approval gate ~1139
+  (`settings.requireApproval && isMutating`, `isMutating = isMutatingTool(name)
+  || isMcpToolName(name)`); `tool_start` ~1190; execution ~1205
+  (`this.toolExecutor.execute(call)` for non-MCP); `tool_result` ~1240; body
+  rebuild ~1260. **No change needed** — `think` is non-mutating → skips approval
+  gate, flows through `toolExecutor.execute` with generic posts.
+- `src/chat/webview.ts:2200` — `case 'tool_start':` generic `.tool-card`
+  (label "Tool call", tool name, args, spinner); `src/chat/webview.ts:2237` —
+  `case 'tool_result':` finds card by `data-tool-id`, removes spinner, appends
+  `<pre class="tool-output">`, collapses. **Generic rendering already handles
+  `think`** — no webview change needed.
+- `src/presets.ts:65` — `LlmSettings` (pure); `src/config.ts:63-64` —
+  `toolsEnabled`/`requireApproval` via `c.get<boolean>("tools.enabled", false)`;
+  `package.json:177-187` — `llm.tools.enabled` / `llm.tools.requireApproval`.
+- `scripts/smoke-test.js` — `assert(cond, label)` at line 190; **401
+  assertions**; ends `ALL SMOKE TESTS PASSED` at line 2903. `out/tools.js`,
+  `out/request.js` require-able; `out/chat/ChatViewProvider.js` NOT (imports
+  vscode) — static source assertions only. Existing regression guard at
+  `scripts/smoke-test.js:474`: `CODE_TOOLS.length === 11` — **must be bumped to
+  12 in S1**.
+
+**Design decisions:**
+1. Schema goes in `CODE_TOOLS` (`src/tools.ts`), not a separate export —
+   `think` is a first-class no-side-effect meta tool like `manage_todos`;
+   `request.ts` needs zero changes; smoke shape checks keep working.
+2. `ToolExecutor.execute` gets `case "think"` echoing the reasoning back:
+   `content = "Thought recorded: <text>"` (or `Thought recorded.` when empty).
+   No I/O, no state, never throws.
+3. No approval-gate treatment — `isMutatingTool("think")` is false (verified);
+   runs immediately even with `requireApproval: true`.
+4. No webview change — generic `tool_start`/`tool_result` card already displays
+   the reasoning as output.
+5. No new setting — always-on when `llm.tools.enabled` (existing gate, default
+   false). A second boolean would be a redundant gate.
+
+**Slices:**
+
+- **1.99-3.S1 — `src/tools.ts`: `think` tool schema in `CODE_TOOLS`.**
+  Files: `src/tools.ts` (modify), `scripts/smoke-test.js` (modify).
+  Append a 12th entry to `CODE_TOOLS` (after `notebook_edit`):
+  `name: "think"`; description: "Record a thought or reasoning step between tool
+  calls. Use this to plan, reflect, or work through complex multi-step problems
+  before acting. Takes a single 'thought' string; the thought is recorded and
+  echoed back. It has no side effects and changes nothing."; parameters:
+  `{ type: "object", properties: { thought: { type: "string", description:
+  "The reasoning or plan to record." } }, required: ["thought"] }`.
+  No change to `isMutatingTool`.
+  Smoke (`think-s1:`, 3): `out/tools.js` — `CODE_TOOLS.length === 12`; the
+  `think` entry exists with `required: ["thought"]` and
+  `parameters.properties.thought.type === "string"`; `isMutatingTool("think")
+  === false`. **Also update the existing line-474 assertion
+  `CODE_TOOLS.length === 11` → `12`** (same slice, keeps suite green).
+  Acceptance: compile clean; smoke 401 → 404.
+
+- **1.99-3.S2 — `src/tools/ToolExecutor.ts`: `case "think"` echo handler.**
+  Files: `src/tools/ToolExecutor.ts` (modify), `scripts/smoke-test.js` (modify).
+  In `execute`'s switch (before `default:`): `case "think": return
+  this.think(call, String(args.thought ?? ""));` + private method
+  `think(call: ToolCall, thought: string): ToolResult` — `thought.trim() === ""`
+  → `this.result(call, "Thought recorded.")`; else `this.result(call,
+  "Thought recorded: " + thought)`. No I/O, no state, no throw.
+  Smoke (`think-s2:`, 3): construct a `ToolExecutor` (existing executor-test
+  pattern); `execute({ id: "t1", type: "function", function: { name: "think",
+  arguments: JSON.stringify({ thought: "plan step 1" }) } })` →
+  `tool_call_id === "t1"` and `content === "Thought recorded: plan step 1"`;
+  empty thought → `content === "Thought recorded."`; invalid JSON arguments →
+  content starts with `Invalid JSON arguments` (never throws).
+  Acceptance: compile clean; smoke 404 → 407.
+
+- **1.99-3.S3 — request-body + loop verification, final smoke assertions.**
+  Files: `scripts/smoke-test.js` (modify). No source changes (wiring is
+  automatic by design decisions 1 and 3).
+  Smoke (`think-s3:`, 4): (a) `out/request.js` — `buildRequestBody` with
+  `toolsEnabled: true` → `body.tools` contains a tool named `think` (12
+  built-in + 0 MCP) and `body.tool_choice === "auto"`; (b) `toolsEnabled: false`
+  → `body.tools === undefined` (regression: `think` not exposed without the tool
+  loop); (c) static source assertion on `out/chat/ChatViewProvider.js`: contains
+  `isMutatingTool` and `toolExecutor.execute(` (regression guard that `think`
+  flows through the existing non-MCP path); (d) static source assertion:
+  `ChatViewProvider.js` does NOT contain `name === "think"` (no special-casing —
+  the loop stays generic).
+  Acceptance: compile clean; smoke 407 → 411.
+
+**Overall acceptance (Tester):** with `llm.tools.enabled: true`, the request
+body's `tools` array includes the `think` tool; when the model emits a `think`
+tool call it executes immediately (no approval card, even with
+`requireApproval: true`), the webview shows the generic tool card with the
+reasoning as output, and the model receives `Thought recorded: <text>` as the
+tool result; with `llm.tools.enabled: false`, `think` is not exposed; compile
+clean; all 411 smoke assertions pass.
+
+**Risks:** some local engines ignore unknown/extra tools — acceptable, the tool
+is opt-in via `llm.tools.enabled` and harmless if never called; the
+`CODE_TOOLS.length` regression guard (line 474) is bumped in S1 so the suite
+stays green mid-pipeline.
 
 ## Done
 
