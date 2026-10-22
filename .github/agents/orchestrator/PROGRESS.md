@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-28** — AI notebook editing improvements — new notebook tool — in progress (planned, 5 slices S1–S5)
-- **Current slice:** 1.99-28.S1 DONE (S2 next)
+- **Current slice:** 1.99-28.S2 DONE (S3 next)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-28.S2 (new_notebook agent tool: tools.ts schema + ToolExecutor.createNewNotebook + smoke), then Tester
+- **Next step:** dispatch Coder for 1.99-28.S3 (setting plumbing: presets.ts + config.ts `newNotebookEnabled` + smoke), then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** ce503ea (chore(llm): record 1.99-28 plan (5 slices)); S1 commit pending
-- **Build state:** compiles clean; smoke test passes (555 assertions)
+- **Last commit:** 13cf638 (feat(llm): typed cell markers + planNewNotebook + notebookNameFromQuery (1.99-28.S1)); S2 commit pending
+- **Build state:** compiles clean; smoke test passes (560 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

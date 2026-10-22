@@ -12,11 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-28 — Typed cell markers + planNewNotebook + notebookNameFromQuery — S1 PASS (2026-10-22)
-- **Next step:** item 1.99-28 S1 verified — next: 1.99-28 S2 (new_notebook agent tool)
+- **Current item:** 1.99-28 — new notebook tool — S2 PASS (2026-10-22)
+- **Next step:** item 1.99-28 S2 verified — next: 1.99-28 S3 (setting plumbing llm.chat.newNotebook.enabled)
 - **Last updated:** 2026-10-22
-- **Last commit:** ce503ea
-- **Build state:** 555/555 PASS
+- **Last commit:** 13cf638
+- **Build state:** 560/560 PASS
+
+### 1.99-28.S2 — new_notebook agent tool (schema + executor) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **560 PASS lines** (555 prior + 5 new `nbnew-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 560/560 PASS; (3) 5 `nbnew-s2:` assertions in section `// 54) new_notebook tool (1.99-28.S2)` (smoke-test.js:4262): CODE_TOOLS has 15 tools, 15-name order with `new_notebook` after `notebook_edit`, `required=[path,query]`, `isMutatingTool("new_notebook") === true`, compiled ToolExecutor.js contains `createNewNotebook` + `planNewNotebook` — all PASS; (4) `src/tools.ts`: `new_notebook` entry (L361) after `notebook_edit`, params `path`+`query`, `required: ["path","query"]` (L380); `isMutatingTool` includes `new_notebook` (L488) PASS; (5) `ToolExecutor.createNewNotebook` (L623): resolveSafe, empty-query guard, exists guard, `createNotebook(planNewNotebook(query))`, snapshot bookkeeping, mkdir+writeFile, recordChange, "Created … cell(s) planned from the query."; `case "new_notebook"` in execute (L394) PASS; (6) scope: only tools.ts, ToolExecutor.ts, smoke-test.js, coder PROGRESS.md + `m ninfer` — PASS.
+- **Known deviation (acceptable):** 6 pre-existing tool-count assertions `14` → `15` in place; still genuine count checks.
+- **Verdict:** **PASS** — all 6 criteria met. (Slices S3–S5 of item 1.99-28 remain.)
 
 ### 1.99-28.S1 — Typed cell markers + planNewNotebook + notebookNameFromQuery (pure) (2026-10-22) — **PASS**
 

@@ -358,6 +358,33 @@ export const CODE_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
+      name: "new_notebook",
+      description:
+        "Create a new Jupyter notebook (.ipynb) planned from the query: a " +
+        "markdown title cell, a markdown objective cell, and a starter code " +
+        "cell. The file must not exist yet — use notebook_edit afterwards to " +
+        "modify cells.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description:
+              "Workspace-relative .ipynb file path (must not exist yet).",
+          },
+          query: {
+            type: "string",
+            description:
+              "What the notebook should accomplish; used to plan the cells.",
+          },
+        },
+        required: ["path", "query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "think",
       description:
         "Record a thought or reasoning step between tool calls. Use this to " +
@@ -457,6 +484,7 @@ export function isMutatingTool(name: string): boolean {
     name === "write_file" ||
     name === "edit_file" ||
     name === "run_command" ||
-    name === "notebook_edit"
+    name === "notebook_edit" ||
+    name === "new_notebook"
   );
 }

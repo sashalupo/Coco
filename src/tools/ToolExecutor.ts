@@ -13,7 +13,12 @@ import { spawn } from "child_process";
 import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff, diffStats } from "../diff";
 import { scanForSecrets } from "../secrets";
-import { applyNotebookEdit } from "../notebook";
+import {
+  applyNotebookEdit,
+  createNotebook,
+  parseNotebook,
+  planNewNotebook,
+} from "../notebook";
 import { formatCodebaseSweep, formatFolderBlock } from "../context";
 import { fetchUrl } from "../fetchTool";
 import {
@@ -386,6 +391,14 @@ export class ToolExecutor {
               : undefined,
             typeof args.source === "string" ? args.source : undefined,
           );
+        case "new_notebook":
+          return this.result(
+            call,
+            await this.createNewNotebook(
+              String(args.path ?? ""),
+              String(args.query ?? ""),
+            ),
+          );
         case "think":
           return this.think(call, String(args.thought ?? ""));
         case "fetch_url":
@@ -599,6 +612,39 @@ export class ToolExecutor {
     await fs.promises.writeFile(abs, edit.newContent, "utf8");
     this.recordChange(relPath, oldContent, edit.newContent);
     return this.result(call, `Wrote ${relPath} — ${edit.message}`);
+  }
+
+  /**
+   * Create a new .ipynb planned from the query (item 1.99-28.S2). The pure
+   * planning logic lives in `planNewNotebook`/`createNotebook` (src/notebook.ts);
+   * this method only handles path safety, the exists guard, file I/O, and
+   * snapshot bookkeeping. The file must not exist yet.
+   */
+  public async createNewNotebook(
+    relPath: string,
+    query: string,
+  ): Promise<string> {
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return `Path not allowed (outside workspace): ${relPath}`;
+    }
+    if (query.trim() === "") {
+      return "query is empty — provide what the notebook should accomplish.";
+    }
+    try {
+      await fs.promises.access(abs);
+      return `Notebook already exists: ${relPath} — use notebook_edit to modify it.`;
+    } catch {
+      // File does not exist yet — proceed to create it.
+    }
+    const content = createNotebook(planNewNotebook(query));
+    this.lastSnapshot = { relPath, oldContent: "", existed: false };
+    this.recordSnapshot(relPath, "", false);
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    await fs.promises.writeFile(abs, content, "utf8");
+    this.recordChange(relPath, "", content);
+    const n = parseNotebook(content)?.cells.length ?? 0;
+    return `Created ${relPath} — ${n} cell(s) planned from the query.`;
   }
 
   private async listDir(call: ToolCall, relPath: string): Promise<ToolResult> {

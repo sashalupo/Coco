@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-28 (new notebook planning) — S1 done (S2–S5 pending)
-- **Next step:** 1.99-28.S2 per planner plan (`.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.99-28 (new notebook planning) — S1–S2 done (S3–S5 pending)
+- **Next step:** 1.99-28.S3 per planner plan (`.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (555 assertions)
+- **Build state:** compiles clean; smoke test passes (560 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-28.S2** (2026-10-22) — `new_notebook` agent tool (schema + executor). Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools.ts`: (a) new `new_notebook` entry in `CODE_TOOLS` immediately after `notebook_edit` — description: creates a new Jupyter notebook planned from the query (markdown title + objective + starter code cell); file must not exist yet; use `notebook_edit` afterwards; parameters `path` (string, "Workspace-relative .ipynb file path (must not exist yet).") + `query` (string, "What the notebook should accomplish; used to plan the cells."), `required: ["path","query"]`; (b) `isMutatingTool` gains `name === "new_notebook"`.
+  - `src/tools/ToolExecutor.ts`: (a) `../notebook` import extended with `createNotebook`, `parseNotebook`, `planNewNotebook`; (b) new `public async createNewNotebook(relPath: string, query: string): Promise<string>` right after `notebookEdit` — `resolveSafe` → `Path not allowed (outside workspace): <relPath>`; empty-query guard → `query is empty — provide what the notebook should accomplish.`; `fs.promises.access` exists guard → `Notebook already exists: <relPath> — use notebook_edit to modify it.`; else `content = createNotebook(planNewNotebook(query))`, snapshot bookkeeping (`lastSnapshot`/`recordSnapshot` with `existed: false`), `mkdir -p` parent + `writeFile`, `recordChange`, returns `Created <relPath> — <n> cell(s) planned from the query.` (n = `parseNotebook(content)?.cells.length ?? 0`); (c) `execute` switch gains `case "new_notebook":` → `this.result(call, await this.createNewNotebook(String(args.path ?? ""), String(args.query ?? "")))`.
+  - `scripts/smoke-test.js`: (a) new section `// 54) new_notebook tool (1.99-28.S2)` after section 53, before `ALL SMOKE TESTS PASSED`; 5 `nbnew-s2:` assertions (15 tools; 15-name order with `new_notebook` after `notebook_edit`; `required.join(",") === "path,query"`; `isMutatingTool("new_notebook") === true`; compiled `out/tools/ToolExecutor.js` contains `createNewNotebook` AND `planNewNotebook`); (b) existing section-5 assertions updated in place: `CODE_TOOLS has 14 tools` → `15` and the `"tools: tool names in order"` expected string gains `new_notebook` after `notebook_edit`; (c) 6 other stale hardcoded `14` tool-count assertions updated to `15` (required for the suite to stay green — deviation from the literal "5 assertions" count, see below): `tools: request body carries tools when enabled`, `think-s1` (label 14→15), `think-s3` (label 14→15), `fetch-s2` schema (label 14→15), `fetch-s2` body, `usages-s2` body. Total PASS lines now 560 (555 + 5).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 560 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-28.S1** (2026-10-22) — `src/notebook.ts`: typed cell markers + `planNewNotebook` + `notebookNameFromQuery` (pure). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/notebook.ts`: (a) `createNotebook` now scans `/^\s*<<<CELL(?::(markdown|code))?>>>[ 	]*$/gm` via `matchAll` — cell 0 = text before first marker (always `code`), each marker starts a new cell of its type (default `code`), trailing text after last marker is a `code` cell; whitespace-only sources dropped (leading marker no longer yields an empty first cell); `id: cell-<index>` first field, `nbformat: 4, nbformat_minor: 5`, leading-newline trim kept. Regex trailing `\s*` → `[ 	]*` so the marker-line newline is not consumed (the `cellStart` helper skips it explicitly). New module-private `cleanSource` trims leading AND trailing newlines from each cell source (trailing newline before the next marker no longer leaks into the source).
   - `src/notebook.ts`: (b) new `export function planNewNotebook(query: string): string` — 3-cell marker source: `<<<CELL:markdown>>>\n# <title>` (title = first line of trimmed query, ≤ 80 chars, fallback `"New notebook"`), `<<<CELL:markdown>>>\n## Objective\n\n<query>`, `<<<CELL>>>\n# TODO: implement`.
