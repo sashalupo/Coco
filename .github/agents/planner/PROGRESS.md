@@ -1327,7 +1327,7 @@ User Prompt (user-data-folder prompts). Text-only section (no images).
   `stripPromptComments("a\n<!-- c -->\nb") === "a\nb"`; `stripPromptComments("x <!-- multi\nline --> y")`
   does not contain `multi`; `promptBlock({path:"p", title:"T", content:"<!-- only -->"}) === ""`.
 
-- **1.99-12.S2 — `src/presets.ts` + `src/config.ts`: settings plumbing.**
+- **1.99-12.S2 — `src/presets.ts` + `src/config.ts`: settings plumbing.** — Done (2026-10-22, PASS, 486 assertions)
   Files: `src/presets.ts`, `src/config.ts`. (a) `LlmSettings` (after `instructionFiles`,
   ~line 94): `promptFiles: string[]` with doc comment "Glob patterns
   (workspace-relative) for reusable prompt files." (b) `readSettings()` (after

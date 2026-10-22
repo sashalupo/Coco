@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-12 — Reusable prompt files — **IN PROGRESS** (S1 PASS, 2026-10-22)
-- **Next step:** 1.99-12.S2 (next slice of Reusable prompt files)
+- **Current item:** 1.99-12 — Reusable prompt files — **IN PROGRESS** (S1+S2 PASS, 2026-10-22)
+- **Next step:** 1.99-12.S3 (next slice of Reusable prompt files)
 - **Last updated:** 2026-10-22
-- **Last commit:** 8b2945c (chore(llm): record 1.99-12 plan); S1 commit pending
-- **Build state:** 484/484 PASS
+- **Last commit:** b54baa0 (feat(llm): reusable prompt files — pure helpers (1.99-12.S1)); S2 commit pending
+- **Build state:** 486/486 PASS
 
 
 ### 1.99-12.S1 — pure prompt-file helpers (src/prompts.ts, NEW) (2026-10-22) — **PASS**
@@ -25,6 +25,13 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **484 PASS lines** (479 prior + 5 new `rp-s1:`), 0 FAIL.
 - **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 484/484 with 5 genuine `rp-s1:` assertions in new `// 36) Reusable prompt files — pure helpers (1.99-12.S1)` section (smoke-test.js:3687) all passing: `rp-s1: exports present`, `rp-s1: promptTitle H1 + fallback`, `rp-s1: stripPromptComments single-line`, `rp-s1: stripPromptComments multi-line`, `rp-s1: promptBlock empty after strip` PASS; (3) `src/prompts.ts` pure — zero imports (no `vscode`, no fs); exports `PromptFile` interface `{path,title,content}`, `MAX_PROMPT_CHARS = 32_000`, `promptTitle` (first H1 via `/^#\s+(.+)$/m`, else filename minus `.prompt.md`/last extension), `stripPromptComments` (non-greedy dotAll `<!-- … -->` removal + `\n{2,}→\n` collapse + trim), `promptBlock` (`## Prompt: <title>\n\n<stripped>`, `""` when empty after strip), `PROMPT_TEMPLATE` string PASS; (4) collapse-semantics note: plan doc said "3+ → 2" but acceptance assertion requires 2+ → 1; implementation, in-file doc comment, and test all consistently use 2+ → 1 — no prose data loss, only whitespace normalization — sane PASS; (5) scope: exactly `?? src/prompts.ts` (new), ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` (ninfer submodule marker ignored); no package-lock.json drift PASS.
 - **Verdict:** **PASS** — all 4 criteria met.
+
+### 1.99-12.S2 — settings plumbing (src/presets.ts + src/config.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **486 PASS lines** (484 prior + 2 new `rp-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 486/486 with 2 genuine `rp-s2:` static-source assertions in new `// 37) Reusable prompt files — settings plumbing (1.99-12.S2)` section (smoke-test.js:3715) all passing: `rp-s2: config.ts reads promptFiles.locations with default globs` (asserts `promptFiles.locations` + `.prompts/**/*.prompt.md` in config.ts source), `rp-s2: LlmSettings has promptFiles: string[]` (presets.ts source) PASS; (3) `src/presets.ts:95–96`: `/** Glob patterns (workspace-relative) for reusable prompt files. */` + `promptFiles: string[];` placed directly after `instructionFiles` (L94) PASS; (4) `src/config.ts:74`: `promptFiles: c.get<string[]>("promptFiles.locations", [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"])` placed directly after `instructionFiles` (L73) PASS; (5) scope: exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/config.ts`, ` M src/presets.ts` (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-10.S4 — FINAL: final smoke assertions (2026-10-22) — **PASS**
 

@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-12 (Reusable prompt files) — S1 done
-- **Next step:** 1.99-12.S2 (settings plumbing: presets.ts + config.ts)
+- **Current item:** 1.99-12 (Reusable prompt files) — S2 done
+- **Next step:** 1.99-12.S3 (`src/extension.ts`: `llm.usePrompt` command)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (484 assertions)
+- **Build state:** compiles clean; smoke test passes (486 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-12.S2** (2026-10-22) — settings plumbing: `src/presets.ts` + `src/config.ts`. Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `LlmSettings` gains `promptFiles: string[]` (doc comment "Glob patterns (workspace-relative) for reusable prompt files.") immediately after `instructionFiles` (now line 96).
+  - `src/config.ts`: `readSettings()` gains `promptFiles: c.get<string[]>("promptFiles.locations", [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"])` immediately after `instructionFiles` (now line 74).
+  - `scripts/smoke-test.js`: new section `// 37) Reusable prompt files — settings plumbing (1.99-12.S2)` after section 36, before the final summary print; 2 `rp-s2:` static-source assertions via `fs.readFileSync` (locals `configSrcRpS2`/`presetsSrcRpS2` — `configSrc`/`presetsSrc` were already declared earlier in the same scope): (a) `src/config.ts` contains `promptFiles.locations` AND `.prompts/**/*.prompt.md`; (b) `src/presets.ts` contains `promptFiles: string[]`. Total PASS lines now 486 (484 + 2).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 486 PASS, 0 FAIL; `git status --short` → only the 3 in-scope files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-12.S1** (2026-10-22) — `src/prompts.ts`: pure prompt-file helpers (NEW file). Files: `src/prompts.ts` (new), `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/prompts.ts` (pure — no `vscode` import, no fs; same purity contract as `src/instructions.ts`): (a) `export interface PromptFile { path; title; content }`; (b) `export const MAX_PROMPT_CHARS = 32_000` (mirrors MAX_INSTRUCTION_CHARS); (c) `promptTitle(content, filePath)` — first line matching `/^#\s+(.+)$/m` (trimmed), else basename with `.prompt.md` suffix stripped (or last extension stripped); (d) `stripPromptComments(content)` — `content.replace(/<!--[\s\S]*?-->/g, "")` (non-greedy, dotAll — covers multi-line blocks and single-line fragments), then collapse 2+ newlines to 1, trim. NOTE: plan doc comment said "collapse 3+ to 2" but the acceptance smoke assertion `stripPromptComments("a\n<!-- c -->\nb") === "a\nb"` requires 2+ → 1; implemented to pass the test (test is the acceptance criterion). (e) `promptBlock(file)` — `## Prompt: <title>\n\n<stripped>`, `""` when empty after stripping; (f) `export const PROMPT_TEMPLATE` — `# My Prompt` + explanatory HTML comment + blank body.
   - `scripts/smoke-test.js`: new section `// 36) Reusable prompt files — pure helpers (1.99-12.S1)` after section 35, before the final summary print; `require("../out/prompts.js")` (local `prompts`, same pattern as section 20's `fetchTool`); 5 `rp-s1:` assertions: (a) exports present (3 functions + `PROMPT_TEMPLATE` string); (b) `promptTitle` H1 + fallback (`"Refactor"` / `"b"`); (c) single-line strip `=== "a\nb"`; (d) multi-line strip does not contain `multi`; (e) `promptBlock` empty after strip `=== ""`. Total PASS lines now 484 (479 + 5).

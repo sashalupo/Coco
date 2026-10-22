@@ -3712,6 +3712,25 @@ function assert(cond, label) {
     "rp-s1: promptBlock empty after strip",
   );
 
+  // 37) Reusable prompt files — settings plumbing (1.99-12.S2)
+  const configSrcRpS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const presetsSrcRpS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    configSrcRpS2.includes("promptFiles.locations") &&
+      configSrcRpS2.includes(".prompts/**/*.prompt.md"),
+    "rp-s2: config.ts reads promptFiles.locations with default globs",
+  );
+  assert(
+    presetsSrcRpS2.includes("promptFiles: string[]"),
+    "rp-s2: LlmSettings has promptFiles: string[]",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

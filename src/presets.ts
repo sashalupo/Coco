@@ -92,6 +92,8 @@ export interface LlmSettings {
   instructionsEnabled: boolean;
   /** Extra workspace-relative instruction file paths (in addition to defaults). */
   instructionFiles: string[];
+  /** Glob patterns (workspace-relative) for reusable prompt files. */
+  promptFiles: string[];
   /** Enable the `#codebase` chat tag (workspace sweep injected as context). */
   codebaseSearchEnabled: boolean;
   /** Enable the `#problems` chat tag (diagnostics injected as context). */
