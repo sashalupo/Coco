@@ -2340,6 +2340,35 @@ function assert(cond, label) {
     "vision-s2: empty and non-vision models are not vision-capable",
   );
 
+  // 16c) attachment UI (1.98-14.S3): static checks on the webview source.
+  const webviewSrcS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcS3.includes('id="attach"'),
+    "vision-s3: webview has the attach (paperclip) button",
+  );
+  assert(
+    webviewSrcS3.includes('id="attach-file"'),
+    "vision-s3: webview has the hidden file input",
+  );
+  assert(
+    webviewSrcS3.includes('id="attach-strip"'),
+    "vision-s3: webview has the attachment thumbnail strip",
+  );
+  assert(
+    webviewSrcS3.includes('id="vision-warning"'),
+    "vision-s3: webview has the vision warning notice",
+  );
+  assert(
+    webviewSrcS3.includes("readAsDataURL") &&
+      webviewSrcS3.includes("clipboardData") &&
+      webviewSrcS3.includes("vision_warning") &&
+      webviewSrcS3.includes("msg-img"),
+    "vision-s3: webview wires FileReader, paste, vision_warning and msg-img",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

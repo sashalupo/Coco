@@ -729,6 +729,78 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	#send:hover { filter: brightness(1.1); }
 	#send:disabled { opacity: 0.5; cursor: default; }
+	#attach {
+		background: transparent;
+		color: var(--muted);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 6px 8px;
+		font-size: 13px;
+		cursor: pointer;
+	}
+	#attach:hover { color: var(--fg); border-color: var(--focus); }
+	.attach-strip {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		padding: 6px 8px 0 8px;
+	}
+	.attach-thumb {
+		width: 48px;
+		height: 48px;
+		border-radius: 4px;
+		position: relative;
+		overflow: hidden;
+		border: 1px solid var(--border);
+	}
+	.attach-thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+	.attach-remove {
+		position: absolute;
+		top: 0;
+		right: 0;
+		background: rgba(0, 0, 0, 0.6);
+		color: #fff;
+		border: none;
+		border-radius: 0 0 0 4px;
+		font-size: 11px;
+		line-height: 1;
+		padding: 2px 4px;
+		cursor: pointer;
+	}
+	.attach-remove:hover { background: rgba(0, 0, 0, 0.85); }
+	.msg-images {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		margin-top: 6px;
+	}
+	.msg-img {
+		width: 96px;
+		height: 96px;
+		object-fit: cover;
+		border-radius: 4px;
+		cursor: zoom-in;
+		transition: transform 0.15s;
+	}
+	.msg-img:hover {
+		transform: scale(1.6);
+		position: relative;
+		z-index: 10;
+	}
+	.vision-warning {
+		background: var(--vscode-editorWarning-background, #4d3800);
+		color: var(--vscode-editorWarning-foreground, #cca700);
+		font-size: 12px;
+		padding: 6px 8px;
+		border-radius: 4px;
+		margin: 0 8px;
+		cursor: pointer;
+	}
 	#stop {
 		background: var(--vscode-inputValidation-errorBackground, #5a1d1a);
 		color: var(--btn-fg);
@@ -1068,12 +1140,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<div id="cf-file-list" class="cf-file-list"></div>
 		</div>
 
+		<div id="attach-strip" class="attach-strip" hidden></div>
+		<div id="vision-warning" class="vision-warning" hidden></div>
 		<div class="input-row">
 			<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+			<button id="attach" title="Attach image (or paste / drag-drop)">📎</button>
 			<button id="send">Send</button>
 			<button id="retry" title="Regenerate last response">Retry</button>
 			<button id="stop" title="Stop generating">Stop</button>
 		</div>
+		<input type="file" id="attach-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
 
 	<script>window.__llmInitial = ${JSON.stringify(initialState)};</script>
 	<script>
@@ -1379,6 +1455,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var streaming = false;
 		var currentAssistant = null;
 		var lastSentText = '';
+		var pendingImages = [];
+		var lastSentImages = [];
 		var queuedMessage = null;
 
 		// Phase 21: when the user sends while the LLM is streaming, offer three
@@ -1458,12 +1536,88 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				return;
 			}
 			lastSentText = text;
+			lastSentImages = pendingImages.slice();
+			pendingImages = [];
+			renderAttachStrip();
 			inputEl.value = '';
 			inputEl.focus();
 			if (vscode) {
-				vscode.postMessage({ type: 'send', text: text });
+				vscode.postMessage({ type: 'send', text: text, images: lastSentImages.map(function (i) { return i.dataUrl; }) });
 			}
 		}
+
+		// --- Image attachments (paperclip / paste / drag-drop) ---
+		var IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+		var MAX_IMAGES = 4;
+		var MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+		function addImageFiles(files) {
+			var list = Array.prototype.slice.call(files || []);
+			list.forEach(function (file) {
+				if (!file || IMAGE_TYPES.indexOf(file.type) === -1) { return; }
+				if (file.size > MAX_IMAGE_BYTES) { return; }
+				if (pendingImages.length >= MAX_IMAGES) { return; }
+				var reader = new FileReader();
+				reader.onload = function () {
+					pendingImages.push({ name: file.name, dataUrl: reader.result });
+					renderAttachStrip();
+				};
+				reader.readAsDataURL(file);
+			});
+		}
+		function renderAttachStrip() {
+			var strip = document.getElementById('attach-strip');
+			strip.innerHTML = '';
+			pendingImages.forEach(function (img, idx) {
+				var thumb = document.createElement('div');
+				thumb.className = 'attach-thumb';
+				var im = document.createElement('img');
+				im.src = img.dataUrl;
+				im.title = img.name;
+				var rm = document.createElement('button');
+				rm.className = 'attach-remove';
+				rm.textContent = '×';
+				rm.title = 'Remove ' + img.name;
+				rm.addEventListener('click', function () {
+					pendingImages.splice(idx, 1);
+					renderAttachStrip();
+				});
+				thumb.appendChild(im);
+				thumb.appendChild(rm);
+				strip.appendChild(thumb);
+			});
+			strip.hidden = pendingImages.length === 0;
+		}
+		var attachBtn = document.getElementById('attach');
+		var attachFile = document.getElementById('attach-file');
+		attachBtn.addEventListener('click', function () {
+			attachFile.click();
+		});
+		attachFile.addEventListener('change', function () {
+			addImageFiles(this.files);
+			this.value = '';
+		});
+		inputEl.addEventListener('paste', function (e) {
+			var items = e.clipboardData && e.clipboardData.items;
+			if (!items) { return; }
+			var found = false;
+			for (var i = 0; i < items.length; i++) {
+				if (items[i].type && items[i].type.indexOf('image/') === 0) {
+					var f = items[i].getAsFile();
+					if (f) { addImageFiles([f]); found = true; }
+				}
+			}
+			if (found) { e.preventDefault(); }
+		});
+		var inputRow = document.querySelector('.input-row');
+		inputRow.addEventListener('dragover', function (e) { e.preventDefault(); });
+		inputRow.addEventListener('drop', function (e) {
+			e.preventDefault();
+			addImageFiles(e.dataTransfer.files);
+		});
+		var visionWarning = document.getElementById('vision-warning');
+		visionWarning.addEventListener('click', function () {
+			visionWarning.hidden = true;
+		});
 		sendBtn.addEventListener('click', doSend);
 		stopBtn.addEventListener('click', function () {
 			if (vscode) { vscode.postMessage({ type: 'stop' }); }
@@ -1547,11 +1701,22 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		}
 
 		// --- DOM builders (used by S9/S11) ---
-		window.addUserMessage = function (text) {
+		window.addUserMessage = function (text, images) {
 			var el = document.createElement('div');
 			el.className = 'message user';
 			el.innerHTML = '<div class="role">You</div><div class="content"></div>';
 			el.querySelector('.content').textContent = text;
+			if (images && images.length) {
+				var wrap = document.createElement('div');
+				wrap.className = 'msg-images';
+				images.forEach(function (dataUrl) {
+					var im = document.createElement('img');
+					im.className = 'msg-img';
+					im.src = dataUrl;
+					wrap.appendChild(im);
+				});
+				el.querySelector('.content').appendChild(wrap);
+			}
 			messagesEl.appendChild(el);
 			messagesEl.scrollTop = messagesEl.scrollHeight;
 			return el;
@@ -1784,11 +1949,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					currentAssistant = null;
 					setStreaming(false);
 					break;
+				case 'vision_warning':
+					visionWarning.textContent = msg.message || '';
+					visionWarning.hidden = false;
+					setTimeout(function () { visionWarning.hidden = true; }, 8000);
+					break;
 				case 'restore':
 					messagesEl.innerHTML = '';
 					(msg.messages || []).forEach(function (m) {
 						if (m.role === 'user') {
-							addUserMessage(m.content);
+							addUserMessage(m.content, m.images);
 						} else if (m.role === 'assistant') {
 							var a = addAssistantMessage();
 						a.rawContent = m.content;
@@ -1833,7 +2003,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						// drop the previous assistant reply and stream a fresh one.
 						removeLastAssistant();
 					} else {
-						addUserMessage(lastSentText);
+						addUserMessage(lastSentText, lastSentImages);
 					}
 					currentAssistant = addAssistantMessage();
 					setContextTrimmed(!!msg.trimmed);

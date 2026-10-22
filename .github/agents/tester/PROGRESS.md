@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-14 (multimodal message support) — S2 verified
-- **Next step:** verify 1.98-14 S3
+- **Current item:** 1.98-14 (multimodal message support) — S3 verified
+- **Next step:** verify 1.98-14 S4
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 349/349 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 354/354 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -261,6 +261,14 @@ acceptance checks, and reports a clear pass/fail.
 - **Purity:** `src/presets.ts` has no `vscode` import. PASS
 - **Scope check:** only `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` modified. No `package-lock.json`. PASS
 
+### 1.98-14.S3 — webview attachment UI (paperclip / paste / drag-drop, thumbnails, hover preview, warning notice) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **354 assertions** (349 prior + 5 new `vision-s3:`).
+- **Static checks in `src/chat/webview.ts`:** (a) HTML ids `attach`, `attach-file` (accept jpeg/png/gif/webp, multiple), `attach-strip`, `vision-warning` present. PASS (b) `pendingImages` state; `addImageFiles` filters 4 mimes, caps 4 images / 10 MB, `FileReader.readAsDataURL`. PASS (c) `renderAttachStrip` 48px thumbs + remove buttons, hides when empty. PASS (d) Events: `#attach` click → file input click; change; `paste` via `clipboardData.items` + `getAsFile()`; `dragover`/`drop` with `preventDefault`. PASS (e) `doSend()` posts `{type:'send', text, images}`; `lastSentImages` captured BEFORE `pendingImages = []` reset. PASS (f) `addUserMessage(text, images)` renders `.msg-images`/`.msg-img`; `stream_start` (non-skipUser) passes captured images; `restore` passes `m.images`. PASS (g) `case 'vision_warning'` sets textContent, unhides, auto-hides after 8 s, click hides. PASS (h) CSS `.attach-strip`, `.attach-thumb`, `.attach-remove`, `.msg-images`, `.msg-img` (hover scale 1.6), `.vision-warning`. PASS
+- **5 new `vision-s3:` smoke assertions genuine:** source-content checks — each would fail if the UI were missing. PASS
+- **Scope check:** only `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` modified. `package-lock.json` NOT modified. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -276,6 +284,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S3** — webview attachment UI — **PASS** (2026-10-22, see Verifications)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -309,6 +318,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S3** — webview attachment UI — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

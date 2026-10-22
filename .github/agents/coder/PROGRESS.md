@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-14.S2 done — `src/presets.ts`: `isVisionCapableModel` (pure)
-- **Next step:** 1.98-14.S3
+- **Current step:** 1.98-14.S3 done — `src/chat/webview.ts`: attachment UI (paperclip / paste / drag-drop)
+- **Next step:** 1.98-14.S4
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (349 assertions, incl. 3 new `vision-s2:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (354 assertions, incl. 5 new `vision-s3:`)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-14.S3** (2026-10-22) — `src/chat/webview.ts`: attachment UI (paperclip / paste / drag-drop, thumbnails, hover preview, warning notice). Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts` (webview HTML/CSS/JS, plain var/function style): (1) HTML — `#attach-strip` + `#vision-warning` divs ABOVE `.input-row`; `📎` `#attach` button BEFORE the Send button inside `.input-row`; hidden `#attach-file` `<input type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple>` right after the input row. (2) JS — `pendingImages` (`{ name, dataUrl }[]`) + `lastSentImages` state; `addImageFiles(files)` (filters to the 4 image types, skips files > 10 MB, caps at 4 total, `FileReader.readAsDataURL` → push + `renderAttachStrip()`); `renderAttachStrip()` (48px `.attach-thumb` with `<img>` + `.attach-remove` × button that splices + re-renders; strip `hidden` when empty); events — `#attach` click → file input `.click()`, `#attach-file` change → `addImageFiles` + reset value, `inputEl` paste → `clipboardData.items` image items via `getAsFile()` (preventDefault when found), `dragover`/`drop` on `.input-row` → `addImageFiles(e.dataTransfer.files)`. (3) `doSend()` now posts `{ type: 'send', text, images: lastSentImages.map(i => i.dataUrl) }`, capturing `lastSentImages = pendingImages.slice()` BEFORE clearing `pendingImages` + re-rendering the strip. (4) `addUserMessage(text, images)` — optional 2nd param; non-empty `images` appends a `.msg-images` div with one `<img class="msg-img" src=dataUrl>` per image. (5) `case 'stream_start':` non-skipUser path passes `lastSentImages`; `case 'restore':` passes `m.images` (may be undefined). (6) New `case 'vision_warning':` — sets `#vision-warning` textContent to `msg.message`, unhides, auto-hides after 8 s; clicking the warning hides it. (7) CSS — `.attach-strip` (flex/gap/wrap/padding), `.attach-thumb` (48px, rounded, relative), `.attach-remove` (absolute corner ×), `.msg-images` (flex/gap/margin-top), `.msg-img` (96px, rounded, `cursor: zoom-in`, `transition: transform .15s`), `.msg-img:hover` (`scale(1.6)`, relative, z-index 10), `.vision-warning` (amber, small text, padding, rounded, pointer).
+  - `scripts/smoke-test.js`: new subsection `// 16c) attachment UI (1.98-14.S3)` with 5 static assertions (`vision-s3:` labels) on a fresh `webviewSrcS3` read of `src/chat/webview.ts`: contains `id="attach"`, `id="attach-file"`, `id="attach-strip"`, `id="vision-warning"`, and (one combined assertion) `readAsDataURL` + `clipboardData` + `vision_warning` + `msg-img`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **354 assertions** (349 prior + 5 new `vision-s3:`); `git status` shows only the 3 in-scope files modified (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-14.S2** (2026-10-22) — `src/presets.ts`: `isVisionCapableModel` (pure). Files: `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: appended after `buildCompletionsModelList` — `VISION_MODEL_MARKERS: string[]` (16 case-insensitive family markers: llava, qwen2.5-vl, qwen2-vl, qwen3-vl, minicpm-v, minicpm-v2, glm-4v, glm-4.1v, internvl, pixtral, gemma-3, moondream, bakllava, mistral-small-3.1, llama3.2-vision, llama-4) with doc comment (used for the non-blocking "model may not support images" warning); `isVisionCapableModel(model: string): boolean` — trims + lowercases, empty → `false` (conservative), else case-insensitive substring match against any marker. Pure — module stays vscode-free.
   - `scripts/smoke-test.js`: new subsection `// 16b) vision-capable model heuristic (1.98-14.S2)` requiring compiled `out/presets.js`; 3 assertions (`vision-s2:` labels): `isVisionCapableModel` exported (typeof function), `isVisionCapableModel("Qwen2.5-VL-7B-Instruct") === true` (case-insensitive), `isVisionCapableModel("") === false && isVisionCapableModel("llama3.1:8b") === false`.
@@ -236,6 +241,10 @@ by step, one step per session.
 - [x] Slice 1.98-8.S4 — `package.json` settings schema + final smoke assertions + PROGRESS.md (final slice).
 - [ ] Item 1.98-8 complete — awaiting Tester verification.
 - [ ] Item 1.98-9 (`#problems` tag) — awaiting planner plan; first slice is next.
+- [x] Slice 1.98-14.S1 — `src/request.ts` multimodal message support (pure).
+- [x] Slice 1.98-14.S2 — `src/presets.ts` `isVisionCapableModel` (pure).
+- [x] Slice 1.98-14.S3 — `src/chat/webview.ts` attachment UI (paperclip / paste / drag-drop, thumbnails, hover preview, warning notice).
+- [ ] Slice 1.98-14.S4 — next (per planner plan).
 
 ## Notes / decisions
 
