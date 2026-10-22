@@ -12,12 +12,25 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-5.S3 (usages tag context) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-5.S4 (FINAL slice of Usages tool)
+- **Current item:** 1.99-5.S4 (FINAL: `#usages` tag wiring + setting) — **PASS** (2026-10-22) — item 1.99-5 complete
+- **Next step:** verify next item in planner backlog (1.99-5 done)
 - **Last updated:** 2026-10-22
-- **Last commit:** 8539470 (coder: 1.99-5.S2)
-- **Build state:** 439/439 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 84ecb31 (coder: 1.99-5.S3)
+- **Build state:** 441/441 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-5.S4 — #usages tag wiring + setting (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **441 PASS lines** (439 prior + 2 new `usages-s4:`), 0 FAIL.
+- **Acceptance checks:**
+  - (1) Build exit 0. PASS
+  - (2) Smoke test exit 0, `ALL SMOKE TESTS PASSED`, 441 `PASS:` lines, 0 FAIL. PASS
+  - (3) New `// 24) Usages tag wiring (1.99-5.S4)` section (smoke-test.js:3327) has 2 genuine `usages-s4:` static-source assertions: (a) `out/chat/ChatViewProvider.js` includes `extractUsagesTag` AND `findUsagesPublic(`; (b) `out/config.js` includes `"chat.usages.enabled"`. PASS
+  - (4) Source: `src/config.ts:76` `usagesEnabled` after `fetchEnabled`; `src/presets.ts:102` `usagesEnabled: boolean`; `package.json:250` `llm.chat.usages.enabled` (boolean, default true); `src/tools/ToolExecutor.ts:1223` public `findUsagesPublic` wrapper; `src/chat/ChatViewProvider.ts` `#usages` block (L1070–1084) after `#fetch`, gated on `settings.usagesEnabled && lastUser && this.toolExecutor`. PASS
+  - (5) Scope: exactly 7 files (coder PROGRESS, package.json, smoke-test.js, ChatViewProvider, config, presets, ToolExecutor). `package-lock.json` untouched. PASS
+  - (6) `git log --oneline -1` → `84ecb31` (feat(llm): usages tool — extractUsagesTag + formatUsagesTagBlock (1.99-5.S3)). No coder commit. PASS
+- **Verdict:** **PASS** — all 6 criteria met. **Item 1.99-5 (Usages tool `#usages`) fully verified (S1–S4).**
 
 ### 1.99-5.S3 — usages tag context (src/context.ts) (2026-10-22) — **PASS**
 

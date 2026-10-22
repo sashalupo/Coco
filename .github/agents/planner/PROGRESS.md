@@ -917,7 +917,7 @@ mirroring the existing `search_files` CODE_TOOL walk (`ToolExecutor.searchMatche
   Expected smoke total: **437**.
 
 - **1.99-5.S4 — wiring: `ChatViewProvider` + `config.ts` + `package.json` + smoke +
-  PROGRESS.md.**
+  PROGRESS.md.** — Done (2026-10-22, PASS, 441 assertions)
   Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `package.json`,
   `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
   (a) `config.ts`: `usagesEnabled: c.get<boolean>("chat.usages.enabled", true)` next to

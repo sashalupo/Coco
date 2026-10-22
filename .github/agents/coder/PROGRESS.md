@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-5 (Usages tool `#usages`) — S3 done (2026-10-22)
-- **Next step:** 1.99-5.S4 (FINAL: `#usages` tag wiring + setting: ChatViewProvider, config.ts, package.json)
+- **Current item:** 1.99-5 (Usages tool `#usages`) — **DONE** (2026-10-22, all 4 slices S1–S4)
+- **Next step:** 1.99-6 (Create a new workspace with agent mode) — next item in backlog
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (439 PASS lines, incl. 4 `usages-s1:` + 5 `usages-s2:` + 4 `usages-s3:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (441 PASS lines, incl. 4 `usages-s1:` + 5 `usages-s2:` + 4 `usages-s3:` + 2 `usages-s4:`)
 
 ## Plan pointer
 
@@ -25,6 +25,15 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-5.S4** (2026-10-22, FINAL) — `#usages` tag wiring + `llm.chat.usages.enabled` setting. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `src/tools/ToolExecutor.ts`, `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `usagesEnabled: boolean` on `LlmSettings` (comment: "Enable the `#usages` chat tag (workspace usages report injected as context)."), right after `fetchEnabled`.
+  - `src/config.ts`: `readSettings()` adds `usagesEnabled: c.get<boolean>("chat.usages.enabled", true)` after `fetchEnabled`.
+  - `src/tools/ToolExecutor.ts`: public `async findUsagesPublic(symbol: string): Promise<string>` — builds a synthetic `ToolCall` (`id: "usages-tag"`, `name: "find_usages"`, `arguments: JSON.stringify({ symbol })`), calls the private `findUsages` core, returns `res.content` (same thin-wrapper pattern as public `fetchUrl`; never throws — errors come back as strings).
+  - `src/chat/ChatViewProvider.ts`: (a) extended the `../context` import with `extractUsagesTag` + `formatUsagesTagBlock`; (b) in `runStream`, after the `#fetch` block: `if (settings.usagesEnabled && lastUser && this.toolExecutor)` → `const usagesSymbol = extractUsagesTag(lastUser.content)`; if non-null: `const usagesBody = await this.toolExecutor.findUsagesPublic(usagesSymbol)`; `const usagesBlock = formatUsagesTagBlock(usagesSymbol, usagesBody)`; appended to `finalContextBlock` with the same `? + "\n\n" + :` pattern (gated regardless of `llm.tools.enabled`, same as the other tags).
+  - `package.json`: added `llm.chat.usages.enabled` (boolean, default `true`) immediately after `llm.chat.fetch.enabled`, description: "Allow the `#usages <symbol>` tag to include a workspace-wide usages report (whole-word matches grouped by file, definition + reference count) in chat context."
+  - `scripts/smoke-test.js`: new section `// 24) Usages tag wiring (1.99-5.S4)` with 2 `usages-s4:` static-source assertions (compiled `out/` files import `vscode` and cannot be required): (a) `out/chat/ChatViewProvider.js` source includes `extractUsagesTag` AND `findUsagesPublic(` (local var `chatViewSrcUsagesS4`); (b) `out/config.js` source includes `"chat.usages.enabled"` (local var `configSrcUsagesS4`). Total PASS lines now 441 (439 + 2).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 441 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 6 in-scope code files + this PROGRESS.md.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-5.S3** (2026-10-22) — `src/context.ts`: `#usages` tag extract + block format. Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/context.ts`: (a) `import { USAGES_BLOCK_MAX_CHARS } from "./usages"`; (b) `extractUsagesTag(text)` — regex `/#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i`, returns trimmed captured symbol or `null` (absent / bare `#usages` / `#usagesfoo` no-space / non-identifier token); (c) `formatUsagesTagBlock(symbol, body)` — `""` on empty/whitespace body, else `` `Usages for \`${symbol}\`:\n\n` + body `` truncated to `USAGES_BLOCK_MAX_CHARS` (20000) with `… (truncated)` suffix — mirrors `extractFetchTag`/`formatFetchBlock` style exactly.
   - `scripts/smoke-test.js`: new section `// 23) Usages tag context (1.99-5.S3)` with 4 `usages-s3:` assertions (require `out/context.js`): (a) `extractUsagesTag("explain #usages myFunc please") === "myFunc"`; (b) `null` for `"no tag"`, `"end #usages"` (bare), `"#usagesfoo x"` (no space); (c) `formatUsagesTagBlock("f", "body")` starts with `` Usages for `f`: `` and includes `body`; `formatUsagesTagBlock("f", "   ") === ""`; (d) 25,000-char body → length ≤ 20050 and ends with `(truncated)`. Total PASS lines now 439 (435 + 4).

@@ -1215,6 +1215,24 @@ export class ToolExecutor {
     return fetchUrl(url, { maxChars });
   }
 
+  /**
+   * Find usages of a symbol across the workspace and return the report text
+   * (1.99-5). Thin wrapper over the private `findUsages` core for the
+   * `#usages` tag path; never throws — failures come back as error strings.
+   */
+  public async findUsagesPublic(symbol: string): Promise<string> {
+    const call: ToolCall = {
+      id: "usages-tag",
+      type: "function",
+      function: {
+        name: "find_usages",
+        arguments: JSON.stringify({ symbol }),
+      },
+    };
+    const res = await this.findUsages(call, symbol);
+    return res.content;
+  }
+
   /** Execute the `fetch_url` tool call. */
   private async fetchUrlTool(
     call: ToolCall,

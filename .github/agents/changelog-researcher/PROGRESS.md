@@ -287,7 +287,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   Definition so chat can learn about a function/class/interface (sample implementations,
   refactor impact).
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22, 4 slices S1–S4; commits 2c84ea8, 8539470, 84ecb31 + S4 commit; no tag — changelog-1.99 exists)
 - **Gap vs existing:** none — add a `usages` tool: given a symbol name + file, grep-based
   reference search across the workspace (workspace has no LSP; text search is the
   established approach).
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-5** Usages tool (`#usages`)
 - **1.99-6** Create a new workspace with agent mode
 - **1.99-8** Agent mode tool approvals
 - **1.99-10** Unified Chat view (mode picker + history)

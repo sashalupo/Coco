@@ -13,15 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-5** — Usages tool (`#usages`) (4-slice plan recorded; 1.99-4 DONE)
-- **Current slice:** 1.99-5.S3 — **DONE** (PASS, 439 assertions); next: 1.99-5.S4 (FINAL)
+- **Current item:** **1.99-5** — Usages tool (`#usages`) — **DONE** (2026-10-22, 4 slices S1–S4); next: 1.99-6
+- **Current slice:** none — 1.99-5 complete; 1.99-6 next
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-5.S4** (FINAL: `#usages` tag
-  wiring + setting: ChatViewProvider, config.ts, package.json), then Tester, memory, commit
+- **Next step:** dispatch Planner for item **1.99-6** (Create a new workspace with agent mode), then slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** `8539470` — feat(llm): usages tool — find_usages tool schema + executor (1.99-5.S2)
-- **Build state:** compiles clean; smoke test passes (439 assertions); 1.99-5.S3 verified
+- **Last commit:** `84ecb31` — feat(llm): usages tool — extractUsagesTag + formatUsagesTagBlock (1.99-5.S3)
+- **Build state:** compiles clean; smoke test passes (441 assertions); 1.99-5 complete
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

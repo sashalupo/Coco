@@ -31,6 +31,8 @@ import {
   extractTaggedFiles,
   extractFetchTag,
   formatFetchBlock,
+  extractUsagesTag,
+  formatUsagesTagBlock,
   type ContextFile,
   type ContextInput,
 } from "../context";
@@ -1060,6 +1062,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + fetchBlock
               : fetchBlock;
+          }
+        }
+      }
+
+      // 1.99-5.S4: `#usages` tag — find whole-word usages of the tagged
+      // symbol across the workspace and append the report to the context
+      // block. Gated only on settings.usagesEnabled (runs regardless of
+      // llm.tools.enabled, same as `#codebase`/`#problems`/`#folder:`/`#fetch`).
+      if (settings.usagesEnabled && lastUser && this.toolExecutor) {
+        const usagesSymbol = extractUsagesTag(lastUser.content);
+        if (usagesSymbol !== null) {
+          const usagesBody = await this.toolExecutor.findUsagesPublic(
+            usagesSymbol,
+          );
+          const usagesBlock = formatUsagesTagBlock(usagesSymbol, usagesBody);
+          if (usagesBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + usagesBlock
+              : usagesBlock;
           }
         }
       }

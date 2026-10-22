@@ -3324,6 +3324,25 @@ function assert(cond, label) {
     "usages-s3: 25k-char body truncated to ≤20050 chars ending with (truncated)",
   );
 
+  // 24) Usages tag wiring (1.99-5.S4)
+  const chatViewSrcUsagesS4 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcUsagesS4.includes("extractUsagesTag") &&
+      chatViewSrcUsagesS4.includes("findUsagesPublic("),
+    "usages-s4: ChatViewProvider wires #usages tag (extractUsagesTag + findUsagesPublic)",
+  );
+  const configSrcUsagesS4 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "config.js"),
+    "utf8",
+  );
+  assert(
+    configSrcUsagesS4.includes("\"chat.usages.enabled\""),
+    "usages-s4: config reads chat.usages.enabled setting",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

@@ -247,6 +247,11 @@
           "default": true,
           "description": "Allow the `#fetch <url>` tag to include webpage content in chat context. The page is fetched over plain HTTP and converted to plain text (cached for 10 minutes)."
         },
+        "llm.chat.usages.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the `#usages <symbol>` tag to include a workspace-wide usages report (whole-word matches grouped by file, definition + reference count) in chat context."
+        },
         "llm.completions.model": {
           "type": "string",
           "default": "",
