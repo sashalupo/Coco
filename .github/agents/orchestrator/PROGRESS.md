@@ -14,6 +14,8 @@ writes code — it dispatches, verifies each stage, records, and commits.
 
 - **Current item:** **none** — awaiting the Changelog Researcher to populate the backlog
 - **Current slice:** **none**
+- **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
+  is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the changelog and build the
   ordered backlog (oldest → newest)
 - **Last updated:** 2026-10-22
@@ -39,6 +41,15 @@ pending item** (the oldest).
 
 _(none yet)_
 
+## Tags (changelog-version tags on completed items)
+
+> When the last slice of a changelog item is committed, a lightweight tag `changelog-<version>`
+> is created on that commit. Record each tag here as items complete.
+
+| Item | Changelog version | Tag | Commit | Date |
+| ---- | ----------------- | --- | ------ | ---- |
+| _(none yet)_ | | | | |
+
 ## Todo
 
 - [ ] Dispatch the Changelog Researcher to study the changelog and build the backlog.
@@ -60,3 +71,14 @@ _(none yet)_
   each). The orchestrator dispatches ONE slice per session through Planner → Coder → Tester.
   This keeps each session's token consumption low. A slice touching >3 files is too big —
   split it further.
+- **Retry on error: 5× same prompt.** If a sub-agent errors out (crash / timeout / no usable
+  report), re-dispatch it up to 5 times with the EXACT SAME prompt before changing approach.
+  Track the count in **Retry state**. Only after 5 identical retries fail, change approach
+  (split the slice, simplify the prompt, or report the blocker). A genuine Tester failure
+  (build error / failed acceptance) is NOT an error — fix it via the Coder instead of
+  burning the retry budget.
+- **Tag on item completion.** When the last slice of a changelog item is committed, create a
+  lightweight tag `changelog-<version>` on that commit (e.g. `changelog-1.100.0`). Only the
+  final slice is tagged — intermediate slices are not. Record the tag in the **Tags** table
+  above. Never tag a commit that does not compile or has a failing test. If the tag already
+  exists, leave it (do not force-recreate).

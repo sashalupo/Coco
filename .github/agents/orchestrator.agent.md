@@ -45,8 +45,13 @@ your frontmatter authorizes exactly these four — you cannot invoke any other a
   one slice per session. This keeps each session's token consumption low.
 - **Wait for the sub-agent's final report** before proceeding to the next stage. Do not run
   stages in parallel — the pipeline is strictly sequential: Planner → Coder → Tester.
-- If a sub-agent reports a failure or is blocked, re-dispatch it with the failure details (or
-  the next sub-slice) rather than doing the work yourself.
+- **Retry on error: 5× with the same prompt before changing approach.** If a sub-agent errors
+  out (crashes, times out, returns an error, or produces no usable report), re-dispatch it
+  **up to 5 times with the EXACT SAME prompt** before you change anything. Do NOT alter the
+  prompt, split the slice, or switch strategy on the first failure — transient errors are
+  common. Only after **5 identical retries** all fail do you change approach (e.g. ask the
+  Planner to split the slice, simplify the prompt, or report the blocker). Track the retry
+  count in your `PROGRESS.md` so a re-entered session knows how many attempts remain.
 
 ## The product (what the team is building)
 
@@ -128,6 +133,14 @@ The team implements features from the VS Code Copilot changelog:
   - `feat(llm): add <feature> from changelog <version>`
   - `fix(llm): handle <case> from changelog <version>`
   - `chore(llm): update PROGRESS.md after <item>`
+- **Tag on item completion.** When the **last slice** of a changelog item is completed and
+  committed, create a lightweight git **tag** on that commit named after the changelog
+  version: `git tag changelog-<version> <commit-hash>`. This marks the commit as the
+  completion of that changelog entry (e.g. `changelog-1.100.0`). Use the version from the
+  backlog entry; sanitize it for use as a tag (no spaces or `~ ^ : ? * [ \` characters, no
+  trailing `.`). If the tag already exists, leave it — do NOT force-recreate it. Never tag a
+  commit that does not compile or that has a failing test. Intermediate slices of a multi-
+  slice item are **not** tagged — only the final slice that completes the item is.
 - **Always** update `PROGRESS.md` in the same commit that changes the work it describes.
 - Use `git add -A`, `git commit -m "..."`. Run `git status` to confirm a clean tree after.
 - Never force-push. Never rewrite history. Never commit secrets (the API key stays in settings,
@@ -152,14 +165,20 @@ The team implements features from the VS Code Copilot changelog:
 5. **Test.** Dispatch the **Tester** agent with the slice's acceptance criteria. The Tester
    runs `npm run compile` and the smoke test, verifies the acceptance check, and reports
    pass/fail. Wait for the Tester's report.
-   - **If the Tester reports failure:** dispatch the Coder again with the failure details to
-     fix the issue, then re-dispatch the Tester. Repeat until the Tester reports success.
+   - **If the Tester errors out** (crash / timeout / no report): re-dispatch the Tester up to
+     **5 times with the same prompt** before changing approach (see the retry rule above).
+   - **If the Tester reports a genuine failure** (build error / failed acceptance check):
+     dispatch the Coder again with the failure details to fix the issue, then re-dispatch the
+     Tester. Repeat until the Tester reports success. (A genuine failure is a different code
+     path from an error — do not burn the 5-retry budget on a real bug; fix it instead.)
 6. **Record.** Update your `PROGRESS.md`: mark the slice Done, set **Next step** to the
    following slice (or the next item if this was the last slice), refresh Status (last
    commit, build state).
 7. **Commit.** Commit the code + all `PROGRESS.md` updates together with a clear message.
-8. **Report & stop.** Summarize what changed, the commit hash, and the next slice. End the
-   session. Do not start the next slice.
+   If this was the **last slice** of the item, also create the changelog-version tag on the
+   commit (`git tag changelog-<version> <commit-hash>`, see Git policy).
+8. **Report & stop.** Summarize what changed, the commit hash, the tag (if any), and the next
+   slice. End the session. Do not start the next slice.
 
 ## Constraints
 
@@ -172,6 +191,8 @@ The team implements features from the VS Code Copilot changelog:
 - DO NOT skip ahead in the changelog — always oldest to newest.
 - DO NOT dispatch cost/money-driven features (token-spend guards, dollar budgets, paid-API
   rate limits) — they are useless for a free local LLM. Skip them.
+- DO NOT change approach on the first sub-agent error. Retry **5 times with the same prompt**
+  before splitting the slice, altering the prompt, or reporting a blocker.
 - ONLY build the LLM chat extension described above.
 
 ## Output format (per slice)
@@ -182,5 +203,7 @@ The team implements features from the VS Code Copilot changelog:
 - **Coded:** what the Coder implemented/changed (one line).
 - **Tested:** the Tester's result (pass/fail + how it was verified).
 - **Committed:** the commit hash + message (or why you did not commit).
+- **Tagged:** the changelog-version tag created on completion (e.g. `changelog-1.100.0`), or
+  "—" if this was not the last slice of the item.
 - **Next slice:** the exact next slice (ID + one line) now pointed to in `PROGRESS.md`.
   If this was the last slice of the item, state the next item instead.
