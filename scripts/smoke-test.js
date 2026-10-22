@@ -3400,6 +3400,39 @@ function assert(cond, label) {
     "ws-s1: buildScaffoldPrompt content; unknown type → ''; generic has no npm install",
   );
 
+  // 26) New workspace tag context (1.99-6.S2)
+  const {
+    extractNewWorkspaceTag,
+    formatWorkspaceBlock,
+  } = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    JSON.stringify(extractNewWorkspaceTag("scaffold #newWorkspace extension my-ext please")) ===
+      JSON.stringify({ type: "extension", folder: "my-ext" }),
+    "ws-s2: extract with type + folder",
+  );
+  assert(
+    JSON.stringify(extractNewWorkspaceTag("#newWorkspace mcp-server")) ===
+      JSON.stringify({ type: "mcp-server", folder: "mcp-server-project" }),
+    "ws-s2: extract with default folder",
+  );
+  assert(
+    extractNewWorkspaceTag("no tag") === null &&
+      extractNewWorkspaceTag("#newWorkspace") === null &&
+      extractNewWorkspaceTag("#newWorkspace bogus x") === null &&
+      extractNewWorkspaceTag("#newWorkspacefoo extension") === null,
+    "ws-s2: null cases",
+  );
+  const wsBlock = formatWorkspaceBlock("extension", "f", "body");
+  const longWsBlock = formatWorkspaceBlock("extension", "f", "z".repeat(25000));
+  assert(
+    wsBlock.startsWith("New workspace scaffold (extension → f):") &&
+      wsBlock.includes("body") &&
+      formatWorkspaceBlock("extension", "f", "   ") === "" &&
+      longWsBlock.length <= 20050 &&
+      longWsBlock.endsWith("(truncated)"),
+    "ws-s2: formatWorkspaceBlock",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

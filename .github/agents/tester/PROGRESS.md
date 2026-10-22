@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-6.S1 (workspace scaffold templates) — **PASS** (2026-10-22)
-- **Next step:** 1.99-6.S2 (extractNewWorkspaceTag + formatWorkspaceBlock)
+- **Current item:** 1.99-6.S2 (new workspace tag context) — **PASS** (2026-10-22)
+- **Next step:** 1.99-6.S3 (wiring: ChatViewProvider + config.ts + presets.ts + package.json)
 - **Last updated:** 2026-10-22
-- **Last commit:** f5df1af (orchestrator: record 1.99-6 plan)
-- **Build state:** 446/446 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** d405e15 (coder: 1.99-6.S1)
+- **Build state:** 450/450 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-6.S2 — new workspace tag context (src/context.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **450 PASS lines** (446 prior + 4 new `ws-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 450/450 PASS with 4 genuine `ws-s2:` assertions all passing (extract with type + folder; extract with default folder; null cases; formatWorkspaceBlock) PASS; (3) `src/context.ts` remains pure — imports only `./notebook`, `./usages`, `./workspaceScaffold` (new `listWorkspaceTypes` import); no `vscode` import PASS; (4) scope: exactly coder PROGRESS.md, `scripts/smoke-test.js`, `src/context.ts`; no `package-lock.json` drift PASS; (5) last commit `d405e15` (coder: 1.99-6.S1), no coder commit for S2 PASS.
+- **Verdict:** **PASS** — all criteria met.
 
 ### 1.99-6.S1 — workspace scaffold templates (src/workspaceScaffold.ts) (2026-10-22) — **PASS**
 

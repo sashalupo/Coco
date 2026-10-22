@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-6** — Create a new workspace with agent mode (4-slice plan recorded; 1.99-5 DONE)
-- **Current slice:** 1.99-6.S1 DONE — 1.99-6.S2 next
+- **Current slice:** 1.99-6.S2 DONE — 1.99-6.S3 next
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-6.S2** (`src/context.ts`: extractNewWorkspaceTag + formatWorkspaceBlock), then Tester, memory, commit
+- **Next step:** dispatch Coder for slice **1.99-6.S3** (wiring: ChatViewProvider + config.ts + presets.ts + package.json), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** `f5df1af` — chore(llm): record 1.99-6 plan (4 slices)
-- **Build state:** compiles clean; smoke test passes (446 assertions); 1.99-6.S1 done
+- **Last commit:** `d405e15` — feat(llm): new workspace — scaffold templates + prompt builder (1.99-6.S1)
+- **Build state:** compiles clean; smoke test passes (450 assertions); 1.99-6.S2 done
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

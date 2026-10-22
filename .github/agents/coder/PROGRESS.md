@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-6 (Create a new workspace with agent mode) — S1 done (2026-10-22)
-- **Next step:** 1.99-6.S2 (src/context.ts: extractNewWorkspaceTag + formatWorkspaceBlock)
+- **Current item:** 1.99-6 (Create a new workspace with agent mode) — S2 done (2026-10-22)
+- **Next step:** 1.99-6.S3 (wiring: ChatViewProvider + config.ts + presets.ts + package.json)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (446 assertions)
+- **Build state:** compiles clean; smoke test passes (450 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-6.S2** (2026-10-22) — `src/context.ts`: `#newWorkspace` tag extract + block format (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/context.ts`: (a) `import { listWorkspaceTypes } from "./workspaceScaffold"`; (b) `extractNewWorkspaceTag(text)` — regex `/#newWorkspace(?!\w)\s+([a-z-]+)(?:\s+(\S+))?/i`, lowercases the captured type, validates it against `listWorkspaceTypes()` (unknown type → `null`), folder = captured second group or default `<type>-project`; no match → `null`; (c) `formatWorkspaceBlock(type, folder, prompt)` — local `WORKSPACE_BLOCK_MAX_CHARS = 20000`, `""` on empty/whitespace prompt, else `New workspace scaffold (<type> → <folder>):\n\n<prompt>` truncated to 20000 chars with `… (truncated)` suffix (same pattern as `formatUsagesTagBlock`).
+  - `scripts/smoke-test.js`: new section `// 26) New workspace tag context (1.99-6.S2)` reusing the cached `out/context.js` require; 4 `ws-s2:` assertions: (a) `extractNewWorkspaceTag("scaffold #newWorkspace extension my-ext please")` deep-equals `{ type: "extension", folder: "my-ext" }`; (b) `extractNewWorkspaceTag("#newWorkspace mcp-server")` deep-equals `{ type: "mcp-server", folder: "mcp-server-project" }`; (c) `null` for `"no tag"`, bare `"#newWorkspace"`, `"#newWorkspace bogus x"` (unknown type), `"#newWorkspacefoo extension"` (no word boundary); (d) `formatWorkspaceBlock("extension","f","body")` starts with `New workspace scaffold (extension → f):` + contains `body`, whitespace prompt → `""`, 25,000-char prompt → length ≤ 20050 and ends with `(truncated)`. Total PASS lines now 450 (446 + 4).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 450 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 in-scope code files + this PROGRESS.md (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-6.S1** (2026-10-22) — `src/workspaceScaffold.ts` (NEW): templates + prompt builder (pure). Files: `src/workspaceScaffold.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/workspaceScaffold.ts` (new, pure — no `vscode` import, mirrors `src/usages.ts` style): (a) `export interface WorkspaceTemplate { type; label; description; files: { path; content }[] }`; (b) `export const WORKSPACE_TEMPLATES: readonly WorkspaceTemplate[]` — exactly 4 templates: `extension` (VS Code extension: `package.json` with `engines.vscode`/`activationEvents`/`main: ./out/extension.js` + name `my-extension`, `tsconfig.json` commonjs/strict/outDir out, `src/extension.ts` activate/deactivate stub, `.vscodeignore`), `mcp-server` (MCP server stdio: `package.json` name `my-mcp-server` main `./out/server.js`, `tsconfig.json`, `src/server.ts` newline-delimited JSON-RPC over stdio handling `initialize`/`tools/list`/`tools/call`, `README.md`), `dev-env` (TypeScript dev env: `package.json` `"type": "module"` + dev/build/test scripts, `tsconfig.json`, `src/index.ts`, `.gitignore`), `generic` (`package.json` name `my-project`, `README.md`); all paths relative, all contents non-empty; (c) `export function listWorkspaceTypes(): string[]` → `["extension","mcp-server","dev-env","generic"]`; (d) `export function buildScaffoldPrompt(type, folder): string` — `""` for unknown type; else first line `Scaffold a new <label> project in the folder \`<folder>\` (workspace-relative).`, numbered instructions (1. create folder, 2. `write_file` each file, 3. verify with `list_dir`, 4. `npm install` via `run_command` — non-`generic` only), then one `### <path>` + fenced code block per file; `generic` prompt contains no `npm install`.
   - `scripts/smoke-test.js`: new section `// 25) Workspace scaffold templates (1.99-6.S1)` requiring `out/workspaceScaffold.js` fresh; 5 `ws-s1:` assertions: (a) exports present + `WORKSPACE_TEMPLATES.length === 4` + `listWorkspaceTypes()` deep-equals the 4 types + `buildScaffoldPrompt` is a function; (b) every template ≥2 files, all paths relative (no leading `/`), all contents non-empty strings; (c) `extension` template has `package.json` containing `"activationEvents"` + a `src/extension.ts` file; (d) `mcp-server` template's `src/server.ts` contains `tools/list` and `stdin`; (e) `buildScaffoldPrompt("extension","my-ext")` contains `my-ext`/`write_file`/`list_dir`/`npm install`/`### package.json`, `buildScaffoldPrompt("nope","x") === ""`, `buildScaffoldPrompt("generic","g")` does NOT contain `npm install`. Total PASS lines now 446 (441 + 5).

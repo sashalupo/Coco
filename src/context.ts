@@ -7,6 +7,7 @@
 
 import { formatNotebookForContext } from "./notebook";
 import { USAGES_BLOCK_MAX_CHARS } from "./usages";
+import { listWorkspaceTypes } from "./workspaceScaffold";
 
 /** A single diagnostic (error/warning/info) on a file. */
 export interface ContextDiagnostic {
@@ -440,4 +441,64 @@ export function formatUsagesTagBlock(symbol: string, body: string): string {
     return block;
   }
   return block.slice(0, USAGES_BLOCK_MAX_CHARS) + "… (truncated)";
+}
+
+// ---------------------------------------------------------------------------
+// #newWorkspace tag (1.99-6): scaffold a new workspace with agent mode. These
+// functions only parse the tag and render the scaffold prompt block; the
+// wiring lives in a later slice.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#newWorkspace` tag from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#newWorkspace` occurrence
+ * (`#newWorkspacefoo` does NOT match; `#NewWorkspace` DOES). The type token
+ * must be a known workspace type (see `listWorkspaceTypes()`); the optional
+ * folder token defaults to `<type>-project`. Returns `null` when the tag is
+ * absent, the type is unknown, or no type token follows the tag. Pure and
+ * testable.
+ */
+export function extractNewWorkspaceTag(
+  text: string,
+): { type: string; folder: string } | null {
+  const m = /#newWorkspace(?!\w)\s+([a-z-]+)(?:\s+(\S+))?/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  const type = m[1].toLowerCase();
+  if (!listWorkspaceTypes().includes(type)) {
+    return null;
+  }
+  const folder = m[2] ?? `${type}-project`;
+  return { type, folder };
+}
+
+/**
+ * Render a `#newWorkspace` scaffold prompt as a stable context block:
+ *
+ * ```
+ * New workspace scaffold (<type> → <folder>):
+ *
+ * <prompt>
+ * ```
+ *
+ * The whole block is truncated to `WORKSPACE_BLOCK_MAX_CHARS` chars with a
+ * `… (truncated)` suffix. Returns `""` when `prompt` is empty/whitespace.
+ * Pure and testable.
+ */
+export function formatWorkspaceBlock(
+  type: string,
+  folder: string,
+  prompt: string,
+): string {
+  const WORKSPACE_BLOCK_MAX_CHARS = 20000;
+  if (prompt.trim() === "") {
+    return "";
+  }
+  const block = `New workspace scaffold (${type} → ${folder}):\n\n${prompt}`;
+  if (block.length <= WORKSPACE_BLOCK_MAX_CHARS) {
+    return block;
+  }
+  return block.slice(0, WORKSPACE_BLOCK_MAX_CHARS) + "… (truncated)";
 }

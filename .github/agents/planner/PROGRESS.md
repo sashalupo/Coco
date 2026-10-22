@@ -973,7 +973,7 @@ reference if the definition file sorts later); tag runs regardless of
   `WorkspaceTemplate` interface, `WORKSPACE_TEMPLATES` (4 templates), `listWorkspaceTypes()`, `buildScaffoldPrompt(type, folder)`.
   Smoke (`ws-s1:`, 5). Acceptance: compile clean; smoke 441 → **446**.
 
-- **1.99-6.S2 — `src/context.ts`: `#newWorkspace` tag extract + block format (pure).**
+- **1.99-6.S2 — `src/context.ts`: `#newWorkspace` tag extract + block format (pure) — Done (2026-10-22, PASS, 450 assertions).**
   Files: `src/context.ts`, `scripts/smoke-test.js`.
   `extractNewWorkspaceTag(text)`, `formatWorkspaceBlock(type, folder, prompt)`.
   Smoke (`ws-s2:`, 4). Acceptance: compile clean; smoke 446 → **450**.
