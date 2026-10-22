@@ -41,12 +41,13 @@ import {
   combineInstructions,
   type InstructionFile,
 } from "../instructions";
-import type {
-  ContextFlags,
-  ContextLevel,
-  LlmSettings,
-  ThinkingLevel,
-  ToolbarState,
+import {
+  isVisionCapableModel,
+  type ContextFlags,
+  type ContextLevel,
+  type LlmSettings,
+  type ThinkingLevel,
+  type ToolbarState,
 } from "../presets";
 
 /** Cap on the number of tool-call iterations in the agentic loop. */
@@ -157,7 +158,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.loadModels();
         break;
       case "send":
-        void this.handleSend(String(msg.text ?? ""));
+        void this.handleSend(
+          String(msg.text ?? ""),
+          Array.isArray(msg.images) ? msg.images : []
+        );
         break;
       case "toolbar":
         this.applyToolbarMessage(msg);
@@ -840,16 +844,51 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * Send a user message and stream the assistant's reply back to the webview.
-   * Uses the settings + the persisted toolbar overrides (model/thinking/
-   * context) so the dropdowns feed the next request body.
+   * Send a user message (optionally with attached images) and stream the
+   * assistant's reply back to the webview. Uses the settings + the persisted
+   * toolbar overrides (model/thinking/context) so the dropdowns feed the next
+   * request body.
    */
-  private async handleSend(text: string): Promise<void> {
+  private async handleSend(text: string, images: unknown[]): Promise<void> {
     if (!text) {
       return;
     }
-    this.history.push({ role: "user", content: text });
-    await this.runStream(readSettings(), this.toolbarStore.get(), false);
+    const settings = readSettings();
+    // Vision gate: `llm.chat.vision.enabled` (schema entry lands in S5; the
+    // default keeps this slice single-file). When disabled, drop all images
+    // silently (no warning).
+    const visionEnabled = vscode.workspace
+      .getConfiguration("llm")
+      .get<boolean>("chat.vision.enabled", true);
+    // Sanitize: only well-formed image data URLs, ≤ ~10 MB each (base64
+    // inflates ~4/3, so cap the data-URL length at 14 MB), max 4 images.
+    const sanitized = visionEnabled
+      ? images
+          .filter(
+            (img): img is string =>
+              typeof img === "string" &&
+              /^data:image\/(jpeg|png|gif|webp);base64,/.test(img) &&
+              img.length <= 14 * 1024 * 1024
+          )
+          .slice(0, 4)
+      : [];
+    this.history.push({
+      role: "user",
+      content: text,
+      images: sanitized.length > 0 ? sanitized : undefined,
+    });
+    // Non-blocking warning: the active model may not support images. Never
+    // block the stream on this — `runStream` proceeds regardless.
+    if (sanitized.length > 0) {
+      const model = this.toolbarStore.get().model ?? settings.model;
+      if (!isVisionCapableModel(model)) {
+        this.postMessage({
+          type: "vision_warning",
+          message: `Model '${model || "default"}' may not support images — the engine may ignore them.`,
+        });
+      }
+    }
+    await this.runStream(settings, this.toolbarStore.get(), false);
   }
 
   /**

@@ -2369,6 +2369,24 @@ function assert(cond, label) {
     "vision-s3: webview wires FileReader, paste, vision_warning and msg-img",
   );
 
+  // 16d) host send flow (1.98-14.S4): static checks on the host source.
+  const chatViewSrcS4 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcS4.includes("isVisionCapableModel"),
+    "vision-s4: host checks the model's vision capability",
+  );
+  assert(
+    chatViewSrcS4.includes("vision_warning"),
+    "vision-s4: host posts the non-blocking vision warning",
+  );
+  assert(
+    chatViewSrcS4.includes("chat.vision.enabled"),
+    "vision-s4: host reads the llm.chat.vision.enabled gate",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

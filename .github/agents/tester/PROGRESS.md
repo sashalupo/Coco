@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-14 (multimodal message support) — S3 verified
-- **Next step:** verify 1.98-14 S4
+- **Current item:** 1.98-14 (multimodal message support) — S4 verified
+- **Next step:** verify 1.98-14 S5
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 354/354 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 357/357 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -269,6 +269,14 @@ acceptance checks, and reports a clear pass/fail.
 - **5 new `vision-s3:` smoke assertions genuine:** source-content checks — each would fail if the UI were missing. PASS
 - **Scope check:** only `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` modified. `package-lock.json` NOT modified. PASS
 
+### 1.98-14.S4 — host send flow + image validation + non-blocking vision warning (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **357 assertions** (354 prior + 3 new `vision-s4:` in subsection 16d; 0 FAIL).
+- **Static checks in `src/chat/ChatViewProvider.ts`:** (a) `isVisionCapableModel` value-imported from `../presets` (line 45). PASS (b) `case "send":` passes `Array.isArray(msg.images) ? msg.images : []` (line 163). PASS (c) Vision gate `get<boolean>("chat.vision.enabled", true)` (lines 860–862). PASS (d) Sanitization: `^data:image/(jpeg|png|gif|webp);base64,`, `img.length <= 14 * 1024 * 1024`, `.slice(0, 4)`; gate false → `[]` silently. PASS (e) History push `images: sanitized.length > 0 ? sanitized : undefined` (line 878). PASS (f) Warning only when `sanitized.length > 0` AND `!isVisionCapableModel(this.toolbarStore.get().model ?? settings.model)` — both fields verified real (`ToolbarState.model: string | null`, `LlmSettings.model: string`); message mentions model name; non-blocking (`runStream` proceeds unconditionally, line 891). PASS (g) `this.postMessage({ type: "vision_warning", ... })` (line 886). PASS
+- **Smoke 16d:** 3 genuine source-content checks (`isVisionCapableModel`, `vision_warning`, `chat.vision.enabled`) — each would fail if the wiring were removed. PASS
+- **Scope check:** only `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` modified. `package-lock.json` untouched. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -285,6 +293,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S3** — webview attachment UI — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S4** — host send flow + image validation + vision warning — **PASS** (2026-10-22, see Verifications)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -319,6 +328,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-14.S3** — webview attachment UI — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-14.S4** — host send flow + image validation + vision warning — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
