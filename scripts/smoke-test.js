@@ -2288,6 +2288,40 @@ function assert(cond, label) {
     "compm-s4: package.json has llm.changeCompletionsModel command with title",
   );
 
+  // 16) multimodal message support (1.98-14.S1): pure content-parts helpers.
+  // 16a) compiled out/request.js.
+  const { toContentParts, estimateMessageTokens } = require(
+    path.join(__dirname, "..", "out", "request.js"),
+  );
+  assert(
+    typeof toContentParts === "function",
+    "vision-s1: toContentParts is exported (function)",
+  );
+  assert(
+    toContentParts("hi") === "hi",
+    "vision-s1: toContentParts without images returns the plain string",
+  );
+  const parts = toContentParts("hi", ["data:image/png;base64,AAA"]);
+  assert(
+    Array.isArray(parts) &&
+      parts.length === 2 &&
+      parts[0].type === "text" &&
+      parts[0].text === "hi" &&
+      parts[1].type === "image_url" &&
+      parts[1].image_url.url === "data:image/png;base64,AAA",
+    "vision-s1: toContentParts with one image returns [text, image_url] parts",
+  );
+  const noImg = estimateMessageTokens({ role: "user", content: "hello" });
+  const withImg = estimateMessageTokens({
+    role: "user",
+    content: "hello",
+    images: ["data:image/png;base64,AAA"],
+  });
+  assert(
+    withImg - noImg >= 900,
+    "vision-s1: one image adds >= 900 tokens to the estimate",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

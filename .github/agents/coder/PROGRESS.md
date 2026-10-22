@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-12.S4 done — `package.json` contributions + smoke 15d + planner memory update (FINAL slice of item 1.98-12)
-- **Next step:** item 1.98-12 complete — await next item from orchestrator
+- **Current step:** 1.98-14.S1 done — `src/request.ts`: multimodal message support (pure)
+- **Next step:** 1.98-14.S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (342 assertions, incl. 5 new `compm-s4:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (346 assertions, incl. 4 new `vision-s1:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-14.S1** (2026-10-22) — `src/request.ts`: multimodal message support (pure). Files: `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/request.ts`: (1) `ChatMessage` gained optional `images?: string[]` (base64 data URLs) with doc comment; (2) new exported `ContentPart` type (`{ type: "text"; text } | { type: "image_url"; image_url: { url } }`) + pure `toContentParts(content, images?)` — plain string when no images, else parts array (text part first, one `image_url` part per data URL); (3) new exported `RequestMessage = Omit<ChatMessage, "content"> & { content: string | ContentPart[] }`; `ChatCompletionRequest.messages` widened to `RequestMessage[]` (`ChatMessage.content` itself stays `string`); `buildRequestBody` maps trimmed messages so any message with `images` gets `content: toContentParts(m.content, m.images)`, text-only messages pass through unchanged; (4) `estimateMessageTokens` adds `1000 * (message.images?.length ?? 0)` (flat 1000-token heuristic per image).
+  - **Type-widening ripple (kept in-scope):** widening `ChatCompletionRequest.messages` to `RequestMessage[]` broke `src/chat/ChatViewProvider.ts:1017` (`estimateMessagesTokens(body.messages)` — out-of-scope file). Fixed WITHOUT touching that file by widening the two estimator signatures to `RequestMessage` (`estimateMessageTokens(message: RequestMessage)`, `estimateMessagesTokens(messages: RequestMessage[])`); `ChatMessage` is structurally assignable to `RequestMessage` (string ⊂ string | ContentPart[]), so all existing `ChatMessage[]` call sites still compile. `estimateMessageTokens` now handles parts-array content by joining the text parts (zero behavior change for string content).
+  - `scripts/smoke-test.js`: new section `// 16) multimodal message support (1.98-14.S1)` with subsection `16a` requiring compiled `out/request.js`; 4 assertions (`vision-s1:` labels): `toContentParts` exported (typeof function), `toContentParts("hi") === "hi"` (strict), `toContentParts("hi", ["data:image/png;base64,AAA"])` → array of length 2 with `[0].type === "text"` / `[0].text === "hi"` / `[1].type === "image_url"` / `[1].image_url.url === "data:image/png;base64,AAA"`, and `estimateMessageTokens` with 1 image exceeds the no-image estimate by ≥ 900.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **346 assertions** (342 prior + 4 new `vision-s1:`); `git status` shows only `src/request.ts` + `scripts/smoke-test.js` modified (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-12.S4** (2026-10-22) — `package.json` contributions + smoke 15d + planner memory update (FINAL slice of item 1.98-12). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md` only.
   - `package.json`: added `{ "command": "llm.changeCompletionsModel", "title": "LLM: Change Completions Model" }` to `contributes.commands` after `llm.commitChanges`; added `llm.completions.model` (string, default `""`, description mentions completions + the command) to `contributes.configuration.properties` after `llm.chat.folderContext.enabled`. JSON validated via `JSON.parse`.
   - `scripts/smoke-test.js`: new subsection `// 15d) change completions model (1.98-12.S4)` with 5 parsed-JSON assertions (`compm-s4:` labels) reusing the `pkg` parse from 12d: (a) `contributes.configuration.properties["llm.completions.model"]` present, (b) `type === "string"`, (c) `default === ""`, (d) `description` mentions `completions` (case-insensitive), (e) `contributes.commands` contains an entry with `command === "llm.changeCompletionsModel"` and a non-empty `title`.

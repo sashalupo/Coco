@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-14** — Copilot Vision: image attachments (VS Code 1.98)
-- **Current slice:** **1.98-14.S1** — `src/request.ts`: multimodal message support (pure)
+- **Current slice:** **1.98-14.S2** — `src/presets.ts`: `isVisionCapableModel` (pure)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice 1.98-14.S1, then Tester
+- **Next step:** dispatch Coder for slice 1.98-14.S2, then Tester
 - **Last updated:** 2026-10-22
-- **Last commit:** `486dde2` — chore(llm): settings schema + smoke assertions; mark item 1.98-12 complete (1.98-12.S4)
-- **Build state:** compiles clean; smoke test passes (342 assertions); item 1.98-12 fully verified (S1–S4)
+- **Last commit:** `ad2b295` — chore(llm): record 1.98-14 plan (5 slices) — Copilot Vision image attachments
+- **Build state:** compiles clean; smoke test passes (346 assertions); 1.98-14.S1 verified
 
 ## Team
 
@@ -70,6 +70,7 @@ pending item** (the oldest).
 - **1.98-12.S3** (2026-10-22) — `src/extension.ts`: `llm.changeCompletionsModel` QuickPick command (registered after `llm.commitChanges`; list via `buildCompletionsModelList`; engine-unreachable → warning + configured-only list; cancel = no-op; write to `ConfigurationTarget.Workspace`/`Global`); 5 `compm-s3:` smoke assertions. Tester PASS. Commit pending.
 - **1.98-12.S4** (2026-10-22) — `package.json`: `llm.completions.model` setting (string, default `""`) + `llm.changeCompletionsModel` command contribution; 5 `compm-s4:` parsed-JSON smoke assertions; planner PROGRESS.md marks 1.98-12 Done. Tester PASS. **Item 1.98-12 complete** (no tag — `changelog-1.98` already exists from 1.98-1). Commit `486dde2`.
 - **1.98-14 plan** (2026-10-22) — Planner produced 5-slice plan: Copilot Vision image attachments — S1 `src/request.ts` multimodal (`ChatMessage.images`, `toContentParts`, body mapping, +1000 tokens/image), S2 `src/presets.ts` `isVisionCapableModel` (static marker list), S3 `src/chat/webview.ts` attachment UI (📎/paste/drag-drop, thumbnail strip, inline render + hover zoom, `vision_warning` notice), S4 `src/chat/ChatViewProvider.ts` send flow + validation + non-blocking warning, S5 `package.json` `llm.chat.vision.enabled` + 15 `vision-sN:` smoke assertions (342 → 357). Plan recorded in planner PROGRESS.md. Commit pending.
+- **1.98-14.S1** (2026-10-22) — `src/request.ts`: `ChatMessage.images?: string[]`, `ContentPart` + pure `toContentParts` (plain string when no images; text part first + one `image_url` part per data URL), `RequestMessage` type widening (`content: string | ContentPart[]`), `buildRequestBody` maps image messages after `trimHistory` (text-only byte-identical), `estimateMessageTokens` +1000/image; 4 `vision-s1:` behavior smoke assertions. Tester PASS. Commit pending.
 
 ## Tags (changelog-version tags on completed items)
 

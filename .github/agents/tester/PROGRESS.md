@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-12 (completions model quick pick) — S4 verified — **item complete**
-- **Next step:** verify next item from orchestrator
+- **Current item:** 1.98-14 (multimodal message support) — S1 verified
+- **Next step:** verify 1.98-14 S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** 332/332 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
@@ -244,6 +244,14 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** `git status --short | grep -v ninfer` → only `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md` (+ `ninfer` submodule marker, ignored). PASS
 - **Item 1.98-12 fully verified (S1–S4 all PASS).**
 
+### 1.98-14.S1 — `src/request.ts`: multimodal message support (pure) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **346 assertions** (342 prior + 4 new `vision-s1:` in subsection 16; 0 FAIL).
+- **`src/request.ts`:** (a) `ChatMessage` gains optional `images?: string[]`; `content` still typed `string`. PASS (b) `ContentPart` type + exported pure `toContentParts(content, images?)`: no/empty images → plain string (zero behavior change); else parts array, text part first, one `{type:"image_url",image_url:{url}}` per data URL. PASS (c) `RequestMessage` type: `content: string | ContentPart[]`. PASS (d) `buildRequestBody`: after `trimHistory`, maps messages with `images` via `toContentParts` — text-only messages pass through unchanged (byte-identical bodies). PASS (e) `estimateMessageTokens` adds `1000 * (message.images?.length ?? 0)`; also sums only text parts of parts-array content. PASS
+- **Smoke 16:** 4 genuine behavior assertions (`vision-s1:`) on compiled `out/request.js`: export check, strict string equality, full parts-array shape check, ≥900 token delta. Not tautologies. PASS
+- **Scope check:** `git status --short | grep -v ninfer` → only `src/request.ts` (+62/−6), `scripts/smoke-test.js` (+34/−0), `.github/agents/coder/PROGRESS.md`. No `package-lock.json`. PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -257,6 +265,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12.S3** — `llm.changeCompletionsModel` QuickPick command — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S4** — `package.json` contributions + smoke 15d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
+- [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
 - [ ] **1.98-12.S2** — next slice of 1.98-12 (completions model quick pick)
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
@@ -288,6 +297,7 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-12.S3** — `llm.changeCompletionsModel` QuickPick command — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12.S4** — `package.json` contributions + smoke 15d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-12** — completions model quick pick — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
+- [x] **1.98-14.S1** — `src/request.ts`: multimodal message support (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

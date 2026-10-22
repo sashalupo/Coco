@@ -21,7 +21,36 @@ export interface ChatMessage {
   tool_call_id?: string;
   /** Present on `role: 'assistant'` messages that request tool calls. */
   tool_calls?: ToolCall[];
+  /** Optional images (base64 data URLs) attached to this message (multimodal). */
+  images?: string[];
 }
+
+/** One part of a multimodal message content array (OpenAI shape). */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+/**
+ * Convert a message's text + optional images into the OpenAI content shape.
+ * Plain string when there are no images (zero behavior change for text-only
+ * messages); otherwise a parts array with the text part first, then one
+ * `image_url` part per data URL.
+ */
+export function toContentParts(content: string, images?: string[]): string | ContentPart[] {
+  if (!images || images.length === 0) {
+    return content;
+  }
+  const parts: ContentPart[] = [{ type: "text", text: content }];
+  for (const url of images) {
+    parts.push({ type: "image_url", image_url: { url } });
+  }
+  return parts;
+}
+
+/** A message as sent in the request body (content may be a multimodal parts array). */
+export type RequestMessage = Omit<ChatMessage, "content"> & {
+  content: string | ContentPart[];
+};
 
 /** The merged configuration: base settings + runtime toolbar overrides. */
 export interface RequestConfig {
@@ -32,7 +61,7 @@ export interface RequestConfig {
 /** The JSON body sent to POST /v1/chat/completions. */
 export interface ChatCompletionRequest {
   model?: string;
-  messages: ChatMessage[];
+  messages: RequestMessage[];
   temperature?: number;
   top_p?: number;
   top_k?: number;
@@ -78,14 +107,27 @@ export function estimateTokens(text: string): number {
 }
 
 /** Estimate the token count of a single message (content + thinking). */
-export function estimateMessageTokens(message: ChatMessage): number {
-  const content = message.content ?? "";
+export function estimateMessageTokens(message: RequestMessage): number {
+  // Content may be a multimodal parts array; estimate only its text parts.
+  const content =
+    typeof message.content === "string"
+      ? message.content
+      : (message.content ?? [])
+          .filter((p) => p.type === "text")
+          .map((p) => p.text)
+          .join("");
   const reasoning = message.reasoning_content ?? "";
-  return MESSAGE_OVERHEAD + estimateTokens(content) + estimateTokens(reasoning);
+  // Flat 1000-token heuristic per attached image (no image tokenizer).
+  return (
+    MESSAGE_OVERHEAD +
+    estimateTokens(content) +
+    estimateTokens(reasoning) +
+    1000 * (message.images?.length ?? 0)
+  );
 }
 
 /** Estimate the total token count of a message list. */
-export function estimateMessagesTokens(messages: ChatMessage[]): number {
+export function estimateMessagesTokens(messages: RequestMessage[]): number {
   return messages.reduce((sum, m) => sum + estimateMessageTokens(m), 0);
 }
 
@@ -163,8 +205,16 @@ export function buildRequestBody(
     budgetTokens,
   );
 
+  // Multimodal: messages with images get a content parts array; text-only
+  // messages pass through unchanged (content stays a plain string).
+  const bodyMessages: RequestMessage[] = trimmedMessages.map((m) =>
+    m.images && m.images.length > 0
+      ? { ...m, content: toContentParts(m.content, m.images) }
+      : m,
+  );
+
   const body: ChatCompletionRequest = {
-    messages: trimmedMessages,
+    messages: bodyMessages,
     temperature: settings.temperature,
     top_p: settings.topP,
     top_k: settings.topK,
