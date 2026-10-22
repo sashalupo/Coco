@@ -75,6 +75,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Executes the workspace tools the engine calls (Phase 4). */
   private readonly toolExecutor: ToolExecutor;
 
+  /**
+   * Pre-run conversation checkpoint (Phase 18): the history snapshot taken
+   * at the start of each `runStream`. Used by the "Restore" button in the
+   * change footer to revert the conversation to its pre-run state.
+   */
+  private preRunHistory: ChatMessage[] | null = null;
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly client: LlmClient,
@@ -185,6 +192,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "undoFile":
         // Revert a single file's changes (Phase 14).
         void this.handleUndoFile(String(msg.path ?? ""));
+        break;
+      case "restoreCheckpoint":
+        // Restore the conversation to its pre-run state (Phase 18).
+        this.handleRestoreCheckpoint();
         break;
       default:
         // Unknown message types are ignored for now.
@@ -378,7 +389,43 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       files: changes,
       totalAdded,
       totalRemoved,
+      hasCheckpoint: this.preRunHistory !== null,
     });
+  }
+
+  /**
+   * Restore the conversation to its pre-run state (Phase 18): revert all
+   * file changes AND restore the conversation history to the checkpoint
+   * taken at the start of the last run. Hides the change footer.
+   */
+  private async handleRestoreCheckpoint(): Promise<void> {
+    if (!this.preRunHistory) {
+      this.postMessage({
+        type: "revert_result",
+        message: "No checkpoint to restore.",
+      });
+      return;
+    }
+    // Revert all file changes.
+    const fileMsg = await this.toolExecutor.revertAll();
+    // Restore the conversation history.
+    this.history = [...this.preRunHistory];
+    this.preRunHistory = null;
+    // Push the restored history to the webview.
+    const all = this.conversationStore.getAll();
+    this.postMessage({
+      type: "restore",
+      messages: this.history,
+      conversations: all.map((c) => ({ id: c.id, title: c.title })),
+      activeId: this.currentConvId,
+    });
+    this.postMessage({
+      type: "revert_result",
+      message: `↩ Restored checkpoint. ${fileMsg}`,
+    });
+    this.postMessage({ type: "change_footer_hide" });
+    // Persist the restored conversation.
+    this.saveCurrentConversation();
   }
 
   /**
@@ -707,6 +754,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.postMessage({ type: "stream_start", trimmed, skipUser });
+
+    // Save the pre-run conversation checkpoint (Phase 18) so the user can
+    // restore the conversation to its state before this run.
+    this.preRunHistory = [...this.history];
 
     // Reset the per-run change summary (Phase 9.3) so it only reflects the
     // files mutated during this run.

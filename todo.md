@@ -1,7 +1,7 @@
 Multi-file diff view ✅
 agent
 keep/undo nel file diff ✅
-restore checkpoints
+restore checkpoints ✅
 tag file
 copy/paste as symbol
 todos ✅

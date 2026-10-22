@@ -990,6 +990,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				<span id="cf-chevron" class="cf-chevron" title="Expand/collapse changed files">▾</span>
 				<span id="cf-summary" class="cf-summary"></span>
 				<span class="cf-actions">
+					<button id="cf-restore" class="cf-btn" title="Restore conversation + files to pre-run state" hidden>Restore</button>
 					<button id="cf-diff" class="cf-btn" title="Show combined diff of all changes">Diff</button>
 					<button id="cf-keep" class="cf-btn cf-keep" title="Keep changes">Keep</button>
 					<button id="cf-undo" class="cf-btn" title="Undo all changes">Undo</button>
@@ -1032,6 +1033,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var cfDiff = document.getElementById('cf-diff');
 		var cfKeep = document.getElementById('cf-keep');
 		var cfUndo = document.getElementById('cf-undo');
+		var cfRestore = document.getElementById('cf-restore');
 		var ctxFile = document.getElementById('ctx-file');
 		var ctxSelection = document.getElementById('ctx-selection');
 		var ctxDiagnostics = document.getElementById('ctx-diagnostics');
@@ -1052,8 +1054,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		});
 
 		// Populate the footer summary + per-file rows from a change list.
-		function renderChangeFooter(files, totalAdded, totalRemoved) {
+		function renderChangeFooter(files, totalAdded, totalRemoved, hasCheckpoint) {
 			var n = files.length;
+			cfRestore.hidden = !hasCheckpoint;
 			cfSummary.textContent = '';
 			var label = document.createElement('span');
 			label.textContent = n + ' file' + (n === 1 ? '' : 's') + ' changed';
@@ -1262,6 +1265,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			if (streaming) { return; }
 			hideChangeFooter();
 			if (vscode) { vscode.postMessage({ type: 'undoChanges' }); }
+		});
+		cfRestore.addEventListener('click', function () {
+			if (streaming) { return; }
+			hideChangeFooter();
+			if (vscode) { vscode.postMessage({ type: 'restoreCheckpoint' }); }
 		});
 		// The quick new-conversation button is only useful while the panel is
 		// collapsed (the panel has its own New Session button when open).
@@ -1884,7 +1892,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				case 'change_footer':
 					// Change toolbox footer bar (Phase 12): show the persistent
 					// footer with the files changed this run + their +/- totals.
-					renderChangeFooter(msg.files || [], msg.totalAdded || 0, msg.totalRemoved || 0);
+					renderChangeFooter(msg.files || [], msg.totalAdded || 0, msg.totalRemoved || 0, msg.hasCheckpoint);
 					showChangeFooter();
 					break;
 				case 'change_footer_hide':

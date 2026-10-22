@@ -12,11 +12,26 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 17 complete** — Agent todos checklist (17.1 done)
+- **Current phase:** **Phase 18 complete** — Restore checkpoints (18.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `6989c02` — feat(llm): agent todos checklist via manage_todos tool (Phase 17.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); todos card verified
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); restore checkpoint verified
+
+> **Phase 18 — Restore checkpoints (2026-10-22):**
+>
+> A "Restore" button appears in the change footer (when a checkpoint exists).
+> Clicking it reverts ALL file changes AND restores the conversation history
+> to the state before the last run. The checkpoint is taken automatically at
+> the start of each `runStream`.
+>
+> - `ChatViewProvider`: `preRunHistory` field saved at run start. New
+>   `handleRestoreCheckpoint()` reverts files + restores history + posts
+>   `restore` + `change_footer_hide`. `pushChangeFooter` now carries
+>   `hasCheckpoint`.
+> - `webview.ts`: `#cf-restore` button in `.cf-actions` (hidden when no
+>   checkpoint). `renderChangeFooter` accepts `hasCheckpoint` param.
+>   `restoreCheckpoint` message handler.
 
 > **Phase 17 — Agent todos checklist (2026-10-22):**
 >
