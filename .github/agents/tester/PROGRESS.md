@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S3** verified
-- **Next step:** test slice **1.98-1.S4**
+- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S4** verified
+- **Next step:** test slice **1.98-1.S5**
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -69,6 +69,18 @@ acceptance checks, and reports a clear pass/fail.
   - (i) When `requireApproval` is false, the entire `if (settings.requireApproval && isMutating)` block is skipped — no `command_approval` post, no `waitForCommandApproval` call. PASS
 - **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/ChatViewProvider.ts` (+81/-21) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
 
+
+### 1.98-1.S4 — webview "modified by user" badge on tool card (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (full suite green; tail showed 13 PASS lines ending in diffStats).
+- **Static checks in `src/chat/webview.ts` (via `git diff`):**
+  - (a) `if (msg.modified === true)` present in BOTH the found-card branch (appends badge to `details.querySelector('summary')`) and the fallback-card branch (appends badge to `tcSummary` after `tcName`). PASS
+  - (b) Badge element: `badge.className = 'tool-modified'`, `badge.textContent = 'modified by user'` (and `tcBadge` equivalents). PASS
+  - (c) CSS rule `.tool-modified { font-size: 10px; font-weight: 600; color: var(--vscode-descriptionForeground, #9d9d9d); }` added in the existing style block. PASS
+  - (d) `git diff src/chat/webview.ts` → exactly 3 hunks, all additions (+17/-0): CSS rule + 2 badge blocks. No other behavior in the `tool_result` handler changed. PASS
+- **Scope check:** `git status --short` / `git diff --stat` → only `src/chat/webview.ts` (+17) among source files; also `.github/agents/coder/PROGRESS.md` (memory update, expected) and `ninfer` submodule dirty marker (not a source change). PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -77,7 +89,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Todo
 
-- [ ] Test slice **1.98-1.S4**.
+- [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
+- [ ] Test slice **1.98-1.S5**.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions

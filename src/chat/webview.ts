@@ -389,6 +389,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	.tool-card summary .tool-name {
 		font-family: var(--vscode-editor-font-family, monospace);
 	}
+	.tool-modified {
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--vscode-descriptionForeground, #9d9d9d);
+	}
 	.tool-card[open] summary { border-bottom: 1px solid var(--border); }
 	.tool-args {
 		font-family: var(--vscode-editor-font-family, monospace);
@@ -2071,6 +2076,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							var details = existing.querySelector('.tool-card');
 							var running = existing.querySelector('.tool-running');
 							if (running && running.parentNode) { running.parentNode.removeChild(running); }
+							if (msg.modified === true) {
+								var badge = document.createElement('span');
+								badge.className = 'tool-modified';
+								badge.textContent = 'modified by user';
+								details.querySelector('summary').appendChild(badge);
+							}
 							var out = document.createElement('pre');
 							out.className = 'tool-output';
 							out.textContent = msg.output || '';
@@ -2091,6 +2102,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							tcName.className = 'tool-name';
 							tcName.textContent = msg.tool || 'tool';
 							tcSummary.appendChild(tcName);
+							if (msg.modified === true) {
+								var tcBadge = document.createElement('span');
+								tcBadge.className = 'tool-modified';
+								tcBadge.textContent = 'modified by user';
+								tcSummary.appendChild(tcBadge);
+							}
 							tcDetails.appendChild(tcSummary);
 							var tcArgs = document.createElement('div');
 							tcArgs.className = 'tool-args';

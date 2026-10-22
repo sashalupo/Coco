@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-1.S3 done (host routes `run_command` through the editable approval gate)
-- **Next step:** 1.98-1.S4 — Webview: "modified by user" badge on the tool card (src/chat/webview.ts)
+- **Current step:** 1.98-1.S4 done (webview "modified by user" badge on the tool card)
+- **Next step:** 1.98-1.S5 — Settings description + smoke test + PROGRESS.md
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes after 1.98-1.S3
+- **Build state:** `npm run compile` passes after 1.98-1.S4
 
 ## Plan pointer
 
@@ -61,10 +61,15 @@ by step, one step per session.
   - After `toolExecutor.execute(call)`: if `commandModified`, the content fed back to the model is prefixed with `"Note: the user modified the command before running it.\n"` (history only — the webview `tool_result` output stays the raw result), and the `tool_result` postMessage includes `modified: true` (badge rendering is slice S4).
   - `settings.requireApproval` false → `run_command` executes immediately with no card (no behavior change).
   - Verified: `npm run compile` passes clean.
+- **1.98-1.S4** (2026-10-22) — Webview: "modified by user" badge on the tool card. File: `src/chat/webview.ts` only.
+  - In `case 'tool_result':`, when `msg.modified === true`, append `<span class="tool-modified">modified by user</span>` next to the tool name in the card's summary — in BOTH branches:
+    - Found-card branch: `details.querySelector('summary').appendChild(badge)` after removing the running indicator.
+    - Fallback-card branch: `tcSummary.appendChild(tcBadge)` after the tool name, before `tcDetails.appendChild(tcSummary)`.
+  - Added one CSS rule `.tool-modified` (font-size 10px, weight 600, `var(--vscode-descriptionForeground, #9d9d9d)` muted color) in the existing style block next to `.tool-card summary .tool-name`.
+  - Verified: `npm run compile` passes clean.
 
 ## Todo
 
-- [ ] 1.98-1.S4 — Webview: "modified by user" badge on the tool card.
 - [ ] 1.98-1.S5 — Settings description + smoke test + PROGRESS.md.
 
 ## Notes / decisions
