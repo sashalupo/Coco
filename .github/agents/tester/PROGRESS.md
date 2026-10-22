@@ -123,6 +123,15 @@ acceptance checks, and reports a clear pass/fail.
 - Planner PROGRESS.md: 1.98-9 marked **Done** (S1–S4 complete); Next step → 1.98-10 (`#folder:` tag). PASS
 - **Item 1.98-9 fully verified (S1–S4 all PASS).**
 
+### 1.98-10.S1 — `src/context.ts`: `extractFolderTag` + `formatFolderBlock` + `FOLDER_BLOCK_MAX_CHARS` (pure) (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**306 assertions**; 12 new `folder-s1:` green in subsection `// 14a) folder tag (1.98-10.S1)`).
+- `src/context.ts` (pure — no `vscode` import added; grep matches only comments): (a) `extractFolderTag(text): string | null` uses the approved corrected alternation `/#folder(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i` returning `(m[1] ?? m[2] ?? "").trim()` (the plan's literal lookahead regex was broken for the space form — KNOWN approved deviation). (b) `FolderBlockData { tree: string; notFound?: boolean; }`. (c) `FOLDER_BLOCK_MAX_CHARS = 8000`. (d) `formatFolderBlock(data, folder?)` — header `Folder: <name>` / `Folder: (workspace root)` when empty/absent; body `(folder not found: <name>)` when `notFound` else `data.tree || "(empty folder)"`; truncation at 8,000 + `… (truncated)`; never returns `""`. All PASS.
+- Behavior contract verified at runtime against compiled `out/context.js` via `node -e`: `#folder:src`→`"src"`, `#folder src`→`"src"`, bare `#folder`→`""`, absent→`null`, `#folderfoo`→`null`, `#Folder:src`→`"src"` (case-insensitive), `#folder:src\nline2`→`"src"` (same-line), first-occurrence-only, `#folder:src more`→`"src"` (stops at whitespace), `#folder:`→`""`. All PASS.
+- `git diff src/context.ts` = single additive hunk (+69/-0) appended after `formatProblemsBlock`; `#codebase`/`#problems` sections untouched. PASS
+- 12 new smoke assertions genuine: concrete-input behavior checks on the real compiled `extractFolderTag`/`formatFolderBlock`/`FOLDER_BLOCK_MAX_CHARS`. Not tautologies. PASS
+- Scope: `git status --short` → only `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer submodule marker). PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)

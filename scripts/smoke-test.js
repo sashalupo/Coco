@@ -2032,6 +2032,67 @@ function assert(cond, label) {
     "problems-s4: llm.chat.problems.enabled description mentions #problems",
   );
 
+  // 14) folder tag (1.98-10): pure #folder tag parsing + block formatting.
+  // 14a) compiled out/context.js.
+  const {
+    extractFolderTag,
+    formatFolderBlock,
+    FOLDER_BLOCK_MAX_CHARS,
+  } = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    extractFolderTag("#folder:src") === "src",
+    "folder-s1: colon form extracts folder name",
+  );
+  assert(
+    extractFolderTag("#folder src") === "src",
+    "folder-s1: space form extracts folder name",
+  );
+  assert(
+    extractFolderTag("#folder") === "",
+    "folder-s1: bare tag returns empty string",
+  );
+  assert(
+    extractFolderTag("no tag") === null,
+    "folder-s1: absent tag returns null",
+  );
+  assert(
+    extractFolderTag("#folderfoo") === null,
+    "folder-s1: word-bounded — #folderfoo does not match",
+  );
+  assert(
+    extractFolderTag("#Folder:src") === "src",
+    "folder-s1: match is case-insensitive",
+  );
+  assert(
+    extractFolderTag("#folder:src\nline2") === "src",
+    "folder-s1: capture stops at newline (same-line semantics)",
+  );
+  const folderBlock = formatFolderBlock({ tree: "a/\nb.ts" }, "src");
+  assert(
+    folderBlock.includes("Folder: src") && folderBlock.includes("a/\nb.ts"),
+    "folder-s1: header + tree body",
+  );
+  assert(
+    formatFolderBlock({ tree: "" }, "src").includes("(empty folder)"),
+    "folder-s1: empty tree renders (empty folder)",
+  );
+  assert(
+    formatFolderBlock({ tree: "", notFound: true }, "nope").includes(
+      "(folder not found: nope)",
+    ),
+    "folder-s1: notFound renders (folder not found: <name>)",
+  );
+  const folderBig = formatFolderBlock({ tree: "x".repeat(9000) });
+  assert(
+    folderBig.length <= FOLDER_BLOCK_MAX_CHARS + "… (truncated)".length &&
+      folderBig.endsWith("… (truncated)"),
+    "folder-s1: oversized tree truncated to cap + suffix",
+  );
+  assert(
+    formatFolderBlock({ tree: "a/\nb.ts" }).includes("Folder: (workspace root)"),
+    "folder-s1: bare (no folder arg) header shows (workspace root)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

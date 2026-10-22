@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-9.S4 done — `package.json` `llm.chat.problems.enabled` + final smoke assertions (item 1.98-9 complete)
-- **Next step:** item 1.98-10 (`#folder:` tag) — awaiting planner
+- **Current step:** 1.98-10.S1 done — `src/context.ts` `extractFolderTag` + `formatFolderBlock` (pure helpers)
+- **Next step:** 1.98-10.S2 — `ToolExecutor.folderSweep`
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (294 assertions, incl. `problems-s4:` static checks)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (306 assertions, incl. 12 new `folder-s1:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-10.S1** (2026-10-22) — `src/context.ts`: `extractFolderTag` + `formatFolderBlock` (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/context.ts`: appended a `#folder` section after the `#problems` section — `extractFolderTag(text): string | null` (regex `/#folder(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i`, first match, case-insensitive, word-bounded so `#folderfoo` does NOT match; accepts `#folder:<name>` and `#folder <name>`; returns trimmed same-line remainder, `""` for bare tag, `null` when absent); `FolderBlockData { tree: string; notFound?: boolean }`; `FOLDER_BLOCK_MAX_CHARS = 8000` (exported) + private `FOLDER_BLOCK_TRUNCATED_SUFFIX`; `formatFolderBlock(data, folder?)` — header `Folder: <name>` or `Folder: (workspace root)`, body `(folder not found: <name>)` when `notFound`, else `data.tree || "(empty folder)"`, truncated to 8,000 chars + `… (truncated)` suffix; NEVER returns `""` (explicit tag always shows header). Pure module — no vscode imports added.
+  - NOTE: the plan's literal regex `/#folder(?::|(?=\s|$))(\S*)/i` cannot satisfy the required `extractFolderTag("#folder src") === "src"` assertion (the zero-width lookahead doesn't consume the space, so the capture would be `""`). Implemented the minimal corrected alternation above, which satisfies every stated behavior (colon form, space form, bare tag, word-bounded, case-insensitive, same-line).
+  - `scripts/smoke-test.js`: new section `// 14) folder tag (1.98-10)` with subsection `14a` importing compiled `out/context.js`; 12 assertions (`folder-s1:` labels): colon form, space form, bare tag → `""`, absent → `null`, `#folderfoo` no-match, case-insensitive `#Folder:src`, newline stops capture, header + tree body, `(empty folder)`, `(folder not found: nope)`, 9,000-char tree truncated to cap + suffix, bare (no folder arg) header shows `(workspace root)`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **306 assertions** (294 prior + 12 new `folder-s1:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-9.S4** (2026-10-22) — `package.json` settings schema + final smoke assertions + memory (FINAL slice of item 1.98-9). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: added `llm.chat.problems.enabled` (boolean, default `true`) to `contributes.configuration.properties` after `llm.chat.codebaseSearch.enabled`, with description "When the user types #problems in a chat message, attach compiler/linter problems (all files, or a specific file via '#problems <path>') as context." JSON validated via `JSON.parse`.
   - `scripts/smoke-test.js`: new subsection `// 13d) problems tag (1.98-9.S4)` with 4 static assertions (`problems-s4:` labels) reusing the `pkg` parse from 12d: (a) `contributes.configuration.properties["llm.chat.problems.enabled"]` present, (b) `type === "boolean"`, (c) `default === true`, (d) `description` is a non-empty string mentioning `#problems`.

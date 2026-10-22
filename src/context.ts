@@ -275,3 +275,69 @@ export function formatProblemsBlock(
     block.slice(0, PROBLEMS_BLOCK_MAX_CHARS) + PROBLEMS_BLOCK_TRUNCATED_SUFFIX
   );
 }
+
+// ---------------------------------------------------------------------------
+// #folder tag (1.98-10): attach a folder's file tree as chat context.
+// Folder sweeping (fs) is wired up in a later slice; these functions only
+// parse the tag and render the block.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#folder` tag qualifier from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#folder` occurrence.
+ * Both `#folder:<name>` (colon) and `#folder <name>` (space) are accepted;
+ * `#folderfoo` does NOT match (a colon or end/whitespace must follow
+ * `folder`). Returns the trimmed folder-name remainder (up to the next
+ * whitespace/newline — same-line semantics), `""` for the bare tag, and
+ * `null` when the tag is absent. Pure and testable.
+ */
+export function extractFolderTag(text: string): string | null {
+  const m = /#folder(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  return (m[1] ?? m[2] ?? "").trim();
+}
+
+/** The data a folder sweep produces. */
+export interface FolderBlockData {
+  /** Rendered file tree; "" when the folder is empty. */
+  tree: string;
+  /** Set when the folder could not be resolved. */
+  notFound?: boolean;
+}
+
+/** Hard cap for the rendered folder block. */
+export const FOLDER_BLOCK_MAX_CHARS = 8000;
+const FOLDER_BLOCK_TRUNCATED_SUFFIX = "… (truncated)";
+
+/**
+ * Render a `#folder` result as a stable context block:
+ *
+ * ```
+ * Folder: <name or "(workspace root)">
+ * <tree or "(empty folder)" or "(folder not found: <name>)">
+ * ```
+ *
+ * The whole block is truncated to `FOLDER_BLOCK_MAX_CHARS` chars with a
+ * `… (truncated)` suffix. Unlike `formatProblemsBlock`, this NEVER returns
+ * `""` — the tag was explicit, so the header is always shown. Pure and
+ * testable.
+ */
+export function formatFolderBlock(
+  data: FolderBlockData,
+  folder?: string,
+): string {
+  const f = folder && folder.trim() !== "" ? folder : "(workspace root)";
+  const body = data.notFound
+    ? `(folder not found: ${f})`
+    : data.tree || "(empty folder)";
+  const block = `Folder: ${f}\n${body}`;
+  if (block.length <= FOLDER_BLOCK_MAX_CHARS) {
+    return block;
+  }
+  return (
+    block.slice(0, FOLDER_BLOCK_MAX_CHARS) + FOLDER_BLOCK_TRUNCATED_SUFFIX
+  );
+}
