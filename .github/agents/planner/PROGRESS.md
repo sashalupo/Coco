@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-4 (Fetch tool `#fetch`) — **done** (2026-10-22, 4 slices S1–S4, all PASS)
-- **Next step:** plan item 1.99-5 (Usages tool `#usages`) when dispatched
+- **Current item:** 1.99-5 (Usages tool `#usages`) — **planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-5.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -828,6 +828,131 @@ webview changes, no new runtime dependencies.
 spawn); outbound GET without approval (SSRF-ish via prompt injection — acceptable for
 a local dev tool; follow-up could add a host allowlist); regex-based HTML→text (no DOM
 parser, zero-dep constraint); cache is per-process, lost on reload.
+
+### Item 1.99-5 — Usages tool (`#usages`) (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Agent mode tools — Usages tool (`#usages`)" —
+`#usages` combines Find All References + Find Implementations + Go to Definition so chat
+can learn about a function/class/interface (sample implementations, refactor impact);
+picked up automatically in agent mode, referenceable via `#usages <symbol>` in other modes.
+
+**Local reframe:** engine-agnostic, free local LLM — no VS Code language-service reference
+API. Grep-based whole-word usages search across the workspace (Node built-ins only),
+mirroring the existing `search_files` CODE_TOOL walk (`ToolExecutor.searchMatches`).
+
+**Design decisions (justified):**
+1. **Tool name `find_usages`** — distinct from `search_files` (free-text/regex);
+   symbol-oriented whole-word search. Read-only → NOT in `isMutatingTool`.
+2. **Pure helper module `src/usages.ts`** (mirrors `src/fetchTool.ts`/`src/context.ts`):
+   regex building + block formatting are pure/smoke-testable; the workspace walk stays in
+   `ToolExecutor` (needs `workspaceFolders`, `SKIP_DIRS`, `MAX_READ_BYTES`).
+3. **Whole-word regex:** `(?<![A-Za-z0-9_$])<escaped>(?![A-Za-z0-9_$])` — case-sensitive;
+   lookarounds (not `\b`) so `_private`/`$id` symbols match correctly.
+4. **Definition heuristic:** first match in walk order labeled `def:`; no language service.
+5. **Tag:** `/#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i` — bare `#usages` → null,
+   `#usagesfoo` → null.
+6. **Cap:** `USAGES_BLOCK_MAX_CHARS = 20000` (consistent with fetch/folder),
+   `… (truncated)` suffix, `""` on empty body; ≤5 lines/file, ≤200 matches.
+7. **Setting:** `llm.chat.usages.enabled` (default true), config field `usagesEnabled` —
+   tag runs regardless of `llm.tools.enabled` (same as `#fetch`/`#codebase`).
+
+**Slices:**
+
+- **1.99-5.S1 — `src/usages.ts`: pure usages helpers (new file).**
+  File: `src/usages.ts` (new; no `vscode` import, no I/O).
+  (a) `export function buildUsagesRegex(symbol: string): RegExp` — escape
+  (`replace(/[.*+?^${}()|[\]\\]/g, "\\$&")`) + lookaround whole-word regex; empty/whitespace
+  symbol → throw `Error("symbol is empty")`.
+  (b) `export interface UsagesMatch { file: string; line: number; text: string;
+  isDefinition: boolean }`.
+  (c) `export const USAGES_BLOCK_MAX_CHARS = 20000;`
+  (d) `export function formatUsagesBlock(symbol: string, matches: UsagesMatch[]): string` —
+  `""` when empty; else header `Usages for \`symbol\`: N reference(s) in M file(s)`, then
+  per file (first-appearance order) `def: <line>: <text>` for the first match and
+  `<line>: <text>` for the rest (≤5 lines/file, `… and K more in <file>`); whole block
+  truncated to `USAGES_BLOCK_MAX_CHARS` + `… (truncated)`.
+  Acceptance: `npm run compile` clean.
+  Smoke (`usages-s1:`, 4): exports present; regex matches `foo()`/`x = foo`, rejects
+  `foobar`/`foo_bar`; `formatUsagesBlock("foo", []) === ""`; 25k body truncates ≤20050
+  ending `(truncated)`, `USAGES_BLOCK_MAX_CHARS === 20000`.
+  Expected smoke total: **430**.
+
+- **1.99-5.S2 — `src/tools.ts` + `src/tools/ToolExecutor.ts`: `find_usages` tool.**
+  Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`.
+  (a) `tools.ts`: append 14th `Tool` after `fetch_url` — name `find_usages`, description
+  "Find all usages of a symbol (function/class/interface/variable) across the workspace:
+  whole-word matches grouped by file, first match marked as the likely definition, with a
+  reference count. Use to understand a symbol's implementations and refactor impact.",
+  params `{ symbol: string (required), path?: string }`. `isMutatingTool` unchanged.
+  (b) `ToolExecutor.ts`: `case "find_usages":` → `this.findUsages(call, String(args.symbol
+  ?? ""), args.path ? String(args.path) : undefined)`. New `private async findUsages(...)`:
+  empty symbol → error result; `resolveSafe(relPath ?? ".")` guard (same message as
+  `searchFiles`); `buildUsagesRegex` in try/catch → error result; `searchMatches`-style
+  walk (cap 200) collecting `UsagesMatch[]` via `toWorkspaceRelative`; first match
+  `isDefinition: true`; `formatUsagesBlock`; zero matches → `No usages found for
+  \`symbol\``.
+  Acceptance: `npm run compile` clean; tool read-only (no approval gate).
+  Smoke (`usages-s2:`, 5 new + 2 updates): update existing `CODE_TOOLS.length === 13`
+  (line ~474) → 14 and the names-list assertion (line ~475) → append `,find_usages`;
+  update `toolsS1.CODE_TOOLS.length === 13` (line ~3076) and `fetchBody.tools.length ===
+  13` (line ~3113) → 14; new: `byName.find_usages` required `["symbol"]` +
+  `isMutatingTool("find_usages") === false`; temp-dir fixture (`mkdtempSync`, `a.ts` with
+  `function foo() {}` + `foo()`, `b.ts` with `foo();` + `foobar`) → `execute` content
+  includes `def:`, `a.ts`, `b.ts`, `2 reference(s)`, excludes `foobar`;
+  `buildRequestBody` `toolsEnabled: true` → `body.tools.length === 14` incl. `find_usages`.
+  Expected smoke total: **433**.
+
+- **1.99-5.S3 — `src/context.ts`: `#usages` tag extract + block format.**
+  File: `src/context.ts`.
+  (a) `export function extractUsagesTag(text: string): string | null` —
+  `/#usages(?!\w)\s+([A-Za-z_$][A-Za-z0-9_$]*)/i`; trimmed symbol or `null`.
+  (b) `export function formatUsagesTagBlock(symbol: string, body: string): string` —
+  `""` on empty body; else `Usages for \`symbol\`:\n\n<body>` truncated to
+  `USAGES_BLOCK_MAX_CHARS` (imported from `./usages`) + `… (truncated)`.
+  Acceptance: `npm run compile` clean.
+  Smoke (`usages-s3:`, 4): `extractUsagesTag("explain #usages myFunc please") ===
+  "myFunc"`; null for `"no tag"` / `"end #usages"` / `"#usagesfoo x"`;
+  `formatUsagesTagBlock("f", "body")` starts with `` Usages for `f`: `` and includes
+  `body`, empty body → `""`; 25k body truncates ≤20050 ending `(truncated)`.
+  Expected smoke total: **437**.
+
+- **1.99-5.S4 — wiring: `ChatViewProvider` + `config.ts` + `package.json` + smoke +
+  PROGRESS.md.**
+  Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `package.json`,
+  `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  (a) `config.ts`: `usagesEnabled: c.get<boolean>("chat.usages.enabled", true)` next to
+  `fetchEnabled` (~line 75).
+  (b) `package.json`: `llm.chat.usages.enabled` (boolean, default `true`) after
+  `llm.chat.fetch.enabled` (~line 250): "Allow the `#usages <symbol>` tag to include a
+  workspace-wide usages report (whole-word matches grouped by file, definition +
+  reference count) in chat context."
+  (c) `ChatViewProvider.ts`: import `extractUsagesTag`, `formatUsagesTagBlock`; after the
+  `#fetch` block (~line 1063) add the `#usages` block mirroring it — gated on
+  `settings.usagesEnabled && lastUser && this.toolExecutor` → `extractUsagesTag` →
+  `this.toolExecutor.findUsagesPublic(symbol)` (new `public async findUsagesPublic(symbol:
+  string): Promise<string>` wrapper around the private core, same pattern as
+  `collectDiagnostics`/`fetchUrl` backing both tool and tag) → `formatUsagesTagBlock` →
+  append to `finalContextBlock`.
+  (d) `smoke-test.js` (`usages-s4:`, 2): `out/chat/ChatViewProvider.js` source (readFile
+  only — not require-able) includes `extractUsagesTag` and `findUsagesPublic(`;
+  `out/config.js` source includes `"chat.usages.enabled"`.
+  (e) `PROGRESS.md`: mark 1.99-5 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass.
+  Expected smoke total: **439**.
+
+**Overall acceptance (Tester):** with `llm.tools.enabled: true`, the model can call
+`find_usages` (14th tool, read-only, no approval) and gets a grouped, capped usages report
+with a `def:` marker and reference count; `#usages <symbol>` in any mode injects a
+`Usages for \`symbol\`:` block (≤20,000 chars) into the system prompt;
+`llm.chat.usages.enabled: false` makes the tag inert; whole-word matching excludes
+`foobar`-style substrings; no webview changes; no new runtime dependencies;
+`npm run compile` clean; smoke 439 PASS.
+
+**Risks:** whole-word regex is a heuristic (no language service) — misses aliased/renamed
+imports and dynamic references; "definition" = first match in walk order (may be a
+reference if the definition file sorts later); tag runs regardless of
+`llm.tools.enabled` (consistent with `#fetch`/`#codebase`); no webview chip/indicator
+(matches `#fetch` precedent).
 
 ## Done
 
