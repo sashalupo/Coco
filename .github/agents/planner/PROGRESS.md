@@ -954,7 +954,7 @@ reference if the definition file sorts later); tag runs regardless of
 `llm.tools.enabled` (consistent with `#fetch`/`#codebase`); no webview chip/indicator
 (matches `#fetch` precedent).
 
-### Item 1.99-6 — Create a new workspace with agent mode (planned 2026-10-22)
+### Item 1.99-6 — Create a new workspace with agent mode (planned 2026-10-22) — **DONE** (2026-10-22, all 4 slices S1–S4)
 
 **Changelog reference:** VS Code 1.99, "Create a new workspace with agent mode (Experimental)" — agent mode initializes, configures, and launches new projects (extension, MCP server, dev environment) with dependencies and settings. Local reframe: a `#newWorkspace <type> [folder]` chat tag that injects a scaffold prompt instructing the agent to create the project files via the existing file tools (`write_file`, `list_dir`, `run_command`). No new dependencies, no webview redesign.
 
@@ -983,7 +983,7 @@ reference if the definition file sorts later); tag runs regardless of
   `newWorkspaceEnabled` setting; `#newWorkspace` block in `runStream` after `#usages`.
   Acceptance: compile clean; tag injects scaffold block.
 
-- **1.99-6.S4 — final smoke assertions + PROGRESS.md (FINAL).**
+- **1.99-6.S4 — final smoke assertions + PROGRESS.md (FINAL) — Done (2026-10-22, PASS, 453 assertions).**
   Files: `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
   Smoke (`ws-s4:`, 3). Acceptance: compile + smoke pass (**453 assertions**).
 

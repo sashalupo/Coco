@@ -297,7 +297,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   and launch new projects (extension, MCP server, dev environment) with dependencies and
   settings.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — `#newWorkspace` tag + scaffold templates + setting)
 - **Gap vs existing:** none. Local reframe: a "new workspace" chat flow — agent mode with a
   scaffold prompt that creates files/dirs in a chosen folder via the existing file tools.
 
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-6** Create a new workspace with agent mode
 - **1.99-8** Agent mode tool approvals
 - **1.99-10** Unified Chat view (mode picker + history)
 - **1.99-12** Reusable prompt files

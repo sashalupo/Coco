@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-6** — Create a new workspace with agent mode (4-slice plan recorded; 1.99-5 DONE)
-- **Current slice:** 1.99-6.S3 DONE — 1.99-6.S4 (FINAL) next
+- **Current item:** **1.99-6** — Create a new workspace with agent mode — **DONE** (2026-10-22, all 4 slices S1–S4); next: 1.99-8
+- **Current slice:** none — 1.99-6 complete; 1.99-8 next item
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-6.S4** (FINAL: final smoke assertions + PROGRESS.md), then Tester, memory, commit (item complete)
+- **Next step:** dispatch Planner for item **1.99-8** (Agent mode tool approvals), record plan, commit, then run slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** `06430f7` — feat(llm): new workspace — extractNewWorkspaceTag + formatWorkspaceBlock (1.99-6.S2)
-- **Build state:** compiles clean; smoke test passes (450 assertions); 1.99-6.S3 done
+- **Last commit:** `2d0a5df` — feat(llm): new workspace — #newWorkspace tag wiring + setting (1.99-6.S3)
+- **Build state:** compiles clean; smoke test passes (453 assertions); 1.99-6 complete
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -54,6 +54,7 @@ pending item** (the oldest).
 - **1.99-4.S3** (2026-10-22) — `extractFetchTag` + `formatFetchBlock` (pure, `src/context.ts`) + 3 `fetch-s3:` smoke assertions. Tester PASS (425 assertions). Commit 03d6da3.
 - **1.99-4.S4 (FINAL)** (2026-10-22) — `#fetch` tag wiring in ChatViewProvider (after `#folder:` block, gated on `settings.fetchEnabled`) + `fetchEnabled` in presets/config + `llm.chat.fetch.enabled` setting (default true) + 1 `fetch-s4:` static assertion. Tester PASS (426 assertions). **Item 1.99-4 complete — no tag (changelog-1.99 already exists).**
 - **1.99-5 plan** (2026-10-22) — Planner produced 4-slice plan: pure `src/usages.ts` helpers (S1) + `find_usages` tool schema/executor (S2) + `extractUsagesTag`/`formatUsagesTagBlock` in `src/context.ts` (S3) + `#usages` tag wiring + `llm.chat.usages.enabled` setting (S4). Grep-based whole-word usages search (no language service); read-only tool; smoke 426 → 439.
+- **1.99-6** (2026-10-22) — Create a new workspace with agent mode, 4 slices S1–S4: `src/workspaceScaffold.ts` (pure templates + `buildScaffoldPrompt`; extension/mcp-server/dev-env/generic), `extractNewWorkspaceTag`/`formatWorkspaceBlock` in `src/context.ts`, `#newWorkspace` tag wiring in ChatViewProvider + `llm.chat.newWorkspace.enabled` setting, final smoke. Commits d405e15, 06430f7, 2d0a5df + S4 commit. Smoke 446 → 453. **Item complete — no tag (changelog-1.99 already exists).**
 
 
 

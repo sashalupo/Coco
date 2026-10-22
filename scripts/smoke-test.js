@@ -3433,6 +3433,39 @@ function assert(cond, label) {
     "ws-s2: formatWorkspaceBlock",
   );
 
+  // 27) New workspace wiring (1.99-6.S4)
+  const chatViewSrcWsS4 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    chatViewSrcWsS4.includes("extractNewWorkspaceTag") &&
+      chatViewSrcWsS4.includes("buildScaffoldPrompt"),
+    "ws-s4: ChatViewProvider wiring",
+  );
+  const configSrcWsS4 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "config.js"),
+    "utf8",
+  );
+  assert(
+    configSrcWsS4.includes("\"chat.newWorkspace.enabled\""),
+    "ws-s4: config wiring",
+  );
+  const pkgJsonWsS4 = require(path.join(__dirname, "..", "package.json"));
+  const nwSettingWsS4 = pkgJsonWsS4.contributes?.configuration?.properties?.[
+    "llm.chat.newWorkspace.enabled"
+  ];
+  const usagesSettingWsS4 = pkgJsonWsS4.contributes?.configuration?.properties?.[
+    "llm.chat.usages.enabled"
+  ];
+  assert(
+    nwSettingWsS4 !== undefined &&
+      nwSettingWsS4.type === "boolean" &&
+      nwSettingWsS4.default === true &&
+      usagesSettingWsS4 !== undefined,
+    "ws-s4: package.json setting",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

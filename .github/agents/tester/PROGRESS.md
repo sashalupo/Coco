@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-6.S3 (new workspace wiring + setting) — **PASS** (2026-10-22)
-- **Next step:** 1.99-6.S4 (FINAL: final smoke assertions + PROGRESS.md)
+- **Current item:** 1.99-6.S4 (FINAL: new workspace wiring smoke) — **PASS** (2026-10-22) — item 1.99-6 complete
+- **Next step:** verify next item in planner backlog (1.99-8 Agent mode tool approvals)
 - **Last updated:** 2026-10-22
-- **Last commit:** 06430f7 (coder: 1.99-6.S2)
-- **Build state:** 450/450 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** 2d0a5df (coder: 1.99-6.S3)
+- **Build state:** 453/453 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-6.S4 — FINAL: new workspace wiring smoke + PROGRESS.md (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **453 PASS lines** (450 prior + 3 new `ws-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 453/453 PASS with 3 genuine `ws-s4:` assertions all passing (ChatViewProvider wiring: out/chat/ChatViewProvider.js contains `extractNewWorkspaceTag` + `buildScaffoldPrompt`; config wiring: out/config.js contains `"chat.newWorkspace.enabled"`; package.json setting: `llm.chat.newWorkspace.enabled` boolean/default true + `llm.chat.usages.enabled` regression guard) PASS; (3) static: new `// 27) New workspace wiring (1.99-6.S4)` section uses `fs.readFileSync` for `out/chat/ChatViewProvider.js` (`chatViewSrcWsS4`) and `out/config.js` (`configSrcWsS4`) — no `require` of vscode-importing modules; `require` only for `package.json` PASS; (4) scope: exactly `scripts/smoke-test.js`, planner PROGRESS.md, coder PROGRESS.md; no `package-lock.json` drift PASS; (5) last commit `2d0a5df` (coder: 1.99-6.S3), no coder commit for S4 PASS.
+- **Verdict:** **PASS** — all criteria met. **Item 1.99-6 (New workspace `#newWorkspace`) fully verified (S1–S4).**
 
 ### 1.99-6.S3 — new workspace wiring + setting (ChatViewProvider + config + presets + package.json) (2026-10-22) — **PASS**
 

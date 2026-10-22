@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-6 (Create a new workspace with agent mode) — S3 done (2026-10-22)
-- **Next step:** 1.99-6.S4 (FINAL: final smoke assertions + PROGRESS.md)
+- **Current item:** 1.99-6 (Create a new workspace with agent mode) — **DONE** (2026-10-22, all 4 slices S1–S4)
+- **Next step:** 1.99-8 (Agent mode tool approvals) — next item in backlog
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (450 assertions)
+- **Build state:** compiles clean; smoke test passes (453 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-6.S4** (2026-10-22, FINAL) — final smoke assertions + PROGRESS.md. Files: `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `scripts/smoke-test.js`: new section `// 27) New workspace wiring (1.99-6.S4)` with 3 `ws-s4:` assertions (static source checks via `fs.readFileSync` for vscode-importing compiled files, same pattern as `usages-s4:`): (a) `out/chat/ChatViewProvider.js` source (local `chatViewSrcWsS4`) includes `extractNewWorkspaceTag` AND `buildScaffoldPrompt`; (b) `out/config.js` source (local `configSrcWsS4`) includes `"chat.newWorkspace.enabled"`; (c) parsed `package.json` (local `pkgJsonWsS4`) has `llm.chat.newWorkspace.enabled` with `type === "boolean"` and `default === true`, AND `llm.chat.usages.enabled` still present (regression guard). Total PASS lines now 453 (450 + 3).
+  - `.github/agents/planner/PROGRESS.md`: S4 slice header annotated `— Done (2026-10-22, PASS, 453 assertions)`; item section header annotated `— **DONE** (2026-10-22, all 4 slices S1–S4)`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 453 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-6.S3** (2026-10-22) — wiring: `#newWorkspace` tag → scaffold prompt in chat context + `llm.chat.newWorkspace.enabled` setting. Files: `src/presets.ts`, `src/config.ts`, `src/chat/ChatViewProvider.ts`, `package.json`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `newWorkspaceEnabled: boolean` on `LlmSettings` (comment: "Allow the #newWorkspace tag to inject a project scaffold prompt."), right after `usagesEnabled`.
   - `src/config.ts`: `readSettings()` adds `newWorkspaceEnabled: c.get<boolean>("chat.newWorkspace.enabled", true)` after `usagesEnabled`.
