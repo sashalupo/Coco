@@ -215,9 +215,9 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Relevance:** `keep (capability/context)` — **reframe** as an **engine status indicator**:
   show local-engine connection state (running/stopped, endpoint, active model, context
   window), NOT quota/cost. Drop the quota-info sub-item.
-- **Status:** `pending`
+- **Status:** `done` (2026-10-22, slices S1–S4)
 - **Gap vs existing:** no status-bar engine-status overview exists yet.
-- **Implemented in:** —
+- **Implemented in:** `55cc673` (S1 pure helpers), `048b248` (S2 gate + focus refresh), `2f22531` (S3 QuickPick overview) + S4 (`package.json` contributions, `llm.statusBar.enabled`)
 
 #### 1.98-16 · TypeScript context for inline completions (Experimental)
 - **Description:** Enhanced context for inline completions and `/fix` on TypeScript files;
@@ -248,6 +248,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - 1.98-10 `#folder:<name>` tag — `done` (2026-10-22, attach a folder's file tree as context)
 - 1.98-12 Change Completions Model command — `done` (2026-10-22, `llm.changeCompletionsModel` QuickPick + `llm.completions.model` setting)
 - 1.98-14 Copilot Vision — image attachments — `done` (2026-10-22, paperclip/paste/drag-drop, `llm.chat.vision.enabled`, non-blocking vision warning)
+- 1.98-15 Engine status indicator — `done` (2026-10-22, status-bar `$(check)/$(error) LLM` indicator, `llm.showStatusOverview` QuickPick, `llm.statusBar.enabled`)
 
 ## Skipped (decision trail)
 
@@ -260,7 +261,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-1. **1.98-15** Engine status indicator (status-bar overview, reframed from Copilot status)
+_(empty — v1.98 window complete; next: research v1.99 changelog)_
 
 ## Todo
 

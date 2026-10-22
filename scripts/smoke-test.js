@@ -2469,6 +2469,34 @@ function assert(cond, label) {
     "status-s3: extension lists STATUS_COMMANDS in the overview",
   );
 
+  // 17d) package.json contributions (1.98-15.S4): parsed-JSON checks.
+  const pkgS4 = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const statusCmd = (pkgS4.contributes.commands || []).find(
+    (c) => c.command === "llm.showStatusOverview",
+  );
+  assert(
+    statusCmd && typeof statusCmd.title === "string" && statusCmd.title.length > 0,
+    "status-s4: package.json contributes the llm.showStatusOverview command with a title",
+  );
+  assert(
+    (pkgS4.activationEvents || []).includes("onCommand:llm.showStatusOverview"),
+    "status-s4: package.json has the onCommand:llm.showStatusOverview activation event",
+  );
+  const statusBarSetting =
+    pkgS4.contributes.configuration.properties["llm.statusBar.enabled"];
+  assert(
+    statusBarSetting &&
+      statusBarSetting.type === "boolean" &&
+      statusBarSetting.default === true,
+    "status-s4: package.json llm.statusBar.enabled is boolean defaulting to true",
+  );
+  assert(
+    (pkgS4.contributes.commands || []).some((c) => c.command === "llm.testConnection"),
+    "status-s4: package.json still contributes llm.testConnection (regression guard)",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

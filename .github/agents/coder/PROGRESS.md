@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.98-15 (Engine status indicator) — S3 done
-- **Next step:** 1.98-15.S4 (package.json: command + activation event + llm.statusBar.enabled setting; planner PROGRESS.md marks 1.98-15 Done)
+- **Current item:** 1.98-15 (Engine status indicator) — **DONE** (2026-10-22, 4 slices S1–S4)
+- **Next step:** 1.98-15 complete — v1.98 window done; await orchestrator for next window (v1.99)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (367 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 new `status-s3:`)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (371 assertions, incl. 4 `status-s1:` + 3 `status-s2:` + 3 `status-s3:` + 4 `status-s4:`)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-15.S4** (2026-10-22, FINAL) — `package.json` contributions + final smoke assertions + planner memory. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: (a) added `{ "command": "llm.showStatusOverview", "title": "LLM: Show Status Overview" }` to `contributes.commands` (after `llm.testConnection`); (b) added `"onCommand:llm.showStatusOverview"` to `activationEvents` (after `onCommand:llm.testConnection`); (c) added `llm.statusBar.enabled` (boolean, default `true`, description "Show the LLM engine status indicator in the status bar. Click it for a status overview. Toggling requires a reload.") to `contributes.configuration.properties` after `llm.completions.model`. JSON validated via `JSON.parse` (smoke test parses it).
+  - `scripts/smoke-test.js`: new subsection `// 17d) package.json contributions (1.98-15.S4)` with 4 parsed-JSON assertions (`status-s4:` labels) on a fresh `pkgS4` parse of `package.json`: (a) `contributes.commands` contains `command === "llm.showStatusOverview"` with a non-empty `title`, (b) `activationEvents` contains `"onCommand:llm.showStatusOverview"`, (c) `contributes.configuration.properties["llm.statusBar.enabled"]` exists with `type === "boolean"` and `default === true`, (d) `contributes.commands` still contains `command === "llm.testConnection"` (regression guard).
+  - `.github/agents/planner/PROGRESS.md`: marked item 1.98-15 **Done** — Status Current item → 1.98-15 Done (4 slices S1–S4), Next step → plan the next backlog item (v1.98 window complete — pending list empty; next: research v1.99 changelog); all 4 slice headers (1.98-15.S1–S4) annotated ` — Done (2026-10-22)`; Todo lines "Plan backlog item 1.98-15" and "Dispatch slices 1.98-15.S1 → S4" checked off.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **371 assertions** (367 prior + 4 new `status-s4:`); `package.json` parses via `JSON.parse`.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-15.S3** (2026-10-22) — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/extension.ts`: (a) registered `llm.showStatusOverview` in the existing `context.subscriptions.push(...)` command block (between `llm.commitChanges` and `llm.changeCompletionsModel`): fresh `await client.health()`, `readSettings()` for `baseUrl`/`model`/`completionsModel`; info rows from `statusOverviewItems(result, settings.baseUrl, settings.model, settings.completionsModel)` mapped to `{ label, description }` (pick = no-op); a `Useful commands` separator (`vscode.QuickPickItemKind.Separator`) + `STATUS_COMMANDS` mapped to `{ label, detail, command }`; `showQuickPick` with `placeHolder: "LLM engine status"`; on pick with a `command`, `vscode.commands.executeCommand(picked.command)`. (b) status-bar click already repointed: `status.command = "llm.showStatusOverview"` and `updateHealth` appends `" (click for status overview)"` to `statusTooltip(...)`.
   - **Compile fix:** the pre-existing draft used `canSelectMany: false` in the `showQuickPick` options, which does not exist in this `@types/vscode` version and broke overload resolution (TS2769 + `picked` typed as `string[]`). Removed the option (single-select is the default) — 3 errors resolved.

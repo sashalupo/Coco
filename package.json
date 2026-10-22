@@ -11,7 +11,8 @@
   ],
   "activationEvents": [
     "onView:llm.chat",
-    "onCommand:llm.testConnection"
+    "onCommand:llm.testConnection",
+    "onCommand:llm.showStatusOverview"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -23,6 +24,10 @@
       {
         "command": "llm.testConnection",
         "title": "LLM: Test Connection"
+      },
+      {
+        "command": "llm.showStatusOverview",
+        "title": "LLM: Show Status Overview"
       },
       {
         "command": "llm.refreshModels",
@@ -231,6 +236,11 @@
           "type": "string",
           "default": "",
           "description": "Model ID used for inline code completions. Empty = use the main chat model (llm.model). Change it via the 'LLM: Change Completions Model' command."
+        },
+        "llm.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the LLM engine status indicator in the status bar. Click it for a status overview. Toggling requires a reload."
         }
       }
     }

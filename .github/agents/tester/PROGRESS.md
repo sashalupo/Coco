@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-15.S3 (`llm.showStatusOverview` QuickPick + repoint click) — **verified PASS** (2026-10-22)
-- **Next step:** verify 1.98-15.S4
+- **Current item:** 1.98-15 (Engine status indicator) — **DONE** (all slices S1–S4 verified, 2026-10-22)
+- **Next step:** verify next window (v1.99) — await orchestrator
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
-- **Build state:** 367/367 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Build state:** 371/371 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
 ## Verification commands
 
@@ -311,6 +311,16 @@ acceptance checks, and reports a clear pass/fail.
 - **Smoke 17c:** 3 genuine static source checks on `src/extension.ts` (`llm.showStatusOverview`, `statusOverviewItems`, `STATUS_COMMANDS`) — each would fail if the wiring were removed. Not tautologies. PASS
 - **Scope check:** `git status --short | grep -v ninfer` → only `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`. `package-lock.json` NOT modified. PASS
 
+### 1.98-15.S4 — `package.json` contributions + final smoke assertions + planner PROGRESS.md (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **371 assertions** (367 prior + 4 new `status-s4:` in subsection `// 17d) package.json contributions (1.98-15.S4)`; 0 FAIL).
+- **`package.json`:** valid JSON (`JSON.parse` OK). `git diff` = exactly 3 additive hunks (+9/−1): (a) `activationEvents` gains `"onCommand:llm.showStatusOverview"`; (b) `contributes.commands` gains `{"command":"llm.showStatusOverview","title":"LLM: Show Status Overview"}` after `llm.testConnection`; (c) `contributes.configuration.properties` gains `llm.statusBar.enabled` (`type: "boolean"`, `default: true`, description verbatim: "Show the LLM engine status indicator in the status bar. Click it for a status overview. Toggling requires a reload."). No other settings/commands disturbed; `package-lock.json` untouched. PASS
+- **Smoke 17d:** 4 genuine parsed-JSON checks on `pkgS4 = JSON.parse(fs.readFileSync(package.json))` (NOT string-contains on raw file): (a) `contributes.commands` contains `command === "llm.showStatusOverview"` with non-empty `title`; (b) `activationEvents` contains `"onCommand:llm.showStatusOverview"`; (c) `llm.statusBar.enabled` has `type === "boolean"` and `default === true`; (d) regression guard — `contributes.commands` still contains `command === "llm.testConnection"`. Not tautologies. PASS
+- **Planner memory:** `.github/agents/planner/PROGRESS.md` marks 1.98-15 **Done** (2026-10-22, 4 slices S1–S4); Status Current item → Done; all 4 slice headers annotated `— Done (2026-10-22)`; Todo dispatch line checked off. PASS
+- **Scope check:** `git status --short | grep -v ninfer` → only `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md`. PASS
+- **Item 1.98-15 fully verified (S1–S4 all PASS).**
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)
@@ -370,6 +380,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-15.S1** — pure status helpers in `src/presets.ts` (statusLabel/statusTooltip/statusOverviewItems/STATUS_COMMANDS) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-15.S2** — `src/extension.ts`: status-bar gate + pure helpers + focus refresh — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-15.S3** — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-15.S4** — `package.json` contributions + final smoke assertions + planner memory (FINAL) — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-15** — Engine status indicator — **fully verified** (all slices S1–S4 PASS, 2026-10-22)
 - [x] **1.98-10.S4** — `package.json`: `llm.chat.folderContext.enabled` + smoke 14d + planner memory — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-10** — fully verified (all slices S1–S4 PASS)
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.

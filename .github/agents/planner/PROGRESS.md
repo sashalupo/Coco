@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-15 (Engine status indicator — status-bar overview) — **Planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** dispatch slice 1.98-15.S1 (pure status helpers in `src/presets.ts`)
+- **Current item:** 1.98-15 (Engine status indicator — status-bar overview) — **Done** (2026-10-22, 4 slices S1–S4)
+- **Next step:** plan the next backlog item (v1.98 window complete — pending list empty; next: research v1.99 changelog)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -286,7 +286,7 @@ opened from the status-bar icon.
 
 **Slices:**
 
-- **1.98-15.S1 — `src/presets.ts`: pure status helpers.**
+- **1.98-15.S1 — `src/presets.ts`: pure status helpers.** — Done (2026-10-22)
   File: `src/presets.ts`. (a) `export interface EngineStatus { ok: boolean; status: number;
   statusText: string; error?: string }` (structural subset of `HealthResult`).
   (b) `export function statusLabel(s: EngineStatus): { icon: string; text: string }` —
@@ -311,7 +311,7 @@ opened from the status-bar icon.
   and the empty-model fallbacks.
   Assertion count: 357 → 361.
 
-- **1.98-15.S2 — `src/extension.ts`: gate + pure helpers + focus refresh.**
+- **1.98-15.S2 — `src/extension.ts`: gate + pure helpers + focus refresh.** — Done (2026-10-22)
   File: `src/extension.ts`. (a) Read `statusBar.enabled` (default true) at activation
   (pattern of `inlineEnabled`). (b) Wrap the existing status-bar block (createStatusBarItem
   + `updateHealth` + poll timer) in `if (statusBarEnabled)`. (c) `updateHealth` uses
@@ -325,7 +325,7 @@ opened from the status-bar icon.
   `statusLabel`, `onDidChangeWindowState`.
   Assertion count: 361 → 364.
 
-- **1.98-15.S3 — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click.**
+- **1.98-15.S3 — `src/extension.ts`: `llm.showStatusOverview` QuickPick + repoint click.** — Done (2026-10-22)
   File: `src/extension.ts`. (a) Register `llm.showStatusOverview`: fresh
   `client.health()`, read `model`/`completions.model` from config, build QuickPick items
   from `statusOverviewItems(...)` (info rows, pick = no-op) + a `Useful commands` section
@@ -338,7 +338,7 @@ opened from the status-bar icon.
   `statusOverviewItems`, `STATUS_COMMANDS`.
   Assertion count: 364 → 367.
 
-- **1.98-15.S4 — `package.json` + final smoke assertions + PROGRESS.md.**
+- **1.98-15.S4 — `package.json` + final smoke assertions + PROGRESS.md.** — Done (2026-10-22)
   Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
   (a) `package.json`: add command `llm.showStatusOverview` ("LLM: Show Status Overview"),
   activation event `onCommand:llm.showStatusOverview`, and setting
@@ -431,8 +431,8 @@ v1.
 
 - [x] Plan backlog item 1.98-14 (Copilot Vision — image attachments) — planned 2026-10-22; 5 slices S1–S5.
 - [x] Dispatch slices 1.98-14.S1 → S5 (one per session).
-- [ ] Plan backlog item 1.98-15 (Engine status indicator) — planned 2026-10-22; 4 slices S1–S4.
-- [ ] Dispatch slices 1.98-15.S1 → S4 (one per session).
+- [x] Plan backlog item 1.98-15 (Engine status indicator) — planned 2026-10-22; 4 slices S1–S4.
+- [x] Dispatch slices 1.98-15.S1 → S4 (one per session).
 ## Todo
 
 - [x] Wait for the Changelog Researcher to populate the backlog.
