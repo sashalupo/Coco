@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **complete** (2026-10-22, 2 slices S1–S2 all done)
-- **Next step:** item 1.99-23 complete — orchestrator moves to next backlog item (1.99-27)
+- **Current item:** 1.99-27 (Minimal nbformat 4.5 — cell `id` fields) — **planned** (2026-10-22, 1 slice S1)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-27.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -2162,3 +2162,72 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 **Total expected assertions after all slices:** 531 → **538** (+7, all in S2).
 
 **Overall acceptance (Tester):** with pending run changes, clicking Keep (per-file or keep-all) results in each kept file's open document being explicitly saved (`TextDocument.save()`); keep messages reflect the save; revert/undo paths unchanged; `npm run compile` clean; `node scripts/smoke-test.js` passes with 538 assertions.
+
+### Item 1.99-27 — Minimal nbformat version 4.5 (cell `id` fields)
+
+**Changelog:** VS Code 1.99 — "New notebooks default to nbformat 4.5 — each cell gets an id field to help calculate diffs."
+**Planned:** 2026-10-22, 1 slice S1
+**Baseline smoke:** 538 assertions
+
+**Design decision — id format:** deterministic, dependency-free `cell-<index>` (e.g. `cell-0`, `cell-1`, …). Rationale: the extension is pure string/JSON manipulation with no deps; a stable, predictable id is better for diffs than a random uuid (re-creating the same notebook yields the same ids), and it satisfies the nbformat 4.5 requirement (unique string per cell). For `insert_cell`, the id is the next free `cell-N` that doesn't collide with existing cell ids (deletions can leave gaps; collisions must be avoided).
+
+**Files to touch:** `src/notebook.ts`, `scripts/smoke-test.js`
+
+- **1.99-27.S1** — Add stable `id` fields to created and inserted cells
+  - Files: `src/notebook.ts`, `scripts/smoke-test.js`
+  - Changes:
+    1. `src/notebook.ts` — add a module-private helper next to `createNotebook`:
+       ```ts
+       /** Next free `cell-N` id that does not collide with existing cell ids. */
+       function nextCellId(existing: Record<string, unknown>[]): string {
+         const taken = new Set(
+           existing
+             .map((c) => c.id)
+             .filter((v): v is string => typeof v === "string"),
+         );
+         let n = 0;
+         while (taken.has(`cell-${n}`)) n++;
+         return `cell-${n}`;
+       }
+       ```
+    2. `src/notebook.ts` `createNotebook` — add `id` to each cell (field order: `id` first, matching nbformat convention):
+       ```ts
+       const cells = chunks.map((src, i) => ({
+         id: `cell-${i}`,
+         cell_type: "code",
+         execution_count: null,
+         metadata: {},
+         outputs: [],
+         source: src,
+       }));
+       ```
+       (`nbformat: 4, nbformat_minor: 5` already set — no change.)
+    3. `src/notebook.ts` `applyNotebookEdit` `insert_cell` case — give the new cell an id:
+       ```ts
+       const cell: Record<string, unknown> = {
+         id: nextCellId(cells),
+         cell_type: type,
+         source: edit.source ?? "",
+         metadata: {},
+       };
+       ```
+    4. `src/notebook.ts` — update the `createNotebook` doc comment to mention the stable `cell-<index>` ids (nbformat 4.5).
+    5. `scripts/smoke-test.js` — new section `// 52) nbformat 4.5 cell ids (1.99-27)` inserted after section 51, before `console.log("\nALL SMOKE TESTS PASSED")`. 8 assertions, prefix `nb45-s1:`, using the already-imported `createNotebook` / `applyNotebookEdit` / `parseNotebook` and raw `JSON.parse` of the output:
+       - `nb45-s1: createNotebook cells carry sequential cell-N ids` — `JSON.parse(createNotebook("a\n<<<CELL>>>\nb\n<<<CELL>>>\nc")).cells.map(c => c.id)` deep-equals `["cell-0","cell-1","cell-2"]`.
+       - `nb45-s1: created notebook is nbformat 4 / minor 5` — raw doc has `nbformat === 4 && nbformat_minor === 5`.
+       - `nb45-s1: created cell ids are unique strings` — every `id` is a non-empty string and `new Set(ids).size === ids.length`.
+       - `nb45-s1: insert_cell assigns a non-colliding id` — on the 2-cell fixture from section 10b, `applyNotebookEdit(fixture, { action: "insert_cell", cellIndex: 1, source: "x" })` → raw `cells[1].id === "cell-2"` and all 3 ids unique.
+       - `nb45-s1: insert_cell id skips taken ids after deletion` — delete cell 0 from the fixture first (`delete_cell`), then `insert_cell` at index 0 → new id is `cell-0` (gap reused, no collision with `cell-1`).
+       - `nb45-s1: modify_cell preserves existing cell ids` — `modify_cell` on the fixture keeps `cells[0].id`/`cells[1].id` unchanged in the raw output.
+       - `nb45-s1: delete_cell preserves remaining cell ids` — after `delete_cell` index 0, remaining raw cell id is `cell-1`.
+       - `nb45-s1: create via applyNotebookEdit also carries ids` — `applyNotebookEdit("", { action: "create", source: "a\n<<<CELL>>>\nb" })` → raw cells have ids `["cell-0","cell-1"]`.
+  - Smoke: 8 new assertions (`nb45-s1:`), section `// 52)`.
+  - Expected total: **546** (538 + 8).
+  - Acceptance: `npm run compile` passes; `node scripts/smoke-test.js` → 546 assertions, all passing; existing sections 10/10b still green (they don't assert on `id`).
+
+**Deviations:**
+- `parseNotebook` / `formatNotebookForContext` intentionally do **not** surface `id` in the context block — the changelog item is about the created/edited notebook JSON, and the context format is unchanged (keeps the model-facing format stable).
+- No new setting, no `package.json` change, no `ToolExecutor.ts` change (it is a pure pass-through to `applyNotebookEdit`).
+- `id` is not added to the `NbCell` interface (normalized parse drops it by design, per the deviation above).
+
+**Total expected assertions after all slices:** 546
