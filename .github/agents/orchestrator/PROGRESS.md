@@ -13,14 +13,14 @@ writes code — it dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-1.S5** — Settings description + smoke test + PROGRESS.md (final slice)
+- **Current slice:** none — item 1.98-1 complete; next item **1.98-2** (notebook support in chat)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the changelog and build the
   ordered backlog (oldest → newest)
 - **Last updated:** 2026-10-22
-- **Last commit:** `5ab9b6b` — feat(llm): route run_command through editable approval gate (1.98-1.S3)
-- **Build state:** compiles clean; smoke test passes (S1–S4 verified)
+- **Last commit:** `ba127fd` — chore(llm): settings description + smoke test + PROGRESS.md (1.98-1.S5)
+- **Build state:** compiles clean; smoke test passes (item 1.98-1 fully verified, S1–S5)
 
 ## Team
 
@@ -43,6 +43,7 @@ pending item** (the oldest).
 - **1.98-1.S2** (2026-10-22) — host `commandApproval` message case + `pendingCommandApproval` field + `waitForCommandApproval(signal)` (abort-safe, mirrors `waitForApproval`). Pure additions (+37/−0). Tester PASS.
 - **1.98-1.S3** (2026-10-22) — host routes `run_command` through the editable gate: `command_approval` post, edited-command rewrite of tool-call args, "user modified" note to model + `modified: true` on `tool_result`; existing file-tool approval path unchanged (else branch); setting off → immediate run. Tester PASS (9 static checks).
 - **1.98-1.S4** (2026-10-22) — webview "modified by user" badge (`.tool-modified`) on the tool card in both found-card and fallback branches + CSS. Pure additions (+17/−0). Tester PASS.
+- **1.98-1.S5** (2026-10-22) — `llm.tools.requireApproval` description updated; 3 new `cmd-approval:` smoke-test assertions; planner PROGRESS.md marks 1.98-1 Done. Tester PASS. **Item 1.98-1 complete — tagged `changelog-1.98`.**
 
 ## Tags (changelog-version tags on completed items)
 

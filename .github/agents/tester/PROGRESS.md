@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-1 (webview `command_approval` card) — slice **1.98-1.S4** verified
-- **Next step:** test slice **1.98-1.S5**
+- **Current item:** 1.98-1 (webview `command_approval` card) — **fully verified** (S1–S5)
+- **Next step:** verify first slice of item 1.98-2 (notebook support in chat)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -90,7 +90,9 @@ acceptance checks, and reports a clear pass/fail.
 ## Todo
 
 - [x] **1.98-1.S4** — webview "modified by user" badge on tool card — **PASS** (2026-10-22, see Verifications)
-- [ ] Test slice **1.98-1.S5**.
+- [x] **1.98-1.S5** — settings description + smoke test + planner PROGRESS.md — **PASS** (2026-10-22)
+- [x] **1.98-1** — fully verified (all slices S1–S5 PASS)
+- [ ] Verify first slice of item **1.98-2** (notebook support in chat).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
