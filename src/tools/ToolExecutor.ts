@@ -16,6 +16,14 @@ import { scanForSecrets } from "../secrets";
 
 /** Cap on the number of search matches returned. */
 const MAX_SEARCH_MATCHES = 50;
+
+/** A single todo item. */
+export interface TodoItem {
+  id: number;
+  title: string;
+  status: "not-started" | "in-progress" | "completed";
+}
+
 /** Cap on the size of a single file read (bytes). */
 const MAX_READ_BYTES = 256 * 1024;
 /** Directories to skip when searching. */
@@ -40,6 +48,14 @@ export class ToolExecutor {
   /** Whether there is a mutation to revert. */
   public get hasLastSnapshot(): boolean {
     return this.lastSnapshot !== null;
+  }
+
+  /** The current todo list (Phase 17). Replaced wholesale on each manage_todos call. */
+  private currentTodos: TodoItem[] = [];
+
+  /** Read the current todo list (for the webview to render). */
+  public getTodos(): TodoItem[] {
+    return this.currentTodos;
   }
 
   /**
@@ -301,6 +317,8 @@ export class ToolExecutor {
           return this.gitStatus(call);
         case "git_diff":
           return this.gitDiff(call, args.path ? String(args.path) : undefined);
+        case "manage_todos":
+          return this.manageTodos(call, args);
         default:
           return this.result(call, `Unknown tool: ${name}`);
       }
@@ -829,6 +847,38 @@ export class ToolExecutor {
       return `Commit failed:\n${commitOut}`;
     }
     return `Committed: ${msg}\n${commitOut}`;
+  }
+
+  /**
+   * `manage_todos` (Phase 17): replace the current todo list and return a
+   * confirmation. The list is stored in-memory and exposed via `getTodos()`
+   * so the chat provider can push it to the webview.
+   */
+  private manageTodos(call: ToolCall, args: Record<string, unknown>): ToolResult {
+    const raw = args.todos;
+    if (!Array.isArray(raw)) {
+      return this.result(call, "Invalid arguments: 'todos' must be an array.");
+    }
+    const todos: TodoItem[] = [];
+    for (const item of raw) {
+      if (typeof item !== "object" || item === null) {
+        continue;
+      }
+      const obj = item as Record<string, unknown>;
+      const id = typeof obj.id === "number" ? obj.id : 0;
+      const title = typeof obj.title === "string" ? obj.title : "";
+      const status =
+        obj.status === "in-progress" || obj.status === "completed"
+          ? obj.status
+          : "not-started";
+      if (title) {
+        todos.push({ id, title, status });
+      }
+    }
+    this.currentTodos = todos;
+    const done = todos.filter((t) => t.status === "completed").length;
+    const summary = `Todo list updated: ${done}/${todos.length} completed.`;
+    return this.result(call, summary);
   }
 
   // --- Helpers -----------------------------------------------------------

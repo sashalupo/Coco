@@ -551,6 +551,58 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		background: var(--think-bg);
 	}
 
+	/* Todos checklist card (Phase 17) */
+	.todos-card {
+		border-top: 1px solid var(--border);
+		background: var(--vscode-editorWidget-background, #252526);
+		padding: 6px 12px;
+		font-size: 11px;
+		max-height: 140px;
+		overflow-y: auto;
+	}
+	.todos-card .todos-title {
+		font-weight: 600;
+		font-size: 10px;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--muted);
+		margin-bottom: 4px;
+	}
+	.todos-card .todo-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 1px 0;
+	}
+	.todos-card .todo-check {
+		width: 12px;
+		height: 12px;
+		border-radius: 3px;
+		border: 1px solid var(--border);
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 9px;
+		line-height: 1;
+	}
+	.todos-card .todo-check.completed {
+		background: var(--vscode-testingIcon-passed, #89d185);
+		border-color: var(--vscode-testingIcon-passed, #89d185);
+		color: var(--bg);
+	}
+	.todos-card .todo-check.in-progress {
+		border-color: var(--vscode-focusBorder, #007fd4);
+		background: rgba(0, 127, 212, 0.2);
+	}
+	.todos-card .todo-title {
+		color: var(--fg);
+	}
+	.todos-card .todo-title.completed {
+		text-decoration: line-through;
+		color: var(--muted);
+	}
+
 	/* Token budget bar (Phase 15) */
 	.token-budget {
 		padding: 3px 12px;
@@ -931,6 +983,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<span id="tb-label" class="tb-label"></span>
 			<span class="tb-bar"><span id="tb-fill" class="tb-fill" style="width:0%"></span></span>
 		</div>
+		<div id="todos-card" class="todos-card" hidden></div>
 
 		<div id="change-footer" class="change-footer" hidden>
 			<div class="cf-header">
@@ -971,6 +1024,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var tokenBudget = document.getElementById('token-budget');
 		var tbLabel = document.getElementById('tb-label');
 		var tbFill = document.getElementById('tb-fill');
+		var todosCard = document.getElementById('todos-card');
 		var changeFooter = document.getElementById('change-footer');
 		var cfChevron = document.getElementById('cf-chevron');
 		var cfSummary = document.getElementById('cf-summary');
@@ -1554,6 +1608,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					contextIndicator.hidden = true;
 					stepIndicator.hidden = true;
 					tokenBudget.hidden = true;
+					todosCard.hidden = true;
 					hideChangeFooter();
 					streaming = false;
 					currentAssistant = null;
@@ -1595,6 +1650,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					// Refresh the Retry button visibility for the restored conversation.
 					stepIndicator.hidden = true;
 					tokenBudget.hidden = true;
+					todosCard.hidden = true;
 					hideChangeFooter();
 					setStreaming(false);
 					break;
@@ -1643,6 +1699,33 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					break;
 				case 'token_budget_hide':
 					tokenBudget.hidden = true;
+					break;
+				case 'todos_update':
+					(function () {
+						var todos = msg.todos || [];
+						if (!todos.length) { todosCard.hidden = true; return; }
+						todosCard.innerHTML = '';
+						var title = document.createElement('div');
+						title.className = 'todos-title';
+						var done = todos.filter(function (t) { return t.status === 'completed'; }).length;
+						title.textContent = 'Tasks · ' + done + '/' + todos.length;
+						todosCard.appendChild(title);
+						todos.forEach(function (t) {
+							var row = document.createElement('div');
+							row.className = 'todo-row';
+							var check = document.createElement('span');
+							check.className = 'todo-check ' + t.status;
+							if (t.status === 'completed') { check.textContent = '✓'; }
+							else if (t.status === 'in-progress') { check.textContent = '…'; }
+							row.appendChild(check);
+							var label = document.createElement('span');
+							label.className = 'todo-title' + (t.status === 'completed' ? ' completed' : '');
+							label.textContent = t.title;
+							row.appendChild(label);
+							todosCard.appendChild(row);
+						});
+						todosCard.hidden = false;
+					})();
 					break;
 				case 'stream_end':
 					streaming = false;

@@ -799,6 +799,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             args: call.function.arguments,
             output: result.content,
           });
+          // Phase 17: push the updated todo list to the webview.
+          if (call.function.name === "manage_todos") {
+            this.postMessage({
+              type: "todos_update",
+              todos: this.toolExecutor.getTodos(),
+            });
+          }
         }
 
         // Rebuild the request body with the updated history (system +

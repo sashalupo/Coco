@@ -12,11 +12,27 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 16 complete** — Streaming tool-call progress (16.1 done)
+- **Current phase:** **Phase 17 complete** — Agent todos checklist (17.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `d52a396` — feat(llm): streaming tool-call progress indicator (Phase 16.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); tool-start spinner verified
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (174 assertions); todos card verified
+
+> **Phase 17 — Agent todos checklist (2026-10-22):**
+>
+> The agent can call `manage_todos` to create/update a task list. The list
+> is displayed as a persistent checklist card above the input row (below the
+> token budget bar). Each item shows a status icon (✓ / … / empty) and the
+> title; completed items are struck through.
+>
+> - `tools.ts`: new `manage_todos` tool schema (array of `{id, title, status}`).
+> - `ToolExecutor`: `manageTodos()` stores the list in `currentTodos`,
+>   returns a confirmation. `getTodos()` exposes the list.
+> - `ChatViewProvider`: after `manage_todos` executes, posts `todos_update`
+>   `{todos}` to the webview.
+> - `webview.ts`: `#todos-card` (CSS `.todos-card`, `.todo-row`, `.todo-check`)
+>   + `todos_update` handler that re-renders the checklist in place.
+>   Hidden on `clear` and `restore`.
 
 > **Phase 16 — Streaming tool-call progress (2026-10-22):**
 >

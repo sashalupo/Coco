@@ -258,6 +258,50 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "manage_todos",
+      description:
+        "Create or update a task list to track progress on a multi-step task. " +
+        "Call this at the start of a task to plan the steps, and after " +
+        "completing each step to mark it done. The list is displayed to the " +
+        "user as a live checklist. Always send the COMPLETE list (it replaces " +
+        "the previous one).",
+      parameters: {
+        type: "object",
+        properties: {
+          todos: {
+            type: "array",
+            description:
+              "The complete list of todos (replaces the previous list).",
+            items: {
+              type: "object",
+              properties: {
+                id: {
+                  type: "number",
+                  description: "Unique sequential id (1, 2, 3, …).",
+                },
+                title: {
+                  type: "string",
+                  description:
+                    "Short action-oriented label (3–7 words).",
+                },
+                status: {
+                  type: "string",
+                  enum: ["not-started", "in-progress", "completed"],
+                  description:
+                    "Current status of this todo.",
+                },
+              },
+              required: ["id", "title", "status"],
+            },
+          },
+        },
+        required: ["todos"],
+      },
+    },
+  },
 ];
 
 /**

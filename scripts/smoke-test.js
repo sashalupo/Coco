@@ -408,10 +408,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 9, "tools: CODE_TOOLS has 9 tools");
+  assert(CODE_TOOLS.length === 10, "tools: CODE_TOOLS has 10 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff",
+      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos",
     "tools: tool names in order",
   );
   assert(
@@ -522,7 +522,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 9,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 10,
     "tools: request body carries tools when enabled",
   );
   assert(
