@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-8** — Agent mode tool approvals — **DONE** (2026-10-22, all 4 slices S1–S4)
-- **Current slice:** none — 1.99-8 complete; 1.99-10 next
+- **Current item:** **1.99-10** — Unified Chat view (mode picker + history) (4-slice plan recorded; 1.99-8 DONE)
+- **Current slice:** none yet — 1.99-10.S1 next
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item **1.99-10** (Unified Chat view — mode picker + history), then record plan, commit, run slice pipeline
+- **Next step:** dispatch Coder for slice **1.99-10.S1** (pure mode logic: src/presets.ts + src/request.ts), then Tester, memory, commit
 - **Last updated:** 2026-10-22
-- **Last commit:** 0c9bfbf (feat: 1.99-8.S3 webview scope dropdown); S4 commit pending
-- **Build state:** compiles clean; smoke test passes (466 assertions); 1.99-8 complete
+- **Last commit:** 342e8ef (feat: 1.99-8.S4, item complete)
+- **Build state:** compiles clean; smoke test passes (466 assertions); 1.99-10 plan recorded
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-8 (Agent mode tool approvals) — **planned** (2026-10-22, 4 slices S1–S4)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-8.S1
+- **Current item:** 1.99-10 (Unified Chat view — mode picker + history) — **planned** (2026-10-22, 4 slices S1–S4)
+- **Next step:** orchestrator runs the slice pipeline starting at 1.99-10.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -1099,6 +1099,182 @@ Reject never remembers; `llm.tools.autoApprove: true` skips all approval cards;
 exact tool auto-approves); `autoApprove` is experimental (default false, no
 confirmation dialog); session approvals are intentionally not persisted; unknown scope
 values from the webview are treated as `once`.
+
+### Item 1.99-10 — Unified Chat view (mode picker + history) (planned 2026-10-22)
+
+**Changelog reference:** VS Code 1.99, "Unified Chat view" — merges the Chat and
+Copilot Edits views into one Chat view with a mode picker (Ask / Agent / Edit);
+switch modes mid-conversation; edit sessions in history; move chat to a new editor
+or window; multiple agent sessions at once. Local reframe (engine-agnostic, free
+local LLM, single webview): a **mode picker** in the existing chat toolbar with
+`ask` / `agent` / `edit` modes that changes the request (tools on/off,
+system-prompt addendum); mode persists in the toolbar memento and is restored with
+the conversation list. Out of scope: multi-session UI (the existing sessions panel
++ "New Session" already covers it), moving the chat to a new editor/window (VS Code
+core feature), per-conversation mode (see Risks).
+
+**Verified code assumptions (file:line):**
+- `src/presets.ts:114` — `ToolbarState { model, thinking, context, contextFlags }`
+  (pure, vscode-free); `src/config.ts:104` — `ToolbarStateStore` (memento key
+  `llm.toolbar`, `get()` backfills `contextFlags` — same backfill pattern applies
+  to `mode`); `src/config.ts:148` — `Conversation { id, title, messages }` +
+  `ConversationStore` (key `llm.conversations`).
+- `src/request.ts:56` — `RequestConfig { settings, toolbar, mcpTools? }`;
+  `src/request.ts:272-276` — tools block: `if (settings.toolsEnabled) {
+  body.tools = mcpTools?.length ? [...CODE_TOOLS, ...mcpTools] : CODE_TOOLS;
+  body.tool_choice = "auto"; }`.
+- `src/chat/ChatViewProvider.ts` — `pushToolbarState()` ~line 751 (posts `toolbar`
+  with model/thinking/context/contextFlags); `applyToolbarMessage()` ~line 870
+  (persists toolbar fields); `runStream(settings, toolbar, skipUser)` ~line 967;
+  `composeSystemPrompt(systemPrompt, instructionsBlock, contextBlock)` ~line 1620
+  (joins non-empty parts with `\n\n`); `buildRequestBody` called at ~line 1150
+  (initial) and ~line 1391 (rebuild).
+- `src/chat/webview.ts` — toolbar HTML ~line 1105 (Model/Thinking/Context selects
+  + ctx checkboxes + History select + Compact/Revert buttons); `postToolbar()`
+  ~line 1455; `getToolbar()` ~line 1828; `case 'toolbar':` in `handleHostMessage`
+  ~line 1932 (calls `setToolbar`).
+- `scripts/smoke-test.js` — **466 assertions**; last numbered section `// 31)`
+  (1.99-8.S4); `assert(cond, label)`; `out/presets.js` and `out/request.js`
+  require-able; `out/chat/ChatViewProvider.js` and `out/chat/webview.js` NOT
+  require-able (static source assertions only).
+
+**Design decisions (justified):**
+1. **Mode is a toolbar override, not a setting.** `mode: ChatMode` joins
+   `ToolbarState` (persisted in the existing `llm.toolbar` memento) — same
+   lifecycle as Model/Thinking/Context: survives reload, takes effect from the
+   next message, no `package.json` setting needed. `export type ChatMode = "ask" |
+   "agent" | "edit"` + `export const CHAT_MODES: readonly ChatMode[] =
+   ["ask", "agent", "edit"]` + pure `normalizeChatMode(v: unknown): ChatMode`
+   (returns the value when it is one of the three, else `"agent"`) in
+   `src/presets.ts`.
+2. **Mode affects the request in `buildRequestBody` (pure).** `RequestConfig`
+   gains `mode?: ChatMode` (default `"agent"` when absent — byte-identical
+   behavior for all existing callers/tests). Tools block becomes: `mode ===
+   "ask"` → no `tools`, `tool_choice = "none"` (belt-and-braces hint for engines
+   that emit tool calls anyway); else existing `settings.toolsEnabled` logic
+   unchanged. `agent` = current behavior exactly; `edit` = agent behavior +
+   system-prompt addendum (below).
+3. **Edit/ask bias via system-prompt addendum (pure).** `export const
+   EDIT_MODE_ADDENDUM: string` in `src/presets.ts` (static text: "You are in Edit
+   mode. Focus on making precise, minimal changes to the user's code. Use the file
+   tools (read_file, edit_file, write_file) to inspect and modify files, and
+   present a short summary of the changes you made (files touched and what changed)
+   instead of long explanations.") and `export function modeAddendum(mode:
+   ChatMode): string` — `edit` → `EDIT_MODE_ADDENDUM`; `ask` → "You are in Ask
+   mode. Answer the user's question directly. Do not use tools or modify files.";
+   `agent` → `""`. `composeSystemPrompt` gains a 4th param `modeAddendum: string`
+   appended last (existing 3-arg call sites updated in the same slice).
+4. **Webview: `<select id="mode-select">`** (Ask / Agent / Edit) in the toolbar
+   before the Model label — a dropdown, not a segmented control (matches the
+   existing Model/Thinking/Context selects; zero new CSS beyond reusing
+   `.toolbar select`). Change → `postToolbar()` (existing path, now carrying
+   `mode`); `case 'toolbar'` host→webview sets the select value.
+5. **Mid-conversation switching** is automatic: `runStream` reads
+   `this.toolbarStore.get()` per send, so the next message uses the new mode; no
+   history rewrite.
+6. **History with mode — minimal slice.** Mode is global (toolbar memento), NOT
+   per-conversation: switching a conversation does not change the mode, and
+   `Conversation` is untouched (no memento migration). This satisfies
+   "restoring a session restores its mode" only in the weak sense that the mode
+   survives reload; per-conversation mode is a documented follow-up (see Risks).
+7. **Multiple sessions** — already exists (sessions panel, `newChat`,
+   `switchConversation`); no change.
+8. **No new runtime dependencies, no bundler, one webview, lazy activation** —
+   unchanged.
+
+**Slices:**
+
+- **1.99-10.S1 — `src/presets.ts` + `src/request.ts`: pure mode logic.**
+  Files: `src/presets.ts`, `src/request.ts`, `scripts/smoke-test.js`.
+  (a) `presets.ts`: `ChatMode` type, `CHAT_MODES`, `normalizeChatMode`,
+  `EDIT_MODE_ADDENDUM`, `modeAddendum` (design decisions 1 and 3).
+  (b) `request.ts`: `RequestConfig.mode?: ChatMode`; tools block per decision 2
+  (`const mode = config.mode ?? "agent";` — `ask` → `body.tool_choice = "none"`,
+  no `tools`; else existing `settings.toolsEnabled` branch).
+  Acceptance: `npm run compile` clean.
+  Smoke (`unif-s1:`, 6): `out/presets.js` exports `CHAT_MODES` (length 3,
+  `["ask","agent","edit"]`) and `normalizeChatMode` (`"edit"` → `"edit"`,
+  `"bogus"`/`undefined`/`42` → `"agent"`); `modeAddendum("edit")` contains
+  `Edit mode` and `edit_file`, `modeAddendum("ask")` contains `Ask mode`,
+  `modeAddendum("agent") === ""`; `out/request.js` — `buildRequestBody` with
+  `mode: "ask"` + `toolsEnabled: true` → `body.tools === undefined` and
+  `body.tool_choice === "none"`; `mode: "agent"` + `toolsEnabled: true` →
+  `body.tools` present (regression); no `mode` + `toolsEnabled: true` →
+  `body.tools` present (backward-compat regression).
+  Assertion count: 466 → 472.
+
+- **1.99-10.S2 — host wiring: `src/chat/ChatViewProvider.ts` + `src/config.ts`.**
+  Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `scripts/smoke-test.js`.
+  (a) `config.ts`: `ToolbarState` import already re-exported; add `mode: ChatMode`
+  to `ToolbarState` (in `presets.ts` — one-line field) and backfill in
+  `ToolbarStateStore.get()`: `mode: normalizeChatMode(state.mode)` (mirrors the
+  `contextFlags` backfill for pre-mode state).
+  (b) `ChatViewProvider.ts`: import `normalizeChatMode`, `modeAddendum`;
+  `pushToolbarState()` posts `mode: t.mode`; `applyToolbarMessage()` persists
+  `void this.toolbarStore.setMode(normalizeChatMode(msg.mode))` (new `setMode` on
+  `ToolbarStateStore`, mirroring `setThinking`); `runStream`: pass
+  `mode: toolbar.mode` to both `buildRequestBody` calls (~line 1150 and ~line
+  1391); `composeSystemPrompt` gains 4th param `modeAddendum: string` (appended
+  last, filtered like the other parts) and the call site (~line 1136) passes
+  `modeAddendum(toolbar.mode)`.
+  Acceptance: `npm run compile` clean; mode change in the toolbar persists to
+  memento and is pushed back on `ready`.
+  Smoke (`unif-s2:`, 3): `src/chat/ChatViewProvider.ts` source contains
+  `normalizeChatMode`, `modeAddendum`, and `mode: toolbar.mode`; `src/config.ts`
+  source contains `setMode(` and `normalizeChatMode`; `src/presets.ts` source
+  contains `mode: ChatMode`.
+  Assertion count: 472 → 475.
+
+- **1.99-10.S3 — `src/chat/webview.ts`: mode picker in the toolbar.**
+  File: `src/chat/webview.ts`.
+  (a) HTML: `<label>Mode <select id="mode-select"><option value="ask">Ask</option>
+  <option value="agent" selected>Agent</option><option value="edit">Edit</option>
+  </select></label>` as the first control in `.toolbar` (after `#quick-new-chat`,
+  before the Model label).
+  (b) JS: `var modeSelect = document.getElementById('mode-select');` +
+  `modeSelect.addEventListener('change', postToolbar);`; `getToolbar()` returns
+  `mode: modeSelect.value`; `setToolbar(state)` sets `modeSelect.value =
+  state.mode` when present (else leaves as-is); `postToolbar()` payload gains
+  `mode: state.mode`; `case 'toolbar':` in `handleHostMessage` passes
+  `mode: msg.mode` into `setToolbar`.
+  Acceptance: `npm run compile` clean; picker shows Ask/Agent/Edit; changing it
+  posts `toolbar` with `mode`; host `toolbar` message restores the persisted mode.
+  Smoke (`unif-s3:`, 3): `src/chat/webview.ts` source contains `id="mode-select"`,
+  `value="edit"`, and `mode: state.mode`.
+  Assertion count: 475 → 478.
+
+- **1.99-10.S4 — final smoke assertions + PROGRESS.md (FINAL).**
+  Files: `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  (a) `smoke-test.js`: new section `// 32) Unified chat mode picker (1.99-10)`
+  with `unif-s4:` (1): `out/request.js` — `buildRequestBody` with `mode: "edit"` +
+  `toolsEnabled: true` → `body.tools` present (edit = agent behavior) and
+  `body.tool_choice === "auto"` (regression guard that edit does not disable
+  tools). (b) `PROGRESS.md`: mark 1.99-10 Done, update Status/Next step.
+  Acceptance: `npm run compile` + `node scripts/smoke-test.js` pass (**479
+  assertions**).
+  Assertion count: 478 → 479 (S3 lands at 478, S4 adds 1).
+
+**Overall acceptance (Tester):** `npm run compile` clean; all **479** smoke
+assertions pass; the chat toolbar shows a Mode picker (Ask / Agent / Edit, default
+Agent); switching to Ask → the next request body has no `tools` and
+`tool_choice: "none"` and the system prompt contains the Ask addendum; switching
+to Edit → tools present (when `llm.tools.enabled`) and the system prompt contains
+the Edit addendum; Agent → byte-identical request to pre-change behavior; mode
+survives a window reload (memento) and is restored into the picker; switching
+modes mid-conversation takes effect from the next message without clearing
+history; sessions panel / New Session / history switching unchanged; no new
+runtime dependencies.
+
+**Risks:** mode is global (toolbar memento), not per-conversation — restoring a
+past session does not restore the mode that was active when it was recorded;
+per-conversation mode would require a `Conversation.mode` field + memento
+migration and is a documented follow-up; `tool_choice: "none"` in Ask mode is a
+hint some local engines ignore (they may still emit tool calls — the host loop
+only executes tools when `settings.toolsEnabled`, so a stray tool call in Ask mode
+with tools enabled would still execute; with `llm.tools.enabled: false` (default)
+Ask mode is fully tool-free); the Edit addendum is static text — weaker local
+engines may not follow it strongly; `ToolbarState` backfill
+(`normalizeChatMode(state.mode)`) keeps pre-mode memento state valid.
 
 ## Done
 
