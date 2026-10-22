@@ -12,11 +12,26 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 
 ## Status
 
-- **Current phase:** **Phase 15 complete** — Token budget visualization (15.1 done)
+- **Current phase:** **Phase 16 complete** — Streaming tool-call progress (16.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
 - **Last commit:** `7f2c978` — feat(llm): token budget visualization bar (Phase 15.1)
-- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); token budget bar verified
+- **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); tool-start spinner verified
+
+> **Phase 16 — Streaming tool-call progress (2026-10-22):**
+>
+> While a tool is executing, the webview shows a tool card with a spinning
+> indicator and "Running…" text. When the result arrives, the spinner is
+> replaced by the output and the card collapses.
+>
+> - `ChatViewProvider`: posts `tool_start` `{id, tool, args}` before
+>   `toolExecutor.execute()`; `tool_result` now carries `id` so the webview
+>   can match the running card.
+> - `webview.ts`: `tool_start` handler creates an open `<details>` card with
+>   a CSS-animated spinner (`.tool-running .spinner`). `tool_result` finds
+>   the card via `data-tool-id`, removes the spinner, appends the output
+>   `<pre>`, and collapses the card. Fallback creates a static card when no
+>   running card is found (e.g. restored conversation).
 
 > **Phase 15 — Token budget visualization (2026-10-22):**
 >

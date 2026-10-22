@@ -368,6 +368,27 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		max-height: 320px;
 		overflow: auto;
 	}
+	/* Tool running indicator (Phase 16) */
+	.tool-running {
+		padding: 6px 8px;
+		font-size: 11px;
+		color: var(--vscode-focusBorder, #007fd4);
+		border-top: 1px solid var(--border);
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.tool-running .spinner {
+		width: 10px;
+		height: 10px;
+		border: 2px solid var(--border);
+		border-top-color: var(--vscode-focusBorder, #007fd4);
+		border-radius: 50%;
+		animation: tool-spin 0.8s linear infinite;
+	}
+	@keyframes tool-spin {
+		to { transform: rotate(360deg); }
+	}
 
 	/* Change toolbox footer bar (Phase 12) */
 	.change-footer {
@@ -1693,32 +1714,89 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					messagesEl.appendChild(rvEl);
 					messagesEl.scrollTop = messagesEl.scrollHeight;
 					break;
+				case 'tool_start':
+					// Phase 16: show a running tool card with a spinner.
+					(function () {
+						var el = document.createElement('div');
+						el.className = 'message tool';
+						el.setAttribute('data-tool-id', msg.id || '');
+						var details = document.createElement('details');
+						details.className = 'tool-card';
+						details.open = true;
+						var summary = document.createElement('summary');
+						var label = document.createElement('span');
+						label.className = 'tool-label';
+						label.textContent = 'Tool call';
+						summary.appendChild(label);
+						var name = document.createElement('span');
+						name.className = 'tool-name';
+						name.textContent = msg.tool || 'tool';
+						summary.appendChild(name);
+						details.appendChild(summary);
+						var args = document.createElement('div');
+						args.className = 'tool-args';
+						args.textContent = msg.args || '';
+						details.appendChild(args);
+						var running = document.createElement('div');
+						running.className = 'tool-running';
+						var spinner = document.createElement('span');
+						spinner.className = 'spinner';
+						running.appendChild(spinner);
+						var txt = document.createElement('span');
+						txt.textContent = 'Running…';
+						running.appendChild(txt);
+						details.appendChild(running);
+						el.appendChild(details);
+						messagesEl.appendChild(el);
+						messagesEl.scrollTop = messagesEl.scrollHeight;
+					})();
+					break;
 				case 'tool_result':
-					var tcEl = document.createElement('div');
-					tcEl.className = 'message tool';
-					var tcDetails = document.createElement('details');
-					tcDetails.className = 'tool-card';
-					var tcSummary = document.createElement('summary');
-					var tcLabel = document.createElement('span');
-					tcLabel.className = 'tool-label';
-					tcLabel.textContent = 'Tool call';
-					tcSummary.appendChild(tcLabel);
-					var tcName = document.createElement('span');
-					tcName.className = 'tool-name';
-					tcName.textContent = msg.tool || 'tool';
-					tcSummary.appendChild(tcName);
-					tcDetails.appendChild(tcSummary);
-					var tcArgs = document.createElement('div');
-					tcArgs.className = 'tool-args';
-					tcArgs.textContent = msg.args || '';
-					tcDetails.appendChild(tcArgs);
-					var tcOut = document.createElement('pre');
-					tcOut.className = 'tool-output';
-					tcOut.textContent = msg.output || '';
-					tcDetails.appendChild(tcOut);
-					tcEl.appendChild(tcDetails);
-					messagesEl.appendChild(tcEl);
-					messagesEl.scrollTop = messagesEl.scrollHeight;
+					// Phase 16: find the running card by id and fill in the output.
+					(function () {
+						var existing = null;
+						if (msg.id) {
+							existing = messagesEl.querySelector('[data-tool-id="' + msg.id + '"]');
+						}
+						if (existing) {
+							// Remove the running indicator and append the output.
+							var details = existing.querySelector('.tool-card');
+							var running = existing.querySelector('.tool-running');
+							if (running && running.parentNode) { running.parentNode.removeChild(running); }
+							var out = document.createElement('pre');
+							out.className = 'tool-output';
+							out.textContent = msg.output || '';
+							details.appendChild(out);
+							details.open = false;
+						} else {
+							// Fallback: no running card found (e.g. restored) — create one.
+							var tcEl = document.createElement('div');
+							tcEl.className = 'message tool';
+							var tcDetails = document.createElement('details');
+							tcDetails.className = 'tool-card';
+							var tcSummary = document.createElement('summary');
+							var tcLabel = document.createElement('span');
+							tcLabel.className = 'tool-label';
+							tcLabel.textContent = 'Tool call';
+							tcSummary.appendChild(tcLabel);
+							var tcName = document.createElement('span');
+							tcName.className = 'tool-name';
+							tcName.textContent = msg.tool || 'tool';
+							tcSummary.appendChild(tcName);
+							tcDetails.appendChild(tcSummary);
+							var tcArgs = document.createElement('div');
+							tcArgs.className = 'tool-args';
+							tcArgs.textContent = msg.args || '';
+							tcDetails.appendChild(tcArgs);
+							var tcOut = document.createElement('pre');
+							tcOut.className = 'tool-output';
+							tcOut.textContent = msg.output || '';
+							tcDetails.appendChild(tcOut);
+							tcEl.appendChild(tcDetails);
+							messagesEl.appendChild(tcEl);
+						}
+						messagesEl.scrollTop = messagesEl.scrollHeight;
+					})();
 					break;
 				case 'change_footer':
 					// Change toolbox footer bar (Phase 12): show the persistent

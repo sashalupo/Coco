@@ -782,14 +782,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               continue;
             }
           }
+          // Post a tool_start so the webview can show a running indicator
+          // (Phase 16) while the tool executes.
           this.postMessage({
-            type: "delta",
-            content: `\n\n▸ ${call.function.name}…`,
+            type: "tool_start",
+            id: call.id,
+            tool: call.function.name,
+            args: call.function.arguments,
           });
           const result = await this.toolExecutor.execute(call);
           this.history.push(toolResultMessage(call, result.content));
           this.postMessage({
             type: "tool_result",
+            id: call.id,
             tool: call.function.name,
             args: call.function.arguments,
             output: result.content,

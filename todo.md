@@ -6,7 +6,7 @@ tag file
 copy/paste as symbol
 todos
 Token budget visualization ✅
-Streaming tool-call progress
+Streaming tool-call progress ✅
 inline suggestion (autocomplete), disable autocomplete, param
 skills
 mcp server
