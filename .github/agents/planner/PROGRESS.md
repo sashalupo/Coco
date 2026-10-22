@@ -1307,7 +1307,7 @@ User Prompt (user-data-folder prompts). Text-only section (no images).
 
 **Slices:**
 
-- **1.99-12.S1 — `src/prompts.ts`: pure prompt-file helpers (NEW file).**
+- **1.99-12.S1 — `src/prompts.ts`: pure prompt-file helpers (NEW file).** — Done (2026-10-22, PASS, 484 assertions)
   File: `src/prompts.ts` (new; no `vscode` import, no fs). Exports:
   `interface PromptFile { path: string; title: string; content: string }`;
   `const MAX_PROMPT_CHARS = 32_000`;

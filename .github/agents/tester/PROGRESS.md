@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-10 — Unified Chat view (mode picker) — **COMPLETE** (S1–S4 all PASS, 2026-10-22)
-- **Next step:** 1.99-12 (Reusable prompt files) — next item in backlog
+- **Current item:** 1.99-12 — Reusable prompt files — **IN PROGRESS** (S1 PASS, 2026-10-22)
+- **Next step:** 1.99-12.S2 (next slice of Reusable prompt files)
 - **Last updated:** 2026-10-22
-- **Last commit:** efbab3c (feat(llm): unified chat — webview mode picker (1.99-10.S3)); S4 commit pending
-- **Build state:** 479/479 PASS
+- **Last commit:** 8b2945c (chore(llm): record 1.99-12 plan); S1 commit pending
+- **Build state:** 484/484 PASS
 
+
+### 1.99-12.S1 — pure prompt-file helpers (src/prompts.ts, NEW) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **484 PASS lines** (479 prior + 5 new `rp-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 484/484 with 5 genuine `rp-s1:` assertions in new `// 36) Reusable prompt files — pure helpers (1.99-12.S1)` section (smoke-test.js:3687) all passing: `rp-s1: exports present`, `rp-s1: promptTitle H1 + fallback`, `rp-s1: stripPromptComments single-line`, `rp-s1: stripPromptComments multi-line`, `rp-s1: promptBlock empty after strip` PASS; (3) `src/prompts.ts` pure — zero imports (no `vscode`, no fs); exports `PromptFile` interface `{path,title,content}`, `MAX_PROMPT_CHARS = 32_000`, `promptTitle` (first H1 via `/^#\s+(.+)$/m`, else filename minus `.prompt.md`/last extension), `stripPromptComments` (non-greedy dotAll `<!-- … -->` removal + `\n{2,}→\n` collapse + trim), `promptBlock` (`## Prompt: <title>\n\n<stripped>`, `""` when empty after strip), `PROMPT_TEMPLATE` string PASS; (4) collapse-semantics note: plan doc said "3+ → 2" but acceptance assertion requires 2+ → 1; implementation, in-file doc comment, and test all consistently use 2+ → 1 — no prose data loss, only whitespace normalization — sane PASS; (5) scope: exactly `?? src/prompts.ts` (new), ` M scripts/smoke-test.js`, ` M .github/agents/coder/PROGRESS.md` (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 4 criteria met.
 
 ### 1.99-10.S4 — FINAL: final smoke assertions (2026-10-22) — **PASS**
 

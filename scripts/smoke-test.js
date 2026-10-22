@@ -3684,6 +3684,34 @@ function assert(cond, label) {
     "unif-s4: edit mode = agent behavior",
   );
 
+  // 36) Reusable prompt files — pure helpers (1.99-12.S1)
+  const prompts = require("../out/prompts.js");
+  assert(
+    typeof prompts.promptTitle === "function" &&
+      typeof prompts.stripPromptComments === "function" &&
+      typeof prompts.promptBlock === "function" &&
+      typeof prompts.PROMPT_TEMPLATE === "string",
+    "rp-s1: exports present",
+  );
+  assert(
+    prompts.promptTitle("# Refactor\nbody", "x/y.prompt.md") === "Refactor" &&
+      prompts.promptTitle("no heading", "a/b.prompt.md") === "b",
+    "rp-s1: promptTitle H1 + fallback",
+  );
+  assert(
+    prompts.stripPromptComments("a\n<!-- c -->\nb") === "a\nb",
+    "rp-s1: stripPromptComments single-line",
+  );
+  assert(
+    !prompts.stripPromptComments("x <!-- multi\nline --> y").includes("multi"),
+    "rp-s1: stripPromptComments multi-line",
+  );
+  assert(
+    prompts.promptBlock({ path: "p", title: "T", content: "<!-- only -->" }) ===
+      "",
+    "rp-s1: promptBlock empty after strip",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

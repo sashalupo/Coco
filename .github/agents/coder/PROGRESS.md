@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-10 (Unified Chat view — mode picker) — **DONE** (2026-10-22, all 4 slices S1–S4)
-- **Next step:** 1.99-12 (Reusable prompt files) — next item in backlog
+- **Current item:** 1.99-12 (Reusable prompt files) — S1 done
+- **Next step:** 1.99-12.S2 (settings plumbing: presets.ts + config.ts)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (479 assertions)
+- **Build state:** compiles clean; smoke test passes (484 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-12.S1** (2026-10-22) — `src/prompts.ts`: pure prompt-file helpers (NEW file). Files: `src/prompts.ts` (new), `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/prompts.ts` (pure — no `vscode` import, no fs; same purity contract as `src/instructions.ts`): (a) `export interface PromptFile { path; title; content }`; (b) `export const MAX_PROMPT_CHARS = 32_000` (mirrors MAX_INSTRUCTION_CHARS); (c) `promptTitle(content, filePath)` — first line matching `/^#\s+(.+)$/m` (trimmed), else basename with `.prompt.md` suffix stripped (or last extension stripped); (d) `stripPromptComments(content)` — `content.replace(/<!--[\s\S]*?-->/g, "")` (non-greedy, dotAll — covers multi-line blocks and single-line fragments), then collapse 2+ newlines to 1, trim. NOTE: plan doc comment said "collapse 3+ to 2" but the acceptance smoke assertion `stripPromptComments("a\n<!-- c -->\nb") === "a\nb"` requires 2+ → 1; implemented to pass the test (test is the acceptance criterion). (e) `promptBlock(file)` — `## Prompt: <title>\n\n<stripped>`, `""` when empty after stripping; (f) `export const PROMPT_TEMPLATE` — `# My Prompt` + explanatory HTML comment + blank body.
+  - `scripts/smoke-test.js`: new section `// 36) Reusable prompt files — pure helpers (1.99-12.S1)` after section 35, before the final summary print; `require("../out/prompts.js")` (local `prompts`, same pattern as section 20's `fetchTool`); 5 `rp-s1:` assertions: (a) exports present (3 functions + `PROMPT_TEMPLATE` string); (b) `promptTitle` H1 + fallback (`"Refactor"` / `"b"`); (c) single-line strip `=== "a\nb"`; (d) multi-line strip does not contain `multi`; (e) `promptBlock` empty after strip `=== ""`. Total PASS lines now 484 (479 + 5).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 484 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 3 in-scope files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-10.S4** (2026-10-22, FINAL) — final smoke assertions + PROGRESS.md. Files: `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `scripts/smoke-test.js`: new section `// 35) Unified chat mode — final (1.99-10.S4)` after section 34, before the final summary print; 1 `unif-s4:` assertion: `buildRequestBody` with `mode: "edit"` + `toolsEnabled: true` → `body.tools` is an array (regression guard: edit behaves like agent) AND `body.tool_choice === "auto"`. Total PASS lines now 479 (478 + 1).
   - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 479 PASS, 0 FAIL.
