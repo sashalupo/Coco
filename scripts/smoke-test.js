@@ -4120,6 +4120,82 @@ function assert(cond, label) {
     "aedits-s2: handleKeepFile awaits toolExecutor.keepFile",
   );
 
+  // 52) nbformat 4.5 cell ids (1.99-27)
+  const nb45Created = JSON.parse(
+    createNotebook("a\n<<<CELL>>>\nb\n<<<CELL>>>\nc"),
+  );
+  assert(
+    JSON.stringify(nb45Created.cells.map((c) => c.id)) ===
+      JSON.stringify(["cell-0", "cell-1", "cell-2"]),
+    "nb45-s1: createNotebook cells carry sequential cell-N ids",
+  );
+  assert(
+    nb45Created.nbformat === 4 && nb45Created.nbformat_minor === 5,
+    "nb45-s1: created notebook is nbformat 4 / minor 5",
+  );
+  const nb45Ids = nb45Created.cells.map((c) => c.id);
+  assert(
+    nb45Ids.every((id) => typeof id === "string" && id.length > 0) &&
+      new Set(nb45Ids).size === nb45Ids.length,
+    "nb45-s1: created cell ids are unique strings",
+  );
+  const nb45Fixture = createNotebook("a\n<<<CELL>>>\nb");
+  const nb45Insert = applyNotebookEdit(nb45Fixture, {
+    action: "insert_cell",
+    cellIndex: 1,
+    source: "x",
+  });
+  const nb45InsertRaw = JSON.parse(nb45Insert.newContent);
+  const nb45InsertIds = nb45InsertRaw.cells.map((c) => c.id);
+  assert(
+    nb45InsertRaw.cells[1].id === "cell-2" &&
+      new Set(nb45InsertIds).size === nb45InsertIds.length,
+    "nb45-s1: insert_cell assigns a non-colliding id",
+  );
+  const nb45Deleted = applyNotebookEdit(nb45Fixture, {
+    action: "delete_cell",
+    cellIndex: 0,
+  });
+  const nb45Reinsert = applyNotebookEdit(nb45Deleted.newContent, {
+    action: "insert_cell",
+    cellIndex: 0,
+    source: "y",
+  });
+  const nb45ReinsertRaw = JSON.parse(nb45Reinsert.newContent);
+  const nb45ReinsertIds = nb45ReinsertRaw.cells.map((c) => c.id);
+  assert(
+    nb45ReinsertRaw.cells[0].id === "cell-0" &&
+      new Set(nb45ReinsertIds).size === nb45ReinsertIds.length,
+    "nb45-s1: insert_cell id skips taken ids after deletion",
+  );
+  const nb45Modified = applyNotebookEdit(nb45Fixture, {
+    action: "modify_cell",
+    cellIndex: 0,
+    source: "a2",
+  });
+  const nb45ModifiedRaw = JSON.parse(nb45Modified.newContent);
+  assert(
+    nb45ModifiedRaw.cells[0].id === "cell-0" &&
+      nb45ModifiedRaw.cells[1].id === "cell-1",
+    "nb45-s1: modify_cell preserves existing cell ids",
+  );
+  const nb45DeletedRaw = JSON.parse(nb45Deleted.newContent);
+  assert(
+    nb45DeletedRaw.cells.length === 1 &&
+      nb45DeletedRaw.cells[0].id === "cell-1",
+    "nb45-s1: delete_cell preserves remaining cell ids",
+  );
+  const nb45CreateEdit = applyNotebookEdit("", {
+    action: "create",
+    source: "a\n<<<CELL>>>\nb",
+  });
+  const nb45CreateEditRaw = JSON.parse(nb45CreateEdit.newContent);
+  assert(
+    JSON.stringify(nb45CreateEditRaw.cells.map((c) => c.id)) ===
+      JSON.stringify(["cell-0", "cell-1"]),
+    "nb45-s1: create via applyNotebookEdit also carries ids",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

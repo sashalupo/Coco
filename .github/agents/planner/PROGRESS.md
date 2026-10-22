@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-27 (Minimal nbformat 4.5 — cell `id` fields) — **planned** (2026-10-22, 1 slice S1)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-27.S1
+- **Current item:** 1.99-27 (Minimal nbformat 4.5 — cell `id` fields) — **complete** (2026-10-22, 1 slice S1 done)
+- **Next step:** item 1.99-27 complete — orchestrator moves to next backlog item (1.99-28)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -2173,7 +2173,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
 
 **Files to touch:** `src/notebook.ts`, `scripts/smoke-test.js`
 
-- **1.99-27.S1** — Add stable `id` fields to created and inserted cells
+- **1.99-27.S1** (Done — item 1.99-27 complete) — Add stable `id` fields to created and inserted cells
   - Files: `src/notebook.ts`, `scripts/smoke-test.js`
   - Changes:
     1. `src/notebook.ts` — add a module-private helper next to `createNotebook`:

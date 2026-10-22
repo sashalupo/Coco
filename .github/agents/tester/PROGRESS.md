@@ -12,13 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-23 — AI edits improvements (explicit save on keep) — ALL 2 SLICES PASS (2026-10-22) — ITEM COMPLETE
-- **Next step:** item 1.99-23 complete — next: 1.99-27
+- **Current item:** 1.99-27 — Minimal nbformat 4.5 (cell id fields) — S1 PASS (2026-10-22) — ITEM COMPLETE
+- **Next step:** item 1.99-27 complete — next: 1.99-28
 - **Last updated:** 2026-10-22
-- **Last commit:** 086cfd1
-- **Build state:** 538/538 PASS
+- **Last commit:** c32d0fd
+- **Build state:** 546/546 PASS
 
 
+
+### 1.99-27.S1 — FINAL: stable cell id fields in created/inserted notebook cells (nbformat 4.5) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **546 PASS lines** (538 prior + 8 new `nb45-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 546/546 PASS; (3) `grep -c "nb45-s1:" scripts/smoke-test.js` → 8, all in new section `// 52) nbformat 4.5 cell ids (1.99-27)` (smoke-test.js:4123, last section before ALL SMOKE TESTS PASSED): sequential cell-N ids (L4130), nbformat 4/minor 5 (L4134), unique string ids (L4140), insert_cell non-colliding id (L4153), id skips taken ids after deletion (L4169), modify_cell preserves ids (L4180), delete_cell preserves ids (L4186), create via applyNotebookEdit carries ids (L4196) PASS; (4) `src/notebook.ts`: module-private `function nextCellId(existing: Record<string, unknown>[]): string` (L127–136) — collects string `id` fields into a Set, returns first free `cell-N` PASS; `createNotebook` cells include `id: cell-${i}` as first field (L149), `nbformat: 4, nbformat_minor: 5` unchanged (L161–162) PASS; `applyNotebookEdit` `insert_cell` case gives new cell `id: nextCellId(cells)` (L264) PASS; `createNotebook` doc comment mentions stable `cell-<index>` ids (nbformat 4.5) (L141–142) PASS; (5) `git status --short` shows exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/notebook.ts` + persistent ` m ninfer` marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met. **Item 1.99-27 (Minimal nbformat 4.5 — cell id fields) fully verified (S1) — ITEM COMPLETE.**
 
 ### 1.99-23.S2 — FINAL: ChatViewProvider routes keep paths through saving keepers + smoke assertions (2026-10-22) — **PASS**
 

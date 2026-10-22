@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-23 (AI edits improvements — explicit save on keep) — **COMPLETE** (S1 + S2 done)
-- **Next step:** item 1.99-23 complete — orchestrator moves to next backlog item (1.99-27)
+- **Current item:** 1.99-27 (nbformat 4.5 cell ids) — **COMPLETE** (S1 done)
+- **Next step:** item 1.99-27 complete — orchestrator moves to next backlog item (1.99-28)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (538 assertions)
+- **Build state:** compiles clean; smoke test passes (546 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-27.S1** (2026-10-22, FINAL) — stable `id` fields on created/inserted notebook cells (nbformat 4.5). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/notebook.ts`: (a) new module-private `nextCellId(existing: Record<string, unknown>[]): string` placed right before `createNotebook` — collects existing string `id` fields into a `Set` and returns the first free `cell-N`; (b) `createNotebook` cells now built as `{ id: `cell-${i}`, cell_type, execution_count, metadata, outputs, source }` (`id` first field; `nbformat: 4, nbformat_minor: 5` unchanged) and its doc comment now mentions the stable `cell-<index>` ids (nbformat 4.5); (c) `applyNotebookEdit` `insert_cell` case: new cell object now starts with `id: nextCellId(cells)` (first field) before `cell_type`/`source`/`metadata`.
+  - `scripts/smoke-test.js`: new section `// 52) nbformat 4.5 cell ids (1.99-27)` at end (after section 51, before final summary print); 8 `nb45-s1:` assertions using the already-imported `createNotebook`/`applyNotebookEdit` + raw `JSON.parse` of `newContent`: sequential `cell-0..2` ids from `createNotebook`; `nbformat === 4 && nbformat_minor === 5`; ids unique non-empty strings; `insert_cell` at index 1 on a 2-cell fixture → `cells[1].id === "cell-2"` + all 3 unique; after `delete_cell` 0 then `insert_cell` at 0 → new id `cell-0` (gap reused, no collision); `modify_cell` preserves `cell-0`/`cell-1`; `delete_cell` 0 leaves remaining id `cell-1`; `create` via `applyNotebookEdit` → ids `["cell-0","cell-1"]`. Total PASS lines now 546 (538 + 8).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 546 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
+  - **Item 1.99-27 (nbformat 4.5 cell ids) complete** — all 1 slice S1 done.
 - **1.99-23.S2** (2026-10-22, FINAL) — `ChatViewProvider`: route keep paths through the saving keepers + smoke assertions. Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/ChatViewProvider.ts`: (a) `case "keepChanges":` body replaced — no longer calls `this.toolExecutor.clearChangeSummary()` directly; now `void this.handleKeepAll();` (comment updated to note 1.99-23: keepAll() also explicitly saves each kept file); (b) new `private async handleKeepAll(): Promise<void>` added right after `handleKeepFile` — `await this.toolExecutor.keepAll()`, then the same `postMessage({ type: "revert_result", message })` + `pushChangeFooter()` calls used by `handleKeepFile`.
   - `scripts/smoke-test.js`: new section `// 51) AI edits improvements — explicit save on keep (1.99-23)` at end (after section 50, before final summary print); 7 assertions: 4 `aedits-s1:` on the compiled `out/tools/ToolExecutor.js` (read via `fs.readFileSync` — `async keepFile(` present, `async keepAll(` present, `saveDocument` + `openTextDocument` present, regex `/async keepFile\([\s\S]{0,400}?saveDocument/`); 3 `aedits-s2:` on `src/chat/ChatViewProvider.ts` (source contains `handleKeepAll` AND `keepAll()`; the `case "keepChanges":` block (next 300 chars) contains `handleKeepAll` and NOT `clearChangeSummary`; regex `/async handleKeepFile[\s\S]{0,300}?await this\.toolExecutor\.keepFile\(/`). Total PASS lines now 538 (531 + 7).

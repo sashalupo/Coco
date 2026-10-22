@@ -123,15 +123,30 @@ export function formatNotebookForContext(text: string): string {
   return parts.join("\n\n");
 }
 
+/** Next free `cell-N` id that does not collide with existing cell ids. */
+function nextCellId(existing: Record<string, unknown>[]): string {
+  const taken = new Set(
+    existing
+      .map((c) => c.id)
+      .filter((v): v is string => typeof v === "string"),
+  );
+  let n = 0;
+  while (taken.has(`cell-${n}`)) n++;
+  return `cell-${n}`;
+}
+
 /**
  * Build a minimal valid nbformat-4 notebook JSON string from `source`, which
  * is split on the `<<<CELL>>>` marker line into cells (default type `code`).
+ * Each cell gets a stable `cell-<index>` id (nbformat 4.5) so diffs can be
+ * computed against it.
  */
 export function createNotebook(source: string): string {
   const chunks = source
     .split(new RegExp(`^\\s*${CELL_MARKER}\\s*$`, "gm"))
     .map((s) => s.replace(/^\n+/, ""));
-  const cells = chunks.map((src) => ({
+  const cells = chunks.map((src, i) => ({
+    id: `cell-${i}`,
     cell_type: "code",
     execution_count: null,
     metadata: {},
@@ -246,6 +261,7 @@ export function applyNotebookEdit(
       const type: "code" | "markdown" =
         edit.cellType === "markdown" ? "markdown" : "code";
       const cell: Record<string, unknown> = {
+        id: nextCellId(cells),
         cell_type: type,
         source: edit.source ?? "",
         metadata: {},

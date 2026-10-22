@@ -459,7 +459,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Description:** New notebooks default to `nbformat` 4.5 — each cell gets an `id` field to
   help calculate diffs.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 1 slice S1; stable cell-N ids on created/inserted cells; nbformat 4/minor 5 already set)
 - **Gap vs existing:** `src/notebook.ts` `createNotebook` — set `nbformat: 4`,
   `nbformat_minor: 5` and stable cell `id` fields. Small change.
 
@@ -505,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-27** Minimal nbformat 4.5 (cell `id` fields)
 - **1.99-28** New notebook tool (`/newNotebook`)
 - **1.99-29** Cell output to chat (text/image)
 
