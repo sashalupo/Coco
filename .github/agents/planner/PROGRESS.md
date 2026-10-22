@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.98-1 (VS Code 1.98 — Agent mode improvements: editable terminal command approval) — **Done** (S1–S5 complete)
-- **Next step:** dispatch slice 1.98-2.S1 to the Coder
+- **Current item:** 1.98-2 (VS Code 1.98 — Notebook support in chat) — **Done** (S1–S6 complete)
+- **Next step:** plan backlog item 1.98-8 (`#codebase` tag — advanced codebase search; drop the embeddings sub-item)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -129,12 +129,28 @@ unchanged; `npm run compile` clean.
   Ctrl+Enter; host `commandApproval` handler + `waitForCommandApproval`; agentic loop routes
   `run_command` through the editable gate with edited-command rewrite + "modified by user"
   badge; settings description updated; smoke-test source assertions added).
+- **1.98-2** (2026-10-22) — Notebook support in chat. All slices S1–S6 implemented
+  (`notebook_edit` tool with 5 actions; pure `src/notebook.ts` parse/format/create/apply
+  module; `ToolExecutor` executes it with snapshot/revert; tagged `.ipynb` files render
+  cell-by-cell in context; `requireApproval` description updated; final smoke assertions
+  added). Key decisions:
+  1. **Single `notebook_edit` tool with 5 actions** (`create`, `modify_cell`, `insert_cell`,
+     `delete_cell`, `change_cell_type`) instead of one tool per action — keeps the tool list
+     small for weaker local engines; multi-cell `create` uses the `<<<CELL>>>` text marker.
+  2. **Plain-text cell-change summary** (e.g. `Modified cell 2 (code): 42 chars of source.`)
+     as the tool result instead of a JSON line diff — a diff on raw `.ipynb` JSON is noisy
+     and unhelpful to the model.
+  3. **No host/webview changes** — `isMutatingTool("notebook_edit")` is `true`, so the
+     existing generic `approval_request` gate in `ChatViewProvider.ts` picks the tool up
+     with zero new host or webview code (verified by a final smoke assertion).
 
 ## Todo
 
 - [x] Wait for the Changelog Researcher to populate the backlog.
 - [x] Plan backlog item 1.98-1 (editable terminal command approval) — planned 2026-10-22.
 - [x] Dispatch slices 1.98-1.S1 → S5 (one per session).
+- [x] Plan backlog item 1.98-2 (notebook support in chat) — planned 2026-10-22; slices S1–S6 dispatched and done.
+- [ ] Plan backlog item 1.98-8 (`#codebase` tag — advanced codebase search; drop the embeddings sub-item).
 - [ ] For each dispatched item: study the changelog entry (text + images), ground the plan in
       the real codebase, break it into tiny slices (one file / one concern each), write the
       plan, record it here.
@@ -151,7 +167,7 @@ unchanged; `npm run compile` clean.
 
 ---
 
-# Plan: 1.98-2 — Notebook support in chat
+# Plan: 1.98-2 — Notebook support in chat — **Done** (2026-10-22, slices S1–S6 complete)
 
 **Changelog reference:** VS Code 1.98 — "Notebook support in Copilot Edits (Preview): edit notebook files from chat — create notebooks, modify content across multiple cells, insert/delete cells, change cell types."
 

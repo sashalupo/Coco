@@ -1717,6 +1717,39 @@ function assert(cond, label) {
     "cmd-approval: host has waitForCommandApproval",
   );
 
+  // 11) notebook support final static checks (1.98-2.S6): settings description
+  // lists notebook_edit; the host still routes mutating tools through the
+  // generic approval_request gate (no notebook-specific host code); the
+  // notebook tool + pure module exist.
+  const pkgJson = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const requireApprovalDesc =
+    pkgJson.contributes.configuration.properties[
+      "llm.tools.requireApproval"
+    ].description;
+  assert(
+    requireApprovalDesc.includes("notebook_edit"),
+    "nb-final: requireApproval description lists notebook_edit",
+  );
+  assert(
+    hostSrc.includes("approval_request") && hostSrc.includes("isMutatingTool"),
+    "nb-final: host routes mutating tools via generic approval_request gate",
+  );
+  const toolsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools.ts"),
+    "utf8",
+  );
+  assert(
+    toolsSrc.includes("notebook_edit"),
+    "nb-final: src/tools.ts declares notebook_edit",
+  );
+  assert(
+    fs.existsSync(path.join(__dirname, "..", "src", "notebook.ts")) ||
+      fs.existsSync(path.join(__dirname, "..", "out", "notebook.js")),
+    "nb-final: src/notebook.ts (or compiled out/notebook.js) exists",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

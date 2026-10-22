@@ -14,15 +14,15 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-2.S6** — package.json descriptions + final smoke assertions + PROGRESS.md (final slice)
+- **Current slice:** none — item 1.98-2 complete; next item **1.98-8** (`#codebase` tag)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
   `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
   within the active window)
 - **Last updated:** 2026-10-22
-- **Last commit:** `540333b` — feat(llm): ToolExecutor executes notebook_edit (1.98-2.S4)
-- **Build state:** compiles clean; smoke test passes (1.98-2.S1–S5 verified)
+- **Last commit:** `1a50cad` — feat(llm): render tagged .ipynb files as cells in context (1.98-2.S5)
+- **Build state:** compiles clean; smoke test passes (item 1.98-2 fully verified, S1–S6; 245 assertions)
 
 ## Team
 
@@ -52,6 +52,7 @@ pending item** (the oldest).
 - **1.98-2.S3** (2026-10-22) — `applyNotebookEdit` (5 actions) in `src/notebook.ts` on private `parseNotebookRaw` (full-doc preservation), 24 smoke assertions. First Coder attempt truncated mid-edit (kept its consistent `parseNotebookRaw` refactor; also reverted its out-of-scope edits to `.github/agents/*.agent.md` + researcher PROGRESS.md); retry 2 completed the slice. Tester PASS.
 - **1.98-2.S4** (2026-10-22) — ToolExecutor `notebook_edit` case + private `notebookEdit` (resolveSafe, snapshot/recordChange, plain-text summary, no JSON diff), 16 `nb-exec:` smoke assertions. Tester PASS.
 - **1.98-2.S5** (2026-10-22) — `src/context.ts`: tagged `.ipynb` files render via `formatNotebookForContext` (cell-by-cell view) instead of raw JSON; non-.ipynb unchanged, 5 smoke assertions. Tester PASS.
+- **1.98-2.S6** (2026-10-22) — `llm.tools.requireApproval` description lists `notebook_edit`; 4 `nb-final:` smoke assertions; planner PROGRESS.md marks 1.98-2 Done. Tester PASS. **Item 1.98-2 complete** (no tag — `changelog-1.98` already exists from 1.98-1).
 
 ## Tags (changelog-version tags on completed items)
 

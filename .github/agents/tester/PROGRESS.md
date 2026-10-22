@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-2 (notebook support in chat) — slices S1–S5 verified
-- **Next step:** verify slice 1.98-2.S6 (package.json descriptions + final smoke assertions + PROGRESS.md — final slice)
+- **Current item:** 1.98-2 (notebook support in chat) — **fully verified** (S1–S6 all PASS)
+- **Next step:** verify first slice of item 1.98-8 (`#codebase` tag — advanced codebase search)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -109,7 +109,9 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-2.S3** — `applyNotebookEdit` (the 5 actions) — **PASS** (2026-10-22)
 - [x] **1.98-2.S4** — ToolExecutor: execute `notebook_edit` — **PASS** (2026-10-22)
 - [x] **1.98-2.S5** — context: render tagged .ipynb files as cells in `src/context.ts` — **PASS** (2026-10-22)
-- [ ] Verify slice **1.98-2.S6** — package.json descriptions + final smoke assertions + PROGRESS.md (final slice).
+- [x] **1.98-2.S6** — package.json descriptions + final smoke assertions + PROGRESS.md — **PASS** (2026-10-22)
+- [x] **1.98-2** — fully verified (all slices S1–S6 PASS)
+- [ ] Verify first slice of item **1.98-8** (`#codebase` tag — advanced codebase search).
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -135,3 +137,8 @@ acceptance checks, and reports a clear pass/fail.
 ### 1.98-2.S5 — context: render tagged .ipynb files as cells (2026-10-22) — **PASS**
 
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED (241 assertions); 5 new `context:` notebook assertions green. Static checks a–b PASS: `formatNotebookForContext` imported from ./notebook, used only for case-insensitive `.ipynb` in taggedFiles loop; non-.ipynb raw fenced block unchanged (+9/-1). Scope: only context.ts + smoke-test.js (+54).
+
+### 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (245 assertions; 4 new `nb-final:` green). Static checks 3–6 PASS: package.json single 1-line hunk (requireApproval lists notebook_edit); 4 new assertions are genuine feature references; planner PROGRESS.md marks 1.98-2 Done, next → 1.98-8; scope = package.json (±1) + smoke-test.js (+33) + memory files only.
+- **Item 1.98-2 fully verified (S1–S6 all PASS).**

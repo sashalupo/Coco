@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-2.S5 done (context: render tagged .ipynb files as cells)
-- **Next step:** slice 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (final slice)
+- **Current step:** 1.98-2.S6 done (package.json descriptions + final smoke assertions + planner PROGRESS.md)
+- **Next step:** item 1.98-2 complete — awaiting Tester verification
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
@@ -108,6 +108,12 @@ by step, one step per session.
   - `scripts/smoke-test.js`: new `3b-nb` block in the context section (after the stable-order assertion, before section 3c) with 5 assertions: a tagged `nb.ipynb` (2-cell fixture: code cell with a stream output + markdown cell) renders `Tagged file: nb.ipynb`, `### Cell 0 (code)`, the cell source `print('hello')`, and does NOT contain the raw `"cells":` JSON key; a tagged `foo.ts` still renders the raw fenced block (`` ```\nconst y = 2;\n``` ``).
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 5 new `context: tagged …` assertions).
   - Not committed (per task instruction — orchestrator commits).
+- **1.98-2.S6** (2026-10-22) — package.json descriptions + final smoke assertions + planner PROGRESS.md (final slice). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`.
+  - `package.json`: updated `llm.tools.requireApproval` description to "Require user approval before mutating tools (write_file, edit_file, run_command, notebook_edit) are applied. run_command shows an editable command card (Ctrl+Enter to run)." Nothing else changed.
+  - `scripts/smoke-test.js`: new section 11 (`nb-final:`, after the `cmd-approval:` host assertion, before the final ALL PASSED) with 4 static assertions: (a) `package.json` `llm.tools.requireApproval` description contains `notebook_edit` (parsed via `JSON.parse(fs.readFileSync(...))`), (b) `ChatViewProvider.ts` source contains both `approval_request` and `isMutatingTool` (mutating tools still route through the generic gate — no notebook-specific host code), (c) `src/tools.ts` contains `notebook_edit`, (d) `src/notebook.ts` or compiled `out/notebook.js` exists (`fs.existsSync`).
+  - `.github/agents/planner/PROGRESS.md`: marked item 1.98-2 **Done** (S1–S6 complete) in the Status block (Current item + Next step now points to planning backlog item 1.98-8 `#codebase`), the plan heading, the Done section (with the 3 key decisions: single `notebook_edit` tool with 5 actions; plain-text cell-change summary instead of JSON diff; no host/webview changes — approval gate inherited via `isMutatingTool`), and the Todo list.
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 4 new `nb-final:` assertions).
+  - Not committed (per task instruction — orchestrator commits).
 
 ## Todo
 
@@ -116,7 +122,8 @@ by step, one step per session.
 - [x] Slice 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`.
 - [x] Slice 1.98-2.S4 — ToolExecutor: execute `notebook_edit` (read/write the .ipynb file, feed `applyNotebookEdit` result back to the model).
 - [x] Slice 1.98-2.S5 — context: render tagged .ipynb files as cells (`src/context.ts`).
-- [ ] Slice 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (final slice).
+- [x] Slice 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (final slice).
+- [ ] Item 1.98-2 complete — awaiting Tester verification.
 
 ## Notes / decisions
 
