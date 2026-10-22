@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-19 (`#searchResults` tag) — in progress (S1 done)
-- **Next step:** 1.99-19.S2 (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.99-19 (`#searchResults` tag) — in progress (S1–S2 done)
+- **Next step:** 1.99-19.S3 (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (523 assertions)
+- **Build state:** compiles clean; smoke test passes (526 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-19.S2** (2026-10-22) — `ToolExecutor.searchResults(query)` public method + `LlmSettings.searchResultsEnabled` + `readSettings`. Files: `src/tools/ToolExecutor.ts`, `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/tools/ToolExecutor.ts`: new `public async searchResults(query: string): Promise<string>` added right after `findUsagesPublic` (mirrors its public-wrapper pattern): (a) no workspace folder → `"(no workspace folder)"`; (b) `query.trim() === ""` → `"(no query — use '#searchResults <query>' to search the workspace)"`; (c) else `rootAbs = vscode.workspace.workspaceFolders[0].uri.fsPath`, `matches = await this.searchMatches(query, rootAbs, MAX_SEARCH_MATCHES)`, returns `matches.join("\n")` + `\n… (truncated at ${MAX_SEARCH_MATCHES})` suffix when `matches.length >= MAX_SEARCH_MATCHES` (exact same suffix convention as `searchFiles`). Reuses the existing private `searchMatches` — no new search logic.
+  - `src/presets.ts`: `LlmSettings` gains `searchResultsEnabled: boolean` (doc comment "Enable the `#searchResults` chat tag (workspace text-search results injected as context).") immediately after `newWorkspaceEnabled`.
+  - `src/config.ts`: `readSettings` gains `searchResultsEnabled: c.get<boolean>("chat.searchResults.enabled", true)` immediately after `newWorkspaceEnabled`.
+  - `scripts/smoke-test.js`: new section `// 48) #searchResults tag — ToolExecutor.searchResults + settings (1.99-19.S2)` at end (after section 47, before final summary print); static `fs.readFileSync` on `src/tools/ToolExecutor.ts` (local `toolExecutorSrcSresS2` — the compiled `out/tools/ToolExecutor.js` imports vscode and cannot be required); method body scoped via `slice(indexOf("public async searchResults(query: string): Promise<string>"))` (local `sresS2Method`); 3 `sres-s2:` assertions: (a) source contains the exact public signature; (b) method body contains `searchMatches(query, rootAbs, MAX_SEARCH_MATCHES)` AND `truncated at ${MAX_SEARCH_MATCHES}`; (c) method body contains `"(no workspace folder)"` AND `no query`. Total PASS lines now 526 (523 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 526 PASS, 0 FAIL; `git status --short` → only the 4 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-19.S1** (2026-10-22) — pure `#searchResults` parse/format helpers in `src/context.ts`. Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/context.ts`: new section appended at end of file (after the `#newWorkspace` block) with the standard section comment (`#searchResults tag (1.99-19): attach workspace text-search results as chat context. The actual search is wired up in a later slice; these functions only parse the tag and render the block.`): (a) `export function extractSearchResultsTag(text: string): string | null` — regex `/#searchResults(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i` (mirrors `extractFolderTag` exactly); returns `(m[1] ?? m[2] ?? "").trim()` — `""` for the bare tag, `null` when absent; `#searchResultsfoo` does NOT match (word-bounded); (b) `export const SEARCH_RESULTS_BLOCK_MAX_CHARS = 8000;` + `const SEARCH_RESULTS_TRUNCATED_SUFFIX = "… (truncated)";`; (c) `export function formatSearchResultsBlock(query: string, body: string): string` — header `Search results (query: ${q}):` with `q = query.trim() !== "" ? query : "(none)"`; body = `body` when non-empty after trim else `"(no matches)"`; NEVER returns `""` (explicit tag → header always shown, same rule as `formatFolderBlock`); truncates total to `SEARCH_RESULTS_BLOCK_MAX_CHARS` with the `… (truncated)` suffix.
   - `scripts/smoke-test.js`: new section `// 47) #searchResults tag — pure parse/format helpers (1.99-19.S1)` at end (after section 46, before final summary print); `require` of `out/context.js` (local `sresS1`); 5 `sres-s1:` assertions: (a) space + colon query forms (`"foo"`/`"bar"`); (b) bare tag → `""` (incl. `"#searchResults\nmore"`); (c) absent → `null` and `#searchResultsfoo x` → `null`; (d) header + body, empty body → `(no matches)`, hint body rendered, never `""`; (e) 20000-char body truncated to ≤ 8000 + suffix length, ends with `… (truncated)`, empty query renders `(none)`, `SEARCH_RESULTS_BLOCK_MAX_CHARS === 8000`. Total PASS lines now 523 (518 + 5).

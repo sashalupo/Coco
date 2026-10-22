@@ -1944,7 +1944,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
     - `sres-s1: formatSearchResultsBlock truncates long bodies with the suffix` — a 20000-char body → length ≤ 8000 + suffix length and ends with `… (truncated)`; query renders as `(none)` when empty.
   - Acceptance: `npm run compile` passes; the 5 `sres-s1:` assertions pass; no existing assertion regresses.
 
-- **1.99-19.S2** — `ToolExecutor.searchResults(query)` public method + `LlmSettings.searchResultsEnabled` + `readSettings`
+- **1.99-19.S2** — `ToolExecutor.searchResults(query)` public method + `LlmSettings.searchResultsEnabled` + `readSettings` — Done (2026-10-22, PASS, 526 assertions)
   - Files: `src/tools/ToolExecutor.ts`, `src/presets.ts`, `src/config.ts`
   - Changes:
     - `src/tools/ToolExecutor.ts`: new public method next to `findUsagesPublic` (~line 1223): `public async searchResults(query: string): Promise<string>` — (a) no workspace folder → return `"(no workspace folder)"`; (b) `query.trim() === ""` → return `"(no query — use '#searchResults <query>' to search the workspace)"`; (c) else `const rootAbs = vscode.workspace.workspaceFolders[0].uri.fsPath; const matches = await this.searchMatches(query, rootAbs, MAX_SEARCH_MATCHES);` return `matches.join("\n")` plus `\n… (truncated at ${MAX_SEARCH_MATCHES})` when `matches.length >= MAX_SEARCH_MATCHES` (same convention as `searchFiles`). Reuses the existing private `searchMatches` (regex with literal fallback, `SKIP_DIRS`, size guard) — no new search logic.

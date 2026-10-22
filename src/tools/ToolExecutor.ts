@@ -1233,6 +1233,29 @@ export class ToolExecutor {
     return res.content;
   }
 
+  /**
+   * Run a workspace text search for the `#searchResults` tag (1.99-19). Thin
+   * wrapper over the private `searchMatches` core (regex with literal
+   * fallback, `SKIP_DIRS`, size guard); returns the `relPath:line: text`
+   * match lines capped at `MAX_SEARCH_MATCHES`. Never throws — no-workspace
+   * and no-query cases come back as hint strings.
+   */
+  public async searchResults(query: string): Promise<string> {
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      return "(no workspace folder)";
+    }
+    if (query.trim() === "") {
+      return "(no query — use '#searchResults <query>' to search the workspace)";
+    }
+    const rootAbs = vscode.workspace.workspaceFolders[0].uri.fsPath;
+    const matches = await this.searchMatches(query, rootAbs, MAX_SEARCH_MATCHES);
+    const suffix =
+      matches.length >= MAX_SEARCH_MATCHES
+        ? `\n… (truncated at ${MAX_SEARCH_MATCHES})`
+        : "";
+    return matches.join("\n") + suffix;
+  }
+
   /** Execute the `fetch_url` tool call. */
   private async fetchUrlTool(
     call: ToolCall,

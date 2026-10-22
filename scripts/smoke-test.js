@@ -4005,6 +4005,31 @@ function assert(cond, label) {
     "sres-s1: formatSearchResultsBlock truncates long bodies with the suffix",
   );
 
+  // 48) #searchResults tag — ToolExecutor.searchResults + settings (1.99-19.S2)
+  const toolExecutorSrcSresS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  const sresS2Method = toolExecutorSrcSresS2.slice(
+    toolExecutorSrcSresS2.indexOf("public async searchResults(query: string): Promise<string>"),
+  );
+  assert(
+    toolExecutorSrcSresS2.includes(
+      "public async searchResults(query: string): Promise<string>",
+    ),
+    "sres-s2: ToolExecutor exposes a public searchResults(query) method",
+  );
+  assert(
+    sresS2Method.includes("searchMatches(query, rootAbs, MAX_SEARCH_MATCHES)") &&
+      sresS2Method.includes("truncated at ${MAX_SEARCH_MATCHES}"),
+    "sres-s2: searchResults reuses searchMatches with the MAX_SEARCH_MATCHES cap and truncation suffix",
+  );
+  assert(
+    sresS2Method.includes('"(no workspace folder)"') &&
+      sresS2Method.includes("no query"),
+    "sres-s2: searchResults handles no-workspace and no-query cases with hint strings",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

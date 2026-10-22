@@ -106,6 +106,8 @@ export interface LlmSettings {
   usagesEnabled: boolean;
   /** Allow the #newWorkspace tag to inject a project scaffold prompt. */
   newWorkspaceEnabled: boolean;
+  /** Enable the `#searchResults` chat tag (workspace text-search results injected as context). */
+  searchResultsEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
   /** MCP server configurations (name → command/args/env). */

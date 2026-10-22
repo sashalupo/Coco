@@ -12,13 +12,20 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-19 — #searchResults tag — S1 PASS (2026-10-22)
-- **Next step:** verify 1.99-19.S2 (next slice of #searchResults)
+- **Current item:** 1.99-19 — #searchResults tag — S1+S2 PASS (2026-10-22)
+- **Next step:** verify 1.99-19.S3 (ChatViewProvider.runStream wiring)
 - **Last updated:** 2026-10-22
-- **Last commit:** fa3987f (feat(llm): copilot status menu — package.json contributions + item complete (1.99-16.S3, item complete))
-- **Build state:** 523/523 PASS
+- **Last commit:** 3076650 (feat(llm): #searchResults tag — pure parse/format helpers (1.99-19.S1))
+- **Build state:** 526/526 PASS
 
 
+
+### 1.99-19.S2 — ToolExecutor.searchResults + LlmSettings.searchResultsEnabled + readSettings (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **526 PASS lines** (523 prior + 3 new `sres-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 526/526 PASS; (3) 3 genuine `sres-s2:` static `fs.readFileSync` assertions in new section `// 48) #searchResults tag — ToolExecutor.searchResults + settings (1.99-19.S2)` (smoke-test.js:4008, last section before `ALL SMOKE TESTS PASSED`): public signature, searchMatches+MAX_SEARCH_MATCHES cap+truncation suffix, no-workspace/no-query hints PASS; (4) ToolExecutor.searchResults (L1243–1259) next to findUsagesPublic (L1223): no-workspace → "(no workspace folder)", empty query → hint, else searchMatches(query, rootAbs, MAX_SEARCH_MATCHES) + join + truncation suffix (same convention as searchFiles); presets.ts L110 searchResultsEnabled after newWorkspaceEnabled (L108); config.ts L81 readSettings entry after L80; git diff --stat: +51/−0 (additive only) PASS; (5) scope exactly the 4 in-scope files + coder PROGRESS.md + ninfer marker; no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-19.S1 — Pure `#searchResults` parse + format helpers in `src/context.ts` (2026-10-22) — **PASS**
 
