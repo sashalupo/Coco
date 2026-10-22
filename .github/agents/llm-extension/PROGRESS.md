@@ -15,7 +15,7 @@ managing code. Phase 1 = set provider + runtime parameters + chat.
 - **Current phase:** **Phase 15 complete** — Token budget visualization (15.1 done)
 - **Next step:** **none** — awaiting new direction (see `todo.md` for the backlog)
 - **Last updated:** 2026-10-22
-- **Last commit:** `3e63a40` — feat(llm): per-file keep/undo in change footer (Phase 14.1)
+- **Last commit:** `7f2c978` — feat(llm): token budget visualization bar (Phase 15.1)
 - **Build state:** compiles clean (`npm run compile`); smoke test passes (173 assertions); token budget bar verified
 
 > **Phase 15 — Token budget visualization (2026-10-22):**
