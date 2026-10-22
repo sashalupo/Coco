@@ -202,6 +202,11 @@
           },
           "default": [],
           "description": "Extra workspace-relative instruction file paths to load (in addition to the defaults)."
+        },
+        "llm.chat.codebaseSearch.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When the user types #codebase in a chat message, sweep the workspace (project structure, git status, text search for the query) and inject the results as context."
         }
       }
     }

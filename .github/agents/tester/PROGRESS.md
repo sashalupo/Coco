@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — S1 + S2 + S3 verified
-- **Next step:** verify next slice of item 1.98-8 (package.json setting `chat.codebaseSearch.enabled` + final smoke assertions + PROGRESS.md)
+- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — **Done** (S1–S4 verified)
+- **Next step:** verify item 1.98-9 (`#problems` tag) — first slice
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -114,7 +114,9 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-8.S1** — `src/context.ts`: `extractCodebaseQuery` + `formatCodebaseSweep` (pure) — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-8.S2** — `src/tools/ToolExecutor.ts`: `codebaseSweep(query)` public method — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-8.S3** — ChatViewProvider: detect `#codebase`, run sweep, inject context — **PASS** (2026-10-22, see Verifications)
-- [ ] Verify next slice of item **1.98-8** (package.json setting + final smoke assertions).
+- [x] **1.98-8.S4** — package.json settings schema + final smoke assertions + PROGRESS.md — **PASS** (2026-10-22, see Verifications)
+- [x] **1.98-8** — fully verified (all slices S1–S4 PASS)
+- [ ] Verify item **1.98-9** (`#problems` tag) — first slice.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -166,3 +168,13 @@ acceptance checks, and reports a clear pass/fail.
 - `src/config.ts`: `readSettings()` returns `codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true)`. PASS
 - No regression: `@file` tagged-file path and rest of `runStream` untouched. PASS
 - Scope: only `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS
+
+### 1.98-8.S4 — package.json settings schema + final smoke assertions + PROGRESS.md (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**270 assertions**; 4 new `codebase-s4:` in subsection `// 12d) codebase sweep (1.98-8.S4)`).
+- package.json: single additive hunk (+5/-0) adding `llm.chat.codebaseSearch.enabled` (`type: "boolean"`, `default: true`, description mentions `#codebase`); no other settings changed.
+- 4 new smoke assertions genuine: parsed package.json type/default checks + source-content checks on `src/config.ts` and `src/chat/ChatViewProvider.ts`.
+- Planner PROGRESS.md: `# Plan: 1.98-8` marked Done (S1–S4 annotated); Next step → 1.98-9 (`#problems`).
+- Spot-check: `runStream` gates on `settings.codebaseSearchEnabled && lastUser && this.toolExecutor`; `extractCodebaseQuery(lastUser.content) !== null` → `codebaseSweep(q)` appended after `buildContextBlock` output; setting false → tag inert. PASS.
+- Scope: only `package.json`, `scripts/smoke-test.js`, coder + planner PROGRESS.md (+ ninfer marker). PASS
+- **Item 1.98-8 fully verified (S1–S4 all PASS).**

@@ -1884,6 +1884,29 @@ function assert(cond, label) {
     "codebase-s3: presets.ts LlmSettings has codebaseSearchEnabled",
   );
 
+  // 12d) codebase sweep (1.98-8.S4): package.json setting + final static checks.
+  const pkg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const codebaseSetting =
+    pkg.contributes.configuration.properties["llm.chat.codebaseSearch.enabled"];
+  assert(
+    codebaseSetting && codebaseSetting.type === "boolean",
+    "codebase-s4: package.json llm.chat.codebaseSearch.enabled is boolean",
+  );
+  assert(
+    codebaseSetting && codebaseSetting.default === true,
+    "codebase-s4: package.json llm.chat.codebaseSearch.enabled defaults to true",
+  );
+  assert(
+    configSrc.includes("chat.codebaseSearch.enabled"),
+    "codebase-s4: config.ts reads chat.codebaseSearch.enabled",
+  );
+  assert(
+    chatViewSrc.includes("codebaseSearchEnabled"),
+    "codebase-s4: ChatViewProvider gates on codebaseSearchEnabled",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

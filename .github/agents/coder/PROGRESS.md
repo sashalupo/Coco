@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-8.S3 done (`#codebase` wired into `ChatViewProvider.runStream`; `codebaseSearchEnabled` setting pulled into S3 so the slice compiles standalone)
-- **Next step:** 1.98-8.S4 — `package.json` settings schema entry for `llm.chat.codebaseSearch.enabled` + final smoke + memory
+- **Current step:** 1.98-8.S4 done — item 1.98-8 (`#codebase` tag) **complete** (S1–S4)
+- **Next step:** 1.98-9.S1 — first slice of item 1.98-9 (`#problems` tag); awaiting planner plan
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (262 assertions, incl. `codebase-s2:` static checks)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (270 assertions, incl. `codebase-s4:` static checks)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-8.S4** (2026-10-22) — `package.json` settings schema + final smoke assertions + memory (FINAL slice of item 1.98-8). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: added `llm.chat.codebaseSearch.enabled` (boolean, default `true`) to `contributes.configuration.properties` after `llm.instructions.files`, with description "When the user types #codebase in a chat message, sweep the workspace (project structure, git status, text search for the query) and inject the results as context." JSON validated via `JSON.parse`.
+  - `scripts/smoke-test.js`: new subsection `// 12d) codebase sweep (1.98-8.S4)` with 4 static assertions: (a) parsed `package.json` has `contributes.configuration.properties["llm.chat.codebaseSearch.enabled"]` with `type === "boolean"`, (b) same entry `default === true`, (c) `src/config.ts` source contains `chat.codebaseSearch.enabled`, (d) `src/chat/ChatViewProvider.ts` source contains `codebaseSearchEnabled` (gate actually used). Reuses the `configSrc`/`chatViewSrc` reads from 12c.
+  - `.github/agents/planner/PROGRESS.md`: marked plan 1.98-8 **Done** (S1–S4, each slice line annotated `— Done (2026-10-22)`; S3/S4 notes record that the `codebaseSearchEnabled` config field was pulled into S3 so it compiles standalone); Status Current item → 1.98-8 Done, Next step → plan backlog item 1.98-9 (`#problems` tag); Done section entry added; Todo updated.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **270 assertions** (266 prior + 4 new `codebase-s4:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-1.S1** (2026-10-22) — Webview `command_approval` card. File: `src/chat/webview.ts` only.
   - Added `case 'command_approval':` in the host-message handler, sibling to `approval_request`.
     Builds a `.message.command-approval` card: role line "Run command?", a
@@ -142,6 +148,12 @@ by step, one step per session.
 - [x] Slice 1.98-2.S5 — context: render tagged .ipynb files as cells (`src/context.ts`).
 - [x] Slice 1.98-2.S6 — package.json descriptions + final smoke assertions + PROGRESS.md (final slice).
 - [ ] Item 1.98-2 complete — awaiting Tester verification.
+- [x] Slice 1.98-8.S1 — `#codebase` pure helpers in `src/context.ts`.
+- [x] Slice 1.98-8.S2 — `ToolExecutor.codebaseSweep(query)` data gathering.
+- [x] Slice 1.98-8.S3 — `ChatViewProvider.runStream` wiring (gated on `codebaseSearchEnabled`; config field pulled into S3).
+- [x] Slice 1.98-8.S4 — `package.json` settings schema + final smoke assertions + PROGRESS.md (final slice).
+- [ ] Item 1.98-8 complete — awaiting Tester verification.
+- [ ] Item 1.98-9 (`#problems` tag) — awaiting planner plan; first slice is next.
 
 ## Notes / decisions
 
