@@ -15,7 +15,8 @@
     "onCommand:llm.showStatusOverview",
     "onCommand:llm.usePrompt",
     "onCommand:llm.mcp.addServer",
-    "onCommand:llm.mcp.listServers"
+    "onCommand:llm.mcp.listServers",
+    "onCommand:llm.toggleCompletions"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -51,6 +52,11 @@
       {
         "command": "llm.changeCompletionsModel",
         "title": "LLM: Change Completions Model"
+      },
+      {
+        "command": "llm.toggleCompletions",
+        "title": "Toggle Completions",
+        "category": "LLM"
       },
       {
         "command": "llm.mcp.addServer",
@@ -212,7 +218,7 @@
         "llm.inline.enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect."
+          "description": "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect. Toggle it from the LLM status menu ('LLM: Toggle Completions'); the status bar icon shows whether completions are enabled for the active editor."
         },
         "llm.codeAction.enabled": {
           "type": "boolean",

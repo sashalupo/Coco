@@ -12,7 +12,7 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-16 (Copilot status menu) — **planned** (2026-10-22, 3 slices S1–S3)
+- **Current item:** 1.99-16 (Copilot status menu) — **DONE** (2026-10-22, 3 slices S1–S3, 518 assertions)
 - **Next step:** orchestrator runs the slice pipeline starting at 1.99-16.S1
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
@@ -1456,7 +1456,7 @@ a language-feature provider).
 
 **Total expected assertions after all slices: 507** (baseline 497 + 10 new: 4 `vis-s1` + 4 `vis-s2` + 2 `vis-s3`).
 
-### Item 1.99-16 — Copilot status menu (planned 2026-10-22)
+### Item 1.99-16 — Copilot status menu (planned 2026-10-22) — **DONE** (2026-10-22, 3 slices S1–S3, 518 assertions)
 
 **Changelog reference:** VS Code 1.99 (March 2025), "Configure the editor" — "Copilot status menu": the status-bar menu is now enabled for all users; new features: (1) view workspace index status at any time; (2) a new icon reflects whether code completions are enabled for the active editor (`copilot-disabled-status.png` shows the dimmed/disabled icon); (3) enable or disable code completions and NES from the menu.
 
@@ -1496,7 +1496,7 @@ a language-feature provider).
     - `stmenu-s2: showStatusOverview passes the completions-enabled flag to statusOverviewItems`
   - Acceptance: `npm run compile` passes; the 4 `stmenu-s2:` assertions pass; no existing assertion regresses.
 
-- **1.99-16.S3** — `package.json`: command contribution + setting description
+- **1.99-16.S3** — `package.json`: command contribution + setting description — Done (2026-10-22, PASS, 518 assertions, item 1.99-16 complete)
   - Files: `package.json`
   - Changes:
     - `contributes.commands`: add `{ "command": "llm.toggleCompletions", "title": "Toggle Completions", "category": "LLM" }` (next to `llm.changeCompletionsModel`).

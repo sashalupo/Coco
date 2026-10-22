@@ -3939,6 +3939,36 @@ function assert(cond, label) {
     "stmenu-s2: showStatusOverview passes the completions-enabled flag to statusOverviewItems",
   );
 
+  // 46) Copilot status menu — package.json contributions (1.99-16.S3)
+  const pkgStmenuS3 = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const toggleCompletionsCmd = (pkgStmenuS3.contributes.commands || []).find(
+    (c) => c.command === "llm.toggleCompletions",
+  );
+  assert(
+    toggleCompletionsCmd &&
+      typeof toggleCompletionsCmd.title === "string" &&
+      toggleCompletionsCmd.title.length > 0,
+    "stmenu-s3: package.json contributes the llm.toggleCompletions command with a title",
+  );
+  assert(
+    (pkgStmenuS3.activationEvents || pkgStmenuS3.contributes.activationEvents || []).includes(
+      "onCommand:llm.toggleCompletions",
+    ),
+    "stmenu-s3: package.json has the onCommand:llm.toggleCompletions activation event",
+  );
+  const inlineEnabledSetting =
+    pkgStmenuS3.contributes.configuration.properties["llm.inline.enabled"];
+  assert(
+    inlineEnabledSetting &&
+      typeof inlineEnabledSetting.description === "string" &&
+      (inlineEnabledSetting.description.includes("status menu") ||
+        inlineEnabledSetting.description.includes("Toggle Completions")) &&
+      inlineEnabledSetting.description.includes("active editor"),
+    "stmenu-s3: llm.inline.enabled description mentions the status menu / active editor",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

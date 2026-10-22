@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-16** — Copilot status menu (completions indicator + toggle) — in progress (S1+S2 done, S3 pending)
-- **Current slice:** 1.99-16.S2 DONE
+- **Current item:** **1.99-16** — Copilot status menu (completions indicator + toggle) — **DONE** (S1–S3, 2026-10-22)
+- **Current slice:** 1.99-16.S3 DONE (item complete)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-16.S3 (package.json contributions — FINAL slice of item), then Tester
+- **Next step:** dispatch Planner for item **1.99-19** (`#searchResults` tool), record plan, commit, run slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** 4886fc4 (feat: copilot status menu — pure completions-status helpers (1.99-16.S1)); S2 commit pending
-- **Build state:** compiles clean; smoke test passes (515 assertions)
+- **Last commit:** 6ca092a (feat: copilot status menu — host indicator + toggle command (1.99-16.S2)); S3 commit pending
+- **Build state:** compiles clean; smoke test passes (518 assertions); 1.99-16 complete
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -59,6 +59,7 @@ pending item** (the oldest).
 - **1.99-10** (2026-10-22) — Unified Chat view (mode picker + history), 4 slices S1–S4: ChatMode/normalizeChatMode/modeAddendum in presets, buildRequestBody ask→no tools + tool_choice none, host wiring (ToolbarState.mode, setMode, modeAddendum in system prompt), webview Mode picker (Ask/Agent/Edit, default Agent). Commits 0fbd12e, e281b7f, efbab3c + S4 commit. Smoke 472 → 479. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.99-12** (2026-10-22) — Reusable prompt files, 5 slices S1–S5: pure helpers in src/prompts.ts (promptTitle/stripPromptComments/promptBlock/PROMPT_TEMPLATE, MAX_PROMPT_CHARS 32k), promptFiles setting (llm.promptFiles.locations, default .prompts/**/*.prompt.md + .github/copilot-instructions.md), llm.usePrompt command (QuickPick of discovered prompts + New Prompt File… from template, no overwrite), prompt_inject webview handler (prepend to chat input, draft preserved, focus), package.json contributions. S3 split into S3a/S3b (Coder session truncation); GlobPattern deviation (per-glob findFiles loop + Set dedup). Smoke 484 → 497. Commits b54baa0, 3b59647, 3a1ddf7, 5e9a402 + S5 commit. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.99-13** (2026-10-22) — Improved vision support (Preview), 3 slices S1–S3: URL-image helpers in src/request.ts (IMAGE_URL_EXTENSIONS, isImageUrl, mimeFromImageUrl), webview .bmp support (IMAGE_TYPES, accept attr, attach title) + addImageUrl (fetch → blob → FileReader → data URL) + drop handler reading text/uri-list items with inline extension regex, host sanitize regex accepts bmp data URLs, llm.chat.vision.enabled description updated. Smoke 497 → 507. Commits 7971ca4, 6d69548 + S3 commit. **Item complete — no tag (changelog-1.99 already exists).**
+- **1.99-16** (2026-10-22) — Copilot status menu, 3 slices S1–S3: `completionsStatusLabel` pure helper (pass-filled / pass-filled~strikethrough icon), `statusOverviewItems` 5th Completions row + `STATUS_COMMANDS` Toggle Completions entry, host status-bar indicator (refresh on `onDidChangeActiveTextEditor`) + `llm.toggleCompletions` QuickPick command writing `llm.inline.enabled` (workspace/global target, reload required), package.json contributions (command + top-level activation event + setting description). Deviations: workspace index status (GitHub-service) and NES skipped; activation event at top-level `activationEvents` (package style). Smoke 507 → 518. Commits 4886fc4, 6ca092a + S3 commit. **Item complete — no tag (changelog-1.99 already exists).**
 
 
 

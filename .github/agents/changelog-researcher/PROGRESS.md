@@ -386,7 +386,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   from the menu.
 - **Image notes:** `copilot-workspace-index-remote.png`, `copilot-disabled-status.png`.
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 3 slices S1–S3; `completionsStatusLabel` helper + `statusOverviewItems` 5th row + `STATUS_COMMANDS` entry (presets.ts); host status-bar indicator + `onDidChangeActiveTextEditor` refresh + `llm.toggleCompletions` QuickPick command writing `llm.inline.enabled` (extension.ts); package.json command contribution + top-level activation event + `llm.inline.enabled` description; deviations: workspace index status (GitHub-service) and NES skipped; smoke 507 → 518)
 - **Gap vs existing:** 1.98-15 added the engine status indicator + overview QuickPick.
   Extend: completions-enabled indicator in the status bar (reflects
   `llm.completions.enabled` + active editor language) and a "Completions: on/off" toggle in
@@ -505,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-16** Copilot status menu (completions indicator + toggle)
 - **1.99-19** `#searchResults` tool
 - **1.99-23** AI edits improvements (explicit save on keep)
 - **1.99-27** Minimal nbformat 4.5 (cell `id` fields)

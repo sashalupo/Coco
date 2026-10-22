@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-16 (Copilot status menu) — S2 done
-- **Next step:** 1.99-16.S3
+- **Current item:** 1.99-16 (Copilot status menu) — **Done** (all 3 slices S1–S3)
+- **Next step:** await next backlog item (1.99-19)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (515 assertions)
+- **Build state:** compiles clean; smoke test passes (518 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,12 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-16.S3** (2026-10-22, FINAL) — package.json contributions for `llm.toggleCompletions`. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: (a) `contributes.commands` gains `{ "command": "llm.toggleCompletions", "title": "Toggle Completions", "category": "LLM" }` right after the `llm.changeCompletionsModel` entry; (b) top-level `activationEvents` gains `onCommand:llm.toggleCompletions` after `onCommand:llm.mcp.listServers` (note: this package keeps activation events at the top level, not under `contributes`); (c) `llm.inline.enabled` description replaced with "Enable inline (ghost text) completion. Opt-in; requires a reload to take effect. Toggle it from the LLM status menu ('LLM: Toggle Completions'); the status bar icon shows whether completions are enabled for the active editor." (`type`/`default` unchanged). JSON validated with `JSON.parse` → `json ok`.
+  - `scripts/smoke-test.js`: new section `// 46) Copilot status menu — package.json contributions (1.99-16.S3)` at end (after section 45, before final summary print); `JSON.parse` of `package.json` (local `pkgStmenuS3`); 3 `stmenu-s3:` assertions: (a) `contributes.commands` contains `llm.toggleCompletions` with a non-empty `title`; (b) activation events contain `onCommand:llm.toggleCompletions` (checks top-level `activationEvents`, falling back to `contributes.activationEvents`); (c) `llm.inline.enabled` description mentions the status menu ("status menu" or "Toggle Completions") AND "active editor". Total PASS lines now 518 (515 + 3).
+  - Verified: `node -e "JSON.parse(...)"` → json ok; `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 518 PASS, 0 FAIL; `git status --short` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
+  - **Item 1.99-16 (Copilot status menu) complete** — all 3 slices S1–S3 done.
 - **1.99-16.S2** (2026-10-22) — host wiring: status bar completions indicator + `llm.toggleCompletions` command. Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/extension.ts`: (a) `completionsStatusLabel` added to the `./presets` import; (b) `updateHealth` now computes `const cs = completionsStatusLabel(inlineEnabled, vscode.window.activeTextEditor !== undefined)` (reuses the activation-time `inlineEnabled` read, already in scope) and sets `status.text = `${icon} ${text} ${cs.icon} ${cs.text}`` with `cs.tooltip` appended to `status.tooltip` via `" | "`; (c) new `vscode.window.onDidChangeActiveTextEditor(() => void updateHealth())` subscription inside the `statusBarEnabled` block (after the window-state listener); (d) `llm.showStatusOverview` handler reads `inline.enabled` via `vscode.workspace.getConfiguration("llm").get<boolean>("inline.enabled", false)` and passes it as the trailing 5th arg to `statusOverviewItems(...)`; (e) new `llm.toggleCompletions` command registered right after `llm.changeCompletionsModel`, mirroring its pattern: reads `inline.enabled`, QuickPick of Enable/Disable items with `description: "active"` on the current state, `cfg.update("inline.enabled", picked.value, target)` (Workspace vs Global by `workspaceFolders`), info message "Inline completions enabled/disabled. Reload the window to apply."
   - `scripts/smoke-test.js`: new section `// 45) Copilot status menu — host wiring (1.99-16.S2)` at end (after section 44, before final summary print); static `fs.readFileSync` on `src/extension.ts` (local `extSrcStmenuS2`); 4 `stmenu-s2:` assertions: (a) `completionsStatusLabel` present + a `completionsStatusLabel(` call within 200 chars before `status.text =`; (b) regex `onDidChangeActiveTextEditor(() => void updateHealth())`; (c) `registerCommand("llm.toggleCompletions"` + `update("inline.enabled"` within 1200 chars; (d) in the `llm.showStatusOverview` handler, `get<boolean>("inline.enabled"` before a `statusOverviewItems(` call passing `completionsEnabled,` as trailing arg. Total PASS lines now 515 (511 + 4).
