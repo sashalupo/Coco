@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-9.S2 done — `ToolExecutor.collectDiagnostics` shared helper (refactor of `get_diagnostics` + 50-problem cap)
-- **Next step:** 1.98-9.S3 — wire `#problems` sweep into ChatViewProvider (reuse `collectDiagnostics`)
+- **Current step:** 1.98-9.S3 done — `#problems` wiring in ChatViewProvider + `problemsEnabled` setting
+- **Next step:** 1.98-9.S4 — (per planner)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (284 assertions, incl. `problems-s2:` static checks)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (290 assertions, incl. `problems-s3:` static checks)
 
 ## Plan pointer
 
@@ -25,6 +25,13 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-9.S3** (2026-10-22) — `#problems` wiring: `problemsEnabled` field + ChatViewProvider integration. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: added `problemsEnabled: boolean;` to `LlmSettings` (next to `codebaseSearchEnabled`), with doc comment "Enable the `#problems` chat tag (diagnostics injected as context).".
+  - `src/config.ts`: `readSettings()` now returns `problemsEnabled: c.get<boolean>("chat.problems.enabled", true)` (next to `codebaseSearchEnabled`).
+  - `src/chat/ChatViewProvider.ts`: extended the `../context` import with `extractProblemsTag` + `formatProblemsBlock`. In `runStream`, immediately after the `#codebase` block and before `composeSystemPrompt`, added the `#problems` wiring: gated on `settings.problemsEnabled && lastUser && this.toolExecutor` (runs regardless of `llm.tools.enabled`, same as `#codebase`); `extractProblemsTag(lastUser.content)` → if non-null, `await this.toolExecutor.collectDiagnostics(p || undefined)`; **qualifier fallback**: if `p` is non-empty and the returned text starts with `"Path not allowed"`, re-call `collectDiagnostics()` with no argument and use default scope (one fallback, no user-facing message); `formatProblemsBlock({ text: problemsText }, problemsScope)` appended to `finalContextBlock` with `"\n\n"` join when non-empty.
+  - `scripts/smoke-test.js`: new subsection `// 13c) problems tag (1.98-9.S3)` with 6 static assertions (`problems-s3:` labels) reusing the `chatViewSrc`/`configSrc`/`presetsSrc` reads from 12c: ChatViewProvider contains `extractProblemsTag`, `formatProblemsBlock`, `collectDiagnostics(`, `problemsEnabled`; `config.ts` contains `chat.problems.enabled`; `presets.ts` contains `problemsEnabled`.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **290 assertions** (284 prior + 6 new `problems-s3:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-9.S2** (2026-10-22) — `src/tools/ToolExecutor.ts`: `collectDiagnostics` shared helper (pure extraction of `get_diagnostics` core + 50-problem cap). Files: `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/tools/ToolExecutor.ts`: extracted the body of `private getDiagnostics(call, relPath?)` into new `public async collectDiagnostics(relPath?: string): Promise<string>` — byte-identical workspace-folder guard ("No workspace folder — cannot read diagnostics."), path-safety check ("Path not allowed (outside workspace): …"), collection + per-file formatting, and empty-result strings ("No diagnostics in open files (clean)." / "No diagnostics in <relPath> (clean)."). NEW cap: counts total problems; if > 50, only the first 50 are rendered (file headers with zero rendered lines are skipped) and `\n… (showing first 50 of N)` is appended (N = total). `getDiagnostics` is now a thin async wrapper: `const text = await this.collectDiagnostics(relPath); return this.result(call, text);` (call site at ~line 314 already `await`s it, so the tool's observable output is unchanged except for the new cap above 50 problems).
   - `scripts/smoke-test.js`: new subsection `// 13b) problems tag (1.98-9.S2)` with 4 static assertions on the `ToolExecutor.ts` source (reuses the `toolExecSrc` read from 12b): (a) contains `collectDiagnostics(`, (b) `collectDiagnostics(` appears ≥ 2 times (definition + call from `getDiagnostics`), (c) still contains `getDiagnostics` (tool case intact), (d) contains `showing first 50` (cap note present).

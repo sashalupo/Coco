@@ -1983,6 +1983,32 @@ function assert(cond, label) {
     "problems-s2: 50-problem cap note present",
   );
 
+  // 13c) problems tag (1.98-9.S3): chat wiring static checks.
+  assert(
+    chatViewSrc.includes("extractProblemsTag"),
+    "problems-s3: ChatViewProvider imports/uses extractProblemsTag",
+  );
+  assert(
+    chatViewSrc.includes("formatProblemsBlock"),
+    "problems-s3: ChatViewProvider imports/uses formatProblemsBlock",
+  );
+  assert(
+    chatViewSrc.includes("collectDiagnostics("),
+    "problems-s3: ChatViewProvider calls collectDiagnostics(",
+  );
+  assert(
+    chatViewSrc.includes("problemsEnabled"),
+    "problems-s3: ChatViewProvider gates on problemsEnabled",
+  );
+  assert(
+    configSrc.includes("chat.problems.enabled"),
+    "problems-s3: config.ts reads chat.problems.enabled",
+  );
+  assert(
+    presetsSrc.includes("problemsEnabled"),
+    "problems-s3: presets.ts LlmSettings has problemsEnabled",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

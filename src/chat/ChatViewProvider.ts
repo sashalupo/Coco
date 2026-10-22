@@ -25,6 +25,8 @@ import {
 import {
   buildContextBlock,
   extractCodebaseQuery,
+  extractProblemsTag,
+  formatProblemsBlock,
   extractTaggedFiles,
   type ContextFile,
   type ContextInput,
@@ -938,6 +940,35 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + codebaseBlock
               : codebaseBlock;
+          }
+        }
+      }
+
+      // 1.98-9.S3: `#problems` tag — collect diagnostics (workspace-wide, or
+      // one file if the tag carries a path qualifier) and append the result
+      // to the context block. Gated only on settings.problemsEnabled (runs
+      // regardless of llm.tools.enabled, same as `#codebase`).
+      if (settings.problemsEnabled && lastUser && this.toolExecutor) {
+        const p = extractProblemsTag(lastUser.content);
+        if (p !== null) {
+          let problemsText = await this.toolExecutor.collectDiagnostics(
+            p || undefined,
+          );
+          let problemsScope = p || undefined;
+          // Qualifier fallback: if the path was rejected (outside workspace),
+          // fall back to workspace scope. One fallback, no user-facing message.
+          if (p && problemsText.startsWith("Path not allowed")) {
+            problemsText = await this.toolExecutor.collectDiagnostics();
+            problemsScope = undefined;
+          }
+          const problemsBlock = formatProblemsBlock(
+            { text: problemsText },
+            problemsScope,
+          );
+          if (problemsBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + problemsBlock
+              : problemsBlock;
           }
         }
       }

@@ -105,6 +105,15 @@ acceptance checks, and reports a clear pass/fail.
 - **Scope check:** `git status --short` → only `src/tools/ToolExecutor.ts` (+38/-14), `scripts/smoke-test.js` (+19), `.github/agents/coder/PROGRESS.md`; `ninfer` submodule dirty marker (not a source change). PASS
 - **New smoke assertions (4, subsection 13b):** genuine source-content checks on `toolExecSrc` — `collectDiagnostics(` present, occurrence count ≥ 2 (definition + call site), `getDiagnostics` still present, `showing first 50` cap note present. Not tautologies. PASS
 
+### 1.98-9.S3 — `problemsEnabled` field + `#problems` wiring (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**290 assertions**; 6 new `problems-s3:` green in subsection `// 13c) problems tag (1.98-9.S3)`).
+- `src/presets.ts`: `LlmSettings` gains `problemsEnabled: boolean;` (single additive line + doc comment). PASS
+- `src/config.ts`: `readSettings()` returns `problemsEnabled: c.get<boolean>("chat.problems.enabled", true)` (single additive line). PASS
+- `src/chat/ChatViewProvider.ts` (git diff = 2 hunks, +31/-0): (a) `extractProblemsTag` + `formatProblemsBlock` added to the `../context` import. (b) In `runStream`, immediately after the `#codebase` block and before `composeSystemPrompt`: gated on `settings.problemsEnabled && lastUser && this.toolExecutor`; `extractProblemsTag(lastUser.content)` → `await this.toolExecutor.collectDiagnostics(p || undefined)`; qualifier fallback — if `p` non-empty and text starts with `"Path not allowed"`, re-call `collectDiagnostics()` with no arg and reset scope to default; `formatProblemsBlock({ text: problemsText }, problemsScope)`; non-empty block appended to `finalContextBlock` with the same `\n\n` join pattern as `#codebase`. (c) `#codebase` wiring and all other methods untouched (diff review). (d) `composeSystemPrompt` still receives `finalContextBlock`. All PASS.
+- 6 new smoke assertions genuine: source-content checks on `chatViewSrc` (`extractProblemsTag`, `formatProblemsBlock`, `collectDiagnostics(`, `problemsEnabled`), `configSrc` (`chat.problems.enabled`), `presetsSrc` (`problemsEnabled`). Not tautologies. PASS
+- Scope: only `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer submodule marker). PASS
+
 ## Done
 
 - [x] **1.98-1.S1** — webview `command_approval` card — **PASS** (2026-10-22, see Verifications)

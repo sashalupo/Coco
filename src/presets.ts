@@ -90,6 +90,8 @@ export interface LlmSettings {
   instructionFiles: string[];
   /** Enable the `#codebase` chat tag (workspace sweep injected as context). */
   codebaseSearchEnabled: boolean;
+  /** Enable the `#problems` chat tag (diagnostics injected as context). */
+  problemsEnabled: boolean;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */
