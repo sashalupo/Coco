@@ -34,6 +34,7 @@ const {
   parseNotebook,
   formatNotebookForContext,
   createNotebook,
+  applyNotebookEdit,
 } = require(path.join(__dirname, "..", "out", "notebook.js"));
 
 const PORT = 18099;
@@ -1299,6 +1300,190 @@ function assert(cond, label) {
   assert(
     nbCreatedDoc.cells[2].source === "# md cell",
     "notebook: createNotebook last cell source",
+  );
+
+  // 10b) applyNotebookEdit (1.98-2 S3): the 5 actions on out/notebook.js
+  const nbEditFixture = JSON.stringify({
+    cells: [
+      {
+        cell_type: "code",
+        source: "print('hi')\n",
+        outputs: [
+          { output_type: "stream", name: "stdout", text: "hi\n" },
+        ],
+        execution_count: 1,
+      },
+      { cell_type: "markdown", source: ["# Title\n", "Some text\n"] },
+    ],
+    metadata: { language_info: { name: "python" } },
+    nbformat: 4,
+    nbformat_minor: 5,
+  });
+
+  // create
+  const nbCreate = applyNotebookEdit(
+    "",
+    { action: "create", source: "a = 1\n<<<CELL>>>\n# md" },
+  );
+  assert(nbCreate.ok, "notebook-edit: create ok");
+  const nbCreateDoc = parseNotebook(nbCreate.newContent);
+  assert(
+    nbCreateDoc && nbCreateDoc.cells.length === 2,
+    "notebook-edit: create produces 2 cells",
+  );
+  assert(
+    nbCreate.message === "Created notebook with 2 cell(s).",
+    "notebook-edit: create message",
+  );
+
+  // modify_cell
+  const nbModify = applyNotebookEdit(nbEditFixture, {
+    action: "modify_cell",
+    cellIndex: 0,
+    source: "print('bye')\n",
+  });
+  assert(nbModify.ok, "notebook-edit: modify_cell ok");
+  const nbModifyDoc = parseNotebook(nbModify.newContent);
+  assert(
+    nbModifyDoc &&
+      nbModifyDoc.cells.length === 2 &&
+      nbModifyDoc.cells[0].source === "print('bye')\n" &&
+      nbModifyDoc.cells[0].cell_type === "code",
+    "notebook-edit: modify_cell replaces source, keeps type/count",
+  );
+  assert(
+    nbModify.message ===
+      "Modified cell 0 (code): 13 chars of source.",
+    "notebook-edit: modify_cell message",
+  );
+  // outputs of the modified cell are preserved (raw doc re-serialized)
+  const nbModifyRaw = JSON.parse(nbModify.newContent);
+  assert(
+    Array.isArray(nbModifyRaw.cells[0].outputs) &&
+      nbModifyRaw.cells[0].outputs.length === 1,
+    "notebook-edit: modify_cell preserves outputs",
+  );
+  assert(
+    nbModifyRaw.nbformat === 4 &&
+      nbModifyRaw.metadata.language_info.name === "python",
+    "notebook-edit: modify_cell preserves top-level fields",
+  );
+
+  // insert_cell (middle)
+  const nbInsert = applyNotebookEdit(nbEditFixture, {
+    action: "insert_cell",
+    cellIndex: 1,
+    cellType: "markdown",
+    source: "Inserted\n",
+  });
+  assert(nbInsert.ok, "notebook-edit: insert_cell ok");
+  const nbInsertDoc = parseNotebook(nbInsert.newContent);
+  assert(
+    nbInsertDoc &&
+      nbInsertDoc.cells.length === 3 &&
+      nbInsertDoc.cells[1].cell_type === "markdown" &&
+      nbInsertDoc.cells[1].source === "Inserted\n",
+    "notebook-edit: insert_cell splices at index",
+  );
+  assert(
+    nbInsert.message ===
+      "Inserted markdown cell at index 1. 3 cells total.",
+    "notebook-edit: insert_cell message",
+  );
+  // insert_cell (append, undefined index) + code cell defaults
+  const nbAppend = applyNotebookEdit(nbEditFixture, {
+    action: "insert_cell",
+    source: "x = 2\n",
+  });
+  assert(nbAppend.ok, "notebook-edit: insert_cell append ok");
+  const nbAppendDoc = parseNotebook(nbAppend.newContent);
+  assert(
+    nbAppendDoc &&
+      nbAppendDoc.cells.length === 3 &&
+      nbAppendDoc.cells[2].cell_type === "code" &&
+      nbAppendDoc.cells[2].source === "x = 2\n",
+    "notebook-edit: insert_cell undefined index appends as code",
+  );
+  const nbAppendRaw = JSON.parse(nbAppend.newContent);
+  assert(
+    Array.isArray(nbAppendRaw.cells[2].outputs) &&
+      nbAppendRaw.cells[2].outputs.length === 0 &&
+      nbAppendRaw.cells[2].execution_count === null,
+    "notebook-edit: inserted code cell has outputs:[] and execution_count:null",
+  );
+
+  // delete_cell
+  const nbDelete = applyNotebookEdit(nbEditFixture, {
+    action: "delete_cell",
+    cellIndex: 1,
+  });
+  assert(nbDelete.ok, "notebook-edit: delete_cell ok");
+  const nbDeleteDoc = parseNotebook(nbDelete.newContent);
+  assert(
+    nbDeleteDoc &&
+      nbDeleteDoc.cells.length === 1 &&
+      nbDeleteDoc.cells[0].cell_type === "code",
+    "notebook-edit: delete_cell removes cell",
+  );
+  assert(
+    nbDelete.message === "Deleted cell 1 (markdown). 1 cells remain.",
+    "notebook-edit: delete_cell message",
+  );
+
+  // change_cell_type
+  const nbChange = applyNotebookEdit(nbEditFixture, {
+    action: "change_cell_type",
+    cellIndex: 0,
+    cellType: "markdown",
+  });
+  assert(nbChange.ok, "notebook-edit: change_cell_type ok");
+  const nbChangeDoc = parseNotebook(nbChange.newContent);
+  assert(
+    nbChangeDoc &&
+      nbChangeDoc.cells.length === 2 &&
+      nbChangeDoc.cells[0].cell_type === "markdown" &&
+      nbChangeDoc.cells[0].source === "print('hi')\n",
+    "notebook-edit: change_cell_type switches type, keeps source",
+  );
+  assert(
+    nbChange.message === "Changed cell 0 to markdown.",
+    "notebook-edit: change_cell_type message",
+  );
+
+  // error cases
+  const nbErrBadJson = applyNotebookEdit("not json", {
+    action: "modify_cell",
+    cellIndex: 0,
+    source: "x",
+  });
+  assert(
+    !nbErrBadJson.ok && nbErrBadJson.message.includes("Invalid notebook"),
+    "notebook-edit: bad JSON -> ok:false",
+  );
+  const nbErrRange = applyNotebookEdit(nbEditFixture, {
+    action: "modify_cell",
+    cellIndex: 5,
+    source: "x",
+  });
+  assert(
+    !nbErrRange.ok && nbErrRange.message.includes("[0, 2)"),
+    "notebook-edit: out-of-range cellIndex -> ok:false with range",
+  );
+  const nbErrNoSource = applyNotebookEdit(nbEditFixture, {
+    action: "modify_cell",
+    cellIndex: 0,
+  });
+  assert(
+    !nbErrNoSource.ok && nbErrNoSource.message.includes("source"),
+    "notebook-edit: modify_cell without source -> ok:false",
+  );
+  const nbErrUnknown = applyNotebookEdit(nbEditFixture, {
+    action: "explode",
+  });
+  assert(
+    !nbErrUnknown.ok &&
+      nbErrUnknown.message === "Unknown action: explode",
+    "notebook-edit: unknown action -> ok:false",
   );
 
   assert(

@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-2 (notebook support in chat) — slices S1–S2 verified
-- **Next step:** verify slice 1.98-2.S3 (`applyNotebookEdit` — the 5 actions)
+- **Current item:** 1.98-2 (notebook support in chat) — slices S1–S3 verified
+- **Next step:** verify slice 1.98-2.S4 (ToolExecutor: execute `notebook_edit`)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -106,7 +106,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-1** — fully verified (all slices S1–S5 PASS)
 - [x] **1.98-2.S1** — `notebook_edit` tool schema + mutating flag — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-2.S2** — `src/notebook.ts` pure parse/format/create helpers — **PASS** (2026-10-22)
-- [ ] Verify slice **1.98-2.S3** — `applyNotebookEdit` (the 5 actions).
+- [x] **1.98-2.S3** — `applyNotebookEdit` (the 5 actions) — **PASS** (2026-10-22)
+- [ ] Verify slice **1.98-2.S4** — ToolExecutor: execute `notebook_edit`.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -120,3 +121,7 @@ acceptance checks, and reports a clear pass/fail.
 ### 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers (2026-10-22) — **PASS**
 
 - Build: `npm run compile` exit 0. Smoke test: ALL PASSED (196 assertions; 17 new `notebook:` green). Static checks a–d PASS (pure module, null on bad JSON/missing cells, string[] join, nbformat-4 re-parse, `<<<CELL>>>` split, fence switching). Scope: only `src/notebook.ts` (new) + `scripts/smoke-test.js` (+88).
+
+### 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (24 new `notebook-edit:` assertions green, incl. 4 error cases). Static checks a–d PASS: 5 actions + unknown→ok:false; cellIndex integer in [0,cells.length) for modify/delete/change, clamped [0,cells.length] for insert (undefined→append), range in error messages; mutations re-serialize raw doc via `parseNotebookRaw` + `JSON.stringify(raw, null, 1)` (non-`cells` fields preserved); `modify_cell` requires source, `change_cell_type` requires valid cellType. Scope: only `src/notebook.ts` (+166) + `scripts/smoke-test.js` (+185) among source files.

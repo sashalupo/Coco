@@ -22,11 +22,12 @@ export interface NbDoc {
 export const CELL_MARKER = "<<<CELL>>>";
 
 /**
- * Parse notebook JSON text into a normalized `NbDoc`. Returns `null` on any
- * failure: bad JSON, missing/non-array `cells`, or a cell with a bad shape
- * (wrong `cell_type`, non-string/non-array `source`).
+ * Validate notebook JSON text and return the raw parsed object (all fields
+ * preserved). Returns `null` on any failure: bad JSON, missing/non-array
+ * `cells`, or a cell with a bad shape (wrong `cell_type`,
+ * non-string/non-array `source`).
  */
-export function parseNotebook(text: string): NbDoc | null {
+function parseNotebookRaw(text: string): Record<string, unknown> | null {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -36,26 +37,44 @@ export function parseNotebook(text: string): NbDoc | null {
   if (typeof raw !== "object" || raw === null) return null;
   const obj = raw as Record<string, unknown>;
   if (!Array.isArray(obj.cells)) return null;
-
-  const cells: NbCell[] = [];
   for (const c of obj.cells) {
     if (typeof c !== "object" || c === null) return null;
     const cell = c as Record<string, unknown>;
     if (cell.cell_type !== "code" && cell.cell_type !== "markdown") {
       return null;
     }
-    let source: string;
-    if (typeof cell.source === "string") {
-      source = cell.source;
-    } else if (Array.isArray(cell.source)) {
-      if (!cell.source.every((s) => typeof s === "string")) return null;
-      source = (cell.source as string[]).join("");
-    } else {
-      return null;
+    if (typeof cell.source === "string") continue;
+    if (
+      Array.isArray(cell.source) &&
+      cell.source.every((s) => typeof s === "string")
+    ) {
+      continue;
     }
-    const out: NbCell = { cell_type: cell.cell_type, source };
-    if (Array.isArray(cell.outputs)) {
-      out.outputs = cell.outputs;
+    return null;
+  }
+  return obj;
+}
+
+/**
+ * Parse notebook JSON text into a normalized `NbDoc`. Returns `null` on any
+ * failure: bad JSON, missing/non-array `cells`, or a cell with a bad shape
+ * (wrong `cell_type`, non-string/non-array `source`).
+ */
+export function parseNotebook(text: string): NbDoc | null {
+  const raw = parseNotebookRaw(text);
+  if (!raw) return null;
+
+  const cells: NbCell[] = [];
+  for (const c of raw.cells as Record<string, unknown>[]) {
+    let source: string;
+    if (typeof c.source === "string") {
+      source = c.source;
+    } else {
+      source = (c.source as string[]).join("");
+    }
+    const out: NbCell = { cell_type: c.cell_type as "code" | "markdown", source };
+    if (Array.isArray(c.outputs)) {
+      out.outputs = c.outputs;
     }
     cells.push(out);
   }
@@ -128,4 +147,121 @@ export function createNotebook(source: string): string {
     nbformat_minor: 5,
   };
   return JSON.stringify(doc, null, 1);
+}
+
+/**
+ * Apply one `notebook_edit` action to notebook JSON text. Mutates only the
+ * `cells` array of the raw doc (all other fields are preserved) and returns
+ * the re-serialized notebook as `newContent`. `create` ignores `text` and
+ * builds a fresh notebook via `createNotebook`.
+ */
+export function applyNotebookEdit(
+  text: string,
+  edit: {
+    action: string;
+    cellIndex?: number;
+    cellType?: "code" | "markdown";
+    source?: string;
+  },
+): { ok: boolean; message: string; newContent?: string } {
+  const { action } = edit;
+
+  if (action === "create") {
+    const newContent = createNotebook(edit.source ?? "");
+    const doc = parseNotebook(newContent);
+    const n = doc ? doc.cells.length : 0;
+    return {
+      ok: true,
+      message: `Created notebook with ${n} cell(s).`,
+      newContent,
+    };
+  }
+
+  const raw = parseNotebookRaw(text);
+  if (!raw) {
+    return {
+      ok: false,
+      message: "Invalid notebook: could not parse .ipynb JSON.",
+    };
+  }
+  const cells = raw.cells as Record<string, unknown>[];
+  const inRange = (idx: unknown): idx is number =>
+    typeof idx === "number" && Number.isInteger(idx) && idx >= 0 && idx < cells.length;
+  const rangeError = (): { ok: false; message: string } => ({
+    ok: false,
+    message: `cellIndex out of range: expected an integer in [0, ${cells.length}).`,
+  });
+  const serialize = (): string => JSON.stringify(raw, null, 1);
+
+  switch (action) {
+    case "modify_cell": {
+      if (typeof edit.source !== "string") {
+        return { ok: false, message: "modify_cell requires a source." };
+      }
+      if (!inRange(edit.cellIndex)) return rangeError();
+      const idx = edit.cellIndex;
+      const cell = cells[idx];
+      cell.source = edit.source;
+      return {
+        ok: true,
+        message: `Modified cell ${idx} (${cell.cell_type}): ${edit.source.length} chars of source.`,
+        newContent: serialize(),
+      };
+    }
+    case "delete_cell": {
+      if (!inRange(edit.cellIndex)) return rangeError();
+      const idx = edit.cellIndex;
+      const [removed] = cells.splice(idx, 1);
+      return {
+        ok: true,
+        message: `Deleted cell ${idx} (${removed.cell_type}). ${cells.length} cells remain.`,
+        newContent: serialize(),
+      };
+    }
+    case "change_cell_type": {
+      if (edit.cellType !== "code" && edit.cellType !== "markdown") {
+        return {
+          ok: false,
+          message: "change_cell_type requires cellType to be 'code' or 'markdown'.",
+        };
+      }
+      if (!inRange(edit.cellIndex)) return rangeError();
+      const idx = edit.cellIndex;
+      cells[idx].cell_type = edit.cellType;
+      return {
+        ok: true,
+        message: `Changed cell ${idx} to ${edit.cellType}.`,
+        newContent: serialize(),
+      };
+    }
+    case "insert_cell": {
+      let idx: number;
+      if (edit.cellIndex === undefined) {
+        idx = cells.length;
+      } else if (typeof edit.cellIndex !== "number" || !Number.isInteger(edit.cellIndex)) {
+        return { ok: false, message: "cellIndex must be an integer." };
+      } else {
+        idx = Math.max(0, Math.min(edit.cellIndex, cells.length));
+      }
+      const type: "code" | "markdown" =
+        edit.cellType === "markdown" ? "markdown" : "code";
+      const cell: Record<string, unknown> = {
+        cell_type: type,
+        source: edit.source ?? "",
+        metadata: {},
+      };
+      if (type === "code") {
+        cell.outputs = [];
+        cell.execution_count = null;
+      }
+      cells.splice(idx, 0, cell);
+      return {
+        ok: true,
+        message: `Inserted ${type} cell at index ${idx}. ${cells.length} cells total.`,
+        newContent: serialize(),
+      };
+    }
+    default:
+      return { ok: false, message: `Unknown action: ${action}` };
+  }
 }

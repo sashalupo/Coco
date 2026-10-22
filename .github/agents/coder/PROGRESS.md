@@ -12,8 +12,8 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-2.S2 done (src/notebook.ts pure parse/format/create helpers)
-- **Next step:** slice 1.98-2.S3 — applyNotebookEdit (the 5 actions) in src/notebook.ts
+- **Current step:** 1.98-2.S3 done (applyNotebookEdit — the 5 actions — in src/notebook.ts)
+- **Next step:** slice 1.98-2.S4 — ToolExecutor: execute notebook_edit
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
 - **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (incl. new notebook_edit assertions)
@@ -83,11 +83,25 @@ by step, one step per session.
   - `scripts/smoke-test.js`: new section 10 (before the final ALL PASSED) requiring `out/notebook.js` — 16 assertions: parse round-trips a 2-cell fixture (string + string[] sources both normalize), `null` for bad JSON and missing `cells`, context output contains `### Cell 0 (code)` / source text / `outputs: 2 (stream, error)` / `outputs: none`, bad-JSON context is an `Error:` string, `createNotebook` output re-parses with 3 cells all `code` and correct sources (multi-cell `<<<CELL>>>` split).
   - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 16 `notebook:` assertions).
   - Not committed (per task instruction — orchestrator commits).
+- **1.98-2.S3** (2026-10-22) — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`. Files: `src/notebook.ts`, `scripts/smoke-test.js`.
+  - `src/notebook.ts`: added `export function applyNotebookEdit(text, { action, cellIndex, cellType, source }): { ok, message, newContent? }`.
+    - `create`: ignores `text`, `newContent = createNotebook(source ?? "")`, message `Created notebook with N cell(s).`
+    - `modify_cell` / `delete_cell` / `change_cell_type`: parse via the private `parseNotebookRaw` (kept from the S2 refactor — validates shape, preserves ALL fields); `Invalid notebook: could not parse .ipynb JSON.` on failure; `cellIndex` must be an integer in `[0, cells.length)` (error message includes the valid range); mutates the raw doc in place and re-serializes with `JSON.stringify(raw, null, 1)` so every non-`cells` field (metadata, nbformat, outputs, execution_count, …) is preserved.
+      - `modify_cell` requires `source` (error if missing); replaces the cell's `source` string; message `Modified cell N (type): M chars of source.`
+      - `delete_cell` splices the cell out; message `Deleted cell N (type). K cells remain.`
+      - `change_cell_type` requires `cellType` ∈ {code, markdown} (error if missing/invalid); switches `cell_type`, keeps source; message `Changed cell N to type.`
+    - `insert_cell`: `cellIndex` clamped to `[0, cells.length]` (undefined → append at end; non-integer → error); splices in a new cell (`cell_type` from `cellType` or `code`, `source` from `source ?? ""`, `metadata: {}`, plus `outputs: []` + `execution_count: null` for code cells); message `Inserted type cell at index N. K cells total.`
+    - Unknown action → `{ ok: false, message: "Unknown action: …" }`.
+  - `scripts/smoke-test.js`: section 10 extended (10b) — requires `applyNotebookEdit` from `out/notebook.js`; 24 new `notebook-edit:` assertions: each of the 5 actions succeeds on a 2-cell fixture and the resulting `newContent` re-parses via `parseNotebook` with expected count/types/source; exact message checks; raw-doc preservation checks (outputs array + top-level `nbformat`/`metadata` survive modify; inserted code cell has `outputs: []` and `execution_count: null`); error cases return `ok: false` — bad JSON input, out-of-range `cellIndex` (message includes `[0, 2)`), missing `source` for `modify_cell`, unknown action.
+  - Verified: `npm run compile` passes clean; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED (incl. all 24 new `notebook-edit:` assertions).
+  - Not committed (per task instruction — orchestrator commits).
 
 ## Todo
 
 - [ ] Item 1.98-1 complete — awaiting Tester verification.
-- [ ] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
+- [x] Slice 1.98-2.S2 — `src/notebook.ts` pure parse/format/create helpers.
+- [x] Slice 1.98-2.S3 — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`.
+- [ ] Slice 1.98-2.S4 — ToolExecutor: execute `notebook_edit` (read/write the .ipynb file, feed `applyNotebookEdit` result back to the model).
 
 ## Notes / decisions
 

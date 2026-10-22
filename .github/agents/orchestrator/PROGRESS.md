@@ -7,20 +7,22 @@
 ## Mission
 
 Coordinate the team (Planner → Coder → Tester) to implement the `llm` VS Code extension
-features from the VS Code release notes backlog, **oldest to newest**. The orchestrator never
-writes code — it dispatches, verifies each stage, records, and commits.
+features from the VS Code release notes archive at `https://code.visualstudio.com/updates/archive`,
+**oldest to newest** within the active window. The orchestrator never writes code — it
+dispatches, verifies each stage, records, and commits.
 
 ## Status
 
 - **Current item:** **1.98-1** — Agent mode: editable terminal command + Ctrl+Enter confirm (VS Code 1.98)
-- **Current slice:** **1.98-2.S3** — `applyNotebookEdit` (the 5 actions) in `src/notebook.ts`
+- **Current slice:** **1.98-2.S4** — ToolExecutor: execute `notebook_edit` (src/tools/ToolExecutor.ts)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Changelog Researcher** to study the VS Code release notes and build the
-  ordered backlog (1.143 → 1.131, oldest → newest)
+- **Next step:** dispatch the **Changelog Researcher** to study the VS Code release archive at
+  `https://code.visualstudio.com/updates/archive` and build the ordered backlog (oldest → newest
+  within the active window)
 - **Last updated:** 2026-10-22
-- **Last commit:** `be93178` — feat(llm): notebook_edit tool schema + mutating flag (1.98-2.S1)
-- **Build state:** compiles clean; smoke test passes (1.98-2.S1+S2 verified)
+- **Last commit:** `f06532b` — feat(llm): pure notebook parse/format/create helpers (1.98-2.S2)
+- **Build state:** compiles clean; smoke test passes (1.98-2.S1–S3 verified)
 
 ## Team
 
@@ -47,6 +49,7 @@ pending item** (the oldest).
 - **1.98-2 plan** (2026-10-22) — Planner produced 6-slice plan: single `notebook_edit` tool (5 actions) + pure `src/notebook.ts` module + ToolExecutor case + `.ipynb` context rendering + settings/smoke/PROGRESS. No host/webview changes (approval gate inherited via `isMutatingTool`). Plan recorded in planner PROGRESS.md.
 - **1.98-2.S1** (2026-10-22) — `notebook_edit` tool schema in `CODE_TOOLS` (11 tools) + `isMutatingTool` flag + 5 smoke assertions (also fixed pre-existing hardcoded tool count 10→11). Tester PASS.
 - **1.98-2.S2** (2026-10-22) — new pure module `src/notebook.ts`: `parseNotebook` / `formatNotebookForContext` / `createNotebook` (+`CELL_MARKER`), 17 smoke assertions. Tester PASS.
+- **1.98-2.S3** (2026-10-22) — `applyNotebookEdit` (5 actions) in `src/notebook.ts` on private `parseNotebookRaw` (full-doc preservation), 24 smoke assertions. First Coder attempt truncated mid-edit (kept its consistent `parseNotebookRaw` refactor; also reverted its out-of-scope edits to `.github/agents/*.agent.md` + researcher PROGRESS.md); retry 2 completed the slice. Tester PASS.
 
 ## Tags (changelog-version tags on completed items)
 
