@@ -207,3 +207,71 @@ export function formatCodebaseSweep(
     block.slice(0, CODEBASE_SWEEP_MAX_CHARS) + CODEBASE_SWEEP_TRUNCATED_SUFFIX
   );
 }
+
+// ---------------------------------------------------------------------------
+// #problems tag (1.98-9): attach compiler/linter problems as chat context.
+// Diagnostics collection (vscode) is wired up in a later slice; these
+// functions only parse the tag and render the block.
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract the `#problems` tag qualifier from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#problems` occurrence
+ * (`#problemsfoo` does NOT match; `#Problems` DOES). Returns the trimmed
+ * text after the tag on the SAME line (up to the next newline) — the raw
+ * qualifier (a file path, or empty). Returns `""` when the tag is present
+ * but nothing follows on that line, and `null` when the tag is absent.
+ * Pure and testable.
+ */
+export function extractProblemsTag(text: string): string | null {
+  const m = /#problems(?!\w)/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  const rest = text.slice(m.index + m[0].length);
+  const nl = rest.indexOf("\n");
+  const sameLine = nl === -1 ? rest : rest.slice(0, nl);
+  return sameLine.trim();
+}
+
+/** The data a problems collection produces. */
+export interface ProblemsBlockData {
+  /** Formatted diagnostics text; "" when there are no problems. */
+  text: string;
+}
+
+/** Hard cap for the rendered problems block. */
+export const PROBLEMS_BLOCK_MAX_CHARS = 8000;
+const PROBLEMS_BLOCK_TRUNCATED_SUFFIX = "… (truncated)";
+
+/**
+ * Render a `#problems` result as a stable context block:
+ *
+ * ```
+ * Problems (scope: workspace)
+ * <text or "(no problems — clean)">
+ * ```
+ *
+ * The scope is `workspace` when scope is undefined/empty, else the given
+ * scope (e.g. a file path). The whole block is truncated to
+ * `PROBLEMS_BLOCK_MAX_CHARS` chars with a `… (truncated)` suffix. Returns
+ * `""` when `data.text` is empty AND scope is undefined/`"workspace"`
+ * (nothing to show for the default scope). Pure and testable.
+ */
+export function formatProblemsBlock(
+  data: ProblemsBlockData,
+  scope?: string,
+): string {
+  const s = scope && scope.trim() !== "" ? scope : "workspace";
+  if (!data.text && s === "workspace") {
+    return "";
+  }
+  const block = `Problems (scope: ${s})\n${data.text || "(no problems — clean)"}`;
+  if (block.length <= PROBLEMS_BLOCK_MAX_CHARS) {
+    return block;
+  }
+  return (
+    block.slice(0, PROBLEMS_BLOCK_MAX_CHARS) + PROBLEMS_BLOCK_TRUNCATED_SUFFIX
+  );
+}

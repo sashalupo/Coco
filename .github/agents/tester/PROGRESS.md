@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.98-8 (`#codebase` tag — advanced codebase search) — **Done** (S1–S4 verified)
-- **Next step:** verify item 1.98-9 (`#problems` tag) — first slice
+- **Current item:** 1.98-9 (`#problems` tag) — S1 verified
+- **Next step:** verify item 1.98-9 (`#problems` tag) — slice S2
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no tester commits yet)
 - **Build state:** baseline compiles clean (`npm run compile`); smoke test passes
@@ -116,7 +116,8 @@ acceptance checks, and reports a clear pass/fail.
 - [x] **1.98-8.S3** — ChatViewProvider: detect `#codebase`, run sweep, inject context — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-8.S4** — package.json settings schema + final smoke assertions + PROGRESS.md — **PASS** (2026-10-22, see Verifications)
 - [x] **1.98-8** — fully verified (all slices S1–S4 PASS)
-- [ ] Verify item **1.98-9** (`#problems` tag) — first slice.
+- [x] **1.98-9.S1** — `src/context.ts`: `extractProblemsTag` + `formatProblemsBlock` (pure) — **PASS** (2026-10-22, see Verifications)
+- [ ] Verify item **1.98-9** (`#problems` tag) — slice S2.
 - [ ] For each item: run build, run smoke test, exercise acceptance checks, record verdict.
 
 ## Notes / decisions
@@ -178,3 +179,9 @@ acceptance checks, and reports a clear pass/fail.
 - Spot-check: `runStream` gates on `settings.codebaseSearchEnabled && lastUser && this.toolExecutor`; `extractCodebaseQuery(lastUser.content) !== null` → `codebaseSweep(q)` appended after `buildContextBlock` output; setting false → tag inert. PASS.
 - Scope: only `package.json`, `scripts/smoke-test.js`, coder + planner PROGRESS.md (+ ninfer marker). PASS
 - **Item 1.98-8 fully verified (S1–S4 all PASS).**
+
+### 1.98-9.S1 — `src/context.ts`: `extractProblemsTag` + `formatProblemsBlock` (pure) (2026-10-22) — **PASS**
+
+- Build: `npm run compile` exit 0. Smoke test: ALL PASSED (**280 assertions**; 10 new `problems:` green in section `// 13) problems tag (1.98-9)` / subsection `13a`).
+- Static checks: (a) `extractProblemsTag(text: string): string | null` — regex `/#problems(?!\w)/i` (case-insensitive, word-bounded); first match; trimmed same-line remainder; `""` bare tag; null absent. (b) `ProblemsBlockData` interface with `text: string`. (c) `export const PROBLEMS_BLOCK_MAX_CHARS = 8000`. (d) `formatProblemsBlock(data, scope?)` — header `Problems (scope: workspace)` default / `Problems (scope: <scope>)`; body text or `(no problems — clean)`; 8,000-char truncation + `… (truncated)`; `""` only when text empty AND default scope. (e) Purity: no `vscode` import. All PASS.
+- Scope: only `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` (+ ninfer marker). PASS

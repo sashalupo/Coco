@@ -1907,6 +1907,63 @@ function assert(cond, label) {
     "codebase-s4: ChatViewProvider gates on codebaseSearchEnabled",
   );
 
+  // 13) problems tag (1.98-9): pure #problems tag parsing + block formatting.
+  // 13a) compiled out/context.js.
+  const {
+    extractProblemsTag,
+    formatProblemsBlock,
+    PROBLEMS_BLOCK_MAX_CHARS,
+  } = require(path.join(__dirname, "..", "out", "context.js"));
+  assert(
+    extractProblemsTag("#problems") === "",
+    "problems: bare tag returns empty string",
+  );
+  assert(
+    extractProblemsTag("fix #problems in src/a.ts") === "in src/a.ts",
+    "problems: tag with remainder returns trimmed same-line remainder",
+  );
+  assert(
+    extractProblemsTag("no tag") === null,
+    "problems: absent tag returns null",
+  );
+  assert(
+    extractProblemsTag("#problemsfoo") === null,
+    "problems: word-bounded — #problemsfoo does not match",
+  );
+  assert(
+    extractProblemsTag("#Problems x.ts") === "x.ts",
+    "problems: match is case-insensitive",
+  );
+  assert(
+    extractProblemsTag("#problems q1\nline2") === "q1",
+    "problems: only same-line remainder (next line ignored)",
+  );
+  const probBlock = formatProblemsBlock({
+    text: "a.ts:\n  error 1:1 — boom",
+  });
+  assert(
+    probBlock.includes("Problems (scope: workspace)") &&
+      probBlock.includes("a.ts:\n  error 1:1 — boom"),
+    "problems: default scope header + body text",
+  );
+  assert(
+    formatProblemsBlock({ text: "" }) === "",
+    "problems: empty text + default scope returns empty string",
+  );
+  const probClean = formatProblemsBlock({ text: "" }, "x.ts");
+  assert(
+    probClean.includes("Problems (scope: x.ts)") &&
+      probClean.includes("(no problems — clean)"),
+    "problems: empty text + file scope renders header + clean note",
+  );
+  const bigText = "x".repeat(9000);
+  const probBig = formatProblemsBlock({ text: bigText }, "big.ts");
+  assert(
+    probBig.length <= PROBLEMS_BLOCK_MAX_CHARS + "… (truncated)".length &&
+      probBig.endsWith("… (truncated)"),
+    "problems: oversized text truncated to cap + suffix",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

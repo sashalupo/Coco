@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current step:** 1.98-8.S4 done — item 1.98-8 (`#codebase` tag) **complete** (S1–S4)
-- **Next step:** 1.98-9.S1 — first slice of item 1.98-9 (`#problems` tag); awaiting planner plan
+- **Current step:** 1.98-9.S1 done — pure `#problems` tag parsing + block formatting in `src/context.ts`
+- **Next step:** 1.98-9.S2 — diagnostics collection (ToolExecutor `collectDiagnostics` + 50-problem cap)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (270 assertions, incl. `codebase-s4:` static checks)
+- **Build state:** `npm run compile` passes; `node scripts/smoke-test.js` passes (280 assertions, incl. `problems:` pure-helper checks)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.98-9.S1** (2026-10-22) — `src/context.ts`: `extractProblemsTag` + `formatProblemsBlock` (pure). Files: `src/context.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/context.ts`: added after the `#codebase` section — `extractProblemsTag(text): string | null` (regex `/#problems(?!\w)/i`, first match, trimmed same-line remainder as raw qualifier, `""` for bare tag, `null` when absent); `ProblemsBlockData { text: string }`; `PROBLEMS_BLOCK_MAX_CHARS = 8000` (exported); `formatProblemsBlock(data, scope?)` — header `Problems (scope: workspace)` (or `scope: <scope>`), body `data.text` or `(no problems — clean)`, truncated to 8,000 chars + `… (truncated)` suffix; returns `""` when text empty AND scope undefined/`"workspace"`. Pure module — no vscode imports added.
+  - `scripts/smoke-test.js`: new section `// 13) problems tag (1.98-9)` with subsection `13a` importing compiled `out/context.js`; 10 assertions (`problems:` labels): bare tag → `""`, remainder extraction, absent → `null`, `#problemsfoo` no-match, case-insensitive `#Problems`, same-line-only, default-scope header + body, empty text + default scope → `""`, empty text + file scope → header + clean note, 9,000-char text truncated to cap + suffix.
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, **280 assertions** (270 prior + 10 new `problems:`).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.98-8.S4** (2026-10-22) — `package.json` settings schema + final smoke assertions + memory (FINAL slice of item 1.98-8). Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/planner/PROGRESS.md`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: added `llm.chat.codebaseSearch.enabled` (boolean, default `true`) to `contributes.configuration.properties` after `llm.instructions.files`, with description "When the user types #codebase in a chat message, sweep the workspace (project structure, git status, text search for the query) and inject the results as context." JSON validated via `JSON.parse`.
   - `scripts/smoke-test.js`: new subsection `// 12d) codebase sweep (1.98-8.S4)` with 4 static assertions: (a) parsed `package.json` has `contributes.configuration.properties["llm.chat.codebaseSearch.enabled"]` with `type === "boolean"`, (b) same entry `default === true`, (c) `src/config.ts` source contains `chat.codebaseSearch.enabled`, (d) `src/chat/ChatViewProvider.ts` source contains `codebaseSearchEnabled` (gate actually used). Reuses the `configSrc`/`chatViewSrc` reads from 12c.
