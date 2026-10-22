@@ -1060,7 +1060,7 @@ tools (`write_file`, `edit_file`, `run_command`, `notebook_edit`, `mcp__*`) +
   `isApproved`, `autoApprove`; `out/config.js` source contains `"tools.autoApprove"`;
   `presets.ts` source contains `autoApprove: boolean`.
 
-- **1.99-8.S3 — `src/chat/webview.ts`: scope dropdown on both approval cards.**
+- **1.99-8.S3 — `src/chat/webview.ts`: scope dropdown on both approval cards.** — Done (2026-10-22, PASS, 464 assertions)
   File: `src/chat/webview.ts`. In `case 'approval_request':` (~line 2123) add
   `<select class="approve-scope">` (options: `once` "Run once", `session` "Remember
   for session", `workspace` "Remember for workspace", `global` "Remember globally")

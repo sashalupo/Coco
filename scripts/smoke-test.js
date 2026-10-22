@@ -3537,6 +3537,26 @@ function assert(cond, label) {
     "appr-s2: presets LlmSettings has autoApprove",
   );
 
+  // 30) Tool approvals — webview scope dropdown (1.99-8.S3)
+  // out/chat/webview.js is a template module — use static source assertions
+  // on the TS source instead.
+  const webviewSrcApprS3 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcApprS3.includes("approve-scope"),
+    "appr-s3: webview has approve-scope dropdown",
+  );
+  assert(
+    webviewSrcApprS3.includes("Remember for workspace"),
+    "appr-s3: webview has workspace scope option",
+  );
+  assert(
+    webviewSrcApprS3.includes("Remember globally"),
+    "appr-s3: webview has global scope option",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

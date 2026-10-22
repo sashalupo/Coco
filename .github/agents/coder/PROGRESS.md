@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-8 (Agent mode tool approvals) — S2 done (2026-10-22)
-- **Next step:** 1.99-8.S3 (webview scope dropdown in src/chat/webview.ts)
+- **Current item:** 1.99-8 (Agent mode tool approvals) — S3 done (2026-10-22)
+- **Next step:** 1.99-8.S4 (FINAL: package.json autoApprove setting + final smoke + PROGRESS)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (461 assertions)
+- **Build state:** compiles clean; smoke test passes (464 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ by step, one step per session.
 
 ## Done
 
+- **1.99-8.S3** (2026-10-22) — `src/chat/webview.ts`: scope dropdown on both approval cards. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: (a) CSS: new `.approve-scope` rule (after `.message.approval .status`, before the command-approval block) reusing the existing input conventions — `var(--vscode-input-background, #3c3c3c)` bg, `var(--vscode-input-foreground, #ccc)` color, `var(--vscode-input-border, #3c3c3c)` 1px border, 3px radius, 2px 4px padding, 12px font, `max-width: 200px`, `:focus` outline `var(--focus)` (same pattern as `.toolbar select`); (b) `case 'approval_request':` — added `<select class="approve-scope">` with 4 options (`once` "Run once" / `session` "Remember for session" / `workspace` "Remember for workspace" / `global` "Remember globally") inside `.actions` after the Reject button; `decide(approved)` now also disables the select and posts `{ type: 'toolApproval', id: msg.id, approved, scope: scopeEl.value }` (default selected = `once`); (c) `case 'command_approval':` — same dropdown added to `.actions` after Cancel; `decideCmd(approved)` disables `cmdScopeEl` and posts `scope: cmdScopeEl.value` alongside the existing `command` field (reject path includes scope too — harmless, host ignores it on reject).
+  - `scripts/smoke-test.js`: new section `// 30) Tool approvals — webview scope dropdown (1.99-8.S3)` after section 29, before the final summary print; 3 `appr-s3:` static-source assertions via `fs.readFileSync` on `src/chat/webview.ts` (local `webviewSrcApprS3`): (a) contains `approve-scope`; (b) contains `Remember for workspace`; (c) contains `Remember globally`. Total PASS lines now 464 (461 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 464 PASS, 0 FAIL; `git status --short | grep -v ninfer` → only the 2 in-scope code files (no `package-lock.json` drift).
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-8.S2** (2026-10-22) — host wiring: `ChatViewProvider` + `config.ts` + `presets.ts` autoApprove. Files: `src/chat/ChatViewProvider.ts`, `src/config.ts`, `src/presets.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: (a) `autoApprove: boolean` on `LlmSettings` (comment: "Auto-approve all mutating tools without asking (experimental)."), right after `requireApproval`; (b) `MementoLike.update` return type changed `Promise<void>` → `PromiseLike<void>` (compiler-required: vscode `Memento.update` returns `Thenable<void>`, which is structurally `PromiseLike<void>` but not `Promise<void>` — TS2345 otherwise).
   - `src/config.ts`: `readSettings()` adds `autoApprove: c.get<boolean>("tools.autoApprove", false)` right after `requireApproval`.

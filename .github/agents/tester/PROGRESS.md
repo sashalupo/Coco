@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-8.S2 (host wiring: ChatViewProvider + config.ts + presets.ts autoApprove) — **PASS** (2026-10-22)
-- **Next step:** verify 1.99-8.S3 (next slice of Agent mode tool approvals)
+- **Current item:** 1.99-8.S3 (webview scope dropdown on both approval cards) — **PASS** (2026-10-22)
+- **Next step:** verify 1.99-8.S4 (next slice of Agent mode tool approvals)
 - **Last updated:** 2026-10-22
-- **Last commit:** b498510 (feat: 1.99-8.S1 pure ApprovalStore)
-- **Build state:** 461/461 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
+- **Last commit:** aabc2d3 (feat: 1.99-8.S2 host wiring + autoApprove)
+- **Build state:** 464/464 PASS (`npm run compile` exit 0; smoke test ALL PASSED)
 
+
+### 1.99-8.S3 — webview scope dropdown on both approval cards (src/chat/webview.ts) (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **464 PASS lines** (461 prior + 3 new `appr-s3:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 464/464 PASS; (3) 3 genuine `appr-s3:` assertions all passing: `webview has approve-scope dropdown`; `webview has workspace scope option`; `webview has global scope option` PASS; (4) wiring in `src/chat/webview.ts`: `case 'approval_request':` (L2135) renders `<select class="approve-scope">` (L2144) with 4 options once/session/workspace/global (default once, L2145–2148); `decide()` disables approve/reject buttons + `scopeEl` (L2160–2162) then posts `vscode.postMessage({ type: 'toolApproval', id: msg.id, approved: approved, scope: scopeEl.value })` (L2165); `case 'command_approval':` (L2172) renders identical 4-option dropdown (L2182–2186); `decideCmd()` disables run/cancel/input/`cmdScopeEl` (L2199–2203) then posts `vscode.postMessage({ type: 'commandApproval', id: msg.id, approved: approved, command: cmdInput.value, scope: cmdScopeEl.value })` (L2206); `.approve-scope` CSS rule at L317 + `:focus` at L326 PASS; (5) scope: exactly ` M .github/agents/coder/PROGRESS.md`, ` M scripts/smoke-test.js`, ` M src/chat/webview.ts` (ninfer submodule marker ignored); no `package-lock.json` drift PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-8.S2 — host wiring: ChatViewProvider + config.ts + presets.ts autoApprove (2026-10-22) — **PASS**
 

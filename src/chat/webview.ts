@@ -313,6 +313,18 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	.message.approval .status { font-size: 12px; color: var(--muted); }
 
+	/* Approval scope dropdown (1.99-8.S3): once / session / workspace / global */
+	.approve-scope {
+		background: var(--vscode-input-background, #3c3c3c);
+		color: var(--vscode-input-foreground, #ccc);
+		border: 1px solid var(--vscode-input-border, #3c3c3c);
+		border-radius: 3px;
+		padding: 2px 4px;
+		font-size: 12px;
+		max-width: 200px;
+	}
+	.approve-scope:focus { outline: 1px solid var(--focus); }
+
 	/* Command approval card (1.98-1): editable command input + Run/Cancel */
 	.message.command-approval {
 		border: 1px solid var(--vscode-focusBorder, #007fd4);
@@ -2129,20 +2141,28 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						'<div class="actions">' +
 						'<button class="approve">Approve</button>' +
 						'<button class="reject">Reject</button>' +
+						'<select class="approve-scope">' +
+						'<option value="once">Run once</option>' +
+						'<option value="session">Remember for session</option>' +
+						'<option value="workspace">Remember for workspace</option>' +
+						'<option value="global">Remember globally</option>' +
+						'</select>' +
 						'</div>' +
 						'<div class="status" style="display:none"></div>';
 					apEl.querySelector('.role').textContent = 'Approve ' + (msg.tool || 'tool') + '?';
 					apEl.querySelector('.args').textContent = msg.args || '';
 					var approveBtn = apEl.querySelector('.approve');
 					var rejectBtn = apEl.querySelector('.reject');
+					var scopeEl = apEl.querySelector('.approve-scope');
 					var statusEl = apEl.querySelector('.status');
 					function decide(approved) {
 						if (approveBtn.disabled) { return; }
 						approveBtn.disabled = true;
 						rejectBtn.disabled = true;
+						scopeEl.disabled = true;
 						statusEl.textContent = approved ? 'Approved' : 'Rejected';
 						statusEl.style.display = 'inline';
-						vscode.postMessage({ type: 'toolApproval', id: msg.id, approved: approved });
+						vscode.postMessage({ type: 'toolApproval', id: msg.id, approved: approved, scope: scopeEl.value });
 					}
 					approveBtn.addEventListener('click', function () { decide(true); });
 					rejectBtn.addEventListener('click', function () { decide(false); });
@@ -2159,12 +2179,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						'<div class="actions">' +
 						'<button class="cmd-run">Run</button>' +
 						'<button class="cmd-cancel">Cancel</button>' +
+						'<select class="approve-scope">' +
+						'<option value="once">Run once</option>' +
+						'<option value="session">Remember for session</option>' +
+						'<option value="workspace">Remember for workspace</option>' +
+						'<option value="global">Remember globally</option>' +
+						'</select>' +
 						'</div>' +
 						'<div class="status" style="display:none"></div>';
 					var cmdInput = caEl.querySelector('.cmd-input');
 					cmdInput.value = msg.command || '';
 					var runBtn = caEl.querySelector('.cmd-run');
 					var cancelBtn = caEl.querySelector('.cmd-cancel');
+					var cmdScopeEl = caEl.querySelector('.approve-scope');
 					var caStatus = caEl.querySelector('.status');
 					var decided = false;
 					function decideCmd(approved) {
@@ -2173,9 +2200,10 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						runBtn.disabled = true;
 						cancelBtn.disabled = true;
 						cmdInput.disabled = true;
+						cmdScopeEl.disabled = true;
 						caStatus.textContent = approved ? 'Ran' : 'Cancelled';
 						caStatus.style.display = 'inline';
-						vscode.postMessage({ type: 'commandApproval', id: msg.id, approved: approved, command: cmdInput.value });
+						vscode.postMessage({ type: 'commandApproval', id: msg.id, approved: approved, command: cmdInput.value, scope: cmdScopeEl.value });
 					}
 					runBtn.addEventListener('click', function () { decideCmd(true); });
 					cancelBtn.addEventListener('click', function () { decideCmd(false); });
