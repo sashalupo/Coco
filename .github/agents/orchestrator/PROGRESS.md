@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-10** — Unified Chat view (mode picker + history) (4-slice plan; S1–S3 DONE)
-- **Current slice:** 1.99-10.S3 DONE — 1.99-10.S4 (FINAL) next
+- **Current item:** **1.99-10** — Unified Chat view (mode picker + history) — **DONE** (2026-10-22, all 4 slices S1–S4)
+- **Current slice:** none — 1.99-10 complete; 1.99-12 next item
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for slice **1.99-10.S4** (FINAL: final smoke assertions + PROGRESS.md), then Tester, memory, commit
+- **Next step:** dispatch Planner for item **1.99-12** (Reusable prompt files), record plan, commit, then run slice pipeline
 - **Last updated:** 2026-10-22
-- **Last commit:** e281b7f (feat: 1.99-10.S2); S3 commit pending
-- **Build state:** compiles clean; smoke test passes (478 assertions); 1.99-10.S3 done
+- **Last commit:** efbab3c (feat: 1.99-10.S3); S4 commit pending
+- **Build state:** compiles clean; smoke test passes (479 assertions); 1.99-10 DONE
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -56,6 +56,7 @@ pending item** (the oldest).
 - **1.99-5 plan** (2026-10-22) — Planner produced 4-slice plan: pure `src/usages.ts` helpers (S1) + `find_usages` tool schema/executor (S2) + `extractUsagesTag`/`formatUsagesTagBlock` in `src/context.ts` (S3) + `#usages` tag wiring + `llm.chat.usages.enabled` setting (S4). Grep-based whole-word usages search (no language service); read-only tool; smoke 426 → 439.
 - **1.99-6** (2026-10-22) — Create a new workspace with agent mode, 4 slices S1–S4: `src/workspaceScaffold.ts` (pure templates + `buildScaffoldPrompt`; extension/mcp-server/dev-env/generic), `extractNewWorkspaceTag`/`formatWorkspaceBlock` in `src/context.ts`, `#newWorkspace` tag wiring in ChatViewProvider + `llm.chat.newWorkspace.enabled` setting, final smoke. Commits d405e15, 06430f7, 2d0a5df + S4 commit. Smoke 446 → 453. **Item complete — no tag (changelog-1.99 already exists).**
 - **1.99-8** (2026-10-22) — Agent mode tool approvals, 4 slices S1–S4: pure `ApprovalStore` in `src/presets.ts` (session/workspace/global remembered approvals via MementoLike); host wiring + `llm.tools.autoApprove` setting (gate: `requireApproval && isMutating && !autoApprove && !isApproved`); webview scope dropdown on both approval cards; `package.json` setting + final smoke. Commits b498510, aabc2d3, 0c9bfbf + S4 commit. Smoke 458 → 466. **Item complete — no tag (changelog-1.99 already exists).**
+- **1.99-10** (2026-10-22) — Unified Chat view (mode picker + history), 4 slices S1–S4: ChatMode/normalizeChatMode/modeAddendum in presets, buildRequestBody ask→no tools + tool_choice none, host wiring (ToolbarState.mode, setMode, modeAddendum in system prompt), webview Mode picker (Ask/Agent/Edit, default Agent). Commits 0fbd12e, e281b7f, efbab3c + S4 commit. Smoke 472 → 479. **Item complete — no tag (changelog-1.99 already exists).**
 
 
 

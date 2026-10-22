@@ -12,12 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-10.S3 — webview mode picker — **PASS** (2026-10-22)
-- **Next step:** 1.99-10.S4 — next slice of item 1.99-10 (Unified Chat view — history)
+- **Current item:** 1.99-10 — Unified Chat view (mode picker) — **COMPLETE** (S1–S4 all PASS, 2026-10-22)
+- **Next step:** 1.99-12 (Reusable prompt files) — next item in backlog
 - **Last updated:** 2026-10-22
-- **Last commit:** e281b7f (feat(llm): unified chat — host wiring + toolbar mode (1.99-10.S2)); S3 commit pending
-- **Build state:** 478/478 PASS
+- **Last commit:** efbab3c (feat(llm): unified chat — webview mode picker (1.99-10.S3)); S4 commit pending
+- **Build state:** 479/479 PASS
 
+
+### 1.99-10.S4 — FINAL: final smoke assertions (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **479 PASS lines** (478 prior + 1 new `unif-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 479/479 with 1 genuine `unif-s4:` assertion in new `// 35) Unified chat mode — final (1.99-10.S4)` section (smoke-test.js:3675) passing: `unif-s4: edit mode = agent behavior` PASS; (3) spot-check: assertion calls `buildRequestBody({ settings: { ...settings, toolsEnabled: true }, toolbar, mode: "edit" }, ...)` and asserts `Array.isArray(body.tools) && body.tool_choice === "auto"` — genuine regression guard; `src/request.ts:279–287` confirms `mode === "edit"` falls through to the agent branch PASS; (4) scope: exactly coder PROGRESS.md, smoke-test.js modified (ninfer submodule marker ignored); no package-lock.json drift PASS.
+- **Verdict:** **PASS** — all 4 criteria met. **Item 1.99-10 (Unified Chat view — mode picker) fully verified (S1–S4).**
 
 ### 1.99-10.S3 — webview mode picker (src/chat/webview.ts) (2026-10-22) — **PASS**
 

@@ -330,7 +330,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   agent sessions at once.
 - **Image notes:** `chat-modes.png` (mode picker dropdown).
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 4 slices S1–S4; ChatMode + mode picker Ask/Agent/Edit in toolbar, ask → no tools + tool_choice none, edit/agent addenda in system prompt, mode persisted in toolbar memento; smoke 479)
 - **Gap vs existing:** the extension has one chat panel with an agent tool loop but no
   explicit Ask/Agent/Edit mode picker, no per-mode behavior switch, and no session history
   restore. Local reframe: mode picker in the chat header (Ask = no tools, Agent = full tool
@@ -501,7 +501,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-10** Unified Chat view (mode picker + history)
 - **1.99-12** Reusable prompt files
 - **1.99-13** Improved vision support (URL images, `.bmp`)
 - **1.99-16** Copilot status menu (completions indicator + toggle)

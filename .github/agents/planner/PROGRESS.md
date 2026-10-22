@@ -1100,7 +1100,7 @@ exact tool auto-approves); `autoApprove` is experimental (default false, no
 confirmation dialog); session approvals are intentionally not persisted; unknown scope
 values from the webview are treated as `once`.
 
-### Item 1.99-10 — Unified Chat view (mode picker + history) (planned 2026-10-22)
+### Item 1.99-10 — Unified Chat view (mode picker + history) (planned 2026-10-22) — **DONE** (2026-10-22, S1–S4 all PASS, 479 assertions)
 
 **Changelog reference:** VS Code 1.99, "Unified Chat view" — merges the Chat and
 Copilot Edits views into one Chat view with a mode picker (Ask / Agent / Edit);
@@ -1405,7 +1405,7 @@ Notebooks are plain JSON (`.ipynb`, nbformat 4), so with zero dependencies we ad
   - Messages are plain-text summaries of the cell change (e.g. `Modified cell 2 (code): 42 chars of source.`) — this is what the engine and the approval card see.
 - **Acceptance:** `npm run compile` passes. Smoke test: each of the 5 actions succeeds on a fixture doc (assert resulting `parseNotebook` cell count/types/source); error cases return `ok: false` with a message: bad JSON, out-of-range `cell_index`, missing `source` for `modify_cell`, unknown action.
 
-### S4 — `ToolExecutor`: execute `notebook_edit`
+### S4 — `ToolExecutor`: execute `notebook_edit` — Done (2026-10-22, PASS, 479 assertions)
 - **File:** `src/tools/ToolExecutor.ts`
 - **What:**
   - Import `applyNotebookEdit` from `../notebook`.

@@ -3674,6 +3674,16 @@ function assert(cond, label) {
     "unif-s3: mode in toolbar payload",
   );
 
+  // 35) Unified chat mode — final (1.99-10.S4)
+  const unifEditBody = buildRequestBody(
+    { settings: { ...settings, toolsEnabled: true }, toolbar, mode: "edit" },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(unifEditBody.tools) && unifEditBody.tool_choice === "auto",
+    "unif-s4: edit mode = agent behavior",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
