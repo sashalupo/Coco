@@ -18,12 +18,43 @@ import {
   STATUS_COMMANDS,
 } from "./presets";
 import { promptTitle, stripPromptComments, PROMPT_TEMPLATE, MAX_PROMPT_CHARS } from "./prompts";
-import { parseNotebook, extractCellOutputs } from "./notebook";
+import {
+  parseNotebook,
+  extractCellOutputs,
+  extractNotebookCellOutput,
+  NotebookCellOutputLike,
+} from "./notebook";
 import {
   parseInstructionsFrontMatter,
   INSTRUCTIONS_FILE_TEMPLATE,
   instructionsFileName,
 } from "./instructions";
+
+/**
+ * 1.100-30.S-002: the pinned `@types/vscode` (1.140.0) predates the
+ * `window.registerDragAndDropController` API (added in VS Code 1.99), so
+ * declare the minimal surface we use here. The runtime engine is newer
+ * and provides the API; this is types-only, no runtime dependency.
+ */
+declare module "vscode" {
+  namespace window {
+    function registerDragAndDropController(
+      controller: {
+        target: { viewContainerId: string };
+        handleDrop: (e: DragAndDropEvent) => void;
+      },
+      options: { dropMimeTypes: string[] },
+    ): Disposable;
+  }
+  interface DragAndDropEvent {
+    data: { items: DragAndDropDataItem[] };
+    modifiers: { alt: boolean; ctrl: boolean; shift: boolean };
+  }
+  interface DragAndDropDataItem {
+    type: string;
+    data: unknown;
+  }
+}
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -78,6 +109,53 @@ export function activate(context: vscode.ExtensionContext): void {
       ),
     );
   }
+
+  // 1.100-30.S-002: drag-and-drop controller — drop notebook cell outputs
+  // (mime `notebook.cellOutput`) onto the LLM view container to attach them
+  // to the chat input, reusing the same `cell_output_inject` webview message
+  // as the `llm.addCellOutput` command.
+  context.subscriptions.push(
+    vscode.window.registerDragAndDropController(
+      {
+        target: { viewContainerId: "llm" },
+        handleDrop: async (e: vscode.DragAndDropEvent) => {
+          const dropEnabled = vscode.workspace
+            .getConfiguration("llm")
+            .get<boolean>("chat.cellOutputDrop.enabled", true);
+          if (!dropEnabled) {
+            return;
+          }
+          const visionEnabled = vscode.workspace
+            .getConfiguration("llm")
+            .get<boolean>("chat.vision.enabled", true);
+          for (const item of e.data.items) {
+            if (item.type !== "notebook.cellOutput") {
+              continue;
+            }
+            try {
+              const output = item.data as unknown as NotebookCellOutputLike;
+              const { text, images } =
+                await extractNotebookCellOutput(output);
+              // Alt rule: text-only drops require Alt (avoids clashing with
+              // text selection); image outputs attach on a plain drop.
+              if (text && images.length === 0 && !e.modifiers.alt) {
+                continue;
+              }
+              const imgs = visionEnabled ? images : [];
+              provider.postMessage({
+                type: "cell_output_inject",
+                text,
+                images: imgs,
+              });
+            } catch {
+              // One bad item must not break the others.
+            }
+          }
+        },
+      },
+      { dropMimeTypes: ["notebook.cellOutput"] },
+    ),
+  );
 
   // Status bar item reflecting engine health, opt-in via `llm.statusBar.enabled`.
   // The setting is read at activation, so toggling it requires a reload.

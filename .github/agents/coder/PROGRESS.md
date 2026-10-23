@@ -13,11 +13,11 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-30 · Drag and drop cell outputs to chat — **IN PROGRESS**
-- **Current slice:** 1.100-30.S-001 DONE (`extractNotebookCellOutput` in `src/notebook.ts`)
-- **Next step:** 1.100-30.S-002 (call site in `extension.ts` — cast real `vscode.NotebookCellOutput` to `NotebookCellOutputLike`)
+- **Current slice:** 1.100-30.S-002 DONE (drag-and-drop controller in `src/extension.ts` + `llm.chat.cellOutputDrop.enabled` setting)
+- **Next step:** 1.100-30.S-003 (smoke 787→791 regression guards in `scripts/smoke-test.js`)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): add extractNotebookCellOutput helper (1.100-30 S-001)
-- **Build state:** compiles clean; probe PASS (fake output → `{ text: "hello", images: ["data:image/png;base64,iVBORw==", "data:image/bmp;base64,AQID"] }`)
+- **Last commit:** feat(llm): drag and drop cell outputs into chat (1.100-30 S-002)
+- **Build state:** compiles clean (tsc exit 0)
 
 ## Plan pointer
 
@@ -37,6 +37,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 ## Todo
 
 Slice detail pruned (see `git log` for full history). Recent items:
+- [x] 1.100-30 S-002: `registerDragAndDropController` (viewContainerId `llm`, mime `notebook.cellOutput`) in `src/extension.ts` — Alt rule for text-only drops, vision gate, per-item try/catch, reuses `provider.postMessage({type:"cell_output_inject"})`; `llm.chat.cellOutputDrop.enabled` setting; local `declare module "vscode"` shim (pinned @types/vscode 1.140.0 predates the API).
 - 1.100-30 S-001 done (affc774): `extractNotebookCellOutput` + `NotebookCellOutputLike` in `src/notebook.ts` (pure, no vscode import).
 - 1.100-29 complete (smoke 787): alt-text code action (S-001 `src/codeaction.ts`, S-002 `CodeActionProvider.ts`+`package.json`, S-003 smoke).
 - 1.100-19 complete (smoke 780): workspace tasks.json scaffold.

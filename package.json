@@ -360,6 +360,11 @@
           "default": true,
           "description": "Enable the 'LLM: Add Cell Output to Chat' command (llm.addCellOutput), which injects the active notebook's cell outputs (text and images) into the chat input."
         },
+        "llm.chat.cellOutputDrop.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow dragging notebook cell outputs into the chat panel to attach them"
+        },
         "llm.completions.model": {
           "type": "string",
           "default": "",
