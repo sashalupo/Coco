@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-31** — Notebook tools for agent mode — **IN PROGRESS** (plan: 5 slices; S-001 done)
-- **Current slice:** 1.100-31 S-001 DONE (504abbf, verified PASS 79c0539)
+- **Current item:** **1.100-31 COMPLETE** — next item pending (see researcher backlog)
+- **Current slice:** none (1.100-31 complete, verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Coder** for 1.100-31 S-002 (`src/tools.ts`: 4 tool schemas + isMutatingTool) (user goal: continue until version 1.107)
+- **Next step:** pick the next pending backlog item (oldest first) and dispatch the **Planner** (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** 79c0539 (tester verified 1.100-31 S-001)
-- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-24)
+- **Last commit:** 341de11 (1.100-31 S-005 smoke guards; item verified PASS)
+- **Build state:** compiles clean; smoke 798/798 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -53,6 +53,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-31 (DONE, S-001–S-005):** `extractVariableNames`/`formatKernelState` in `src/notebook.ts` (S-001, 504abbf); 4 tool schemas `run_notebook_cell`/`get_kernel_state`/`list_packages`/`install_package` + `isMutatingTool` in `src/tools.ts` (S-002, b616305); 4 `execute()` cases + `kernelState` Map + jupyter→python3→python fallback in `src/tools/ToolExecutor.ts` (S-003, c3939d5); `llm.chat.notebookTools.enabled` gate in config/presets/request/package.json (S-004, 2825f58); smoke guards `nbtools-s1..s6`, gate 791→798 (S-005, 341de11). No new tag — `changelog-1.100` already exists.
 
 **1.100-30 (DONE, S-001–S-003):** `extractNotebookCellOutput` + `NotebookCellOutputLike` in `src/notebook.ts` (S-001, affc774); `registerDragAndDropController` (viewContainerId `llm`, mime `notebook.cellOutput`) in `src/extension.ts` — Alt rule for text-only drops, vision gate, reuses `cell_output_inject` — + `llm.chat.cellOutputDrop.enabled` setting (S-002, 26efb84); smoke guards `drop-s1..s4`, count 787→791 (S-003, aa35cbb). No new tag — `changelog-1.100` already exists (final commit 3b0606e).
 
