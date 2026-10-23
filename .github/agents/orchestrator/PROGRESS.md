@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-13** — MCP support for Streamable HTTP — **PLANNING** (next backlog item)
-- **Current slice:** 1.100-12.S5 DONE (verified PASS) — item 1.100-12 COMPLETE
+- **Current item:** **1.100-13** — MCP support for Streamable HTTP — **IN PROGRESS** (5 slices S1–S5; S1 done)
+- **Current slice:** 1.100-13.S1 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for 1.100-13 (MCP Streamable HTTP) (user goal: continue until version 1.107)
+- **Next step:** 1.100-13.S2 — `package.json` `llm.mcp.servers` description (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** b9fd428 (tester verified 1.100-12.S5; code ec9a244)
+- **Last commit:** 9c0bb1a (tester verified 1.100-13.S1; code 61f7b85)
 - **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
