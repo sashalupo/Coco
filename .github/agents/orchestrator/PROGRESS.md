@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-8** — Chat input improvements (attachment pills, streamlined picker, no Done button) — **IN PROGRESS** (5 slices S1–S5; S1–S3 done)
-- **Current slice:** 1.100-8.S3 DONE (verified PASS)
+- **Current item:** **1.100-8** — Chat input improvements (attachment pills, streamlined picker, no Done button) — **IN PROGRESS** (5 slices S1–S5; S1–S4 done)
+- **Current slice:** 1.100-8.S4 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-8.S4 — `llm.addContext` grouped quick-pick (files/folders/selection/problems) in `src/extension.ts` + `package.json` (user goal: continue until version 1.107)
+- **Next step:** 1.100-8.S5 — smoke-test regression guards (no Done button, Enter submits, New Chat only, `@` tags still work) in `scripts/smoke-test.js` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 9ab4f6f (tester verified 1.100-8.S3; code 120a210)
+- **Last commit:** 5eda590 (tester verified 1.100-8.S4; code 0f5f441)
 - **Build state:** compiles clean; smoke 675/675 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
@@ -49,7 +49,7 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
-**1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`. Smoke 675.
+**1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`. Smoke 675.
 
 Team flow used throughout: Planner (slices) → Coder (one slice) → Tester → orchestrator commits; retry a failed sub-agent up to 5× with the same prompt.
 
