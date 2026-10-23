@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-29 — cell output to chat — S1 PASS (2026-10-23)
-- **Next step:** 1.99-29.S2 (webview cell_output_inject handler)
+- **Current item:** 1.99-29 — cell output to chat — S2 PASS (2026-10-23)
+- **Next step:** 1.99-29.S3 (llm.addCellOutput command in extension.ts)
 - **Last updated:** 2026-10-23
-- **Last commit:** 212572f
-- **Build state:** 576/576 PASS
+- **Last commit:** ad35ef1
+- **Build state:** 578/578 PASS
+
+### 1.99-29.S2 — webview cell_output_inject handler (2026-10-23) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **578 PASS lines** (576 prior + 2 new `cellout-s2:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 578/578 PASS; (3) 2 `cellout-s2:` assertions in section `// 59)` (smoke-test.js:4461) — handler present + region reaches `renderAttachStrip` PASS; (4) handler (webview.ts:2017) guards inputEl, prepends text (L2022), pushes images respecting MAX_IMAGES + 14MB cap (L2026–2037), renderAttachStrip (L2039), focus (L2042) PASS; (5) scope: only webview.ts, smoke-test.js, coder PROGRESS.md + `m ninfer` PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-29.S1 — extractCellOutputs pure (2026-10-23) — **PASS**
 

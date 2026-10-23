@@ -13,11 +13,11 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.99-29 (cell output to chat — `llm.addCellOutput`) — in progress
-- **Current slice:** 1.99-29.S1 DONE
-- **Next step:** 1.99-29.S2 (per planner plan)
+- **Current slice:** 1.99-29.S2 DONE
+- **Next step:** 1.99-29.S3 (per planner plan)
 - **Last updated:** 2026-10-23
-- **Last commit:** 212572f (HEAD; orchestrator commits — S1 changes uncommitted)
-- **Build state:** compiles clean; smoke test passes (576 assertions)
+- **Last commit:** ad35ef1 (HEAD; orchestrator commits — S2 changes uncommitted)
+- **Build state:** compiles clean; smoke test passes (578 assertions)
 
 ## Plan pointer
 
@@ -25,7 +25,12 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
-9.S1** (2026-10-23) — `extractCellOutputs` (pure). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+- **1.99-29.S2** (2026-10-23) — Webview `cell_output_inject` handler. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: new `case 'cell_output_inject':` in `handleHostMessage` immediately after `case 'prompt_inject':` — guards `inputEl` (return if null); prepends `msg.text` (same `t + '\n\n' + existing` pattern as `prompt_inject`); if `Array.isArray(msg.images)`, pushes each string matching `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` with `length <= 14 * 1024 * 1024` into `pendingImages` as `{ name: 'cell-output-' + (pendingImages.length + 1), dataUrl: img }` while `pendingImages.length < MAX_IMAGES`; calls `renderAttachStrip()` if any were added; focuses `inputEl` at the end.
+  - `scripts/smoke-test.js`: new section `// 59) cell_output_inject webview (1.99-29.S2)` after section 58, before `ALL SMOKE TESTS PASSED`; 2 `cellout-s2:` source-text assertions on `src/chat/webview.ts`: (a) `cell_output_inject` present; (b) the slice from `cell_output_inject` onward includes `renderAttachStrip` (handler region reaches the attach-strip render). Total PASS lines now 578 (576 + 2).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 578 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
+- **1.99-29.S1** (2026-10-23) — `extractCellOutputs` (pure). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/notebook.ts`: (a) new `export interface CellOutputContext { text: string; images: string[] }`; (b) new `export function extractCellOutputs(cell: NbCell): CellOutputContext` at end of file — iterates `cell.outputs ?? []` (skips non-objects); per `output_type`: `stream` → `text` (top-level per nbformat, with nested `data.text` also accepted; string or string[] joined), `error` → `${ename ?? "Error"}: ${evalue ?? ""}` + first 10 `traceback` entries (string or string[] joined), `execute_result`/`display_data` → `data["text/plain"] ?? data["text"]` then each of `image/png, image/jpeg, image/gif, image/webp` (string value only) pushed as `data:<mime>;base64,<value>` while `images.length < 4` and `value.length <= 10 * 1024 * 1024`. Non-empty text blocks rendered as `<kind>:\n<fence>\n<content>\n<fence>` (fence = `~~~~` if content contains ` ``` `, else ` ``` `), joined with `\n\n`, sliced to 20 000 chars + `\n… [truncated]` when cut. Pure — no vscode import.
   - `scripts/smoke-test.js`: (a) `extractCellOutputs` added to the `out/notebook.js` require; (b) new section `// 58) cell output extraction (1.99-29.S1)` after section 57, before `ALL SMOKE TESTS PASSED`; 8 `cellout-s1:` assertions (stream → text + `stream:` label; error → ename/evalue/traceback line; display_data text/plain + image/png → text + `data:image/png;base64,` URL; execute_result image → data URL; no outputs → `{ text: "", images: [] }`; 5 images → cap 4; 10 MB+1 base64 → excluded; 25 000-char stream → ≤ 20 000 + marker and ends with `… [truncated]`). Total PASS lines now 576 (568 + 8).
   - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 576 PASS, 0 FAIL.

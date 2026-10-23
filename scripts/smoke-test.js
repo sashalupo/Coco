@@ -4458,6 +4458,22 @@ function assert(cond, label) {
     "cellout-s1: text > 20 000 chars → truncated with marker",
   );
 
+  // 59) cell_output_inject webview (1.99-29.S2)
+  const webviewSrcCoS2 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcCoS2.indexOf("cell_output_inject") !== -1,
+    "cellout-s2: webview.ts handles cell_output_inject",
+  );
+  assert(
+    webviewSrcCoS2
+      .slice(webviewSrcCoS2.indexOf("cell_output_inject"))
+      .includes("renderAttachStrip"),
+    "cellout-s2: cell_output_inject handler region reaches renderAttachStrip",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

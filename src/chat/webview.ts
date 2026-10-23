@@ -2014,6 +2014,28 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					inputEl.focus();
 					break;
 				}
+				case 'cell_output_inject': {
+					if (!inputEl) return;
+					const t = String(msg.text ?? '');
+					if (t) {
+						const existing = inputEl.value;
+						inputEl.value = existing ? t + '\n\n' + existing : t;
+					}
+					let addedImages = false;
+					if (Array.isArray(msg.images)) {
+						msg.images.forEach(function (img) {
+							if (typeof img !== 'string') { return; }
+							if (!/^data:image\/(jpeg|png|gif|webp|bmp);base64,/.test(img)) { return; }
+							if (img.length > 14 * 1024 * 1024) { return; }
+							if (pendingImages.length >= MAX_IMAGES) { return; }
+							pendingImages.push({ name: 'cell-output-' + (pendingImages.length + 1), dataUrl: img });
+							addedImages = true;
+						});
+						if (addedImages) { renderAttachStrip(); }
+					}
+					inputEl.focus();
+					break;
+				}
 				case 'restore':
 					messagesEl.innerHTML = '';
 					(msg.messages || []).forEach(function (m) {
