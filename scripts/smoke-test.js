@@ -4474,6 +4474,25 @@ function assert(cond, label) {
     "cellout-s2: cell_output_inject handler region reaches renderAttachStrip",
   );
 
+  // 60) llm.addCellOutput command (1.99-29.S3)
+  const extensionSrcCoS3 = fs.readFileSync(
+    path.join(__dirname, "..", "out", "extension.js"),
+    "utf8",
+  );
+  assert(
+    extensionSrcCoS3.includes("llm.addCellOutput"),
+    "cellout-s3: extension.js registers llm.addCellOutput",
+  );
+  assert(
+    extensionSrcCoS3.includes("activeNotebookEditor"),
+    "cellout-s3: extension.js reads activeNotebookEditor",
+  );
+  assert(
+    extensionSrcCoS3.includes("extractCellOutputs") &&
+      extensionSrcCoS3.includes("cell_output_inject"),
+    "cellout-s3: extension.js uses extractCellOutputs and posts cell_output_inject",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

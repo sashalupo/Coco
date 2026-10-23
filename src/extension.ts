@@ -17,6 +17,7 @@ import {
   STATUS_COMMANDS,
 } from "./presets";
 import { promptTitle, stripPromptComments, PROMPT_TEMPLATE, MAX_PROMPT_CHARS } from "./prompts";
+import { parseNotebook, extractCellOutputs } from "./notebook";
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -449,6 +450,55 @@ export function activate(context: vscode.ExtensionContext): void {
           `Tool '${toolPicked.label}'${toolPicked.detail ? ` — ${toolPicked.detail}` : ""}`,
         );
       }
+    }),
+    vscode.commands.registerCommand("llm.addCellOutput", async () => {
+      const enabled = vscode.workspace
+        .getConfiguration("llm")
+        .get<boolean>("chat.addCellOutput.enabled", true);
+      if (!enabled) {
+        vscode.window.showInformationMessage(
+          "llm.chat.addCellOutput.enabled is off.",
+        );
+        return;
+      }
+      const editor = vscode.window.activeNotebookEditor;
+      if (!editor) {
+        vscode.window.showInformationMessage(
+          "No active notebook — open a notebook with cell outputs first.",
+        );
+        return;
+      }
+      const doc = await vscode.workspace.openTextDocument(editor.notebook.uri);
+      const parsed = parseNotebook(doc.getText());
+      if (!parsed) {
+        vscode.window.showInformationMessage("Could not parse notebook.");
+        return;
+      }
+      const cell = [...parsed.cells]
+        .reverse()
+        .find(
+          (c) =>
+            c.cell_type === "code" &&
+            Array.isArray(c.outputs) &&
+            c.outputs.length > 0,
+        );
+      if (!cell) {
+        vscode.window.showInformationMessage(
+          "The notebook has no cell outputs yet — run a cell first.",
+        );
+        return;
+      }
+      const { text, images } = extractCellOutputs(cell);
+      if (!text && images.length === 0) {
+        vscode.window.showInformationMessage("That cell's outputs are empty.");
+        return;
+      }
+      const visionEnabled = vscode.workspace
+        .getConfiguration("llm")
+        .get<boolean>("chat.vision.enabled", true);
+      const imgs = visionEnabled ? images : [];
+      provider.postMessage({ type: "cell_output_inject", text, images: imgs });
+      await vscode.commands.executeCommand("workbench.view.llm");
     }),
   );
 }

@@ -13,11 +13,11 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.99-29 (cell output to chat — `llm.addCellOutput`) — in progress
-- **Current slice:** 1.99-29.S2 DONE
-- **Next step:** 1.99-29.S3 (per planner plan)
+- **Current slice:** 1.99-29.S3 DONE
+- **Next step:** 1.99-29.S4 (package.json command + setting contributions, per planner plan)
 - **Last updated:** 2026-10-23
-- **Last commit:** ad35ef1 (HEAD; orchestrator commits — S2 changes uncommitted)
-- **Build state:** compiles clean; smoke test passes (578 assertions)
+- **Last commit:** 14dde26 (HEAD; orchestrator commits — S3 changes uncommitted)
+- **Build state:** compiles clean; smoke test passes (581 assertions)
 
 ## Plan pointer
 
@@ -25,6 +25,11 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.99-29.S3** (2026-10-23) — `llm.addCellOutput` command (host). Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: (a) new import `import { parseNotebook, extractCellOutputs } from "./notebook";` after the `./prompts` import; (b) new `vscode.commands.registerCommand("llm.addCellOutput", async () => {...})` appended to the commands block after `llm.mcp.listServers` — reads `llm.chat.addCellOutput.enabled` (default true; off → info message, return); reads `vscode.window.activeNotebookEditor` (none → info message, return); `openTextDocument(editor.notebook.uri)` + `parseNotebook(doc.getText())` (null → "Could not parse notebook.", return); finds the last code cell with non-empty `outputs` via `[...parsed.cells].reverse().find(...)` (none → "run a cell first", return); `extractCellOutputs(cell)` (both empty → "outputs are empty", return); vision gate `llm.chat.vision.enabled` (default true) filters images; posts `{ type: "cell_output_inject", text, images: imgs }` via `provider.postMessage(...)` (public method on `ChatViewProvider`, `src/chat/ChatViewProvider.ts:1912`); then `await vscode.commands.executeCommand("workbench.view.llm")`.
+  - `scripts/smoke-test.js`: new section `// 60) llm.addCellOutput command (1.99-29.S3)` after section 59, before `ALL SMOKE TESTS PASSED`; reads `out/extension.js` as text; 3 `cellout-s3:` assertions: (a) contains `llm.addCellOutput`; (b) contains `activeNotebookEditor`; (c) contains `extractCellOutputs` AND `cell_output_inject`. Total PASS lines now 581 (578 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 581 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-29.S2** (2026-10-23) — Webview `cell_output_inject` handler. Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/webview.ts`: new `case 'cell_output_inject':` in `handleHostMessage` immediately after `case 'prompt_inject':` — guards `inputEl` (return if null); prepends `msg.text` (same `t + '\n\n' + existing` pattern as `prompt_inject`); if `Array.isArray(msg.images)`, pushes each string matching `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` with `length <= 14 * 1024 * 1024` into `pendingImages` as `{ name: 'cell-output-' + (pendingImages.length + 1), dataUrl: img }` while `pendingImages.length < MAX_IMAGES`; calls `renderAttachStrip()` if any were added; focuses `inputEl` at the end.
   - `scripts/smoke-test.js`: new section `// 59) cell_output_inject webview (1.99-29.S2)` after section 58, before `ALL SMOKE TESTS PASSED`; 2 `cellout-s2:` source-text assertions on `src/chat/webview.ts`: (a) `cell_output_inject` present; (b) the slice from `cell_output_inject` onward includes `renderAttachStrip` (handler region reaches the attach-strip render). Total PASS lines now 578 (576 + 2).

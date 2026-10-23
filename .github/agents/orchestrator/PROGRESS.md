@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-29** — Cell output to chat (text/image) — `llm.addCellOutput` — in progress (planned, 4 slices S1–S4)
-- **Current slice:** 1.99-29.S2 DONE (S3 next — llm.addCellOutput command)
+- **Current slice:** 1.99-29.S3 DONE (S4 next — package.json schema, FINAL)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-29.S3 (`llm.addCellOutput` command in extension.ts + smoke section 60, 3 assertions → 581)
+- **Next step:** dispatch Coder for 1.99-29.S4 (package.json command + `llm.chat.addCellOutput.enabled` setting + smoke section 61, 3 assertions → 584 — FINAL slice)
 - **Last updated:** 2026-10-22
-- **Last commit:** ad35ef1 (feat(llm): extractCellOutputs (1.99-29.S1)); S2 commit pending
-- **Build state:** compiles clean; smoke test passes (578 assertions)
+- **Last commit:** 14dde26 (feat(llm): cell_output_inject webview handler (1.99-29.S2)); S3 commit pending
+- **Build state:** compiles clean; smoke test passes (581 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

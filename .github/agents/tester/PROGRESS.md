@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-29 — cell output to chat — S2 PASS (2026-10-23)
-- **Next step:** 1.99-29.S3 (llm.addCellOutput command in extension.ts)
+- **Current item:** 1.99-29 — cell output to chat — S3 PASS (2026-10-23)
+- **Next step:** 1.99-29.S4 (package.json command + setting schema — FINAL slice)
 - **Last updated:** 2026-10-23
-- **Last commit:** ad35ef1
-- **Build state:** 578/578 PASS
+- **Last commit:** 14dde26
+- **Build state:** 581/581 PASS
+
+### 1.99-29.S3 — llm.addCellOutput command (2026-10-23) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **581 PASS lines** (578 prior + 3 new `cellout-s3:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 581/581 PASS; (3) 3 `cellout-s3:` assertions in section `// 60)` (smoke-test.js:4477) — command id, activeNotebookEditor, extractCellOutputs+cell_output_inject PASS; (4) gates verified in order at extension.ts L454–502 (enabled → activeNotebookEditor → parse → last code cell w/ outputs → non-empty → vision gate → postMessage L500 → workbench.view.llm L501) PASS; (5) scope: only extension.ts, smoke-test.js, coder PROGRESS.md + `m ninfer` PASS.
+- **Verdict:** **PASS** — all 5 criteria met.
 
 ### 1.99-29.S2 — webview cell_output_inject handler (2026-10-23) — **PASS**
 
