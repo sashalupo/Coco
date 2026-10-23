@@ -6439,11 +6439,65 @@ function assert(cond, label) {
     "mcp-inputs-s3: extension.ts references detectSecretEnvName + setInputs; package.json mentions inputs",
   );
 
-  if (assertCount !== 780) {
-    console.error(`FAIL: total assertion count is 780 (got ${assertCount})`);
+  // 27) Generate alt text (1.100-29 S-003)
+  const {
+    findImageRef,
+    isPlaceholderAlt,
+    buildAltTextPrompt,
+    parseAltText,
+  } = require(path.join(__dirname, "..", "out", "codeaction.js"));
+  const altHtmlRef = findImageRef('<img src="a.png" alt="">');
+  assert(
+    altHtmlRef &&
+      altHtmlRef.src === "a.png" &&
+      altHtmlRef.alt === "" &&
+      '<img src="a.png" alt="">'.slice(altHtmlRef.altStart, altHtmlRef.altEnd) === "",
+    "alt-s1: findImageRef('<img src=\"a.png\" alt=\"\">') → src a.png, alt '', empty slot",
+  );
+  const altMdRef = findImageRef("![x](img/pic.jpg)");
+  assert(
+    altMdRef && altMdRef.src === "img/pic.jpg" && altMdRef.alt === "x",
+    "alt-s1: findImageRef('![x](img/pic.jpg)') → src img/pic.jpg, alt x",
+  );
+  assert(
+    findImageRef("no image here") === null,
+    "alt-s1: findImageRef('no image here') → null",
+  );
+  assert(
+    isPlaceholderAlt("") === true &&
+      isPlaceholderAlt("TODO") === true &&
+      isPlaceholderAlt("a cat") === false,
+    "alt-s1: isPlaceholderAlt('')/('TODO') true; ('a cat') false",
+  );
+  const altPrompt = buildAltTextPrompt("a.png", "some context", false);
+  assert(
+    altPrompt.includes("a.png") && altPrompt.includes("some context"),
+    "alt-s1: buildAltTextPrompt contains src + context",
+  );
+  assert(
+    parseAltText("```A cat```") === "A cat",
+    "alt-s1: parseAltText('```A cat```') → 'A cat'",
+  );
+  const altProviderSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "codeaction", "CodeActionProvider.ts"),
+    "utf8",
+  );
+  const pkgAltSrc = fs.readFileSync(
+    path.join(__dirname, "..", "package.json"),
+    "utf8",
+  );
+  assert(
+    altProviderSrc.includes("Generate alt text") &&
+      altProviderSrc.includes("altText.enabled") &&
+      pkgAltSrc.includes("llm.codeAction.altText.enabled"),
+    "alt-s1: CodeActionProvider.ts references 'Generate alt text' + altText.enabled; package.json has llm.codeAction.altText.enabled",
+  );
+
+  if (assertCount !== 787) {
+    console.error(`FAIL: total assertion count is 787 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 780");
+  console.log("PASS: total assertion count is 787");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
