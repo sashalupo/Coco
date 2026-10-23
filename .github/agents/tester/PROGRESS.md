@@ -11,12 +11,14 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-19 — COMPLETE (S-001, S-002, S-003 verified PASS)
-- **Next step:** 1.100-19 done — next changelog item
+- **Current item:** 1.100-29 — in progress (S-001 verified PASS)
+- **Next step:** 1.100-29 S-002
 - **Last updated:** 2026-10-23
-- **Last commit:** 7b4b7cc (1.100-19 S-003, verified PASS)
+- **Last commit:** d01fc92 (1.100-29 S-001, verified PASS)
 - **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
 ## Verified (recap)
+
+**1.100-29 S-001** (2026-10-23) — **PASS**. Pure alt-text helpers in `src/codeaction.ts` (commit d01fc92). Build exit 0; smoke 780/780 (no new smoke assertions this slice). Scope clean: `git show --stat d01fc92` touches only `src/codeaction.ts` (+178) + `.github/agents/coder/PROGRESS.md` (+9/-4); `ninfer` submodule NOT committed. Verified: (a) no `vscode` import in `src/codeaction.ts` (only comments mention it); (b) runtime probe on compiled `out/codeaction.js`, 9/9 assertions: findImageRef html img → src a.png, alt empty, input.slice(altStart,altEnd)===""; findImageRef markdown → src img/pic.jpg, alt x; findImageRef no image → null; isPlaceholderAlt("") → true; isPlaceholderAlt("TODO") → true; isPlaceholderAlt("a cat") → false; parseAltText fenced → "A cat"; buildAltTextPrompt without image contains a.png + some context + not-attached note; buildAltTextPrompt with image contains a.png + some context, no not-attached note. **Next: 1.100-29 S-002.**
 
 **1.100-19 S-003** (2026-10-23) — **PASS**. Smoke-test regression guards in scripts/smoke-test.js (commit 7b4b7cc). Build exit 0; smoke 780/780 (774 + 6 new ws-s5 assertions), clean exit. Scope clean: git show --stat 7b4b7cc touches only scripts/smoke-test.js (+53/-8) + .github/agents/coder/PROGRESS.md (+11/-4); ninfer submodule NOT committed. Verified: (a) ws-s5 block has exactly 6 assertions — buildTasksJson(extension) shape (version 2.0.0, one shell task Compile / npm run compile, empty problemMatcher), buildTasksJson(generic) === empty, buildTasksJson(nope) === empty, mcp-server/dev-env labels+commands (Start / npm start; Dev / npm run dev), buildScaffoldPrompt(extension) contains .vscode/tasks.json + run_command + label Compile, buildScaffoldPrompt(generic) has no tasks.json; (b) hard gate raised 774 to 780 (line 6442), matches actual count. **Item 1.100-19 complete (S-001 to S-003 all PASS).**
 
