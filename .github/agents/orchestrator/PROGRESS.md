@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-1** — Instructions files (`.instructions.md`) — **DONE** (6 slices S1–S6)
-- **Current slice:** 1.100-1.S6 DONE (item complete)
+- **Current item:** **1.100-2** — Prompt files improvements (front matter `mode`/`tools`, play button, run semantics) — **NOT STARTED**
+- **Current slice:** none — dispatch Planner for 1.100-2
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch Planner for item 1.100-2 (Prompt files improvements — mode/tools front matter, Play button)
-- **Last updated:** 2026-10-22
-- **Last commit:** 4c6a8ab (S5); S6 commit pending
-- **Build state:** compiles clean; smoke 610/610 PASS
+- **Last updated:** 2026-10-23
+- **Last commit:** e63ed62 (S6, item complete); tag `changelog-1.100` on e63ed62
+- **Build state:** compiles clean; smoke 610/610 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -114,7 +114,7 @@ pending item** (the oldest).
 
 | Item | Changelog version | Tag | Commit | Date |
 | ---- | ----------------- | --- | ------ | ---- |
-| _(none yet)_ | | | | |
+| 1.100-1 | 1.100 | `changelog-1.100` | e63ed62 | 2026-10-23 |
 
 ## Todo
 
