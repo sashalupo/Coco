@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-12 (in progress) — S1, S2, S3, S4 verified PASS
-- **Next step:** verify 1.100-12.S5 (smoke-test guards in `scripts/smoke-test.js`)
+- **Current item:** 1.100-12 (complete) — S1–S5 verified PASS
+- **Next step:** item 1.100-12 done; await next changelog item from Planner
 - **Last updated:** 2026-10-23
-- **Last commit:** bfc117d (1.100-12.S4 webview marker, verified PASS)
-- **Build state:** compiles clean; smoke 714/714 PASS (verified 2026-10-23)
+- **Last commit:** ec9a244 (1.100-12.S5 smoke guards, verified PASS)
+- **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 
 ## Verified (recap)
 
@@ -38,6 +38,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 
 
+
+**1.100-12.S5** (2026-10-23) — **PASS**. Smoke-test regression guards in `scripts/smoke-test.js` (commit ec9a244). Build exit 0; smoke 736/736 (714 + 22 new `summarize-s5` assertions). Scope clean: commit touches only `scripts/smoke-test.js` (+157) + coder memory; no `src/` or `package.json` changes; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Guards verified genuine: (a) `out/request.js` exports `summarizeSplit`/`buildTranscript` + `SUMMARY_MARKER === "[Summarized conversation history]"`; (b) pure-function tests of compiled `summarizeSplit` — under threshold → null; windowTokens=0 → null; threshold=0 → null; 5 msgs → null; 10 plain msgs over threshold → split 6; tool group at naive split → null; summarized msg at split → null; all-tool tail → null; (c) `buildTranscript` `User:/Assistant:/System:/Tool:` lines + empty-content case; (d) `package.json` schema for both settings (boolean default true / number default 0.7); (e) `config.ts` reads + `presets.ts` fields; (f) `ChatViewProvider.ts` references (`chatSummarizeEnabled`, `summarizeSplit`, `SUMMARY_MARKER`, `maybeSummarizeHistory`, "summarized conversation history"); (g) `webview.ts` `m.summarized === true` branch + `case 'summarize_result'` + "Summarized conversation history" label. Pure-function assertions independently verified against `src/request.ts` `summarizeSplit` (lines ~253–290): keepCount fixed at 4, naive split `length - 4`, forward walk past `tool`/`tool_calls`/`summarized`, `null` if `length - i < 4` — so the tool-group and summarized-at-split cases correctly return null (walk reaches index 7/8, leaving <4 to keep). Count gate raised 714 → 736, matches actual count. **Item 1.100-12 complete (S1–S5 all PASS).**
 
 **1.100-12.S4** (2026-10-23) — **PASS**. Webview summarized-history marker rendering in `src/chat/webview.ts` (commit bfc117d). Build exit 0; smoke 714/714. Scope clean: commit touches only `src/chat/webview.ts` (+44) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: `restore` handler message loop has `if (m.summarized === true)` branch (any role, checked before user/assistant) rendering a `.message.summarized` div with `.role` label "Summarized conversation history" and content minus the `SUMMARY_MARKER` prefix (`"[Summarized conversation history]"` + following `\n`) rendered via `renderMarkdown`; `case 'summarize_result':` renders like `compact_result` (same `message revert-result` class, `msg.message`, scrollTop); `.message.summarized` CSS rules present (muted `var(--muted)` 12px content, 10px role, subtle `border-top: 1px solid var(--border)`); marker literal `"[Summarized conversation history]"` in webview is identical to `SUMMARY_MARKER` in `src/request.ts` line 245.
 
