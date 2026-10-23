@@ -6493,11 +6493,50 @@ function assert(cond, label) {
     "alt-s1: CodeActionProvider.ts references 'Generate alt text' + altText.enabled; package.json has llm.codeAction.altText.enabled",
   );
 
-  if (assertCount !== 787) {
-    console.error(`FAIL: total assertion count is 787 (got ${assertCount})`);
+  // 28) Drag and drop cell outputs (1.100-30 S-003)
+  const dropExtSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  const dropNbSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "notebook.ts"),
+    "utf8",
+  );
+  const dropPkgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "package.json"),
+    "utf8",
+  );
+  assert(
+    dropExtSrc.includes("registerDragAndDropController") &&
+      dropExtSrc.includes('viewContainerId: "llm"'),
+    "drop-s1: extension.ts registers a drag and drop controller targeting viewContainerId 'llm'",
+  );
+  assert(
+    dropExtSrc.includes("notebook.cellOutput") &&
+      dropExtSrc.includes("e.modifiers.alt"),
+    "drop-s2: extension.ts handles notebook.cellOutput drops with the Alt rule (e.modifiers.alt)",
+  );
+  assert(
+    dropNbSrc.includes("extractNotebookCellOutput"),
+    "drop-s3: notebook.ts exports extractNotebookCellOutput",
+  );
+  const dropSetting =
+    pkgJson.contributes.configuration.properties[
+      "llm.chat.cellOutputDrop.enabled"
+    ];
+  assert(
+    dropSetting !== undefined &&
+      dropSetting.type === "boolean" &&
+      dropSetting.default === true &&
+      dropPkgSrc.includes("llm.chat.cellOutputDrop.enabled"),
+    "drop-s4: package.json has llm.chat.cellOutputDrop.enabled (boolean, default true)",
+  );
+
+  if (assertCount !== 791) {
+    console.error(`FAIL: total assertion count is 791 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 787");
+  console.log("PASS: total assertion count is 791");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
