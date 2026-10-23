@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S5 done, S6 pending)
-- **Next step:** 1.100-2.S6 — `package.json`: command rename, Play button menu, language IDs (+4 smoke)
+- **Current item:** 1.100-2 (Prompt files improvements) — **COMPLETE** (all 6 slices S1–S6 done, 2026-10-23)
+- **Next step:** next pending backlog item (1.100-3)
 - **Last updated:** 2026-10-23
-- **Last commit:** (1.100-2.S5 commit — `llm.runPrompt` command + deprecated `llm.usePrompt` alias)
-- **Build state:** compiles clean; smoke 633 PASS
+- **Last commit:** (1.100-2.S6 commit — `package.json` schema: `llm.runPrompt` command, Play button menu, language IDs)
+- **Build state:** compiles clean; smoke 637 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,10 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-2.S6** (2026-10-23) — `package.json`: command rename, Play button menu, language IDs (+4 smoke). **Item 1.100-2 COMPLETE (all 6 slices).** Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md`, `.github/agents/planner/PROGRESS.md`, `.github/agents/tester/PROGRESS.md` only.
+  - `package.json`: (a) `contributes.commands` — `llm.usePrompt` entry replaced with `{ "command": "llm.runPrompt", "title": "LLM: Run Prompt", "icon": "$(play)" }`; (b) `activationEvents` — `onCommand:llm.usePrompt` → `onCommand:llm.runPrompt`; (c) new `contributes.menus` — `"editor/title": [{ "command": "llm.runPrompt", "when": "resourceFilename =~ /.*\\.prompt\\.md$/" }]` (no prior `menus` contribution existed); (d) new `contributes.languages` — `llm.prompt` (name "Prompt", extensions `[".prompt.md"]`) and `llm.instructions` (name "Instructions", extensions `[".instructions.md"]`). JSON validity verified (`node -e "JSON.parse(...)"` → `json ok`).
+  - `scripts/smoke-test.js`: (a) new section `// 73) runPrompt schema (1.100-2.S6)` after section 72, before `ALL SMOKE TESTS PASSED`; reuses the file-scoped `pkgJson` (parsed at line 1730); 4 `prompt2-s6:` assertions: (1) `contributes.commands` contains `llm.runPrompt` with title "LLM: Run Prompt" and icon `$(play)`; (2) `contributes.menus["editor/title"]` has the `llm.runPrompt` entry with a `when` clause containing `prompt` + `md` (the JSON-escaped `when` string is `resourceFilename =~ /.*\.prompt\.md$/` — literal `.prompt.md` substring check would fail on the escaped backslashes, so the assertion checks `prompt` and `md` separately); (3) `contributes.languages` contains `llm.prompt` with extensions `[".prompt.md"]`; (4) `contributes.languages` contains `llm.instructions` with extensions `[".instructions.md"]`. (b) Updated two stale pre-existing assertions from section 40 (item 1.99-12.S5): `rp-s5: package.json contributes the llm.usePrompt command titled 'LLM: Use Prompt'` → `rp-s5: package.json contributes the llm.runPrompt command titled 'LLM: Run Prompt' (1.100-2.S6)` and `rp-s5: package.json has the onCommand:llm.usePrompt activation event` → `rp-s5: package.json has the onCommand:llm.runPrompt activation event (1.100-2.S6)` (1-for-1 updates — the old assertions directly contradicted S6's rename; count unchanged). Total PASS lines now 637 (633 + 4).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 637 PASS, 0 FAIL; `node -e "JSON.parse(...)"` → `json ok`.
 - **1.100-2.S5** (2026-10-23) — `src/extension.ts`: `llm.usePrompt` → `llm.runPrompt` + run-immediately semantics (+4 smoke). Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/extension.ts`: (a) command registration renamed `"llm.usePrompt"` → `"llm.runPrompt"`; QuickPick `title: "LLM: Run Prompt"`, `placeHolder: "Select a prompt to run in chat"`; (b) on pick: read file → `stripPromptComments` empty-body guard kept ("That prompt file is empty (or only comments)."), then `await vscode.commands.executeCommand("workbench.view.llm")` + `await provider.runPrompt(content, picked.uri.fsPath)` (replaces the old `prompt_inject` postMessage — `prompt_inject` no longer appears anywhere in `extension.ts`); (c) new deprecated alias `vscode.commands.registerCommand("llm.usePrompt", () => vscode.commands.executeCommand("llm.runPrompt"))` right after the `llm.runPrompt` registration; (d) "New Prompt File…" flow unchanged.
   - `scripts/smoke-test.js`: (a) new section `// 72) llm.runPrompt command (1.100-2.S5)` after section 71, before `ALL SMOKE TESTS PASSED`; reads `out/extension.js` as text (local `p2s5Src`); 4 `prompt2-s5:` assertions: (1) contains `"llm.runPrompt"`; (2) contains the deprecated `"llm.usePrompt"` alias; (3) contains `runPrompt(` (provider method call); (4) `prompt_inject` is NOT present in `out/extension.js`. (b) Updated one stale pre-existing assertion from section 38 (item 1.99-12.S3a): `rp-s3: extension.ts posts prompt_inject` → `rp-s3: extension.ts no longer posts prompt_inject (1.100-2.S5)` (inverted to `!includes` — the old assertion directly contradicted S5's removal; count unchanged). Total PASS lines now 633 (629 + 4).

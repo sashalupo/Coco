@@ -3754,16 +3754,16 @@ function assert(cond, label) {
   const pkgRpS5 = JSON.parse(
     fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
   );
-  const usePromptCmd = (pkgRpS5.contributes.commands || []).find(
-    (c) => c.command === "llm.usePrompt",
+  const runPromptCmd = (pkgRpS5.contributes.commands || []).find(
+    (c) => c.command === "llm.runPrompt",
   );
   assert(
-    usePromptCmd && usePromptCmd.title === "LLM: Use Prompt",
-    "rp-s5: package.json contributes the llm.usePrompt command titled 'LLM: Use Prompt'",
+    runPromptCmd && runPromptCmd.title === "LLM: Run Prompt",
+    "rp-s5: package.json contributes the llm.runPrompt command titled 'LLM: Run Prompt' (1.100-2.S6)",
   );
   assert(
-    (pkgRpS5.activationEvents || []).includes("onCommand:llm.usePrompt"),
-    "rp-s5: package.json has the onCommand:llm.usePrompt activation event",
+    (pkgRpS5.activationEvents || []).includes("onCommand:llm.runPrompt"),
+    "rp-s5: package.json has the onCommand:llm.runPrompt activation event (1.100-2.S6)",
   );
   const promptFilesSetting =
     pkgRpS5.contributes.configuration.properties["llm.promptFiles.locations"];
@@ -4885,6 +4885,32 @@ function assert(cond, label) {
   assert(
     !p2s5Src.includes("prompt_inject"),
     "prompt2-s5: old prompt_inject path is gone from extension.js",
+  );
+
+  // 73) runPrompt schema (1.100-2.S6)
+  const p2s6Cmds = pkgJson.contributes.commands;
+  const p2s6RunCmd = p2s6Cmds.find((c) => c.command === "llm.runPrompt");
+  assert(
+    p2s6RunCmd && p2s6RunCmd.title === "LLM: Run Prompt" && p2s6RunCmd.icon === "$(play)",
+    "prompt2-s6: commands contains llm.runPrompt with title 'LLM: Run Prompt' and icon $(play)",
+  );
+  const p2s6Menus = pkgJson.contributes.menus;
+  const p2s6EditorTitle = p2s6Menus && p2s6Menus["editor/title"];
+  const p2s6MenuEntry = p2s6EditorTitle && p2s6EditorTitle.find((m) => m.command === "llm.runPrompt");
+  assert(
+    p2s6MenuEntry && typeof p2s6MenuEntry.when === "string" && p2s6MenuEntry.when.includes("prompt") && p2s6MenuEntry.when.includes("md"),
+    "prompt2-s6: menus['editor/title'] has llm.runPrompt entry with .prompt.md when clause",
+  );
+  const p2s6Langs = pkgJson.contributes.languages;
+  const p2s6PromptLang = p2s6Langs.find((l) => l.id === "llm.prompt");
+  assert(
+    p2s6PromptLang && Array.isArray(p2s6PromptLang.extensions) && p2s6PromptLang.extensions.includes(".prompt.md"),
+    "prompt2-s6: languages contains llm.prompt with extensions ['.prompt.md']",
+  );
+  const p2s6InstrLang = p2s6Langs.find((l) => l.id === "llm.instructions");
+  assert(
+    p2s6InstrLang && Array.isArray(p2s6InstrLang.extensions) && p2s6InstrLang.extensions.includes(".instructions.md"),
+    "prompt2-s6: languages contains llm.instructions with extensions ['.instructions.md']",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

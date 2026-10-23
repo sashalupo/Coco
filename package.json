@@ -13,7 +13,7 @@
     "onView:llm.chat",
     "onCommand:llm.testConnection",
     "onCommand:llm.showStatusOverview",
-    "onCommand:llm.usePrompt",
+    "onCommand:llm.runPrompt",
     "onCommand:llm.mcp.addServer",
     "onCommand:llm.mcp.listServers",
     "onCommand:llm.toggleCompletions"
@@ -34,8 +34,9 @@
         "title": "LLM: Show Status Overview"
       },
       {
-        "command": "llm.usePrompt",
-        "title": "LLM: Use Prompt"
+        "command": "llm.runPrompt",
+        "title": "LLM: Run Prompt",
+        "icon": "$(play)"
       },
       {
         "command": "llm.refreshModels",
@@ -100,6 +101,26 @@
         }
       ]
     },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "llm.runPrompt",
+          "when": "resourceFilename =~ /.*\\.prompt\\.md$/"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "llm.prompt",
+        "name": "Prompt",
+        "extensions": [".prompt.md"]
+      },
+      {
+        "id": "llm.instructions",
+        "name": "Instructions",
+        "extensions": [".instructions.md"]
+      }
+    ],
     "configuration": {
       "title": "LLM",
       "properties": {

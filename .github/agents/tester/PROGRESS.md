@@ -12,8 +12,8 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-2 — Prompt files improvements — S1+S2+S3+S4+S5 PASS (2026-10-23)
-- **Next step:** 1.100-2 item complete (S1–S5 all PASS); next changelog item
+- **Current item:** 1.100-2 — Prompt files improvements — S1+S2+S3+S4+S5 PASS (2026-10-23); S6 (final slice) pending verification
+- **Next step:** verify 1.100-2.S6 (package.json schema: `llm.runPrompt` command, Play button menu, language IDs; smoke 637); then item complete, next changelog item
 - **Last updated:** 2026-10-23
 - **Last commit:** 25bc0c0 (1.100-2.S5)
 - **Build state:** compiles clean; smoke 633/633 PASS
@@ -22,7 +22,7 @@ acceptance checks, and reports a clear pass/fail.
 - Build: `npm run compile` exit 0, zero errors. Smoke: 633/633 PASS (629 baseline + 4 new `prompt2-s5:`), 0 FAIL.
 - All 6 acceptance criteria met: (1) compile exit 0; (2) smoke total 633 (grep -c '^PASS:' → 633, 0 FAIL); (3) section `// 72) llm.runPrompt command (1.100-2.S5)` at smoke-test.js:4868 with exactly 4 `prompt2-s5:` assertions (L4875 registers `llm.runPrompt`, L4879 keeps `llm.usePrompt` alias, L4883 calls `runPrompt(`, L4887 `prompt_inject` gone from extension.js); (4) `src/extension.ts`: `registerCommand("llm.runPrompt")` (L204) with QuickPick `title: "LLM: Run Prompt"` (L242); on pick reads file, strips comments (empty → info), opens `workbench.view.llm`, then `await provider.runPrompt(content, picked.uri.fsPath)` (L260) — no `prompt_inject` post; deprecated alias `llm.usePrompt` (L298–300) → `executeCommand("llm.runPrompt")`; "New Prompt File…" flow unchanged (L262–295: input box validation, `.prompts/<name>.prompt.md`, exists guard, PROMPT_TEMPLATE write, open); (5) `git show --stat 25bc0c0` → exactly `src/extension.ts` (+17/−8), `scripts/smoke-test.js` (+25/−1), `.github/agents/coder/PROGRESS.md` (+12/−4) — no out-of-scope files; (6) KNOWN DEVIATION verified sensible: section 38 assertion inverted at smoke-test.js:3745 from `rp-s3: extension.ts posts prompt_inject` to `rp-s3: extension.ts no longer posts prompt_inject (1.100-2.S5)` — the old assertion would have failed after S5 removed `prompt_inject` from extension.ts; it is a 1-for-1 inversion so the total assertion count is unchanged by it.
 - Last commit: `25bc0c0`.
-- **ITEM 1.100-2 COMPLETE** (S1–S5 all PASS).
+- S1–S5 verified PASS; S6 (final slice) pending verification.
 
 ### 1.100-2.S4 — `prompt_run` host→webview handler in `src/chat/webview.ts` (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 629/629 PASS (627 baseline + 2 new `prompt2-s4:`), 0 FAIL.

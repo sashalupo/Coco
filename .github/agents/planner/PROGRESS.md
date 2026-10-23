@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — **planned** (2026-10-23, 6 slices S1–S6)
-- **Next step:** dispatch Coder for 1.100-2.S1 (prompt front-matter parsing in `src/prompts.ts`)
+- **Current item:** 1.100-2 (Prompt files improvements) — **Done** (2026-10-23, all 6 slices S1–S6 complete)
+- **Next step:** plan next pending backlog item
 - **Last updated:** 2026-10-23
 - **Last commit:** (planner commit for the 1.100-2 plan)
 - **Build state:** n/a (planner does not build)
