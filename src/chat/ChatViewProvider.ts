@@ -51,7 +51,11 @@ import {
   MAX_PROMPT_CHARS,
 } from "../prompts";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
-import { ToolExecutor } from "../tools/ToolExecutor";
+import {
+  ToolExecutor,
+  newDiagnostics,
+  type DiagnosticLike,
+} from "../tools/ToolExecutor";
 import { isMcpToolName } from "../mcp";
 import type { McpManager } from "../mcpManager";
 import { changedNewLines, unifiedDiff } from "../diff";
@@ -77,6 +81,9 @@ import {
 
 /** Cap on the number of tool-call iterations in the agentic loop. */
 const MAX_TOOL_ITERATIONS = 8;
+
+/** Cap on auto-fix follow-up rounds per run (1.100-10.S3). */
+const MAX_AUTOFIX_ROUNDS = 2;
 
 /** Messages the webview sends to the host. */
 export interface WebviewToHostMessage {
@@ -1441,6 +1448,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     // files mutated during this run.
     this.toolExecutor.clearChangeSummary();
 
+    // 1.100-10.S3: reset the per-run auto-fix round counter so a run gets a
+    // fresh budget of follow-up fix turns.
+    let autoFixRounds = 0;
+
     // Create an AbortController so the user can cancel mid-stream.
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
@@ -1636,6 +1647,41 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               type: "todos_update",
               todos: this.toolExecutor.getTodos(),
             });
+          }
+        }
+
+        // 1.100-10.S3: autofix hook — diff diagnostics for the files this
+        // batch edited against the pre-batch snapshot. New problems trigger
+        // an injected system turn (capped at MAX_AUTOFIX_ROUNDS per run);
+        // past the cap they are only reported in a delta note.
+        const editedPaths = this.autofixEditedPaths(toolCalls);
+        if (editedPaths.length > 0) {
+          const before = this.autofixSnapshot(editedPaths);
+          // Give the language server a moment to settle after the edits.
+          await new Promise((r) => setTimeout(r, 500));
+          const after = this.autofixSnapshot(editedPaths);
+          const fresh = newDiagnostics(before, after);
+          if (fresh.length > 0) {
+            const text = this.formatNewDiagnostics(fresh);
+            if (
+              settings.agentAutoFix &&
+              autoFixRounds < MAX_AUTOFIX_ROUNDS
+            ) {
+              autoFixRounds += 1;
+              this.history.push({
+                role: "system",
+                content: `New problems appeared in ${editedPaths.join(", ")}: ${text} Fix them.`,
+              });
+              this.postMessage({
+                type: "delta",
+                content: `\n\n[auto-fix ${autoFixRounds}/${MAX_AUTOFIX_ROUNDS}: new problems detected]`,
+              });
+            } else {
+              this.postMessage({
+                type: "delta",
+                content: `\n\n[new problems remain in ${editedPaths.join(", ")}: ${text}]`,
+              });
+            }
           }
         }
 
@@ -2157,5 +2203,86 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   /** Send a message to the webview (no-op if the view is not resolved). */
   public postMessage(message: HostToWebviewMessage): void {
     this.webview?.postMessage(message);
+  }
+
+  /**
+   * 1.100-10.S3: collect the workspace-relative file paths that a tool-call
+   * batch will edit (write_file / edit_file / apply_patch / notebook_edit).
+   * Invalid JSON arguments are skipped; paths are deduped, order preserved.
+   */
+  private autofixEditedPaths(toolCalls: ToolCall[]): string[] {
+    const paths: string[] = [];
+    for (const call of toolCalls) {
+      const name = call.function.name;
+      if (
+        name !== "write_file" &&
+        name !== "edit_file" &&
+        name !== "apply_patch" &&
+        name !== "notebook_edit"
+      ) {
+        continue;
+      }
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(call.function.arguments || "{}") as Record<
+          string,
+          unknown
+        >;
+      } catch {
+        continue;
+      }
+      const p = typeof args.path === "string" ? args.path : "";
+      if (p !== "" && !paths.includes(p)) {
+        paths.push(p);
+      }
+    }
+    return paths;
+  }
+
+  /**
+   * 1.100-10.S3: snapshot current language-server diagnostics for the given
+   * workspace-relative file paths (vscode-independent shape for
+   * `newDiagnostics`). Paths outside the workspace are skipped.
+   */
+  private autofixSnapshot(relPaths: string[]): DiagnosticLike[] {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return [];
+    }
+    const root = folders[0].uri.fsPath;
+    const out: DiagnosticLike[] = [];
+    for (const rel of relPaths) {
+      const abs = path.resolve(root, rel);
+      const back = path.relative(root, abs);
+      if (back.startsWith("..") || path.isAbsolute(back)) {
+        continue;
+      }
+      for (const d of vscode.languages.getDiagnostics(vscode.Uri.file(abs))) {
+        out.push({
+          severity: d.severity,
+          range: { start: { line: d.range.start.line, character: d.range.start.character } },
+          message: d.message,
+        });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 1.100-10.S3: format new diagnostics as a short "file: severity line:col —
+   * message" list (capped at 10 entries) for the injected fix turn / delta
+   * note.
+   */
+  private formatNewDiagnostics(diags: DiagnosticLike[]): string {
+    const sevName = (s: number): string =>
+      ["Error", "Warning", "Info", "Hint"][s] ?? `Severity ${s}`;
+    const lines: string[] = [];
+    for (const d of diags.slice(0, 10)) {
+      lines.push(
+        `${sevName(d.severity)} ${d.range.start.line + 1}:${d.range.start.character + 1} — ${d.message}`,
+      );
+    }
+    const more = diags.length > 10 ? ` (+${diags.length - 10} more)` : "";
+    return `${lines.join("; ")}${more}.`;
   }
 }
