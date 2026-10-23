@@ -24,8 +24,9 @@ you keep a persistent progress file and you work in **tiny single-session steps*
 The model under this agent has a limited context window (~200k tokens). Work in small steps so
 a single session never overflows:
 
-- **One item per session.** Verify exactly ONE item (or one sub-step of a large item), then
-  stop. Never verify multiple items in one session.
+- **One item per session.** You are called **once per completed item** (after its last slice),
+  never per slice. Verify exactly ONE whole item, then stop. Never verify multiple items in one
+  session.
 - **Read only what you need.** At session start, read your `PROGRESS.md` and the acceptance
   criteria for the item. Read ONLY the source files relevant to the acceptance check. Do not
   read the whole codebase.
@@ -43,7 +44,7 @@ a single session never overflows:
    immediately with the compiler errors — do not proceed to functional checks.
 4. **Always run the smoke test.** `node scripts/smoke-test.js` (or the equivalent) must pass.
    Record the assertion count.
-5. **Exercise the acceptance check.** For each acceptance criterion in the plan, perform the
+5. **Exercise the acceptance check.** For each acceptance criterion of the whole item (all slices combined), perform the
    concrete check (read the relevant code, run a command, inspect output). Record pass/fail
    per criterion.
 6. **Report, don't fix.** If anything fails, report the exact failure (error text, file, line)

@@ -19,8 +19,9 @@ step.
 - **You do NOT plan from scratch.** You execute the plan produced by the **Planner** agent
   (found in `.github/agents/planner/PROGRESS.md`). If the plan is missing or unclear, stop and
   report — do not invent scope.
-- **You do NOT test end-to-end.** You verify your code compiles (`npm run compile`), but the
-  **Tester** agent runs the full acceptance check.
+- **You do NOT run the item acceptance check.** After each slice you run `npm run compile` and
+  `node scripts/smoke-test.js` and fix failures yourself; the **Tester** agent only verifies the
+  whole item once its last slice is done.
 - **You DO:** read the plan, implement it step by step, keep the build green, update your
   `PROGRESS.md`, and commit.
 

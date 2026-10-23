@@ -115,7 +115,7 @@ For each item, produce a plan with these sections:
    - the **single file** it touches,
    - an **acceptance check** (how to verify this slice is done).
    > **Why so small:** the orchestrator dispatches ONE slice per session through the full
-   > Planner → Coder → Tester pipeline. A large slice consumes many tokens. Keep each slice
+   > Planner → Coder pipeline (the Tester runs once per item, after the last slice). A large slice consumes many tokens. Keep each slice
    > to a single file / single concern so each session stays well within the token budget.
 6. **Acceptance criteria** — the overall check the Tester will run for the whole item (all
    slices combined).

@@ -56,7 +56,7 @@ your frontmatter authorizes exactly these four — you cannot invoke any other a
 - **Dispatch the Coder with a single slice, not the whole plan.** The Coder implements exactly
   one slice per session. This keeps each session's token consumption low.
 - **Wait for the sub-agent's final report** before proceeding to the next stage. Do not run
-  stages in parallel — the pipeline is strictly sequential: Planner → Coder → Tester.
+  stages in parallel — the pipeline is strictly sequential: Planner → Coder (per slice) → Tester (once, after the item's last slice).
 - **Retry on error: 5× with the same prompt before changing approach.** If a sub-agent errors
   out (crashes, times out, returns an error, or produces no usable report), re-dispatch it
   **up to 5 times with the EXACT SAME prompt** before you change anything. Do NOT alter the
@@ -130,8 +130,8 @@ slice is verified.
    into that recap and then pruned from the working `PROGRESS.md`.
 4. **Commit after every step.** Use git. Commit after each completed, compiling, tested step.
    Do NOT commit broken or half-finished code. See the Git policy below.
-4. **Verify before claiming done.** The Tester agent must confirm the build passes and the
-   acceptance check is met. A task is only "done" when the Tester reports success.
+4. **Verify before claiming done.** Each slice must compile and pass the smoke test (Coder).
+   An **item** is only "done" when the Tester reports success for the whole item.
 5. **Stay minimal.** No runtime dependencies (use Node 18+ `fetch` + a hand-rolled SSE parser).
    No bundler. Lazy activation. One webview. Follow the architecture in the llm-extension
    `PROGRESS.md`.
@@ -160,7 +160,8 @@ The team implements features from the VS Code release notes archive:
 
 - **Branch:** work on the current branch unless told otherwise.
 - **When to commit:** after each coherent, compiling, tested unit. Typical triggers:
-  - a feature is implemented end-to-end and the Tester confirms it works,
+  - a slice is implemented and the Coder confirms compile + smoke are green,
+  - an item is complete and the Tester confirms it works,
   - a bug is fixed and verified,
   - before starting a risky refactor.
 - **When NOT to commit:** mid-edit, with compile errors, with failing tests, or with
@@ -184,6 +185,8 @@ The team implements features from the VS Code release notes archive:
 
 ## Session workflow (one slice)
 
+The Tester runs **once per item** (after its last slice), not after every slice.
+
 1. **Orient.** Read your `PROGRESS.md`. Note the **current item** and the **next slice**
    pointer. If there is no current item, read the Changelog Researcher's `PROGRESS.md` to
    find the next unimplemented item (oldest first) and set it as the current item.
@@ -196,45 +199,34 @@ The team implements features from the VS Code release notes archive:
    (a list of slices) in `.github/agents/planner/PROGRESS.md`. Wait for the Planner's report.
    If a plan already exists (continuing a multi-slice item), skip this step.
 4. **Code.** Dispatch the **Coder** agent with the **single slice** to implement (not the
-   whole plan). The Coder implements that one slice, keeps its own `PROGRESS.md` in sync, and
-   reports when done. Wait for the Coder's report.
-5. **Test.** Dispatch the **Tester** agent with the slice's acceptance criteria. The Tester
-   runs `npm run compile` and the smoke test, verifies the acceptance check, and reports
-   pass/fail. Wait for the Tester's report.
+   whole plan). The Coder implements that one slice, runs `npm run compile` and the smoke
+   test itself, keeps its own `PROGRESS.md` in sync, and reports when done. Wait for the
+   Coder's report. If the Coder reports a compile/smoke failure, re-dispatch it with the
+   failure details until the slice is green (no Tester involved at slice level).
+5. **Record.** Update your `PROGRESS.md`: mark the slice Done and set **Next step** to the
+   following slice.
+6. **Commit.** Commit the slice (code + `PROGRESS.md` updates) with a clear message.
+7. **If this was NOT the last slice of the item:** report the slice and the next slice, then
+   stop. Do not dispatch the Tester.
+8. **If this WAS the last slice of the item — item verification.** Dispatch the **Tester**
+   once for the **whole item** with the item's overall acceptance criteria. The Tester runs
+   `npm run compile` and the full smoke test, checks every criterion across all slices, and
+   reports pass/fail. Wait for the Tester's report.
    - **If the Tester errors out** (crash / timeout / no report): re-dispatch the Tester up to
      **5 times with the same prompt** before changing approach (see the retry rule above).
    - **If the Tester reports a genuine failure** (build error / failed acceptance check):
-     dispatch the Coder again with the failure details to fix the issue, then re-dispatch the
-     Tester. Repeat until the Tester reports success. (A genuine failure is a different code
-     path from an error — do not burn the 5-retry budget on a real bug; fix it instead.)
-6. **Record.** Update your `PROGRESS.md`: mark the slice Done, set **Next step** to the
-   following slice (or the next item if this was the last slice), refresh Status (last
-   commit, build state).
-7. **Commit.** Commit the code + all `PROGRESS.md` updates together with a clear message.
-   If this was the **last slice** of the item, also create the changelog-version tag on the
-   commit (`git tag changelog-<version> <commit-hash>`, see Git policy).
-8. **Report & stop.** Summarize what changed, the commit hash, the tag (if any), and the next
-   slice. End the session. Do not start the next slice.
+     dispatch the Coder with the failure details to fix it (as a new fix slice), commit, then
+     re-dispatch the Tester. Repeat until the Tester reports success. (A genuine failure is
+     not an error — do not burn the 5-retry budget on a real bug.) A failure also triggers the
+     invalidation rule for any prepared next item.
+9. **Close the item.** Update your `PROGRESS.md` (item Done, next item pointer, build state),
+   commit, and create the changelog-version tag on the commit
+   (`git tag changelog-<version> <commit-hash>`, see Git policy).
+10. **Report & stop.** Summarize what changed, the commit hash, the tag (if any), and the next
+    slice or item. End the session. Do not start the next slice.
 
 > **Delegation rule:** the orchestrator itself does not inspect the archive or changelog
 > directly in normal operation. It only reads memory and delegates to the proper agent.
-5. **Test.** Dispatch the **Tester** agent with the slice's acceptance criteria. The Tester
-   runs `npm run compile` and the smoke test, verifies the acceptance check, and reports
-   pass/fail. Wait for the Tester's report.
-   - **If the Tester errors out** (crash / timeout / no report): re-dispatch the Tester up to
-     **5 times with the same prompt** before changing approach (see the retry rule above).
-   - **If the Tester reports a genuine failure** (build error / failed acceptance check):
-     dispatch the Coder again with the failure details to fix the issue, then re-dispatch the
-     Tester. Repeat until the Tester reports success. (A genuine failure is a different code
-     path from an error — do not burn the 5-retry budget on a real bug; fix it instead.)
-6. **Record.** Update your `PROGRESS.md`: mark the slice Done, set **Next step** to the
-   following slice (or the next item if this was the last slice), refresh Status (last
-   commit, build state).
-7. **Commit.** Commit the code + all `PROGRESS.md` updates together with a clear message.
-   If this was the **last slice** of the item, also create the changelog-version tag on the
-   commit (`git tag changelog-<version> <commit-hash>`, see Git policy).
-8. **Report & stop.** Summarize what changed, the commit hash, the tag (if any), and the next
-   slice. End the session. Do not start the next slice.
 
 ## Constraints
 
@@ -257,7 +249,7 @@ The team implements features from the VS Code release notes archive:
 - **Slice:** the single slice orchestrated (its ID from the plan).
 - **Planned:** what the Planner produced (one line; only for the first slice of a new item).
 - **Coded:** what the Coder implemented/changed (one line).
-- **Tested:** the Tester's result (pass/fail + how it was verified).
+- **Tested:** the Tester's item-level result (pass/fail + how it was verified); "—" for slices that are not the last of the item.
 - **Committed:** the commit hash + message (or why you did not commit).
 - **Tagged:** the changelog-version tag created on completion (e.g. `changelog-1.100.0`), or
   "—" if this was not the last slice of the item.
