@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-14** — MCP support for image output — **IN PROGRESS** (5 slices S1–S5; S1–S3 done)
-- **Current slice:** 1.100-14.S3 DONE (verified PASS)
+- **Current item:** **1.100-14** — MCP support for image output — **IN PROGRESS** (5 slices S1–S5; S1–S4 done)
+- **Current slice:** 1.100-14.S4 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-14.S4 — render `msg.images` thumbnails in the tool-result card in `src/chat/webview.ts` (user goal: continue until version 1.107)
+- **Next step:** 1.100-14.S5 — smoke-test guards in `scripts/smoke-test.js` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 9313a98 (tester verified 1.100-14.S3; code 814fbea)
+- **Last commit:** 0613946 (tester verified 1.100-14.S4; code 7535819)
 - **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
