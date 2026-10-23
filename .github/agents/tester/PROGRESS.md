@@ -11,12 +11,15 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-29 — in progress (S-001, S-002 verified PASS)
-- **Next step:** 1.100-29 S-003
+- **Current item:** 1.100-29 — COMPLETE (S-001, S-002, S-003 all verified PASS)
+- **Next step:** 1.100-30
 - **Last updated:** 2026-10-23
-- **Last commit:** df5f480 (1.100-29 S-002, verified PASS)
-- **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
+- **Last commit:** ef5a845 (1.100-29 S-003, verified PASS)
+- **Build state:** compiles clean; smoke 787/787 PASS (verified 2026-10-23)
 ## Verified (recap)
+
+**1.100-29 S-003** (2026-10-23) — **PASS**. Smoke-test alt-s1 block in scripts/smoke-test.js (commit ef5a845). Build exit 0; smoke 787/787 (780 + 7 new alt-s1 assertions). Scope clean: git show --stat ef5a845 touches only scripts/smoke-test.js (+60/-8) + .github/agents/coder/PROGRESS.md (+11/-4); ninfer submodule NOT committed. Verified: (1) compile exit 0; (2) smoke 787/787 ALL PASSED; (3) alt-s1 block (lines 6442-6494) has exactly 7 assertions — findImageRef html img → src a.png, alt '', empty slot (slice(altStart,altEnd)===''); findImageRef markdown → src img/pic.jpg, alt x; findImageRef no image → null; isPlaceholderAlt('')/('TODO') true, ('a cat') false; buildAltTextPrompt('a.png','some context',false) contains a.png + some context; parseAltText fenced → 'A cat'; CodeActionProvider.ts contains 'Generate alt text' + altText.enabled, package.json contains llm.codeAction.altText.enabled; (4) hard gate raised 780→787 (line 6496 if-check + line 6500 PASS message); (5) scope clean. **Item 1.100-29 complete (S-001 to S-003 all PASS).**
+
 
 **1.100-29 S-002** (2026-10-23) — **PASS**. Generate alt text code action — provider branch + setting in src/codeaction/CodeActionProvider.ts + package.json (commit df5f480). Build exit 0; smoke 780/780 (no new smoke assertions this slice). Scope clean: git show --stat df5f480 touches only src/codeaction/CodeActionProvider.ts (+175), package.json (+5) + coder PROGRESS.md; ninfer submodule NOT committed. Verified: (1) compile exit 0; (2) smoke 780/780 ALL PASSED; (3a) provideCodeActions — QuickFix titled exactly Generate alt text offered only when languageId is html or markdown AND llm.codeAction.altText.enabled (getConfiguration, default true) AND findImageRef(lineAt(range.start.line)) hit AND isPlaceholderAlt(ref.alt); action carries isAltText=true + actionRange=Range(line, altStart, line, altEnd); (3b) resolveCodeAction branches on isAltText marker → resolveAltText: re-derives findImageRef (returns action unchanged if no ref); isRemote regex http(s)/data: skips attachment; attachment gated on llm.chat.vision.enabled (default true); Uri.joinPath(doc.uri, ref.src) inside try/catch → dataUrl=undefined on error (degrades text-only, no crash); buildAltTextPrompt(ref.src, context, imageIncluded) with ±5 lines clamped to doc bounds; one-shot chatStream pattern identical to fix/refactor (thinking off, AbortController + onCancellationRequested bridge, MAX_EDIT_CHARS cap, catch → return action without edit, finally dispose); image passed as images:[dataUrl] on user message when attached; parseAltText → edit.replace(doc.uri, altSlotRange, altText) only when non-empty, else returns action without edit; (3c) diff purely additive (176 added, ZERO removed lines in provider) — existing refactor/quickfix actions byte-identical; (4) package.json valid JSON + llm.codeAction.altText.enabled = {type: boolean, default: true}; (5) scope clean. **Next: 1.100-29 S-003.**
 
