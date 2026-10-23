@@ -314,14 +314,36 @@ export function buildScaffoldPrompt(type: string, folder: string): string {
     `Scaffold a new ${template.label} project in the folder \`${folder}\` (workspace-relative).`,
   );
   lines.push("");
-  lines.push("1. Create the folder if it does not exist.");
+  let step = 1;
+  lines.push(`${step}. Create the folder if it does not exist.`);
+  step++;
   lines.push(
-    "2. Write each file below with `write_file`, using exactly the content shown.",
+    `${step}. Write each file below with \`write_file\`, using exactly the content shown.`,
   );
-  lines.push("3. Verify the result with `list_dir`.");
+  step++;
+  if (template.launchTask) {
+    const tasksJson = buildTasksJson(type);
+    lines.push(
+      `${step}. Write \`.vscode/tasks.json\` with \`write_file\`, using exactly the content shown below.`,
+    );
+    lines.push("");
+    lines.push("```json");
+    lines.push(tasksJson);
+    lines.push("```");
+    lines.push("");
+    step++;
+  }
+  lines.push(`${step}. Verify the result with \`list_dir\`.`);
+  step++;
   if (type !== "generic") {
     lines.push(
-      `4. Optionally run \`npm install\` in the folder via \`run_command\`.`,
+      `${step}. Optionally run \`npm install\` in the folder via \`run_command\`.`,
+    );
+    step++;
+  }
+  if (template.launchTask) {
+    lines.push(
+      `${step}. Ask the user whether to run the "${template.launchTask.label}" task now. If yes, run it via \`run_command\` with the command \`${template.launchTask.command}\`.`,
     );
   }
   lines.push("");
