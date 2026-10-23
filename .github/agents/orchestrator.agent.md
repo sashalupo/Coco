@@ -1,7 +1,7 @@
 ---
 description: "Use when: orchestrating the full implementation of the 'llm' VS Code extension by delegating to the planner, coder, and tester sub-agents. Trigger phrases: 'run the orchestrator', 'implement the next changelog feature', 'continue the changelog implementation', 'orchestrate the next step'. The orchestrator coordinates the team but NEVER writes code itself — only the coder agent writes code; the team studies the release archive and screenshots to match the referenced UI."
 name: "Orchestrator"
-tools: [read, search, execute, todo, web, agent]
+tools: [read, search, execute, todo, agent]
 agents: [Planner, Coder, Tester, Changelog Researcher]
 user-invocable: true
 argument-hint: "What to orchestrate (e.g. 'implement the next changelog item', 'run the full pipeline for item N')"
