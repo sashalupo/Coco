@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-16** — MCP config generation uses `inputs` for secrets — **IN PROGRESS** (4 slices S1–S4; S1–S2 done)
-- **Current slice:** 1.100-16.S3 DONE (verified PASS; code 8f685b7)
+- **Current item:** **1.100-16** — MCP config generation uses `inputs` for secrets — **DONE** (4 slices S1–S4 all verified PASS)
+- **Current slice:** 1.100-16.S4 DONE (verified PASS; code 5f230bc)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-16.S4 — smoke guards in `scripts/smoke-test.js` (gate 766 → 774; last slice of item) (user goal: continue until version 1.107)
+- **Next step:** 1.100-18 — Select and attach UI elements to chat (Planner dispatch first) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 587ab06 (tester verified 1.100-16.S3; code 8f685b7)
-- **Build state:** compiles clean; smoke 766/766 PASS (verified 2026-10-23)
+- **Last commit:** 26ae207 (tester verified 1.100-16.S4; code 5f230bc)
+- **Build state:** compiles clean; smoke 774/774 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -50,6 +50,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-16 (DONE, S1–S4):** `McpInput` interface + `McpServerConfig.inputs` + `parseMcpServers` inputs coercion + `detectSecretEnvName` + `resolveMcpInputs` in `src/mcp.ts` (S1, 201a24a); `McpClient` ctor `inputs?` arg + `McpManager` inputs Map / `setInputs` / `setServers` drop / `ensureStarted` pass-through + ctor-throw catch (S2, dbad249 + fixes 237e68c, f92343e); `llm.mcp.addServer` stdio env prompt + secret → `${input:...}` + `inputs` entry + password prompt + `mcpManager.setInputs` + `package.json` description (S3, 8f685b7); smoke guards `mcp-inputs-s1..s4`, count 766→774 (S4, 5f230bc). No new tag — `changelog-1.100` already exists (final commit 5f230bc).
 
 **1.100-15 (DONE, S1–S6):** `McpProgressNotification`/`McpProgressCallback` + `McpJsonRpc` onNotification hook + `McpClient.setProgressCallback` (S1, 7aa4c4a); `McpHttpClient.setProgressCallback` + SSE progress capture in `post` (S2, a1e8cd5); `McpClientLike`/`McpManager.execute` onProgress threading + concrete `callTool` set/clear wiring (S3, ca9294e + fix 59e6731); `tool_progress` postMessage from MCP branch in `src/chat/ChatViewProvider.ts` (S4, 0b8ce56); webview `prettyJson` + `tool_progress` progress bar/line + CSS in `src/chat/webview.ts` (S5, 5cb6ea7); smoke guards `mcp-progress-s6`, count 758→766 (S6, f8e3b1f). No new tag — `changelog-1.100` already exists (final commit f8e3b1f).
 
