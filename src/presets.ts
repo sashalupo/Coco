@@ -120,6 +120,8 @@ export interface LlmSettings {
   completionsModel: string;
   /** Auto-fix new errors introduced by agent-mode file edits (up to 2 follow-up rounds per run). */
   agentAutoFix: boolean;
+  /** Prompt the agent about manual edits the user makes to files during an agent run. */
+  agentTrackManualEdits: boolean;
   /** MCP server configurations (name → command/args/env). */
   mcpServers: Record<string, McpServerConfig>;
 }

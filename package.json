@@ -365,6 +365,11 @@
           "default": true,
           "description": "In agent mode, automatically detect new errors introduced by the agent's own file edits and propose a follow-up fix (up to 2 follow-up rounds per run). Disable to turn off auto-fixing."
         },
+        "llm.agent.trackManualEdits": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prompt the agent about manual edits the user makes to files during an agent run (the agent is told to re-read manually modified files before editing them)."
+        },
         "llm.statusBar.enabled": {
           "type": "boolean",
           "default": true,

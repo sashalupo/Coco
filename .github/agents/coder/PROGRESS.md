@@ -13,8 +13,8 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-11 (in progress) — 1.100-10 complete
-- **Current slice:** 1.100-11.S1 DONE (pure `externallyChanged` helper)
-- **Next step:** 1.100-11.S2 — `llm.agent.trackManualEdits` setting (default true): `config.ts` + `presets.ts` + `package.json`
+- **Current slice:** 1.100-11.S2 DONE (`llm.agent.trackManualEdits` setting)
+- **Next step:** 1.100-11.S3 — agent-loop hook in `src/chat/ChatViewProvider.ts` (`touchedFiles` Map + `externallyChanged` check per loop turn, gated on `settings.agentTrackManualEdits`)
 - **Last updated:** 2026-10-23
 - **Last commit:** feat(llm): externallyChanged file-snapshot helper (1.100-11.S1)
 - **Build state:** compiles clean; smoke 701 PASS
@@ -37,6 +37,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 ## Todo
 
 - [x] 1.100-11.S1 — pure exported `FileSnapshot` interface + `externallyChanged(snapshots, current)` in `src/tools/ToolExecutor.ts` (next to `newDiagnostics`, ~line 1575): returns paths in `current` whose `mtimeMs` or `size` differs from the stored snapshot (iteration order = `current` order); paths only in `snapshots` (deleted externally) ignored; no vscode import, no I/O
+- [x] 1.100-11.S2 — `llm.agent.trackManualEdits` setting (default true): `presets.ts` `LlmSettings.agentTrackManualEdits` (after `agentAutoFix`, ~line 124), `config.ts` read `agent.trackManualEdits` default true (after `agentAutoFix`, ~line 88), `package.json` schema entry next to `llm.agent.autoFix`
 - [x] 1.100-8.S2 — pill strip UI in `src/chat/webview.ts`
 - [x] 1.100-8.S3 — host consumes `send.pills` into `ctxInput` + `postContextPills()` in `src/chat/ChatViewProvider.ts`
 - [x] 1.100-8.S4 — `llm.addContext` grouped quick-pick in `src/extension.ts` + `package.json`

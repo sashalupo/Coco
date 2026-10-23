@@ -85,6 +85,7 @@ export function readSettings(): LlmSettings {
     newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true),
     completionsModel: c.get<string>("completions.model", ""),
     agentAutoFix: c.get<boolean>("agent.autoFix", true),
+    agentTrackManualEdits: c.get<boolean>("agent.trackManualEdits", true),
     mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),
   };
 }
