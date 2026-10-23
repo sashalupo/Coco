@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-29** — Generate alt text in HTML or Markdown (AI code action) — **IN PROGRESS** (3 slices S-001–S-003; S-001–S-002 done)
-- **Current slice:** 1.100-29 S-002 DONE (verified PASS; code df5f480)
+- **Current item:** **1.100-29** — Generate alt text in HTML or Markdown (AI code action) — **DONE** (3 slices S-001–S-003 all verified PASS)
+- **Current slice:** 1.100-29 S-003 DONE (verified PASS; code ef5a845)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-29 S-003 — smoke `alt-s1` block, gate 780→787 (Coder dispatch) (user goal: continue until version 1.107)
+- **Next step:** 1.100-30 — Drag and drop cell outputs to chat (Planner dispatch first) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** dd537df (tester verified 1.100-29 S-002; code df5f480)
-- **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
+- **Last commit:** e6a20ff (tester verified 1.100-29 S-003; code ef5a845)
+- **Build state:** compiles clean; smoke 787/787 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -50,6 +50,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-29 (DONE, S-001–S-003):** pure alt-text helpers `findImageRef`/`isPlaceholderAlt`/`buildAltTextPrompt`/`parseAltText` in `src/codeaction.ts` (S-001, d01fc92); QuickFix "Generate alt text" on HTML/Markdown image lines with placeholder alt + one-shot vision `chatStream` resolve + `llm.codeAction.altText.enabled` setting (S-002, df5f480); smoke guards `alt-s1`, count 780→787 (S-003, ef5a845). No new tag — `changelog-1.100` already exists (final commit ef5a845).
 
 **1.100-19 (DONE, S-001–S-003):** `launchTask` data + `buildTasksJson` in `src/workspaceScaffold.ts` (S-001, 5e3bde9); `buildScaffoldPrompt` tasks.json write + ask-and-run steps (S-002, 2c014c2); smoke guards `ws-s5`, count 774→780 (S-003, 7b4b7cc). No new tag — `changelog-1.100` already exists (final commit 7b4b7cc). **1.100-18 skipped** (no preview webview; revisit if a preview panel is ever added).
 
