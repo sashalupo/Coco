@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-14** — MCP support for image output — **IN PROGRESS** (5 slices S1–S5; S1 done)
-- **Current slice:** 1.100-14.S1 DONE (verified PASS)
+- **Current item:** **1.100-14** — MCP support for image output — **IN PROGRESS** (5 slices S1–S5; S1–S2 done)
+- **Current slice:** 1.100-14.S2 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-14.S2 — surface images from `execute` in `src/mcpManager.ts` (user goal: continue until version 1.107)
+- **Next step:** 1.100-14.S3 — carry images into the `tool_result` post in `src/chat/ChatViewProvider.ts` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 72249bd (tester verified 1.100-14.S1; code 486f58e)
+- **Last commit:** b35eb81 (tester verified 1.100-14.S2; code 215b394)
 - **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
