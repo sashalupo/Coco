@@ -386,6 +386,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		padding: 4px 0;
 	}
 
+	/* Summarized conversation history marker (1.100-12.S4): muted system note */
+	.message.summarized {
+		margin: 8px 0 4px;
+		padding: 6px 8px;
+		border-top: 1px solid var(--border);
+	}
+	.message.summarized .role {
+		font-size: 10px;
+	}
+	.message.summarized .content {
+		font-size: 12px;
+		color: var(--muted);
+	}
+
 	/* Tool-call card (Phase 8.3 / 9.1): visually distinct from assistant text */
 	.message.tool { margin: 4px 0; }
 	.tool-card {
@@ -2157,7 +2171,26 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				case 'restore':
 					messagesEl.innerHTML = '';
 					(msg.messages || []).forEach(function (m) {
-						if (m.role === 'user') {
+						if (m.summarized === true) {
+							// Summarized conversation history marker (1.100-12.S4):
+							// muted system-style note; strip the SUMMARY_MARKER prefix.
+							var smEl = document.createElement('div');
+							smEl.className = 'message summarized';
+							var smRole = document.createElement('div');
+							smRole.className = 'role';
+							smRole.textContent = 'Summarized conversation history';
+							smEl.appendChild(smRole);
+							var smContent = document.createElement('div');
+							smContent.className = 'content';
+							var smText = String(m.content || '');
+							if (smText.indexOf('[Summarized conversation history]') === 0) {
+								smText = smText.slice('[Summarized conversation history]'.length);
+								if (smText.charAt(0) === '\n') { smText = smText.slice(1); }
+							}
+							smContent.innerHTML = renderMarkdown(smText);
+							smEl.appendChild(smContent);
+							messagesEl.appendChild(smEl);
+						} else if (m.role === 'user') {
 							addUserMessage(m.content, m.images);
 						} else if (m.role === 'assistant') {
 							var a = addAssistantMessage();
@@ -2274,6 +2307,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						messagesEl.appendChild(crEl);
 						messagesEl.scrollTop = messagesEl.scrollHeight;
 						break;
+				case 'summarize_result':
+					// Automatic summarization result (1.100-12.S4): same shape as
+					// compact_result — muted result line.
+					var srEl = document.createElement('div');
+					srEl.className = 'message revert-result';
+					srEl.textContent = msg.message || '';
+					messagesEl.appendChild(srEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
 				case 'steer_ack':
 					// Phase 21: show the steering message as a user message.
 					addUserMessage(msg.text || '');
