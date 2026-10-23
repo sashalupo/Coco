@@ -13,6 +13,7 @@ import {
   McpProgressCallback,
   McpServerConfig,
   McpTool,
+  McpToolAnnotations,
   McpToolResult,
   mcpResultToImages,
   mcpResultToText,
@@ -224,6 +225,23 @@ export class McpManager {
       return client.tools;
     }
     return [];
+  }
+
+  /**
+   * Annotations for a single MCP tool, looked up by its OpenAI-shaped name
+   * (`mcp__server__tool`). Returns null when the name is not MCP-shaped,
+   * the server is unknown/not running, the tool is not found, or the tool
+   * carries no annotations.
+   */
+  getToolAnnotations(openaiName: string): McpToolAnnotations | null {
+    const parsed = parseMcpToolName(openaiName);
+    if (!parsed) {
+      return null;
+    }
+    const { server, tool } = parsed;
+    const tools = this.getServerTools(server);
+    const found = tools.find((t) => t.name === tool);
+    return found?.annotations ?? null;
   }
 
   /**
