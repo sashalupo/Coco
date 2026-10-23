@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-1 — instructions files — S5 PASS (2026-10-23)
-- **Next step:** verify 1.100-1.S6 (package.json schema; smoke 606 → 610, item complete)
+- **Current item:** 1.100-1 — instructions files — S6 PASS (2026-10-23) — **ITEM COMPLETE**
+- **Next step:** item 1.100-1 fully verified (S1–S6) — next item 1.100-2 (Prompt files improvements)
 - **Last updated:** 2026-10-23
-- **Last commit:** f74262e (S5 commit pending)
-- **Build state:** compiles clean; smoke 606/606 PASS
+- **Last commit:** 4c6a8ab (S6 commit pending)
+- **Build state:** compiles clean; smoke 610/610 PASS
+
+### 1.100-1.S6 — package.json schema (+4 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 610/610 PASS (606 + 4 `instrf-s6:`), 0 FAIL.
+- Section `// 67)` at smoke-test.js:4679; both commands (`$(book)`/`$(new-file)` icons) + both settings (boolean/true, string-array `["**/*.instructions.md"]`) after `llm.promptFiles.locations`; JSON valid; scope = package.json + smoke-test.js + coder PROGRESS.md + `m ninfer`, no package-lock drift.
+- Item-level acceptance verified: pure core in instructions.ts, settings in config/presets, auto-attach in ChatViewProvider, instructions_inject in webview, both commands in extension.ts, schema in package.json.
+- Last commit: `4c6a8ab`.
+- **ITEM 1.100-1 COMPLETE** (S1–S6 all PASS).
 
 ### 1.100-1.S5 — Commands attachInstructions + newInstructionsFile (+4 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 606/606 PASS (602 + 4 `instrf-s5:`), 0 FAIL.

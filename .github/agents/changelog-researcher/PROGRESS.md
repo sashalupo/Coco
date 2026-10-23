@@ -21,9 +21,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 ## Status
 
 - **Last processed version:** **1.100** (April 2025) — GitHub Copilot section fully studied
-- **Next step:** the v1.100 backlog is built (18 pending keep-items, oldest first). The
-  orchestrator dispatches the Planner for the first pending item (**1.100-1** Instructions
-  files). Do NOT re-study v1.98/v1.99/v1.100.
+- **Next step:** 1.100-1 done (2026-10-23). The orchestrator dispatches the Planner for the next pending item (**1.100-2** Prompt files improvements).
 - **Last updated:** 2026-10-23
 - **Last commit:** — (no researcher commits yet)
 - **Note (2026-10-22):** the v1.99 research was done **inline by the orchestrator** — the
@@ -500,12 +498,12 @@ researcher does NOT write code — it builds and maintains the backlog.
   files sync via Settings Sync.
 - **Image notes:** None.
 - **Relevance:** keep (capability/context) — context injection.
-- **Status:** `pending`
+- **Status:** `done` (2026-10-23, 6 slices S1–S6, smoke 610)
 - **Gap vs existing:** 1.99-12 built `.prompt.md` discovery + `llm.usePrompt`. Add a parallel
   `.instructions.md` type: `llm.instructionsFiles.locations` setting, `applyTo` glob
   auto-attach (when a chat request references a matching file), `llm.attachInstructions`
   QuickPick, `llm.newInstructionsFile` command.
-- **Implemented in:** —
+- **Implemented in:** 1.100-1.S1–S6 (commits 4ffde6b, e994fe3, 2424797, f74262e, 4c6a8ab, + S6)
 
 #### 1.100-2 · Prompt files improvements (front matter `mode`/`tools`, play button, run semantics)
 - **Description:** `.prompt.md` front matter gains `mode` (`ask`/`edit`/`agent`) and `tools`

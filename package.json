@@ -70,6 +70,16 @@
         "command": "llm.addCellOutput",
         "title": "LLM: Add Cell Output to Chat",
         "icon": "$(notebook)"
+      },
+      {
+        "command": "llm.attachInstructions",
+        "title": "LLM: Attach Instructions File",
+        "icon": "$(book)"
+      },
+      {
+        "command": "llm.newInstructionsFile",
+        "title": "LLM: New Instructions File",
+        "icon": "$(new-file)"
       }
     ],
     "viewsContainers": {
@@ -250,6 +260,19 @@
           },
           "default": [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"],
           "description": "Glob patterns (workspace-relative) for reusable prompt files. Pick one via the 'LLM: Use Prompt' command to prepend it to the chat input. HTML comments in prompt files are stripped before sending."
+        },
+        "llm.instructionsFiles.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Discover .instructions.md files and auto-attach them (via their applyTo front-matter glob) when the chat context references matching files."
+        },
+        "llm.instructionsFiles.locations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["**/*.instructions.md"],
+          "description": "Glob patterns (workspace-relative) for .instructions.md files. Pick one via the 'LLM: Attach Instructions File' command (llm.attachInstructions) to prepend it to the chat input."
         },
         "llm.chat.codebaseSearch.enabled": {
           "type": "boolean",

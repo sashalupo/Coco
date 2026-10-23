@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.100-1 (Instructions files — `.instructions.md`) — **planned** (2026-10-23, 6 slices S1–S6)
-- **Next step:** dispatch slice 1.100-1.S1 (pure core in `src/instructions.ts`; smoke 584 → 594)
+- **Current item:** 1.100-1 (Instructions files — `.instructions.md`) — **complete** (2026-10-23, 6 slices S1–S6 done)
+- **Next step:** item 1.100-1 complete — next: plan item 1.100-2 (Prompt files improvements)
 - **Last updated:** 2026-10-23
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -169,7 +169,7 @@ code — only the Coder writes code.
 
 **Slices:**
 
-- **1.100-1.S1** — Pure core in `src/instructions.ts` (+10 smoke).
+- **1.100-1.S1** — Pure core in `src/instructions.ts` (+10 smoke). — **DONE**
   Files: `src/instructions.ts`, `scripts/smoke-test.js`.
   1. `src/instructions.ts` — add (all pure, no vscode/fs):
      - `export interface InstructionsFileMeta { applyTo?: string; title?: string }`
@@ -192,7 +192,7 @@ code — only the Coder writes code.
      10. `INSTRUCTIONS_FILE_TEMPLATE` round-trips: `parseInstructionsFrontMatter(INSTRUCTIONS_FILE_TEMPLATE)` yields `meta.applyTo === "src/**/*.ts"` and non-empty body; `instructionsFileName("My File!")` === `"My-File.instructions.md"`.
   Acceptance: `npm run compile` passes; smoke → **594** (584 + 10).
 
-- **1.100-1.S2** — Settings plumbing (+3 smoke).
+- **1.100-1.S2** — Settings plumbing (+3 smoke). — **DONE**
   Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`.
   1. `src/presets.ts` — after `promptFiles: string[];` (L96) add to `LlmSettings`: `instructionsFilesEnabled: boolean;` and `instructionsFilesLocations: string[];` (with doc comments).
   2. `src/config.ts` — after `promptFiles` (L74) add: `instructionsFilesEnabled: c.get<boolean>("instructionsFiles.enabled", true),` and `instructionsFilesLocations: c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"]),`
@@ -202,7 +202,7 @@ code — only the Coder writes code.
      3. `src/presets.ts` contains both `instructionsFilesEnabled: boolean;` and `instructionsFilesLocations: string[];`.
   Acceptance: `npm run compile` passes; smoke → **597** (594 + 3).
 
-- **1.100-1.S3** — `applyTo` auto-attach in `ChatViewProvider.ts` (+3 smoke).
+- **1.100-1.S3** — `applyTo` auto-attach in `ChatViewProvider.ts` (+3 smoke). — **DONE**
   Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`.
   1. `src/chat/ChatViewProvider.ts`:
      - Extend the existing `../instructions` import (L55) with `parseInstructionsFrontMatter`, `pickAutoAttachFiles`.
@@ -224,7 +224,7 @@ code — only the Coder writes code.
      3. Contains `instructionsFilesEnabled` (the setting gate is checked).
   Acceptance: `npm run compile` passes; smoke → **600** (597 + 3).
 
-- **1.100-1.S4** — Webview `instructions_inject` handler (+2 smoke).
+- **1.100-1.S4** — Webview `instructions_inject` handler (+2 smoke). — **DONE**
   Files: `src/chat/webview.ts`, `scripts/smoke-test.js`.
   1. `src/chat/webview.ts` — in `handleHostMessage`, add next to `case 'prompt_inject':` (L2008):
      ```js
@@ -244,7 +244,7 @@ code — only the Coder writes code.
      2. `webviewSrc.slice(webviewSrc.indexOf("instructions_inject"))` contains `inputEl.focus` (handler focuses the input after prepending).
   Acceptance: `npm run compile` passes; smoke → **602** (600 + 2).
 
-- **1.100-1.S5** — Commands `llm.attachInstructions` + `llm.newInstructionsFile` (+4 smoke).
+- **1.100-1.S5** — Commands `llm.attachInstructions` + `llm.newInstructionsFile` (+4 smoke). — **DONE**
   Files: `src/extension.ts`, `scripts/smoke-test.js`.
   1. `src/extension.ts`:
      - Extend the `./instructions` import with `parseInstructionsFrontMatter`, `INSTRUCTIONS_FILE_TEMPLATE`, `instructionsFileName`; reuse `promptTitle` for the QuickPick label.
@@ -267,7 +267,7 @@ code — only the Coder writes code.
      4. Contains `INSTRUCTIONS_FILE_TEMPLATE` (the new-file command writes the template).
   Acceptance: `npm run compile` passes; smoke → **606** (602 + 4).
 
-- **1.100-1.S6** — `package.json` schema (+4 smoke).
+- **1.100-1.S6** — `package.json` schema (+4 smoke). — **DONE**
   Files: `package.json`, `scripts/smoke-test.js`.
   1. `package.json` `contributes.commands` — add:
      - `{ "command": "llm.attachInstructions", "title": "LLM: Attach Instructions File", "icon": "$(book)" }`

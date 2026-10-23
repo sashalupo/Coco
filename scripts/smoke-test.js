@@ -4676,6 +4676,44 @@ function assert(cond, label) {
     "instrf-s5: new-file command writes INSTRUCTIONS_FILE_TEMPLATE",
   );
 
+  // 67) instructionsFiles schema (1.100-1.S6)
+  const instrfS6AttachCmd = pkgJson.contributes.commands.find(
+    (c) => c.command === "llm.attachInstructions",
+  );
+  assert(
+    !!instrfS6AttachCmd &&
+      typeof instrfS6AttachCmd.title === "string" &&
+      instrfS6AttachCmd.title.includes("Attach Instructions"),
+    "instrf-s6: package.json declares llm.attachInstructions with an 'Attach Instructions' title",
+  );
+  const instrfS6NewCmd = pkgJson.contributes.commands.find(
+    (c) => c.command === "llm.newInstructionsFile",
+  );
+  assert(
+    !!instrfS6NewCmd &&
+      typeof instrfS6NewCmd.title === "string" &&
+      instrfS6NewCmd.title.includes("New Instructions File"),
+    "instrf-s6: package.json declares llm.newInstructionsFile with a 'New Instructions File' title",
+  );
+  const instrfS6Enabled =
+    pkgJson.contributes.configuration.properties["llm.instructionsFiles.enabled"];
+  assert(
+    !!instrfS6Enabled &&
+      instrfS6Enabled.type === "boolean" &&
+      instrfS6Enabled.default === true,
+    "instrf-s6: llm.instructionsFiles.enabled is a boolean defaulting to true",
+  );
+  const instrfS6Locations =
+    pkgJson.contributes.configuration.properties["llm.instructionsFiles.locations"];
+  assert(
+    !!instrfS6Locations &&
+      instrfS6Locations.type === "array" &&
+      instrfS6Locations.items?.type === "string" &&
+      Array.isArray(instrfS6Locations.default) &&
+      instrfS6Locations.default.includes("**/*.instructions.md"),
+    "instrf-s6: llm.instructionsFiles.locations is a string array defaulting to ['**/*.instructions.md']",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
