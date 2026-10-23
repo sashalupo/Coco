@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **DONE** (6 slices S1–S6 all verified PASS)
-- **Current slice:** 1.100-15.S6 DONE (verified PASS)
+- **Current item:** **1.100-16** — MCP config generation uses `inputs` for secrets — **IN PROGRESS** (4 slices S1–S4; S1 done)
+- **Current slice:** 1.100-16.S1 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-16 — MCP config generation uses inputs for secrets (Planner dispatch first) (user goal: continue until version 1.107)
+- **Next step:** 1.100-16.S2 — client/manager inputs plumbing in `src/mcp.ts` + `src/mcpManager.ts` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 4bf583d (tester verified 1.100-15.S6; code f8e3b1f)
+- **Last commit:** 771ba81 (tester verified 1.100-16.S1; code 201a24a)
 - **Build state:** compiles clean; smoke 766/766 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
