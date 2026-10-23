@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-1 — instructions files — S4 PASS (2026-10-23)
-- **Next step:** verify 1.100-1.S5 (commands attachInstructions + newInstructionsFile; smoke 602 → 606)
+- **Current item:** 1.100-1 — instructions files — S5 PASS (2026-10-23)
+- **Next step:** verify 1.100-1.S6 (package.json schema; smoke 606 → 610, item complete)
 - **Last updated:** 2026-10-23
-- **Last commit:** 2424797 (S4 commit pending)
-- **Build state:** compiles clean; smoke 602/602 PASS
+- **Last commit:** f74262e (S5 commit pending)
+- **Build state:** compiles clean; smoke 606/606 PASS
+
+### 1.100-1.S5 — Commands attachInstructions + newInstructionsFile (+4 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 606/606 PASS (602 + 4 `instrf-s5:`), 0 FAIL.
+- All 5 acceptance criteria met: single `./instructions` import (L21–25) with parseInstructionsFrontMatter/INSTRUCTIONS_FILE_TEMPLATE/instructionsFileName; attachInstructions (L508–574) with enabled gate → locations globs (default `**/*.instructions.md`, filtered) → findFiles w/ node_modules exclude + 200 cap + fsPath dedup → QuickPick (promptTitle label, asRelativePath description) → readFile → parse → stripPromptComments (empty → info) → postMessage instructions_inject → workbench.view.llm; newInstructionsFile (L576–617) with `/^[a-zA-Z0-9._-]+$/` validation, workspace-root guard, `.instructions/<instructionsFileName(name)>` target + exists guard, createDirectory → writeFile(INSTRUCTIONS_FILE_TEMPLATE) → openTextDocument + showTextDocument; smoke section `// 66)` at L4657 with exactly 4 static `instrf-s5:` assertions on out/extension.js; scope = extension.ts + smoke-test.js + coder PROGRESS.md + `m ninfer`, no package.json drift.
+- Last commit: `f74262e`.
 
 ### 1.100-1.S4 — Webview instructions_inject handler (+2 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 602/602 PASS (600 + 2 `instrf-s4:`), 0 FAIL.

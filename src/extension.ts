@@ -18,6 +18,11 @@ import {
 } from "./presets";
 import { promptTitle, stripPromptComments, PROMPT_TEMPLATE, MAX_PROMPT_CHARS } from "./prompts";
 import { parseNotebook, extractCellOutputs } from "./notebook";
+import {
+  parseInstructionsFrontMatter,
+  INSTRUCTIONS_FILE_TEMPLATE,
+  instructionsFileName,
+} from "./instructions";
 
 /** How often to poll `GET /health` for the status bar. */
 const HEALTH_POLL_INTERVAL_MS = 5000;
@@ -499,6 +504,116 @@ export function activate(context: vscode.ExtensionContext): void {
       const imgs = visionEnabled ? images : [];
       provider.postMessage({ type: "cell_output_inject", text, images: imgs });
       await vscode.commands.executeCommand("workbench.view.llm");
+    }),
+    vscode.commands.registerCommand("llm.attachInstructions", async () => {
+      const cfg = vscode.workspace.getConfiguration("llm");
+      const enabled = cfg.get<boolean>("instructionsFiles.enabled", true);
+      if (!enabled) {
+        vscode.window.showInformationMessage(
+          "llm.instructionsFiles.enabled is off.",
+        );
+        return;
+      }
+      const globs = (
+        cfg.get<string[]>("instructionsFiles.locations", [
+          "**/*.instructions.md",
+        ]) ?? []
+      ).filter((g) => typeof g === "string" && g.length > 0);
+      if (globs.length === 0) {
+        vscode.window.showInformationMessage(
+          "No instructions file locations configured (llm.instructionsFiles.locations).",
+        );
+        return;
+      }
+      const found: vscode.Uri[] = [];
+      const seen = new Set<string>();
+      for (const glob of globs) {
+        const uris = await vscode.workspace.findFiles(
+          glob,
+          "**/node_modules/**",
+          200,
+        );
+        for (const uri of uris) {
+          if (!seen.has(uri.fsPath)) {
+            seen.add(uri.fsPath);
+            found.push(uri);
+          }
+        }
+      }
+      if (found.length === 0) {
+        vscode.window.showInformationMessage("No .instructions.md files found.");
+        return;
+      }
+      const items: (vscode.QuickPickItem & { uri?: vscode.Uri })[] = found.map(
+        (uri) => ({
+          label: promptTitle("", uri.fsPath),
+          description: vscode.workspace.asRelativePath(uri),
+          uri,
+        }),
+      );
+      const picked = await vscode.window.showQuickPick(items, {
+        title: "LLM: Attach Instructions File",
+        placeHolder: "Select an instructions file to prepend to the chat input",
+      });
+      if (!picked || !picked.uri) {
+        return; // cancelled
+      }
+      const raw = await vscode.workspace.fs.readFile(picked.uri);
+      const content = Buffer.from(raw).toString("utf8");
+      const meta = parseInstructionsFrontMatter(content);
+      const body = stripPromptComments(meta.body);
+      if (body.length === 0) {
+        vscode.window.showInformationMessage("That instructions file is empty.");
+        return;
+      }
+      provider.postMessage({
+        type: "instructions_inject",
+        title: promptTitle(content, picked.uri.fsPath),
+        content: body,
+      });
+      await vscode.commands.executeCommand("workbench.view.llm");
+    }),
+    vscode.commands.registerCommand("llm.newInstructionsFile", async () => {
+      const name = await vscode.window.showInputBox({
+        prompt: "Instructions file name",
+        validateInput: (v) =>
+          /^[a-zA-Z0-9._-]+$/.test(v)
+            ? undefined
+            : "Use letters, digits, dot, dash, underscore only",
+      });
+      if (name === undefined) {
+        return; // cancelled
+      }
+      const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (!root) {
+        vscode.window.showErrorMessage(
+          "Open a workspace to create instructions files.",
+        );
+        return;
+      }
+      const target = vscode.Uri.joinPath(
+        root,
+        ".instructions",
+        instructionsFileName(name),
+      );
+      try {
+        await vscode.workspace.fs.stat(target);
+        vscode.window.showInformationMessage(
+          "That instructions file already exists.",
+        );
+        return;
+      } catch {
+        // does not exist — create it below.
+      }
+      await vscode.workspace.fs.createDirectory(
+        vscode.Uri.joinPath(root, ".instructions"),
+      );
+      await vscode.workspace.fs.writeFile(
+        target,
+        Buffer.from(INSTRUCTIONS_FILE_TEMPLATE, "utf8"),
+      );
+      const doc = await vscode.workspace.openTextDocument(target);
+      await vscode.window.showTextDocument(doc);
     }),
   );
 }

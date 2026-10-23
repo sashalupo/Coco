@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S4 done of 6)
-- **Next step:** 1.100-1.S5 — Commands `llm.attachInstructions` + `llm.newInstructionsFile` in `src/extension.ts` (+4 smoke → 606)
+- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S5 done of 6)
+- **Next step:** 1.100-1.S6 — `package.json` schema (commands + `llm.instructionsFiles.*` properties) (+4 smoke → 610)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2+S3+S4 changes uncommitted)
-- **Build state:** compiles clean; smoke 602 PASS
+- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2+S3+S4+S5 changes uncommitted)
+- **Build state:** compiles clean; smoke 606 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,11 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-1.S5** (2026-10-23) — Commands `llm.attachInstructions` + `llm.newInstructionsFile` (+4 smoke). Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: (a) new import `import { parseInstructionsFrontMatter, INSTRUCTIONS_FILE_TEMPLATE, instructionsFileName } from "./instructions";` after the `./notebook` import; reuses `promptTitle`/`stripPromptComments` from the existing `./prompts` import. (b) `vscode.commands.registerCommand("llm.attachInstructions", …)` appended after `llm.addCellOutput` — modeled on `llm.usePrompt`: gates on `instructionsFiles.enabled` (default true; off → info message, return); `globs = cfg.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])` filtered to non-empty strings (none → info message, return); discovers via `vscode.workspace.findFiles(glob, "**/node_modules/**", 200)` per glob, deduped by `fsPath` (empty → "No .instructions.md files found.", return); QuickPick items `{ label: promptTitle("", uri.fsPath), description: asRelativePath(uri), uri }`; on pick `readFile` → `parseInstructionsFrontMatter` → `body = stripPromptComments(meta.body)` (empty → "That instructions file is empty.", return); `provider.postMessage({ type: "instructions_inject", title: promptTitle(content, fsPath), content: body })` then `await vscode.commands.executeCommand("workbench.view.llm")`. (c) `vscode.commands.registerCommand("llm.newInstructionsFile", …)` — modeled on "New Prompt File…": `showInputBox({ prompt: "Instructions file name", validateInput: /^[a-zA-Z0-9._-]+$/ })` (cancelled → return); `root = workspaceFolders?.[0]?.uri` (none → `showErrorMessage("Open a workspace to create instructions files.")`, return); `target = Uri.joinPath(root, ".instructions", instructionsFileName(name))`; exists guard via `fs.stat` ("That instructions file already exists.", return); `fs.createDirectory(joinPath(root, ".instructions"))` → `fs.writeFile(target, Buffer.from(INSTRUCTIONS_FILE_TEMPLATE, "utf8"))` → `openTextDocument` + `showTextDocument`.
+  - `scripts/smoke-test.js`: new section `// 66) instructions commands (1.100-1.S5)` after section 65, before `ALL SMOKE TESTS PASSED`; reads `out/extension.js` as text (local `instrfExtSrc`); 4 `instrf-s5:` assertions: (a) contains `"llm.attachInstructions"`; (b) contains `"llm.newInstructionsFile"`; (c) contains `instructions_inject`; (d) contains `INSTRUCTIONS_FILE_TEMPLATE`. Total PASS lines now 606 (602 + 4).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 606 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.100-1.S4** (2026-10-23) — Webview `instructions_inject` handler (+2 smoke). Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/webview.ts`: new `case 'instructions_inject':` in `handleHostMessage` immediately after `case 'prompt_inject':` — identical prepend-to-`#input` pattern (guards empty `msg.content` and null `inputEl`; `inputEl.value = existing ? text + '\n\n' + existing : text`; `inputEl.focus()`). `msg.content` is the front-matter-stripped body.
   - `scripts/smoke-test.js`: new section `// 65) instructions_inject webview (1.100-1.S4)` after section 64, before `ALL SMOKE TESTS PASSED`; reads `src/chat/webview.ts` as text (local `webviewSrcInstrfS4`); 2 `instrf-s4:` static assertions: (a) contains `instructions_inject`; (b) slice from `instructions_inject` onward contains `inputEl.focus`. Total PASS lines now 602 (600 + 2).

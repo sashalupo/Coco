@@ -4654,6 +4654,28 @@ function assert(cond, label) {
     "instrf-s4: instructions_inject handler focuses the input after prepending",
   );
 
+  // 66) instructions commands (1.100-1.S5)
+  const instrfExtSrc = fs.readFileSync(
+    path.join(__dirname, "..", "out", "extension.js"),
+    "utf8",
+  );
+  assert(
+    instrfExtSrc.includes('"llm.attachInstructions"'),
+    "instrf-s5: extension registers llm.attachInstructions",
+  );
+  assert(
+    instrfExtSrc.includes('"llm.newInstructionsFile"'),
+    "instrf-s5: extension registers llm.newInstructionsFile",
+  );
+  assert(
+    instrfExtSrc.includes("instructions_inject"),
+    "instrf-s5: attach command posts instructions_inject to the webview",
+  );
+  assert(
+    instrfExtSrc.includes("INSTRUCTIONS_FILE_TEMPLATE"),
+    "instrf-s5: new-file command writes INSTRUCTIONS_FILE_TEMPLATE",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
