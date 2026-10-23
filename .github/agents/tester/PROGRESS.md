@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** none (1.100-8.S4 verified) — **idle**
-- **Next step:** verify the next coded slice (1.100-8.S5, smoke-test regression guards)
+- **Current item:** none (1.100-8 complete) — **idle**
+- **Next step:** verify the next coded slice (next changelog item after 1.100-8)
 - **Last updated:** 2026-10-23
-- **Last commit:** 0f5f441 (1.100-8.S4)
-- **Build state:** compiles clean; smoke 675/675 PASS (verified 2026-10-23)
+- **Last commit:** 08f2625 (1.100-8.S5)
+- **Build state:** compiles clean; smoke 690/690 PASS (verified 2026-10-23)
 
 ## Verified (recap)
 
@@ -33,6 +33,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 **1.100-8.S3** (2026-10-23) — PASS. Host-side pill consumption in `src/chat/ChatViewProvider.ts` (commit 120a210): `pendingPills: ContextPill[]` host state; `postContextPills()` posts `{ type: 'context_pills', pills }` and is called on webview ready, `send`, `remove_pill`, new chat/clear, and conversation switch; `remove_pill` handled via `removePill(id)` (filter by id, re-post, no-op on unknown id); on `send` input parsed via `parsePillRefs`/`dedupePills` (imported from `src/context.ts`), file pills read into `ctxInput.taggedFiles` (via `resolveSafe` + `readFile`), folder pills swept via `toolExecutor.folderSweep` gated on `settings.folderContextEnabled`; pill list cleared + re-posted after send. Scope clean: commit touches only `src/chat/ChatViewProvider.ts` + coder memory. Build exit 0; smoke 675/675.
 
 **1.100-8.S4** (2026-10-23) — PASS. `llm.addContext` grouped context quick-pick in `src/extension.ts` (commit 0f5f441): two-step quick pick (category → item); groups Files (`findFiles` cap 20), Folders (workspace folders cap 20), Selection (active editor non-empty selection), Problems (diagnostics cap 10); empty groups omitted; refs injected via new `context_inject` webview msg (files/selection → `@<rel path>`, folders → `#folder:<name>`, problems → `#problems`) — coder correctly avoided `prompt_inject` in extension.ts (smoke guard line 3748 forbids it); `src/chat/webview.ts` handles `context_inject` by prepending to input + focus; `package.json` contributes `llm.addContext` "LLM: Add Context to Chat" with `$(add)` icon. Scope clean: commit touches only `src/extension.ts`, `src/chat/webview.ts`, `package.json` + coder memory; no `scripts/smoke-test.js` changes. Build exit 0; smoke 675/675.
+
+**1.100-8.S5** (2026-10-23) — PASS. Smoke-test regression guards in `scripts/smoke-test.js` (commit 08f2625): 15 new `pill-s5` assertions — no Done button in input row / no `#done` element; Enter (no Shift) → `doSend()`; New Chat only via `#new-chat`/`#quick-new-chat` (input row has no other session-reset control); pure-function tests of `parsePillRefs`/`dedupePills` against compiled `out/context.js` (parse + within-message dedupe; existing-order merge + id drop); pill pipeline present (`context_pills`/`remove_pill`/`renderPillStrip` in webview, `postContextPills` + `remove_pill` case in ChatViewProvider, `llm.addContext` registered + contributed). Assertions are genuine (string/behavior checks that fail if the feature is removed). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory. Build exit 0; smoke 690/690. **Item 1.100-8 complete (S1–S5 all PASS).**
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7). Smoke 675.
 
