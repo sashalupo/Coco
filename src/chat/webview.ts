@@ -2019,6 +2019,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					inputEl.focus();
 					break;
 				}
+				case 'prompt_run': {
+					const text = String(msg.text ?? '');
+					if (!text) break;
+					if (!inputEl) break;
+					if (msg.mode === 'ask' || msg.mode === 'agent' || msg.mode === 'edit') {
+						modeSelect.value = msg.mode;
+					}
+					inputEl.value = text;
+					doSend();
+					break;
+				}
 				case 'instructions_inject': {
 					const text = String(msg.content ?? '');
 					if (!text) break;

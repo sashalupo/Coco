@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S3 done, S4–S6 pending)
-- **Next step:** 1.100-2.S4 — `src/chat/webview.ts`: `prompt_run` handler (+2 smoke)
+- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S4 done, S5–S6 pending)
+- **Next step:** 1.100-2.S5 — `src/extension.ts`: rename to `llm.runPrompt` + run semantics (+4 smoke)
 - **Last updated:** 2026-10-23
-- **Last commit:** (1.100-2.S3 commit — `ChatViewProvider.runPrompt` + `pendingPromptTools` wiring)
-- **Build state:** compiles clean; smoke 627 PASS
+- **Last commit:** (1.100-2.S4 commit — `prompt_run` webview handler: mode set + immediate send)
+- **Build state:** compiles clean; smoke 629 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,10 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-2.S4** (2026-10-23) — `src/chat/webview.ts`: `prompt_run` host→webview handler (+2 smoke). Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: new `case 'prompt_run':` in `handleHostMessage` immediately after `case 'prompt_inject':` — `const text = String(msg.text ?? ''); if (!text) break;` + `inputEl` null guard; if `msg.mode` is `ask`/`agent`/`edit` sets `modeSelect.value = msg.mode` (the existing `change` listener posts the toolbar sync — not duplicated); then `inputEl.value = text` and invokes `doSend()` (the same function the Send button calls via `sendBtn.addEventListener('click', doSend)`).
+  - `scripts/smoke-test.js`: new section `// 71) prompt_run webview (1.100-2.S4)` after section 70, before `ALL SMOKE TESTS PASSED`; reads `src/chat/webview.ts` as text (local `p2s4Src`); 2 `prompt2-s4:` static assertions: (a) contains `prompt_run`; (b) the region between `case 'prompt_run'` and the next `case '` contains `doSend()`. Total PASS lines now 629 (627 + 2).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 629 PASS, 0 FAIL.
 - **1.100-2.S3** (2026-10-23) — `src/chat/ChatViewProvider.ts`: `runPrompt` + tool filter wiring (+4 smoke). Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/ChatViewProvider.ts`: (a) new import `parsePromptFrontMatter, stripPromptComments, MAX_PROMPT_CHARS` from `../prompts` (after the `../notebook` import); (b) new `private pendingPromptTools: string[] | null = null;` field (after `pendingApproval`); (c) new `public async runPrompt(content, filePath)` — guards on `this.abortController` ("A request is already running — stop it first."), `parsePromptFrontMatter(content.slice(0, MAX_PROMPT_CHARS))`, `stripPromptComments(rawBody).trim()` (empty → "That prompt file is empty (or only comments)."), `await this.toolbarStore.setMode(normalizeChatMode(meta.mode))` (absent → `agent` default), `pendingPromptTools = meta.tools?.length ? meta.tools : null`, pushes `{ role: "user", content: text }` to history, then `await this.runStream(readSettings(), this.toolbarStore.get(), false)`; (d) `runStream` top: `const promptTools = this.pendingPromptTools; this.pendingPromptTools = null;` and both `buildRequestBody` call sites (initial + agentic-loop rebuild) pass `promptTools: promptTools ?? undefined` (coercion needed — `RequestConfig.promptTools` is `string[] | undefined`, not `null`).
   - `scripts/smoke-test.js`: new section `// 70) runPrompt (1.100-2.S3)` after section 69, before `ALL SMOKE TESTS PASSED`; reads `src/chat/ChatViewProvider.ts` as text (local `p2s3Src`); 4 `prompt2-s3:` static assertions: (a) contains `runPrompt(`; (b) contains `parsePromptFrontMatter`; (c) contains `pendingPromptTools`; (d) the first `buildRequestBody(` call site's 400-char window contains `promptTools`. Total PASS lines now 627 (623 + 4).

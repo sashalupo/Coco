@@ -4844,6 +4844,26 @@ function assert(cond, label) {
     "prompt2-s3: buildRequestBody call site passes promptTools",
   );
 
+  // 71) prompt_run webview (1.100-2.S4)
+  const p2s4Src = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    p2s4Src.includes("prompt_run"),
+    "prompt2-s4: webview source contains prompt_run",
+  );
+  const p2s4CaseIdx = p2s4Src.indexOf("case 'prompt_run'");
+  const p2s4NextCase = p2s4Src.indexOf("case '", p2s4CaseIdx + 1);
+  const p2s4Region =
+    p2s4CaseIdx !== -1
+      ? p2s4Src.slice(p2s4CaseIdx, p2s4NextCase === -1 ? undefined : p2s4NextCase)
+      : "";
+  assert(
+    p2s4CaseIdx !== -1 && p2s4Region.includes("doSend()"),
+    "prompt2-s4: prompt_run case region reaches the doSend() send invocation",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
