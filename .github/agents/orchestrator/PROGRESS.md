@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-19** — Create and launch tasks in agent mode — **IN PROGRESS** (3 slices S-001–S-003; S-001 done; 1.100-18 skipped: no preview webview)
-- **Current slice:** 1.100-19 S-002 DONE (verified PASS; code 2c014c2)
+- **Current item:** **1.100-19** — Create and launch tasks in agent mode — **DONE** (3 slices S-001–S-003 all verified PASS; 1.100-18 skipped: no preview webview)
+- **Current slice:** 1.100-19 S-003 DONE (verified PASS; code 7b4b7cc)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-19 S-003 — smoke guards in `scripts/smoke-test.js` (last slice of item) (user goal: continue until version 1.107)
+- **Next step:** 1.100-29 — Generate alt text in HTML or Markdown (Planner dispatch first) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 7dc2fb8 (tester verified 1.100-19 S-002; code 2c014c2)
-- **Build state:** compiles clean; smoke 774/774 PASS (verified 2026-10-23)
+- **Last commit:** d54ea8c (tester verified 1.100-19 S-003; code 7b4b7cc)
+- **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -50,6 +50,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-19 (DONE, S-001–S-003):** `launchTask` data + `buildTasksJson` in `src/workspaceScaffold.ts` (S-001, 5e3bde9); `buildScaffoldPrompt` tasks.json write + ask-and-run steps (S-002, 2c014c2); smoke guards `ws-s5`, count 774→780 (S-003, 7b4b7cc). No new tag — `changelog-1.100` already exists (final commit 7b4b7cc). **1.100-18 skipped** (no preview webview; revisit if a preview panel is ever added).
 
 **1.100-16 (DONE, S1–S4):** `McpInput` interface + `McpServerConfig.inputs` + `parseMcpServers` inputs coercion + `detectSecretEnvName` + `resolveMcpInputs` in `src/mcp.ts` (S1, 201a24a); `McpClient` ctor `inputs?` arg + `McpManager` inputs Map / `setInputs` / `setServers` drop / `ensureStarted` pass-through + ctor-throw catch (S2, dbad249 + fixes 237e68c, f92343e); `llm.mcp.addServer` stdio env prompt + secret → `${input:...}` + `inputs` entry + password prompt + `mcpManager.setInputs` + `package.json` description (S3, 8f685b7); smoke guards `mcp-inputs-s1..s4`, count 766→774 (S4, 5f230bc). No new tag — `changelog-1.100` already exists (final commit 5f230bc).
 
