@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **IN PROGRESS** (6 slices S1–S6; S1–S5 done)
-- **Current slice:** 1.100-15.S5 DONE (verified PASS)
+- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **DONE** (6 slices S1–S6 all verified PASS)
+- **Current slice:** 1.100-15.S6 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-15.S6 — smoke guards in `scripts/smoke-test.js` (gate 758 → 766) (user goal: continue until version 1.107)
+- **Next step:** 1.100-16 — MCP config generation uses inputs for secrets (Planner dispatch first) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** b0160c1 (tester verified 1.100-15.S5; code 5cb6ea7)
-- **Build state:** compiles clean; smoke 758/758 PASS (verified 2026-10-23)
+- **Last commit:** 4bf583d (tester verified 1.100-15.S6; code f8e3b1f)
+- **Build state:** compiles clean; smoke 766/766 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -50,6 +50,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-15 (DONE, S1–S6):** `McpProgressNotification`/`McpProgressCallback` + `McpJsonRpc` onNotification hook + `McpClient.setProgressCallback` (S1, 7aa4c4a); `McpHttpClient.setProgressCallback` + SSE progress capture in `post` (S2, a1e8cd5); `McpClientLike`/`McpManager.execute` onProgress threading + concrete `callTool` set/clear wiring (S3, ca9294e + fix 59e6731); `tool_progress` postMessage from MCP branch in `src/chat/ChatViewProvider.ts` (S4, 0b8ce56); webview `prettyJson` + `tool_progress` progress bar/line + CSS in `src/chat/webview.ts` (S5, 5cb6ea7); smoke guards `mcp-progress-s6`, count 758→766 (S6, f8e3b1f). No new tag — `changelog-1.100` already exists (final commit f8e3b1f).
 
 **1.100-14 (DONE, S1–S5):** `McpToolResult.content` widened + `mcpResultToImages` pure extractor in `src/mcp.ts` (S1, 486f58e); `McpManager.execute` returns `{ content, images? }` (S2, 215b394); `tool_result` posts carry `images` in `src/chat/ChatViewProvider.ts` (S3, 814fbea); `.tool-images`/`.tool-img` thumbnail rendering in `src/chat/webview.ts` (S4, 7535819); smoke guards `mcp-img-s5`, count 750→758 (S5, 45939ec). No new tag — `changelog-1.100` already exists (final commit 45939ec).
 
