@@ -42,6 +42,11 @@ import {
 } from "../context";
 import { buildScaffoldPrompt } from "../workspaceScaffold";
 import { notebookNameFromQuery } from "../notebook";
+import {
+  parsePromptFrontMatter,
+  stripPromptComments,
+  MAX_PROMPT_CHARS,
+} from "../prompts";
 import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import { ToolExecutor } from "../tools/ToolExecutor";
 import { isMcpToolName } from "../mcp";
@@ -105,6 +110,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /** Resolver for the pending tool approval (null when no approval is pending). */
   private pendingApproval: ((approved: boolean, scope?: string) => void) | null = null;
+
+  /**
+   * 1.100-2.S3: tool-name filter set by `runPrompt` from the prompt file's
+   * front matter; consumed (and cleared) by the next `runStream`.
+   */
+  private pendingPromptTools: string[] | null = null;
 
   /**
    * Resolver for the pending editable command approval (null when none is
@@ -1022,6 +1033,38 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
+   * 1.100-2.S3: run a prompt file immediately (Play button / `llm.runPrompt`
+   * semantics). Parses the front matter, switches the toolbar mode (absent →
+   * `agent` default), sets the tool filter, pushes the stripped body as a
+   * user message, and runs the stream. No webview round-trip.
+   */
+  public async runPrompt(content: string, filePath: string): Promise<void> {
+    if (this.abortController) {
+      this.postMessage({
+        type: "error",
+        message: "A request is already running — stop it first.",
+      });
+      return;
+    }
+    const { meta, body: rawBody } = parsePromptFrontMatter(
+      content.slice(0, MAX_PROMPT_CHARS),
+    );
+    const text = stripPromptComments(rawBody).trim();
+    if (!text) {
+      this.postMessage({
+        type: "error",
+        message: "That prompt file is empty (or only comments).",
+      });
+      return;
+    }
+    await this.toolbarStore.setMode(normalizeChatMode(meta.mode));
+    this.pendingPromptTools =
+      meta.tools && meta.tools.length > 0 ? meta.tools : null;
+    this.history.push({ role: "user", content: text });
+    await this.runStream(readSettings(), this.toolbarStore.get(), false);
+  }
+
+  /**
    * Build the request body from the current history and run the (possibly
    * multi-turn) streaming agentic loop, posting deltas to the webview. Shared
    * by `handleSend` and `handleRegenerate`. Persists the conversation on exit.
@@ -1031,6 +1074,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     toolbar: ToolbarState,
     skipUser: boolean,
   ): Promise<void> {
+    // 1.100-2.S3: consume the pending prompt-file tool filter (set by
+    // `runPrompt`); null for regular sends/regenerations.
+    const promptTools = this.pendingPromptTools;
+    this.pendingPromptTools = null;
     // Build the request body. This is wrapped in its own try/catch (separate
     // from the streaming loop below) so a setup failure — context gathering or
     // request building — surfaces as an error in the panel instead of failing
@@ -1255,6 +1302,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           toolbar,
           mcpTools: this.mcpManager.getTools(),
           mode: toolbar.mode,
+          promptTools: promptTools ?? undefined,
         },
         withSystem,
       );
@@ -1501,6 +1549,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             toolbar,
             mcpTools: this.mcpManager.getTools(),
             mode: toolbar.mode,
+            promptTools: promptTools ?? undefined,
           },
           currentWithSystem,
         );

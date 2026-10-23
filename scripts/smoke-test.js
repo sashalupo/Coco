@@ -4820,6 +4820,30 @@ function assert(cond, label) {
     "prompt2-s2: ask mode + promptTools → no tools field in the body",
   );
 
+  // 70) runPrompt (1.100-2.S3)
+  const p2s3Src = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    p2s3Src.includes("runPrompt("),
+    "prompt2-s3: ChatViewProvider source contains runPrompt(",
+  );
+  assert(
+    p2s3Src.includes("parsePromptFrontMatter"),
+    "prompt2-s3: ChatViewProvider source contains parsePromptFrontMatter",
+  );
+  assert(
+    p2s3Src.includes("pendingPromptTools"),
+    "prompt2-s3: ChatViewProvider source contains pendingPromptTools",
+  );
+  const p2s3BuildIdx = p2s3Src.indexOf("buildRequestBody(");
+  assert(
+    p2s3BuildIdx !== -1 &&
+      p2s3Src.slice(p2s3BuildIdx, p2s3BuildIdx + 400).includes("promptTools"),
+    "prompt2-s3: buildRequestBody call site passes promptTools",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

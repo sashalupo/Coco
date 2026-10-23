@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S2 done, S3–S6 pending)
-- **Next step:** 1.100-2.S3 — `src/chat/ChatViewProvider.ts`: `runPrompt` + tool filter wiring (+4 smoke)
+- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S3 done, S4–S6 pending)
+- **Next step:** 1.100-2.S4 — `src/chat/webview.ts`: `prompt_run` handler (+2 smoke)
 - **Last updated:** 2026-10-23
-- **Last commit:** (1.100-2.S2 commit — `RequestConfig.promptTools` filter)
-- **Build state:** compiles clean; smoke 623 PASS
+- **Last commit:** (1.100-2.S3 commit — `ChatViewProvider.runPrompt` + `pendingPromptTools` wiring)
+- **Build state:** compiles clean; smoke 627 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,10 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-2.S3** (2026-10-23) — `src/chat/ChatViewProvider.ts`: `runPrompt` + tool filter wiring (+4 smoke). Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/ChatViewProvider.ts`: (a) new import `parsePromptFrontMatter, stripPromptComments, MAX_PROMPT_CHARS` from `../prompts` (after the `../notebook` import); (b) new `private pendingPromptTools: string[] | null = null;` field (after `pendingApproval`); (c) new `public async runPrompt(content, filePath)` — guards on `this.abortController` ("A request is already running — stop it first."), `parsePromptFrontMatter(content.slice(0, MAX_PROMPT_CHARS))`, `stripPromptComments(rawBody).trim()` (empty → "That prompt file is empty (or only comments)."), `await this.toolbarStore.setMode(normalizeChatMode(meta.mode))` (absent → `agent` default), `pendingPromptTools = meta.tools?.length ? meta.tools : null`, pushes `{ role: "user", content: text }` to history, then `await this.runStream(readSettings(), this.toolbarStore.get(), false)`; (d) `runStream` top: `const promptTools = this.pendingPromptTools; this.pendingPromptTools = null;` and both `buildRequestBody` call sites (initial + agentic-loop rebuild) pass `promptTools: promptTools ?? undefined` (coercion needed — `RequestConfig.promptTools` is `string[] | undefined`, not `null`).
+  - `scripts/smoke-test.js`: new section `// 70) runPrompt (1.100-2.S3)` after section 69, before `ALL SMOKE TESTS PASSED`; reads `src/chat/ChatViewProvider.ts` as text (local `p2s3Src`); 4 `prompt2-s3:` static assertions: (a) contains `runPrompt(`; (b) contains `parsePromptFrontMatter`; (c) contains `pendingPromptTools`; (d) the first `buildRequestBody(` call site's 400-char window contains `promptTools`. Total PASS lines now 627 (623 + 4).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 627 PASS, 0 FAIL.
 - **1.100-2.S2** (2026-10-23) — `src/request.ts`: `RequestConfig.promptTools` tool-name filter (+3 smoke). Files: `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/request.ts`: (a) `RequestConfig` gains `promptTools?: string[];` with doc comment "When set (non-empty), restrict `body.tools` to these tool names."; (b) `buildRequestBody` tools block — after building the candidate list (`CODE_TOOLS` + any `mcpTools`), if `cfg.promptTools` is a non-empty array the list is filtered to tools whose `function.name` is in the set (MCP tools included if their name matches); empty/absent `promptTools` → existing behavior unchanged; ask mode unchanged (no tools, `tool_choice: "none"`).
   - `scripts/smoke-test.js`: new section `// 69) promptTools filter (1.100-2.S2)` after section 68, before `ALL SMOKE TESTS PASSED`; 3 `prompt2-s2:` assertions: (a) `promptTools: ["read_file"]` → `body.tools` exactly 1 entry named `read_file`; (b) `promptTools: []` → full tool list (count === `CODE_TOOLS.length`); (c) ask mode + `promptTools: ["read_file"]` → no `tools` field in the body. Total PASS lines now 623 (620 + 3).
