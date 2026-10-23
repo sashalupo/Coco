@@ -3741,7 +3741,8 @@ function assert(cond, label) {
   const extSrcRpS3b = fs.readFileSync(path.join(__dirname, "..", "src", "extension.ts"), "utf8");
   assert(extSrcRpS3b.includes("llm.usePrompt"), "rp-s3: extension.ts registers llm.usePrompt");
   assert(extSrcRpS3b.includes("workspace.findFiles"), "rp-s3: extension.ts uses workspace.findFiles");
-  assert(extSrcRpS3b.includes("prompt_inject"), "rp-s3: extension.ts posts prompt_inject");
+  // 1.100-2.S5: the run path now calls provider.runPrompt — prompt_inject is gone.
+  assert(!extSrcRpS3b.includes("prompt_inject"), "rp-s3: extension.ts no longer posts prompt_inject (1.100-2.S5)");
   assert(extSrcRpS3b.includes("PROMPT_TEMPLATE"), "rp-s3: extension.ts uses PROMPT_TEMPLATE");
 
   // 39) Reusable prompt files — prompt_inject webview handler (1.99-12.S4)
@@ -4862,6 +4863,28 @@ function assert(cond, label) {
   assert(
     p2s4CaseIdx !== -1 && p2s4Region.includes("doSend()"),
     "prompt2-s4: prompt_run case region reaches the doSend() send invocation",
+  );
+
+  // 72) llm.runPrompt command (1.100-2.S5)
+  const p2s5Src = fs.readFileSync(
+    path.join(__dirname, "..", "out", "extension.js"),
+    "utf8",
+  );
+  assert(
+    p2s5Src.includes('"llm.runPrompt"'),
+    "prompt2-s5: extension.js registers the llm.runPrompt command",
+  );
+  assert(
+    p2s5Src.includes('"llm.usePrompt"'),
+    "prompt2-s5: extension.js keeps the deprecated llm.usePrompt alias",
+  );
+  assert(
+    p2s5Src.includes("runPrompt("),
+    "prompt2-s5: extension.js calls the provider runPrompt( method",
+  );
+  assert(
+    !p2s5Src.includes("prompt_inject"),
+    "prompt2-s5: old prompt_inject path is gone from extension.js",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

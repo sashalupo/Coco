@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S4 done, S5–S6 pending)
-- **Next step:** 1.100-2.S5 — `src/extension.ts`: rename to `llm.runPrompt` + run semantics (+4 smoke)
+- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S5 done, S6 pending)
+- **Next step:** 1.100-2.S6 — `package.json`: command rename, Play button menu, language IDs (+4 smoke)
 - **Last updated:** 2026-10-23
-- **Last commit:** (1.100-2.S4 commit — `prompt_run` webview handler: mode set + immediate send)
-- **Build state:** compiles clean; smoke 629 PASS
+- **Last commit:** (1.100-2.S5 commit — `llm.runPrompt` command + deprecated `llm.usePrompt` alias)
+- **Build state:** compiles clean; smoke 633 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,10 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-2.S5** (2026-10-23) — `src/extension.ts`: `llm.usePrompt` → `llm.runPrompt` + run-immediately semantics (+4 smoke). Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/extension.ts`: (a) command registration renamed `"llm.usePrompt"` → `"llm.runPrompt"`; QuickPick `title: "LLM: Run Prompt"`, `placeHolder: "Select a prompt to run in chat"`; (b) on pick: read file → `stripPromptComments` empty-body guard kept ("That prompt file is empty (or only comments)."), then `await vscode.commands.executeCommand("workbench.view.llm")` + `await provider.runPrompt(content, picked.uri.fsPath)` (replaces the old `prompt_inject` postMessage — `prompt_inject` no longer appears anywhere in `extension.ts`); (c) new deprecated alias `vscode.commands.registerCommand("llm.usePrompt", () => vscode.commands.executeCommand("llm.runPrompt"))` right after the `llm.runPrompt` registration; (d) "New Prompt File…" flow unchanged.
+  - `scripts/smoke-test.js`: (a) new section `// 72) llm.runPrompt command (1.100-2.S5)` after section 71, before `ALL SMOKE TESTS PASSED`; reads `out/extension.js` as text (local `p2s5Src`); 4 `prompt2-s5:` assertions: (1) contains `"llm.runPrompt"`; (2) contains the deprecated `"llm.usePrompt"` alias; (3) contains `runPrompt(` (provider method call); (4) `prompt_inject` is NOT present in `out/extension.js`. (b) Updated one stale pre-existing assertion from section 38 (item 1.99-12.S3a): `rp-s3: extension.ts posts prompt_inject` → `rp-s3: extension.ts no longer posts prompt_inject (1.100-2.S5)` (inverted to `!includes` — the old assertion directly contradicted S5's removal; count unchanged). Total PASS lines now 633 (629 + 4).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 633 PASS, 0 FAIL.
 - **1.100-2.S4** (2026-10-23) — `src/chat/webview.ts`: `prompt_run` host→webview handler (+2 smoke). Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/webview.ts`: new `case 'prompt_run':` in `handleHostMessage` immediately after `case 'prompt_inject':` — `const text = String(msg.text ?? ''); if (!text) break;` + `inputEl` null guard; if `msg.mode` is `ask`/`agent`/`edit` sets `modeSelect.value = msg.mode` (the existing `change` listener posts the toolbar sync — not duplicated); then `inputEl.value = text` and invokes `doSend()` (the same function the Send button calls via `sendBtn.addEventListener('click', doSend)`).
   - `scripts/smoke-test.js`: new section `// 71) prompt_run webview (1.100-2.S4)` after section 70, before `ALL SMOKE TESTS PASSED`; reads `src/chat/webview.ts` as text (local `p2s4Src`); 2 `prompt2-s4:` static assertions: (a) contains `prompt_run`; (b) the region between `case 'prompt_run'` and the next `case '` contains `doSend()`. Total PASS lines now 629 (627 + 2).

@@ -201,7 +201,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.commands.executeCommand(picked.command);
       }
     }),
-    vscode.commands.registerCommand("llm.usePrompt", async () => {
+    vscode.commands.registerCommand("llm.runPrompt", async () => {
       const settings = readSettings();
       const globs = (settings.promptFiles ?? []).filter(
         (g) => typeof g === "string" && g.length > 0,
@@ -239,8 +239,8 @@ export function activate(context: vscode.ExtensionContext): void {
         description: "create .prompts/<name>.prompt.md",
       });
       const picked = await vscode.window.showQuickPick(items, {
-        title: "LLM: Use Prompt",
-        placeHolder: "Select a reusable prompt to use in chat",
+        title: "LLM: Run Prompt",
+        placeHolder: "Select a prompt to run in chat",
       });
       if (!picked) {
         return; // cancelled
@@ -255,12 +255,8 @@ export function activate(context: vscode.ExtensionContext): void {
           );
           return;
         }
-        provider.postMessage({
-          type: "prompt_inject",
-          title: promptTitle(content, picked.uri.fsPath),
-          content: stripped,
-        });
         await vscode.commands.executeCommand("workbench.view.llm");
+        await provider.runPrompt(content, picked.uri.fsPath);
         return;
       }
       // New Prompt File…
@@ -297,6 +293,11 @@ export function activate(context: vscode.ExtensionContext): void {
       const doc = await vscode.workspace.openTextDocument(target);
       await vscode.window.showTextDocument(doc);
     }),
+    // 1.100-2.S5: deprecated alias — `llm.usePrompt` now runs the prompt
+    // (previously it injected it as context).
+    vscode.commands.registerCommand("llm.usePrompt", () =>
+      vscode.commands.executeCommand("llm.runPrompt"),
+    ),
     vscode.commands.registerCommand("llm.changeCompletionsModel", async () => {
       const cfg = vscode.workspace.getConfiguration("llm");
       const current = cfg.get<string>("completions.model", "");
