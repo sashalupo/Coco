@@ -11,13 +11,14 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-29 — COMPLETE (S-001, S-002, S-003 all verified PASS)
-- **Next step:** 1.100-30
+- **Current item:** 1.100-30 — in progress (S-001 verified PASS)
+- **Next step:** 1.100-30 S-002
 - **Last updated:** 2026-10-23
-- **Last commit:** ef5a845 (1.100-29 S-003, verified PASS)
+- **Last commit:** affc774 (1.100-30 S-001, verified PASS)
 - **Build state:** compiles clean; smoke 787/787 PASS (verified 2026-10-23)
 ## Verified (recap)
 
+**1.100-30 S-001** (2026-10-23) — **PASS**. `extractNotebookCellOutput` helper in `src/notebook.ts` (commit affc774). Build exit 0; smoke 787/787 (no new smoke assertions this slice). Scope clean: `git show --stat affc774` touches only `src/notebook.ts` (+53) + `.github/agents/coder/PROGRESS.md` (+11/-4); `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (1) compile exit 0; (2) smoke 787/787 ALL PASSED; (3) NO `vscode` import in `src/notebook.ts` — grep for import/require lines returns zero matches (file is pure, only doc-comment mentions); (4) runtime probe on compiled `out/notebook.js` with fake output objects, 5/5 assertions: main case text/plain 'hello' + image/png [0x89,0x50,0x4e,0x47] → {text:'hello', images:['data:image/png;base64,iVBORw==']}; non-image/non-text mimes (application/json, text/html) → {text:'', images:[]}; Uint8Array data (not Buffer) → {text:'hi', images:['data:image/jpeg;base64,/9j/']}; empty items → {text:'', images:[]}; throwing data() skipped, subsequent item still processed. Helper (line 502) iterates output.items ?? [], skips non-string mimes, awaits item.data() in try/catch (skip on throw), text/plain → utf-8 concat, image mimes (png/jpeg/gif/webp/bmp) → data:<mime>;base64,<value>, other mimes ignored. **Next: 1.100-30 S-002.**
 **1.100-29 S-003** (2026-10-23) — **PASS**. Smoke-test alt-s1 block in scripts/smoke-test.js (commit ef5a845). Build exit 0; smoke 787/787 (780 + 7 new alt-s1 assertions). Scope clean: git show --stat ef5a845 touches only scripts/smoke-test.js (+60/-8) + .github/agents/coder/PROGRESS.md (+11/-4); ninfer submodule NOT committed. Verified: (1) compile exit 0; (2) smoke 787/787 ALL PASSED; (3) alt-s1 block (lines 6442-6494) has exactly 7 assertions — findImageRef html img → src a.png, alt '', empty slot (slice(altStart,altEnd)===''); findImageRef markdown → src img/pic.jpg, alt x; findImageRef no image → null; isPlaceholderAlt('')/('TODO') true, ('a cat') false; buildAltTextPrompt('a.png','some context',false) contains a.png + some context; parseAltText fenced → 'A cat'; CodeActionProvider.ts contains 'Generate alt text' + altText.enabled, package.json contains llm.codeAction.altText.enabled; (4) hard gate raised 780→787 (line 6496 if-check + line 6500 PASS message); (5) scope clean. **Item 1.100-29 complete (S-001 to S-003 all PASS).**
 
 
