@@ -521,3 +521,57 @@ export async function extractNotebookCellOutput(
   }
   return { text: textParts.join(""), images };
 }
+
+/**
+ * Extract top-level variable names from Python source (item 1.100-31,
+ * S-001): `import x` / `import x as y` (y), `from m import a` /
+ * `from m import a as b` (a or b), top-level `x = ...` assignments,
+ * `def x(...)`, `class X`. Only unindented (top-level) lines count.
+ * Deduped, order-preserving. Pure — no vscode import.
+ */
+export function extractVariableNames(source: string): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  const push = (name: string | undefined | null) => {
+    if (!name) return;
+    if (!seen.has(name)) {
+      seen.add(name);
+      names.push(name);
+    }
+  };
+  const re =
+    /^import\s+([\w.]+)(?:\s+as\s+(\w+))?|^from\s+[\w.]+\s+import\s+([\w.]+)(?:\s+as\s+(\w+))?|^([A-Za-z_]\w*)\s*=(?!=)|^def\s+([A-Za-z_]\w*)|^class\s+([A-Za-z_]\w*)/;
+  for (const line of source.split(/\r?\n/)) {
+    const m = re.exec(line);
+    if (!m) continue;
+    // Dotted names bind their first segment (`import x.y` binds `x`,
+    // `from m import a.b` binds `a`).
+    const first = (s: string) => s.split(".")[0];
+    if (m[1] !== undefined) push(m[2] ?? first(m[1]));
+    else if (m[3] !== undefined) push(m[4] ?? first(m[3]));
+    else if (m[5] !== undefined) push(m[5]);
+    else if (m[6] !== undefined) push(m[6]);
+    else if (m[7] !== undefined) push(m[7]);
+  }
+  return names;
+}
+
+/**
+ * Format in-memory kernel state for the `get_kernel_state` tool
+ * (item 1.100-31, S-001): one line per executed cell index plus a
+ * variable list line, or "no cells executed yet" when `executed` is
+ * empty. Pure — no vscode import.
+ */
+export function formatKernelState(
+  path: string,
+  executed: number[],
+  variables: string[]
+): string {
+  if (executed.length === 0) return "no cells executed yet";
+  const lines = [
+    `kernel state for ${path}:`,
+    ...executed.map((i) => `cell ${i}: executed`),
+  ];
+  lines.push(variables.length > 0 ? `variables: ${variables.join(", ")}` : "variables: (none)");
+  return lines.join("\n");
+}
