@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-12** — Conversation summary (context-window management) — **IN PROGRESS** (5 slices S1–S5; S1–S3 done)
-- **Current slice:** 1.100-12.S3 DONE (verified PASS)
+- **Current item:** **1.100-12** — Conversation summary (context-window management) — **IN PROGRESS** (5 slices S1–S5; S1–S4 done)
+- **Current slice:** 1.100-12.S4 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-12.S4 — webview marker rendering in `src/chat/webview.ts` (user goal: continue until version 1.107)
+- **Next step:** 1.100-12.S5 — smoke-test guards in `scripts/smoke-test.js` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 3f2493d (tester verified 1.100-12.S3; code 6e99092)
+- **Last commit:** be98853 (tester verified 1.100-12.S4; code bfc117d)
 - **Build state:** compiles clean; smoke 714/714 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
@@ -51,7 +51,7 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
 
-**1.100-12 (in progress):** `summarizeSplit`/`buildTranscript`/`SUMMARY_MARKER` helpers in `src/request.ts` (S1, 372d4b0); `llm.chat.summarize.enabled`/`threshold` settings (S2, 40f762c); automatic summarization pass `maybeSummarizeHistory` + agent-loop hook in `src/chat/ChatViewProvider.ts` (S3, 6e99092).
+**1.100-12 (in progress):** `summarizeSplit`/`buildTranscript`/`SUMMARY_MARKER` helpers in `src/request.ts` (S1, 372d4b0); `llm.chat.summarize.enabled`/`threshold` settings (S2, 40f762c); automatic summarization pass `maybeSummarizeHistory` + agent-loop hook in `src/chat/ChatViewProvider.ts` (S3, 6e99092); webview `.message.summarized` marker + `summarize_result` case in `src/chat/webview.ts` (S4, bfc117d).
 
 **1.100-11 (DONE, S1–S4):** `externallyChanged`/`FileSnapshot` helper in `src/tools/ToolExecutor.ts` (S1, 02e835e); `llm.agent.trackManualEdits` setting (default on) (S2, 9eb5918); manual-edit detection hook in agent loop (S3, dfe2f34); smoke guards, count 701→714 (S4, 3c4de22). No new tag — `changelog-1.100` already exists (final commit 3c4de22).
 
