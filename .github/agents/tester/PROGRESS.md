@@ -11,11 +11,10 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-
-- **Current item:** 1.100-14 — complete (S1–S5 all verified PASS)
-- **Next step:** 1.100-15
+- **Current item:** 1.100-15 — in progress (S1 verified PASS)
+- **Next step:** 1.100-15.S2
 - **Last updated:** 2026-10-23
-- **Last commit:** 45939ec (1.100-14.S5, verified PASS)
+- **Last commit:** 7aa4c4a (1.100-15.S1, verified PASS)
 - **Build state:** compiles clean; smoke 758/758 PASS (verified 2026-10-23)
 ## Verified (recap)
 
