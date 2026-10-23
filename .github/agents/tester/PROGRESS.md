@@ -11,12 +11,14 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-16 — COMPLETE (all slices S1–S4 verified PASS)
-- **Next step:** 1.100-17 (next item in changelog)
+- **Current item:** 1.100-19 — in progress (S-001 verified PASS)
+- **Next step:** 1.100-19 S-002 (next slice)
 - **Last updated:** 2026-10-23
-- **Last commit:** 5f230bc (1.100-16.S4, verified PASS)
+- **Last commit:** 5e3bde9 (1.100-19 S-001, verified PASS)
 - **Build state:** compiles clean; smoke 774/774 PASS (verified 2026-10-23)
 ## Verified (recap)
+**1.100-19 S-001** (2026-10-23) — **PASS**. launchTask data + buildTasksJson in `src/workspaceScaffold.ts` (commit 5e3bde9). Build exit 0; smoke 774/774 (no new assertions yet — that is S-003). Scope clean: `git show --stat 5e3bde9` touches only `src/workspaceScaffold.ts` (+27) + `.github/agents/coder/PROGRESS.md` (+11/-5); `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (1) compile exit 0; (2) smoke 774/774 clean exit; (3) `WorkspaceTemplate` has optional `launchTask?: { label: string; command: string }` field (line 14); (4) templates — `extension` → `{ label: "Compile", command: "npm run compile" }`, `mcp-server` → `{ label: "Start", command: "npm start" }`, `dev-env` → `{ label: "Dev", command: "npm run dev" }`, `generic` → no `launchTask` key; (5) inline probe on compiled `out/workspaceScaffold.js` (no vscode import in file, plain require) — `buildTasksJson("extension")` contains `"label": "Compile"` + `"command": "npm run compile"`, valid JSON with `version: "2.0.0"`, exactly one task of `type: "shell"` with `problemMatcher: []` (8/8 assertions); (6) `buildTasksJson("generic") === ""`; (7) `buildTasksJson("nope") === ""` (unknown type); bonus: mcp-server/dev-env tasks also correct (12/12 probe assertions total). **Next: 1.100-19 S-002.**
+
 
 **1.100-16.S4** (2026-10-23) — **PASS**. Smoke-test regression guards in scripts/smoke-test.js (commit 5f230bc). Build exit 0; smoke 774/774 (766 + 8 new mcp-inputs-s1..s3 assertions), clean exit. Scope clean: git show --stat 5f230bc touches only scripts/smoke-test.js (+116/-8) + coder PROGRESS.md; ninfer NOT committed. Verified: (a) parseMcpServers accepts a valid inputs map and keeps env refs verbatim; (b) parseMcpServers drops inputs with a bad type (server kept); (c) detectSecretEnvName true for key/token/password/auth/secret/bearer names; (d) detectSecretEnvName false for non-secret names; (e) resolveMcpInputs resolves ${input:...} refs and passes non-refs through; (f) resolveMcpInputs throws missing required input: API_KEY for an absent ref; (g) McpManager.ensureStarted without setInputs rejects with missing-input error and error status; (h) static refs — src/extension.ts references detectSecretEnvName + setInputs; package.json mentions inputs. Hard gate raised 766 to 774 (line 6395). **Item 1.100-16 complete (S1–S4 all PASS).**
 
