@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-10 (in progress) — S1, S2, S3 verified; S4 (smoke guards) next
-- **Next step:** dispatch `1.100-10.S4` (smoke-test regression guards) to the Coder, then verify
+- **Current item:** 1.100-10 (complete) — S1, S2, S3, S4 all verified PASS
+- **Next step:** item 1.100-10 done; next changelog item per backlog (oldest to newest)
 - **Last updated:** 2026-10-23
-- **Last commit:** 308e856 (1.100-10.S3 fix, re-verified PASS)
-- **Build state:** compiles clean; smoke 690/690 PASS (verified 2026-10-23)
+- **Last commit:** ede4d2c (1.100-10.S4 smoke guards, verified PASS)
+- **Build state:** compiles clean; smoke 701/701 PASS (verified 2026-10-23)
 
 ## Verified (recap)
 
@@ -36,6 +36,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 **1.100-8.S5** (2026-10-23) — PASS. Smoke-test regression guards in `scripts/smoke-test.js` (commit 08f2625): 15 new `pill-s5` assertions — no Done button in input row / no `#done` element; Enter (no Shift) → `doSend()`; New Chat only via `#new-chat`/`#quick-new-chat` (input row has no other session-reset control); pure-function tests of `parsePillRefs`/`dedupePills` against compiled `out/context.js` (parse + within-message dedupe; existing-order merge + id drop); pill pipeline present (`context_pills`/`remove_pill`/`renderPillStrip` in webview, `postContextPills` + `remove_pill` case in ChatViewProvider, `llm.addContext` registered + contributed). Assertions are genuine (string/behavior checks that fail if the feature is removed). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory. Build exit 0; smoke 690/690. **Item 1.100-8 complete (S1–S5 all PASS).**
 
+
+**1.100-10.S4** (2026-10-23) — **PASS**. Smoke-test regression guards in `scripts/smoke-test.js` (commit ede4d2c). Build exit 0; smoke 701/701 (690 + 11 new `autofix-s4` assertions). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Guards verified genuine: `llm.agent.autoFix` schema (boolean, default true) read from `package.json`; `src/config.ts` reads `c.get<boolean>("agent.autoFix", true)`; `src/presets.ts` has `agentAutoFix: boolean;`; `src/tools/ToolExecutor.ts` exports `newDiagnostics` + `DiagnosticLike`; `src/chat/ChatViewProvider.ts` references `settings.agentAutoFix` gate, `const MAX_AUTOFIX_ROUNDS = 2;`, pre-batch snapshot ordering (`autofixSnapshot(editedPaths)` index < `for (const call of toolCalls)` index), and `setTimeout(r, 500)` settle. Pure-function tests of compiled `out/tools/ToolExecutor.js` `newDiagnostics` (vscode stubbed via `Module._load`): only-new entries, after-order preserved, identical → []. Count gate updated 690 → 701 and matches. Item-level acceptance (1.100-10): setting defaults on (S1); off disables loop via `settings.agentAutoFix` gate (line 1674); new errors trigger at most 2 auto follow-up turns (`autoFixRounds < MAX_AUTOFIX_ROUNDS`, line 1675, cap 2); no new errors → `newDiagnostics` empty → no message (S2 + S3); loop always terminates (cap 2 + `MAX_TOOL_ITERATIONS = 8`, line 83/1494). **Item 1.100-10 complete (S1–S4 all PASS).**
 
 **1.100-10.S3** (2026-10-23) — **PASS** (re-verified after fix commit 308e856; original b0de672 FAILED). Agent-loop autofix hook in `src/chat/ChatViewProvider.ts`. Build exit 0; smoke 690/690. Scope clean: 308e856 touches only `src/chat/ChatViewProvider.ts` + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: `before` snapshot now taken BEFORE the batch loop — `editedPaths` computed from `toolCalls` at line 1506, `before = autofixSnapshot(editedPaths)` at line 1508, batch loop `for (const call of toolCalls)` follows; post-batch hook (lines 1666-1694): 500 ms settle → `after` snapshot (1669) → `newDiagnostics(before, after)` (1670) → if fresh + `settings.agentAutoFix` + `autoFixRounds < MAX_AUTOFIX_ROUNDS`: system message "New problems appeared in … Fix them." + delta note + counter increment + loop continues; past cap: delta note only. `MAX_AUTOFIX_ROUNDS = 2` (line 86); `autoFixRounds` reset at run start right after `clearChangeSummary()` (line 1453). No duplicate `editedPaths`/`before` computation (single `editedPaths` at 1506; exactly two `autofixSnapshot` calls: 1508 pre-batch, 1669 post-batch). Original ordering bug (pre-batch snapshot taken post-batch) is fixed.
 
