@@ -32,11 +32,21 @@ export interface McpInput {
   required?: boolean;
 }
 
+/** Optional MCP tool annotations (human-readable hints). */
+export interface McpToolAnnotations {
+  title?: string;
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+}
+
 /** A tool discovered from an MCP server via `tools/list`. */
 export interface McpTool {
   name: string;
   description?: string;
   inputSchema?: Record<string, unknown>;
+  annotations?: McpToolAnnotations;
 }
 
 /** The result of an MCP `tools/call`. */
@@ -680,6 +690,15 @@ export class McpHttpClient {
 /** Map an MCP server+tool to its OpenAI function name. */
 export function mcpToolName(server: string, tool: string): string {
   return `mcp__${server}__${tool}`;
+}
+
+/**
+ * Human-readable display name for an MCP tool: the `annotations.title`
+ * when it is a non-empty string, otherwise the raw tool `name`.
+ */
+export function mcpToolDisplayName(tool: McpTool): string {
+  const t = tool.annotations?.title;
+  return typeof t === "string" && t.length > 0 ? t : tool.name;
 }
 
 /**
