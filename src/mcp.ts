@@ -394,6 +394,8 @@ export class McpHttpClient {
   private closed = false;
   /** Tools discovered during the `tools/list` handshake. */
   public tools: McpTool[] = [];
+  /** Optional callback for `notifications/progress` SSE messages. */
+  private progressCb: McpProgressCallback | undefined;
 
   constructor(config: McpServerConfig) {
     if (!config.url) {
@@ -443,6 +445,14 @@ export class McpHttpClient {
     return this.post("tools/call", { name, arguments: args }).then(
       (r) => r as McpToolResult,
     );
+  }
+
+  /**
+   * Wire (or clear) a callback for `notifications/progress` messages
+   * received over SSE while a tool runs.
+   */
+  setProgressCallback(cb: McpProgressCallback | undefined): void {
+    this.progressCb = cb;
   }
 
   /**
@@ -499,6 +509,18 @@ export class McpHttpClient {
     let response: any;
     if (contentType.includes("text/event-stream")) {
       const messages = parseSseMessages(body);
+      for (const m of messages) {
+        if (
+          this.progressCb &&
+          isPlainObject(m) &&
+          m.method === "notifications/progress" &&
+          m.params !== null &&
+          typeof m.params === "object" &&
+          !Array.isArray(m.params)
+        ) {
+          this.progressCb(m.params as McpProgressNotification);
+        }
+      }
       response = messages.find(
         (m) => isPlainObject(m) && m.id === msg.id,
       );
