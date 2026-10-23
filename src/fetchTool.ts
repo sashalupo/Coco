@@ -597,17 +597,26 @@ function errorMessage(e: unknown): string {
 }
 
 /**
- * Fetch a URL and return its content as text (HTML is converted via
- * `htmlToText`). Never throws — failures resolve to a descriptive error
- * string: `Invalid URL: …`, `Fetch failed: …`, `HTTP <status> <statusText>
- * for <url>`, or `Response too large (>2000000 bytes): <url>`.
+ * Fetch a URL and return its content as text. Never throws — failures
+ * resolve to a descriptive error string: `Invalid URL: …`, `Fetch failed:
+ * …`, `HTTP <status> <statusText> for <url>`, or `Response too large
+ * (>2000000 bytes): <url>`.
+ *
+ * Without `maxTokens`: HTML is converted via `htmlToText` (the 1.99-4
+ * path, byte-for-byte unchanged). With `maxTokens` (finite, ≥ 1): HTML is
+ * converted via `htmlToMarkdown` and the result is trimmed to the token
+ * budget by `trimToTokenBudget` (non-HTML content is trimmed the same
+ * way — sections are blank-line-separated paragraphs). The cache stores
+ * the full untrimmed text; the budget trim is applied at read time, so a
+ * cached page respects a smaller budget on later calls. `maxChars` still
+ * applies as a final safety net.
  *
  * Successful results are cached (10 min TTL, 20 entries FIFO); a cache
  * hit skips the network entirely.
  */
 export async function fetchUrl(
   url: string,
-  opts?: { maxChars?: number; fetchFn?: FetchFn },
+  opts?: { maxChars?: number; maxTokens?: number; fetchFn?: FetchFn },
 ): Promise<string> {
   let u: URL;
   try {
@@ -620,10 +629,20 @@ export async function fetchUrl(
   }
 
   const maxChars = clampMaxChars(opts?.maxChars ?? DEFAULT_MAX_CHARS);
+  const maxTokens =
+    typeof opts?.maxTokens === "number" &&
+    Number.isFinite(opts.maxTokens) &&
+    opts.maxTokens >= 1
+      ? Math.floor(opts.maxTokens)
+      : undefined;
 
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
-    return truncate(hit.text, maxChars);
+    const text =
+      maxTokens !== undefined
+        ? trimToTokenBudget(hit.text, maxTokens).text
+        : hit.text;
+    return truncate(text, maxChars);
   }
 
   const doFetch: FetchFn = opts?.fetchFn ?? ((u2, init) => fetch(u2, init));
@@ -651,7 +670,15 @@ export async function fetchUrl(
 
   const raw = new TextDecoder("utf-8").decode(buf);
   const contentType = res.headers.get("content-type") ?? "";
-  const text = contentType.includes("text/html") ? htmlToText(raw) : raw;
+  const isHtml = contentType.includes("text/html");
+  const text =
+    maxTokens !== undefined
+      ? isHtml
+        ? htmlToMarkdown(raw)
+        : raw
+      : isHtml
+        ? htmlToText(raw)
+        : raw;
 
   cache.set(url, { text, at: Date.now() });
   while (cache.size > CACHE_MAX_ENTRIES) {
@@ -660,5 +687,7 @@ export async function fetchUrl(
     cache.delete(first.value);
   }
 
-  return truncate(text, maxChars);
+  const out =
+    maxTokens !== undefined ? trimToTokenBudget(text, maxTokens).text : text;
+  return truncate(out, maxChars);
 }

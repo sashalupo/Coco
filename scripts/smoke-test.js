@@ -5216,11 +5216,79 @@ function assert(cond, label) {
       fetchMd.estimateTokens(mdOver.text) <= 150,
     "fetchmd-s1: over budget drops the boilerplate nav section first, marker + budget respected",
   );
-  if (assertCount !== 664) {
-    console.error(`FAIL: total assertion count is 664 (got ${assertCount})`);
+  // 77) fetchUrl maxTokens (1.100-7.S2)
+  fetchMd.clearFetchCache();
+  const s2Html =
+    "<html><body>" +
+    "<h1>Navigation</h1><p>Menu items</p>" +
+    "<h1>Alpha</h1><p>Alpha content</p>" +
+    "<h1>Beta</h1><p>Beta content</p>" +
+    "</body></html>";
+  const s2Fetch = async () =>
+    new Response(s2Html, {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  const s2a = await fetchMd.fetchUrl("http://s2.example.com/a", {
+    maxTokens: 50,
+    fetchFn: s2Fetch,
+  });
+  assert(
+    s2a.includes("# ") &&
+      (fetchMd.estimateTokens(s2a) <= 50 ||
+        s2a.includes("[trimmed to fit context window]")),
+    "fetchmd-s2: maxTokens on text/html returns Markdown within the token budget",
+  );
+  const s2b = await fetchMd.fetchUrl("http://s2.example.com/a", {
+    maxTokens: 20,
+  });
+  assert(
+    fetchMd.estimateTokens(s2b) <= 20 ||
+      s2b.includes("[trimmed to fit context window]"),
+    "fetchmd-s2: cache hit with a smaller maxTokens is re-trimmed at read time",
+  );
+  fetchMd.clearFetchCache();
+  const s2c = await fetchMd.fetchUrl("http://s2.example.com/c", {
+    fetchFn: s2Fetch,
+  });
+  assert(
+    s2c === fetchMd.htmlToText(s2Html),
+    "fetchmd-s2: without maxTokens the result is identical to the htmlToText path (1.99-4 regression guard)",
+  );
+  const s2Tool = toolsS1.CODE_TOOLS.find(
+    (t) => t.function.name === "fetch_url",
+  );
+  assert(
+    s2Tool !== undefined &&
+      s2Tool.function.parameters.properties.max_tokens !== undefined &&
+      s2Tool.function.parameters.properties.max_tokens.type === "number" &&
+      s2Tool.function.description.includes("Markdown"),
+    "fetchmd-s2: fetch_url schema has a max_tokens param and a Markdown description",
+  );
+  const s2Plain =
+    "First paragraph of the plain text document.\n\n" +
+    "Second paragraph with more words in it.\n\n" +
+    "Third paragraph continues the text.\n\n" +
+    "Fourth paragraph wraps up the body.";
+  const s2d = await fetchMd.fetchUrl("http://s2.example.com/d", {
+    maxTokens: 30,
+    fetchFn: async () =>
+      new Response(s2Plain, {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      }),
+  });
+  assert(
+    s2d.includes("trimmed to fit context window") &&
+      !s2d.includes("# ") &&
+      s2d.length < s2Plain.length,
+    "fetchmd-s2: non-HTML content with maxTokens is budget-trimmed (marker present), not Markdown-converted",
+  );
+  if (assertCount !== 669) {
+    console.error(`FAIL: total assertion count is 669 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 664");
+  console.log("PASS: total assertion count is 669");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

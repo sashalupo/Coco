@@ -443,10 +443,12 @@ export const CODE_TOOLS: Tool[] = [
     function: {
       name: "fetch_url",
       description:
-        "Fetch a publicly accessible webpage and return its text content " +
-        "(HTML converted to plain text). Use this to read documentation, API " +
-        "references, or any public URL. The content is truncated to " +
-        "max_chars (default 20000). Read-only: does not change the workspace.",
+        "Fetch a publicly accessible webpage and return its content as " +
+        "**Markdown** (HTML converted to Markdown; other content types " +
+        "returned as-is). When `max_tokens` is set, content is trimmed to " +
+        "fit the token budget by dropping low-relevance sections " +
+        "(navigation, footer, boilerplate) first. Read-only: does not " +
+        "change the workspace.",
       parameters: {
         type: "object",
         properties: {
@@ -458,6 +460,12 @@ export const CODE_TOOLS: Tool[] = [
             type: "number",
             description:
               "Optional maximum characters to return (default 20000, max 50000).",
+          },
+          max_tokens: {
+            type: "number",
+            description:
+              "Optional token budget (estimated as chars/3.5). Content is " +
+              "trimmed to fit by dropping low-relevance sections first.",
           },
         },
         required: ["url"],

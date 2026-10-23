@@ -12,11 +12,19 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1 verified PASS)
-- **Next step:** dispatch Coder for 1.100-7.S2 (fetchUrl maxTokens wiring + tools.ts description)
+- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S2 verified PASS)
+- **Next step:** dispatch Coder for 1.100-7.S3 (setting plumbing `llm.chat.fetch.maxTokens`)
 - **Last updated:** 2026-10-23
-- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1 uncommitted in working tree
-- **Build state:** compiles clean; smoke 664/664 PASS (verified 2026-10-23)
+- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1+S2 uncommitted in working tree
+- **Build state:** compiles clean; smoke 669/669 PASS (verified 2026-10-23)
+
+### 1.100-7.S2 — `fetchUrl` `maxTokens` wiring + `tools.ts` description (+5 smoke) (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 669/669 PASS (664 baseline + 5 new `fetchmd-s2:`), 0 FAIL (grep -c '^PASS:' → 670 = 669 assertions + 1 total-count check line; '^FAIL:' → 0).
+- All 7 acceptance criteria met: (1) compile exit 0; (2) smoke 669 assertions + total-count check `PASS: total assertion count is 669`; (3) regression guard: `git diff src/fetchTool.ts` shows the no-`maxTokens` path byte-for-byte unchanged (cache hit → `truncate(hit.text, maxChars)`; fresh fetch → `htmlToText(raw)`/`raw` + `truncate`); all 11 pre-existing `fetch-s1:`/`fetch-s2:` assertions pass; (4) with `maxTokens`: HTML → `htmlToMarkdown`, cache stores full untrimmed Markdown (`cache.set(url, { text, at })` before trim), return = `trimToTokenBudget(…).text` then `maxChars` `truncate` safety net; cache hits re-trim at read time (`trimToTokenBudget(hit.text, maxTokens).text`); non-HTML trimmed via same `trimToTokenBudget` (paragraphs as sections); (5) `CODE_TOOLS` `fetch_url` has `max_tokens` param (type number) and description mentions "Markdown" (tools.ts diff verified); (6) section `// 77) fetchUrl maxTokens (1.100-7.S2)` at smoke-test.js:5219 with exactly 5 `fetchmd-s2:` assertions (L5240 html+maxTokens→Markdown within budget, L5248 cache hit smaller budget re-trimmed, L5256 no-maxTokens identical to htmlToText, L5266 schema max_tokens+Markdown, L5285 non-HTML budget-trimmed not Markdown) — 1:1 with plan list; (7) budget-respect: `trimToTokenBudget` pre-marker output always ≤ budget (fits-check gates the drop loop; hard-truncation at `maxTokens*3.5` chars); marker appended after the fits check — final text can exceed budget by the marker's worth (~10 tokens); smoke assertions accept `estimateTokens ≤ budget OR marker present` — acceptable minor deviation per plan.
+- Coder deviations (test-design only, verified sensible): (a) assertion 5 marker check uses substring `trimmed to fit context window` (no leading `[`) — matches the section-drop marker `… [trimmed to fit context window: dropped N section(s)]`; (b) assertion 5 checks `s2d.length < s2Plain.length` instead of `estimateTokens(s2d) <= 30` — the marker is appended after the fits check, so final text can exceed the budget by the marker's worth.
+- Empirical spot-checks (compiled out/fetchTool.js): under-budget passthrough `trimmed:false` (19 ≤ 50/20 tokens); over-budget plain text (46 tokens, budget 30) → all sections dropped, result = marker only (pre-marker 0 tokens ≤ 30 — budget respected, but content fully dropped; edge case noted, not a failure); over-budget HTML (576 tokens, budget 100) → 2 sections dropped, pre-marker 0 tokens ≤ 100.
+- Working-tree scope (S1+S2 uncommitted): `src/fetchTool.ts` (+45/−6 in S2 on top of S1's +521), `src/tools.ts` (+16/−3), `scripts/smoke-test.js` (+74/−3), agent PROGRESS files, `m ninfer` — no out-of-scope source files.
+- **Verdict: PASS.** Next: 1.100-7.S3 (setting plumbing `llm.chat.fetch.maxTokens`, +3 smoke → 672).
 
 ### 1.100-7.S1 — `src/fetchTool.ts`: `htmlToMarkdown` + `trimToTokenBudget` (pure) (+10 smoke) (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 664/664 PASS (654 baseline + 10 new `fetchmd-s1:`), 0 FAIL (grep -c '^PASS:' → 665 = 664 assertions + 1 total-count check line, which is not counted as an assertion; '^FAIL:' → 0).
