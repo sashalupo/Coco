@@ -2014,6 +2014,15 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					inputEl.focus();
 					break;
 				}
+				case 'instructions_inject': {
+					const text = String(msg.content ?? '');
+					if (!text) break;
+					if (!inputEl) break;
+					const existing = inputEl.value;
+					inputEl.value = existing ? text + '\n\n' + existing : text;
+					inputEl.focus();
+					break;
+				}
 				case 'cell_output_inject': {
 					if (!inputEl) return;
 					const t = String(msg.text ?? '');

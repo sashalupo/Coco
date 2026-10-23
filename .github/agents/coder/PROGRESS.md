@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S3 done of 6)
-- **Next step:** 1.100-1.S4 — Webview `instructions_inject` handler in `src/chat/webview.ts` (+2 smoke → 602)
+- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S4 done of 6)
+- **Next step:** 1.100-1.S5 — Commands `llm.attachInstructions` + `llm.newInstructionsFile` in `src/extension.ts` (+4 smoke → 606)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2+S3 changes uncommitted)
-- **Build state:** compiles clean; smoke 600 PASS
+- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2+S3+S4 changes uncommitted)
+- **Build state:** compiles clean; smoke 602 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,11 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-1.S4** (2026-10-23) — Webview `instructions_inject` handler (+2 smoke). Files: `src/chat/webview.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/webview.ts`: new `case 'instructions_inject':` in `handleHostMessage` immediately after `case 'prompt_inject':` — identical prepend-to-`#input` pattern (guards empty `msg.content` and null `inputEl`; `inputEl.value = existing ? text + '\n\n' + existing : text`; `inputEl.focus()`). `msg.content` is the front-matter-stripped body.
+  - `scripts/smoke-test.js`: new section `// 65) instructions_inject webview (1.100-1.S4)` after section 64, before `ALL SMOKE TESTS PASSED`; reads `src/chat/webview.ts` as text (local `webviewSrcInstrfS4`); 2 `instrf-s4:` static assertions: (a) contains `instructions_inject`; (b) slice from `instructions_inject` onward contains `inputEl.focus`. Total PASS lines now 602 (600 + 2).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 602 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.100-1.S3** (2026-10-23) — `applyTo` auto-attach in `src/chat/ChatViewProvider.ts` (+3 smoke). Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/chat/ChatViewProvider.ts`: (a) `../instructions` import extended with `parseInstructionsFrontMatter`, `pickAutoAttachFiles` (`MAX_INSTRUCTION_CHARS` already imported); (b) new `private async loadInstructionsFiles(settings: LlmSettings, contextPaths: string[]): Promise<{ block: string; files: InstructionFile[] }>` right after `loadInstructions` — gates on `settings.instructionsFilesEnabled` + non-empty `contextPaths` + workspace root; discovers via `vscode.workspace.findFiles(glob, "**/node_modules/**", 100)` per `settings.instructionsFilesLocations` glob, deduped by `fsPath`; reads each (cap `MAX_INSTRUCTION_CHARS`, `truncated` flag), `parseInstructionsFrontMatter(raw.slice(0, MAX))` → `{ path: asRelativePath(uri), applyTo: meta.applyTo, body, truncated }`; `pickAutoAttachFiles(discovered, contextPaths)` (returns `string[]` paths — mapped back to discovered entries) → `InstructionFile[]` with **body** (front-matter stripped) as `content`; returns `{ block: combineInstructions(files), files }`.
   - `src/chat/ChatViewProvider.ts` `runStream` (the shared send/regenerate path — the plan's "handleSend" line numbers pointed here; the tagged-files block + `buildContextBlock` + `finalContextBlock` + instructions indicator all live in `runStream`): (a) after the tagged-files block, before `const contextBlock = buildContextBlock(ctxInput)`: `contextPaths = [ctxInput.file?.path, ...(ctxInput.taggedFiles ?? []).map((f) => f.path)].filter((p): p is string => typeof p === "string" && p.length > 0)` + `const instrFiles = await this.loadInstructionsFiles(settings, contextPaths);`; (b) after the `#newWorkspace` block (last tag block), if `instrFiles.block` non-empty append to `finalContextBlock` with `"\n\n"` join; (c) instructions indicator post extended: `files: [...instructionFiles.map((f) => f.path), ...instrFiles.files.map((f) => f.path)]`.

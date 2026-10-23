@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-1 — instructions files — S3 PASS (2026-10-23)
-- **Next step:** verify 1.100-1.S4 (webview instructions_inject; smoke 600 → 602)
+- **Current item:** 1.100-1 — instructions files — S4 PASS (2026-10-23)
+- **Next step:** verify 1.100-1.S5 (commands attachInstructions + newInstructionsFile; smoke 602 → 606)
 - **Last updated:** 2026-10-23
-- **Last commit:** e994fe3 (S3 commit pending)
-- **Build state:** compiles clean; smoke 600/600 PASS
+- **Last commit:** 2424797 (S4 commit pending)
+- **Build state:** compiles clean; smoke 602/602 PASS
+
+### 1.100-1.S4 — Webview instructions_inject handler (+2 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 602/602 PASS (600 + 2 `instrf-s4:`), 0 FAIL.
+- All 5 acceptance criteria met: `case 'instructions_inject':` at webview.ts L2017 next to `prompt_inject` (L2008) — String(msg.content), empty break, inputEl-null break, prepend with `\n\n` (replace if empty), inputEl.focus(); smoke section `// 65)` at L4641 with exactly 2 static `instrf-s4:` assertions; scope = webview.ts + smoke-test.js + coder PROGRESS.md + `m ninfer`, no package.json drift.
+- Last commit: `2424797`.
 
 ### 1.100-1.S3 — `applyTo` auto-attach in ChatViewProvider (+3 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 600/600 PASS (597 + 3 `instrf-s3:`), 0 FAIL.

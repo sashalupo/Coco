@@ -4638,6 +4638,22 @@ function assert(cond, label) {
     "instrf-s3: ChatViewProvider checks the instructionsFilesEnabled gate",
   );
 
+  // 65) instructions_inject webview (1.100-1.S4)
+  const webviewSrcInstrfS4 = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewSrcInstrfS4.indexOf("instructions_inject") !== -1,
+    "instrf-s4: webview.ts handles instructions_inject",
+  );
+  assert(
+    webviewSrcInstrfS4
+      .slice(webviewSrcInstrfS4.indexOf("instructions_inject"))
+      .includes("inputEl.focus"),
+    "instrf-s4: instructions_inject handler focuses the input after prepending",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
