@@ -37,6 +37,7 @@ const {
   applyNotebookEdit,
   planNewNotebook,
   notebookNameFromQuery,
+  extractCellOutputs,
 } = require(path.join(__dirname, "..", "out", "notebook.js"));
 const { McpManager } = require(
   path.join(__dirname, "..", "out", "mcpManager.js"),
@@ -4345,6 +4346,116 @@ function assert(cond, label) {
     typeof nbnewS5Setting?.description === "string" &&
       nbnewS5Setting.description.includes("/newNotebook"),
     "nbnew-s5: setting description mentions /newNotebook",
+  );
+
+  // 58) cell output extraction (1.99-29.S1)
+  const coStream = extractCellOutputs({
+    cell_type: "code",
+    source: "print('hi')",
+    outputs: [{ output_type: "stream", name: "stdout", text: "hello world\n" }],
+  });
+  assert(
+    coStream.text.includes("hello world") && coStream.text.includes("stream:"),
+    "cellout-s1: stream output → text with stream: label",
+  );
+  const coError = extractCellOutputs({
+    cell_type: "code",
+    source: "1/0",
+    outputs: [
+      {
+        output_type: "error",
+        ename: "ZeroDivisionError",
+        evalue: "division by zero",
+        traceback: ["Traceback (most recent call last):", "  File \"x.py\", line 1"],
+      },
+    ],
+  });
+  assert(
+    coError.text.includes("ZeroDivisionError") &&
+      coError.text.includes("division by zero") &&
+      coError.text.includes('File "x.py"'),
+    "cellout-s1: error output → ename, evalue, traceback line",
+  );
+  const coDisplay = extractCellOutputs({
+    cell_type: "code",
+    source: "img",
+    outputs: [
+      {
+        output_type: "display_data",
+        data: { "text/plain": "<PIL.Image.Image>", "image/png": "iVBORw0KGgo=" },
+      },
+    ],
+  });
+  assert(
+    coDisplay.text.includes("<PIL.Image.Image>") &&
+      coDisplay.images.length === 1 &&
+      coDisplay.images[0].startsWith("data:image/png;base64,"),
+    "cellout-s1: display_data text/plain + image/png → text + data URL",
+  );
+  const coExec = extractCellOutputs({
+    cell_type: "code",
+    source: "img",
+    outputs: [
+      {
+        output_type: "execute_result",
+        execution_count: 1,
+        data: { "image/jpeg": "abc123" },
+      },
+    ],
+  });
+  assert(
+    coExec.images.length === 1 &&
+      coExec.images[0] === "data:image/jpeg;base64,abc123",
+    "cellout-s1: execute_result image → data URL",
+  );
+  const coNone = extractCellOutputs({ cell_type: "code", source: "x" });
+  assert(
+    coNone.text === "" && coNone.images.length === 0,
+    "cellout-s1: no outputs → { text: '', images: [] }",
+  );
+  const coCap = extractCellOutputs({
+    cell_type: "code",
+    source: "imgs",
+    outputs: [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        output_type: "display_data",
+        data: { "image/png": `img${i}` },
+      })),
+    ],
+  });
+  assert(
+    coCap.images.length === 4,
+    "cellout-s1: 5 image outputs → capped at 4",
+  );
+  const coBig = extractCellOutputs({
+    cell_type: "code",
+    source: "big",
+    outputs: [
+      {
+        output_type: "display_data",
+        data: { "image/png": "A".repeat(10 * 1024 * 1024 + 1) },
+      },
+    ],
+  });
+  assert(
+    coBig.images.length === 0,
+    "cellout-s1: image base64 > 10 MB → not included",
+  );
+  const coTrunc = extractCellOutputs({
+    cell_type: "code",
+    source: "long",
+    outputs: [
+      {
+        output_type: "stream",
+        name: "stdout",
+        text: "x".repeat(25000),
+      },
+    ],
+  });
+  assert(
+    coTrunc.text.length <= 20000 + "\n… [truncated]".length &&
+      coTrunc.text.endsWith("… [truncated]"),
+    "cellout-s1: text > 20 000 chars → truncated with marker",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

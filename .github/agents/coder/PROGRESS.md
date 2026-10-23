@@ -12,11 +12,12 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-28 (new notebook planning) — COMPLETE (S1–S5 done)
-- **Next step:** none for 1.99-28; await next planner item
-- **Last updated:** 2026-10-22
-- **Last commit:** — (orchestrator commits; no coder commits yet)
-- **Build state:** compiles clean; smoke test passes (568 assertions)
+- **Current item:** 1.99-29 (cell output to chat — `llm.addCellOutput`) — in progress
+- **Current slice:** 1.99-29.S1 DONE
+- **Next step:** 1.99-29.S2 (per planner plan)
+- **Last updated:** 2026-10-23
+- **Last commit:** 212572f (HEAD; orchestrator commits — S1 changes uncommitted)
+- **Build state:** compiles clean; smoke test passes (576 assertions)
 
 ## Plan pointer
 
@@ -24,7 +25,12 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
-
+9.S1** (2026-10-23) — `extractCellOutputs` (pure). Files: `src/notebook.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/notebook.ts`: (a) new `export interface CellOutputContext { text: string; images: string[] }`; (b) new `export function extractCellOutputs(cell: NbCell): CellOutputContext` at end of file — iterates `cell.outputs ?? []` (skips non-objects); per `output_type`: `stream` → `text` (top-level per nbformat, with nested `data.text` also accepted; string or string[] joined), `error` → `${ename ?? "Error"}: ${evalue ?? ""}` + first 10 `traceback` entries (string or string[] joined), `execute_result`/`display_data` → `data["text/plain"] ?? data["text"]` then each of `image/png, image/jpeg, image/gif, image/webp` (string value only) pushed as `data:<mime>;base64,<value>` while `images.length < 4` and `value.length <= 10 * 1024 * 1024`. Non-empty text blocks rendered as `<kind>:\n<fence>\n<content>\n<fence>` (fence = `~~~~` if content contains ` ``` `, else ` ``` `), joined with `\n\n`, sliced to 20 000 chars + `\n… [truncated]` when cut. Pure — no vscode import.
+  - `scripts/smoke-test.js`: (a) `extractCellOutputs` added to the `out/notebook.js` require; (b) new section `// 58) cell output extraction (1.99-29.S1)` after section 57, before `ALL SMOKE TESTS PASSED`; 8 `cellout-s1:` assertions (stream → text + `stream:` label; error → ename/evalue/traceback line; display_data text/plain + image/png → text + `data:image/png;base64,` URL; execute_result image → data URL; no outputs → `{ text: "", images: [] }`; 5 images → cap 4; 10 MB+1 base64 → excluded; 25 000-char stream → ≤ 20 000 + marker and ends with `… [truncated]`). Total PASS lines now 576 (568 + 8).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 576 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
+- **1.99-2
 - **1.99-28.S5** (2026-10-22, FINAL) — `package.json` setting schema + final smoke. Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: new `llm.chat.newNotebook.enabled` property added in `contributes.configuration.properties` immediately after `llm.chat.searchResults.enabled`: `type: boolean`, `default: true`, description: "Allow the `/newNotebook <query>` chat command to create a new Jupyter notebook (markdown title + objective + starter code cell) in the workspace `notebooks/` folder. Works in ask mode (no model round-trip); the `new_notebook` agent tool is available in agent/edit mode when llm.tools.enabled is on." Matches the `c.get<boolean>("chat.newNotebook.enabled", true)` key added in S3. Validated: `node -e "JSON.parse(...)"` → `json ok`.
   - `scripts/smoke-test.js`: new section `// 57) newNotebook setting schema (1.99-28.S5)` after section 56, before `ALL SMOKE TESTS PASSED`; reuses the file-scoped parsed `pkgJson` (same pattern as section 50); 2 `nbnew-s5:` assertions: (a) property exists with `type === "boolean"` AND `default === true`; (b) description is a string containing `/newNotebook`. Total PASS lines now 568 (566 + 2).

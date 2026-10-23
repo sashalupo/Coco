@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.99-29** — Cell output to chat (text/image) — `llm.addCellOutput` — in progress (planned, 4 slices S1–S4)
-- **Current slice:** 1.99-29.S1 next (extractCellOutputs pure)
+- **Current slice:** 1.99-29.S1 DONE (S2 next — webview cell_output_inject)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.99-29.S1 (`extractCellOutputs` in src/notebook.ts + smoke section 58, 8 assertions → 576)
+- **Next step:** dispatch Coder for 1.99-29.S2 (webview `cell_output_inject` handler + smoke section 59, 2 assertions → 578)
 - **Last updated:** 2026-10-22
-- **Last commit:** 3067c2f (feat(llm): llm.chat.newNotebook.enabled package.json schema + item complete (1.99-28.S5, item complete))
-- **Build state:** compiles clean; smoke test passes (568 assertions)
+- **Last commit:** 3067c2f (1.99-28 item complete); S1 commit pending
+- **Build state:** compiles clean; smoke test passes (576 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

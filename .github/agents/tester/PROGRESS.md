@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-28 — new notebook tool — S5 PASS (2026-10-22) — ITEM COMPLETE
-- **Next step:** item 1.99-28 fully verified (S1–S5) — next: 1.99-29 (cell output to chat)
-- **Last updated:** 2026-10-22
-- **Last commit:** b619b69
-- **Build state:** 568/568 PASS
+- **Current item:** 1.99-29 — cell output to chat — S1 PASS (2026-10-23)
+- **Next step:** 1.99-29.S2 (webview cell_output_inject handler)
+- **Last updated:** 2026-10-23
+- **Last commit:** 212572f
+- **Build state:** 576/576 PASS
+
+### 1.99-29.S1 — extractCellOutputs pure (2026-10-23) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **576 PASS lines** (568 prior + 8 new `cellout-s1:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 576/576 PASS; (3) 8 `cellout-s1:` assertions in section `// 58) cell output extraction (1.99-29.S1)` (smoke-test.js:4351) — stream label+content, error ename/evalue/traceback, display_data text+image data URL, execute_result image, empty → `{text:"",images:[]}`, 5 images → cap 4, >10MB excluded, >20k truncated — all genuine PASS; (4) `extractCellOutputs` (notebook.ts:415) + `CellOutputContext` (L382) exported, zero imports in notebook.ts (pure) PASS; (5) scope: only notebook.ts, smoke-test.js, coder PROGRESS.md + `m ninfer` PASS; (6) smoke imports from compiled `out/notebook.js` PASS.
+- **Verdict:** **PASS** — all 6 criteria met.
 
 ### 1.99-28.S5 — FINAL: package.json setting schema + final smoke (2026-10-22) — **PASS**
 

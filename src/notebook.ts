@@ -377,3 +377,94 @@ export function applyNotebookEdit(
       return { ok: false, message: `Unknown action: ${action}` };
   }
 }
+
+/** Cell outputs rendered for chat context: fenced text blocks + image data URLs. */
+export interface CellOutputContext {
+  text: string;
+  images: string[];
+}
+
+const OUTPUT_IMAGE_MIMES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+];
+const MAX_OUTPUT_IMAGES = 4;
+const MAX_IMAGE_BASE64 = 10 * 1024 * 1024;
+const MAX_OUTPUT_TEXT = 20000;
+const TRUNCATION_MARKER = "\n… [truncated]";
+
+/** Join a nbformat text value (string or string[]) into a single string. */
+function joinTextValue(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && v.every((s) => typeof s === "string")) {
+    return v.join("");
+  }
+  return "";
+}
+
+/**
+ * Extract a cell's outputs into chat context (item 1.99-29): non-empty text
+ * blocks rendered as `<kind>:\n<fence>\n<content>\n<fence>` (fence is `~~~~`
+ * when the content contains triple backticks), joined with `\n\n` and sliced
+ * to 20 000 chars + `\n… [truncated]` when cut; image outputs (png/jpeg/gif/
+ * webp, ≤ 10 MB base64, capped at 4) as `data:<mime>;base64,<value>` URLs.
+ * Pure — no vscode import.
+ */
+export function extractCellOutputs(cell: NbCell): CellOutputContext {
+  const blocks: string[] = [];
+  const images: string[] = [];
+  const fence = (s: string) => (s.includes("```") ? "~~~~" : "```");
+  for (const o of cell.outputs ?? []) {
+    if (typeof o !== "object" || o === null) continue;
+    const out = o as Record<string, unknown>;
+    const type = out.output_type;
+    if (type === "stream") {
+      // nbformat puts `text` at the top level of stream outputs; also accept
+      // a nested `data.text` shape.
+      const data =
+        typeof out.data === "object" && out.data !== null
+          ? (out.data as Record<string, unknown>)
+          : {};
+      const text = joinTextValue(out.text ?? data.text);
+      if (text) {
+        blocks.push(`stream:\n${fence(text)}\n${text}\n${fence(text)}`);
+      }
+    } else if (type === "error") {
+      const ename = typeof out.ename === "string" ? out.ename : "Error";
+      const evalue = typeof out.evalue === "string" ? out.evalue : "";
+      let text = `${ename}: ${evalue}`;
+      const tb = Array.isArray(out.traceback) ? out.traceback.slice(0, 10) : [];
+      for (const line of tb) {
+        const s = joinTextValue(line);
+        if (s) text += `\n${s}`;
+      }
+      blocks.push(`error:\n${fence(text)}\n${text}\n${fence(text)}`);
+    } else if (type === "execute_result" || type === "display_data") {
+      const data =
+        typeof out.data === "object" && out.data !== null
+          ? (out.data as Record<string, unknown>)
+          : {};
+      const text = joinTextValue(data["text/plain"] ?? data["text"]);
+      if (text) {
+        blocks.push(`${type}:\n${fence(text)}\n${text}\n${fence(text)}`);
+      }
+      for (const mime of OUTPUT_IMAGE_MIMES) {
+        const v = data[mime];
+        if (
+          typeof v === "string" &&
+          images.length < MAX_OUTPUT_IMAGES &&
+          v.length <= MAX_IMAGE_BASE64
+        ) {
+          images.push(`data:${mime};base64,${v}`);
+        }
+      }
+    }
+  }
+  let text = blocks.join("\n\n");
+  if (text.length > MAX_OUTPUT_TEXT) {
+    text = text.slice(0, MAX_OUTPUT_TEXT) + TRUNCATION_MARKER;
+  }
+  return { text, images };
+}
