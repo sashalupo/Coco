@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-1 — instructions files — S6 PASS (2026-10-23) — **ITEM COMPLETE**
-- **Next step:** item 1.100-1 fully verified (S1–S6) — next item 1.100-2 (Prompt files improvements)
+- **Current item:** 1.100-2 — Prompt files improvements — S1 PASS (2026-10-23)
+- **Next step:** 1.100-2.S2 (next slice of Prompt files improvements)
 - **Last updated:** 2026-10-23
-- **Last commit:** 4c6a8ab (S6 commit pending)
-- **Build state:** compiles clean; smoke 610/610 PASS
+- **Last commit:** 5e5f603 (1.100-2.S1)
+- **Build state:** compiles clean; smoke 620/620 PASS
+
+### 1.100-2.S1 — Prompt front-matter parsing in `src/prompts.ts` (+10 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 620/620 PASS (610 + 10 `prompt2-s1:`), 0 FAIL.
+- All 5 acceptance criteria met: (1) `npm run compile` exit 0; (2) smoke 620 total (610 baseline + 10 new); (3) 10 `prompt2-s1:` assertions in smoke-test.js (quoted values, tools trimming, body trim, promptTitle prefers front-matter title, PROMPT_TEMPLATE round-trip, stripPromptComments on template); (4) `src/prompts.ts` exports `PromptFileMeta` (L23), `parsePromptFrontMatter` (L49), `promptTitle` (L115, prefers front-matter `title` over H1/filename), `PROMPT_TEMPLATE` (L157, contains `mode: agent` front-matter example); (5) commit `5e5f603` scope = exactly `src/prompts.ts` (+104), `scripts/smoke-test.js` (+72), `.github/agents/coder/PROGRESS.md` (+12) — no out-of-scope files.
+- Last commit: `5e5f603`.
 
 ### 1.100-1.S6 — package.json schema (+4 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 610/610 PASS (606 + 4 `instrf-s6:`), 0 FAIL.
