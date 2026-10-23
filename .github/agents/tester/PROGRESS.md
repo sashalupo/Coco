@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-1 — instructions files — S2 PASS (2026-10-23)
-- **Next step:** verify 1.100-1.S3 (applyTo auto-attach; smoke 597 → 600)
+- **Current item:** 1.100-1 — instructions files — S3 PASS (2026-10-23)
+- **Next step:** verify 1.100-1.S4 (webview instructions_inject; smoke 600 → 602)
 - **Last updated:** 2026-10-23
-- **Last commit:** 4ffde6b (S2 commit pending)
-- **Build state:** compiles clean; smoke 597/597 PASS
+- **Last commit:** e994fe3 (S3 commit pending)
+- **Build state:** compiles clean; smoke 600/600 PASS
+
+### 1.100-1.S3 — `applyTo` auto-attach in ChatViewProvider (+3 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 600/600 PASS (597 + 3 `instrf-s3:`), 0 FAIL.
+- All 5 acceptance criteria met: imports L52–55; `loadInstructionsFiles` L1734–1793 (gates → findFiles per glob w/ node_modules exclude + 100 cap, fsPath dedup, MAX_INSTRUCTION_CHARS cap, front-matter parse, pickAutoAttachFiles, body-as-content, `{block, files}`); send path in `runStream` (contextPaths L1079, instrFiles L1085, block append L1223–1227, indicator L1244); smoke section `// 64)` at L4623 with exactly 3 `instrf-s3:` static assertions; scope = ChatViewProvider.ts + smoke-test.js + coder PROGRESS.md + `m ninfer`, no package.json drift.
+- Known deviations (acceptable): insertion in `runStream` (shared send/regenerate path) rather than `handleSend`; `pickAutoAttachFiles` string[] mapped back to discovered entries.
+- Last commit: `e994fe3`.
 
 ### 1.100-1.S2 — Settings plumbing (+3 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 597/597 PASS (594 + 3 `instrf-s2:`), 0 FAIL.

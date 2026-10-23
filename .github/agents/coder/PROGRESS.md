@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S2 done of 6)
-- **Next step:** 1.100-1.S3 — `applyTo` auto-attach in `src/chat/ChatViewProvider.ts` (+3 smoke → 600)
+- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S3 done of 6)
+- **Next step:** 1.100-1.S4 — Webview `instructions_inject` handler in `src/chat/webview.ts` (+2 smoke → 602)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2 changes uncommitted)
-- **Build state:** compiles clean; smoke 597 PASS
+- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2+S3 changes uncommitted)
+- **Build state:** compiles clean; smoke 600 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,12 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-1.S3** (2026-10-23) — `applyTo` auto-attach in `src/chat/ChatViewProvider.ts` (+3 smoke). Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/chat/ChatViewProvider.ts`: (a) `../instructions` import extended with `parseInstructionsFrontMatter`, `pickAutoAttachFiles` (`MAX_INSTRUCTION_CHARS` already imported); (b) new `private async loadInstructionsFiles(settings: LlmSettings, contextPaths: string[]): Promise<{ block: string; files: InstructionFile[] }>` right after `loadInstructions` — gates on `settings.instructionsFilesEnabled` + non-empty `contextPaths` + workspace root; discovers via `vscode.workspace.findFiles(glob, "**/node_modules/**", 100)` per `settings.instructionsFilesLocations` glob, deduped by `fsPath`; reads each (cap `MAX_INSTRUCTION_CHARS`, `truncated` flag), `parseInstructionsFrontMatter(raw.slice(0, MAX))` → `{ path: asRelativePath(uri), applyTo: meta.applyTo, body, truncated }`; `pickAutoAttachFiles(discovered, contextPaths)` (returns `string[]` paths — mapped back to discovered entries) → `InstructionFile[]` with **body** (front-matter stripped) as `content`; returns `{ block: combineInstructions(files), files }`.
+  - `src/chat/ChatViewProvider.ts` `runStream` (the shared send/regenerate path — the plan's "handleSend" line numbers pointed here; the tagged-files block + `buildContextBlock` + `finalContextBlock` + instructions indicator all live in `runStream`): (a) after the tagged-files block, before `const contextBlock = buildContextBlock(ctxInput)`: `contextPaths = [ctxInput.file?.path, ...(ctxInput.taggedFiles ?? []).map((f) => f.path)].filter((p): p is string => typeof p === "string" && p.length > 0)` + `const instrFiles = await this.loadInstructionsFiles(settings, contextPaths);`; (b) after the `#newWorkspace` block (last tag block), if `instrFiles.block` non-empty append to `finalContextBlock` with `"\n\n"` join; (c) instructions indicator post extended: `files: [...instructionFiles.map((f) => f.path), ...instrFiles.files.map((f) => f.path)]`.
+  - `scripts/smoke-test.js`: new section `// 64) applyTo auto-attach (1.100-1.S3)` after section 63, before `ALL SMOKE TESTS PASSED`; reads `src/chat/ChatViewProvider.ts` as text (local `instrfCvpSrc`); 3 `instrf-s3:` static assertions: (a) contains `loadInstructionsFiles`; (b) contains `pickAutoAttachFiles`; (c) contains `instructionsFilesEnabled`. Total PASS lines now 600 (597 + 3).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 600 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.100-1.S2** (2026-10-23) — Settings plumbing (+3 smoke). Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `LlmSettings` gains `instructionsFilesEnabled: boolean;` (doc: "Enable `.instructions.md` discovery + `applyTo` auto-attach.") and `instructionsFilesLocations: string[];` (doc: "Glob patterns (workspace-relative) for `.instructions.md` files.") immediately after `promptFiles: string[];`.
   - `src/config.ts`: `readSettings` gains `instructionsFilesEnabled: c.get<boolean>("instructionsFiles.enabled", true)` and `instructionsFilesLocations: c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])` immediately after the `promptFiles` line.

@@ -4620,6 +4620,24 @@ function assert(cond, label) {
     "instrf-s2: presets LlmSettings has instructionsFilesEnabled + instructionsFilesLocations",
   );
 
+  // 64) applyTo auto-attach (1.100-1.S3)
+  const instrfCvpSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    instrfCvpSrc.includes("loadInstructionsFiles"),
+    "instrf-s3: ChatViewProvider has loadInstructionsFiles",
+  );
+  assert(
+    instrfCvpSrc.includes("pickAutoAttachFiles"),
+    "instrf-s3: ChatViewProvider wires in pickAutoAttachFiles",
+  );
+  assert(
+    instrfCvpSrc.includes("instructionsFilesEnabled"),
+    "instrf-s3: ChatViewProvider checks the instructionsFilesEnabled gate",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

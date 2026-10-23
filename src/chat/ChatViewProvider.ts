@@ -51,6 +51,8 @@ import {
   DEFAULT_INSTRUCTION_FILES,
   MAX_INSTRUCTION_CHARS,
   combineInstructions,
+  parseInstructionsFrontMatter,
+  pickAutoAttachFiles,
   type InstructionFile,
 } from "../instructions";
 import {
@@ -1071,6 +1073,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
       }
 
+      // 1.100-1.S3: `.instructions.md` auto-attach — collect the workspace
+      // paths referenced by the context (active file + @tagged files) so
+      // `applyTo` front-matter globs can be matched against them.
+      const contextPaths = [
+        ctxInput.file?.path,
+        ...(ctxInput.taggedFiles ?? []).map((f) => f.path),
+      ].filter(
+        (p): p is string => typeof p === "string" && p.length > 0,
+      );
+      const instrFiles = await this.loadInstructionsFiles(settings, contextPaths);
+
       const contextBlock = buildContextBlock(ctxInput);
 
       // 1.98-8.S3: `#codebase` tag — sweep the workspace (structure, git
@@ -1205,6 +1218,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
       }
 
+      // 1.100-1.S3: append the auto-attached `.instructions.md` block (if any)
+      // after all tag-driven blocks.
+      if (instrFiles.block) {
+        finalContextBlock = finalContextBlock
+          ? finalContextBlock + "\n\n" + instrFiles.block
+          : instrFiles.block;
+      }
+
       // Load custom instruction files (AGENTS.md, etc.) and fold them into
       // the system prompt. Also post which files were loaded so the webview
       // can show a small indicator.
@@ -1218,7 +1239,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       );
       this.postMessage({
         type: "instructions",
-        files: instructionFiles.map((f) => f.path),
+        files: [
+          ...instructionFiles.map((f) => f.path),
+          ...instrFiles.files.map((f) => f.path),
+        ],
       });
 
       const withSystem: ChatMessage[] = systemPrompt
@@ -1696,6 +1720,75 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // missing/unreadable — skip
       }
     }
+    return { block: combineInstructions(files), files };
+  }
+
+  /**
+   * Discover `.instructions.md` files (1.100-1.S3) via the configured glob
+   * locations, parse their `applyTo` front-matter, and auto-attach the ones
+   * whose glob matches any of the given context paths. Returns the combined
+   * instructions block (front-matter stripped) plus the matched files. No-op
+   * (empty) when the feature is disabled, no context paths are given, or no
+   * workspace folder is open. Each file is capped at `MAX_INSTRUCTION_CHARS`.
+   */
+  private async loadInstructionsFiles(
+    settings: LlmSettings,
+    contextPaths: string[],
+  ): Promise<{ block: string; files: InstructionFile[] }> {
+    if (!settings.instructionsFilesEnabled) {
+      return { block: "", files: [] };
+    }
+    if (contextPaths.length === 0) {
+      return { block: "", files: [] };
+    }
+    const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!root) {
+      return { block: "", files: [] };
+    }
+    // Discover: run each configured glob, dedupe by fsPath.
+    const seen = new Set<string>();
+    const uris: vscode.Uri[] = [];
+    for (const glob of settings.instructionsFilesLocations) {
+      for (const uri of await vscode.workspace.findFiles(
+        glob,
+        "**/node_modules/**",
+        100,
+      )) {
+        if (seen.has(uri.fsPath)) {
+          continue;
+        }
+        seen.add(uri.fsPath);
+        uris.push(uri);
+      }
+    }
+    // Read + parse front-matter for each discovered file.
+    const discovered: { path: string; applyTo?: string; body: string; truncated: boolean }[] = [];
+    for (const uri of uris) {
+      try {
+        const raw = await fs.promises.readFile(uri.fsPath, "utf8");
+        const truncated = raw.length > MAX_INSTRUCTION_CHARS;
+        const { meta, body } = parseInstructionsFrontMatter(
+          raw.slice(0, MAX_INSTRUCTION_CHARS),
+        );
+        discovered.push({
+          path: vscode.workspace.asRelativePath(uri),
+          applyTo: meta.applyTo,
+          body,
+          truncated,
+        });
+      } catch {
+        // missing/unreadable — skip
+      }
+    }
+    const matched = pickAutoAttachFiles(discovered, contextPaths);
+    const files: InstructionFile[] = matched
+      .map((p) => discovered.find((d) => d.path === p))
+      .filter((d): d is NonNullable<typeof d> => d !== undefined)
+      .map((d) => ({
+        path: d.path,
+        content: d.body,
+        truncated: d.truncated,
+      }));
     return { block: combineInstructions(files), files };
   }
 
