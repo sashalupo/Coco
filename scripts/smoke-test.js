@@ -6532,11 +6532,73 @@ function assert(cond, label) {
     "drop-s4: package.json has llm.chat.cellOutputDrop.enabled (boolean, default true)",
   );
 
-  if (assertCount !== 791) {
-    console.error(`FAIL: total assertion count is 791 (got ${assertCount})`);
+  // 29) Notebook tools for agent mode (1.100-31 S-005)
+  const nbToolEntry = CODE_TOOLS.find(
+    (t) => t.function.name === "run_notebook_cell",
+  );
+  assert(
+    nbToolEntry !== undefined &&
+      JSON.stringify(nbToolEntry.function.parameters.required) ===
+        JSON.stringify(["path", "cell_index"]),
+    "nbtools-s1: run_notebook_cell schema requires [path, cell_index]",
+  );
+  assert(
+    isMutatingTool("run_notebook_cell") === true &&
+      isMutatingTool("install_package") === true &&
+      isMutatingTool("get_kernel_state") === false &&
+      isMutatingTool("list_packages") === false,
+    "nbtools-s2: isMutatingTool true for run_notebook_cell/install_package, false for get_kernel_state/list_packages",
+  );
+  const { extractVariableNames, formatKernelState } = require(
+    path.join(__dirname, "..", "out", "notebook.js"),
+  );
+  assert(
+    typeof extractVariableNames === "function" &&
+      typeof formatKernelState === "function",
+    "nbtools-s3: out/notebook.js exports extractVariableNames + formatKernelState",
+  );
+  assert(
+    JSON.stringify(
+      extractVariableNames(
+        "import numpy as np\nx = 1\ndef foo():\n    pass\nclass Bar:\n    pass",
+      ),
+    ) === JSON.stringify(["np", "x", "foo", "Bar"]),
+    "nbtools-s3: extractVariableNames → ['np','x','foo','Bar'] (order-preserving, deduped)",
+  );
+  const nbToolExecSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  assert(
+    nbToolExecSrc.includes("kernelState") &&
+      nbToolExecSrc.includes("jupyter"),
+    "nbtools-s4: ToolExecutor.ts references kernelState + jupyter",
+  );
+  const nbToolsSetting =
+    pkgJson.contributes.configuration.properties[
+      "llm.chat.notebookTools.enabled"
+    ];
+  assert(
+    nbToolsSetting !== undefined &&
+      nbToolsSetting.type === "boolean" &&
+      nbToolsSetting.default === true,
+    "nbtools-s5: package.json has llm.chat.notebookTools.enabled (boolean, default true)",
+  );
+  const nbReqSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "request.ts"),
+    "utf8",
+  );
+  assert(
+    nbReqSrc.includes("notebookToolsEnabled") &&
+      nbReqSrc.includes("run_notebook_cell"),
+    "nbtools-s6: request.ts contains the notebook-execution tool gate (notebookToolsEnabled + run_notebook_cell)",
+  );
+
+  if (assertCount !== 798) {
+    console.error(`FAIL: total assertion count is 798 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 791");
+  console.log("PASS: total assertion count is 798");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
