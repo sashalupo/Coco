@@ -17,6 +17,8 @@ import { scanForSecrets } from "../secrets";
 import {
   applyNotebookEdit,
   createNotebook,
+  extractVariableNames,
+  formatKernelState,
   parseNotebook,
   planNewNotebook,
 } from "../notebook";
@@ -50,6 +52,10 @@ const MAX_COMMAND_TIMEOUT = 60_000;
 const MAX_COMMAND_OUTPUT = 100_000;
 /** Timeout for read-only git commands (ms). */
 const GIT_TIMEOUT_MS = 10_000;
+/** Cap on notebook/pip tool output (chars). */
+const MAX_TOOL_OUTPUT = 8000;
+/** Timeout for notebook cell execution and pip commands (ms). */
+const TOOL_COMMAND_TIMEOUT = 60_000;
 
 export class ToolExecutor {
   /** Snapshot of the last mutation (for undo / revert). */
@@ -92,6 +98,16 @@ export class ToolExecutor {
     string,
     { relPath: string; oldContent: string; existed: boolean }
   > = new Map();
+
+  /**
+   * In-memory kernel state per notebook (1.100-31): which code cells have
+   * been executed and which variable names their sources bind. Keyed by
+   * workspace-relative path. Not persisted — resets on extension reload.
+   */
+  private kernelState = new Map<
+    string,
+    { executed: number[]; variables: string[] }
+  >();
 
   /** Clear the per-run change summary + snapshots (call at the start of a run). */
   public clearChangeSummary(): void {
@@ -420,6 +436,22 @@ export class ToolExecutor {
             call,
             String(args.symbol ?? ""),
             args.path ? String(args.path) : undefined,
+          );
+        case "run_notebook_cell":
+          return await this.runNotebookCell(
+            call,
+            String(args.path ?? ""),
+            typeof args.cell_index === "number" ? args.cell_index : undefined,
+          );
+        case "get_kernel_state":
+          return this.getKernelState(call, String(args.path ?? ""));
+        case "list_packages":
+          return await this.listPackages(call);
+        case "install_package":
+          return await this.installPackage(
+            call,
+            String(args.package ?? ""),
+            typeof args.version === "string" ? args.version : undefined,
           );
         default:
           return this.result(call, `Unknown tool: ${name}`);
@@ -1523,6 +1555,240 @@ export class ToolExecutor {
       }
     }
     return out;
+  }
+
+  /**
+   * Execute a single code cell of a notebook (1.100-31). Tries
+   * `jupyter execute --to stdout <path>` first; on ENOENT falls back to
+   * running the cell source directly via `python3 -c`, then `python -c`.
+   * On success records the cell index + bound variable names in the
+   * in-memory kernel state. Mutating (approval-gated).
+   */
+  private async runNotebookCell(
+    call: ToolCall,
+    relPath: string,
+    cellIndex?: number,
+  ): Promise<ToolResult> {
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return this.result(
+        call,
+        `Path not allowed (outside workspace): ${relPath}`,
+      );
+    }
+    let text: string;
+    try {
+      text = await fs.promises.readFile(abs, "utf8");
+    } catch (err) {
+      return this.result(call, `Cannot read notebook: ${this.msg(err)}`);
+    }
+    const doc = parseNotebook(text);
+    if (!doc) {
+      return this.result(call, `Not a valid notebook: ${relPath}`);
+    }
+    if (
+      typeof cellIndex !== "number" ||
+      !Number.isInteger(cellIndex) ||
+      cellIndex < 0 ||
+      cellIndex >= doc.cells.length
+    ) {
+      return this.result(
+        call,
+        `Invalid cell_index: expected an integer in [0, ${doc.cells.length}).`,
+      );
+    }
+    const cell = doc.cells[cellIndex];
+    if (cell.cell_type !== "code") {
+      return this.result(
+        call,
+        `Cell ${cellIndex} is a ${cell.cell_type} cell — only code cells can be executed.`,
+      );
+    }
+    const source = cell.source;
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    // Try jupyter first; on ENOENT fall back to python3, then python.
+    let r = await this.spawnToolCommand(
+      "jupyter",
+      ["execute", "--to", "stdout", abs],
+      cwd,
+    );
+    if (r.error === "ENOENT") {
+      r = await this.spawnToolCommand("python3", ["-c", source], cwd);
+    }
+    if (r.error === "ENOENT") {
+      r = await this.spawnToolCommand("python", ["-c", source], cwd);
+    }
+    if (r.error) {
+      return this.result(call, `Failed to execute cell: ${r.error}`);
+    }
+    if (r.code === 0) {
+      const st =
+        this.kernelState.get(relPath) ?? { executed: [], variables: [] };
+      if (!st.executed.includes(cellIndex)) {
+        st.executed.push(cellIndex);
+        st.executed.sort((a, b) => a - b);
+      }
+      for (const v of extractVariableNames(source)) {
+        if (!st.variables.includes(v)) st.variables.push(v);
+      }
+      this.kernelState.set(relPath, st);
+    }
+    return this.result(call, this.formatToolOutput(r));
+  }
+
+  /**
+   * Report the in-memory kernel state for a notebook (1.100-31): which
+   * cells have been executed and which variables their sources bind.
+   * Read-only.
+   */
+  private getKernelState(call: ToolCall, relPath: string): ToolResult {
+    const abs = this.resolveSafeSync(relPath);
+    if (!abs) {
+      return this.result(
+        call,
+        `Path not allowed (outside workspace): ${relPath}`,
+      );
+    }
+    const st = this.kernelState.get(relPath);
+    return this.result(
+      call,
+      formatKernelState(relPath, st?.executed ?? [], st?.variables ?? []),
+    );
+  }
+
+  /**
+   * List installed Python packages via `pip list` (1.100-31). Falls back to
+   * `pip3` when `pip` is not on PATH. Read-only.
+   */
+  private async listPackages(call: ToolCall): Promise<ToolResult> {
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let r = await this.spawnToolCommand("pip", ["list"], cwd);
+    if (r.error === "ENOENT") {
+      r = await this.spawnToolCommand("pip3", ["list"], cwd);
+    }
+    if (r.error) {
+      return this.result(call, `pip not available: ${r.error}`);
+    }
+    return this.result(call, this.formatToolOutput(r));
+  }
+
+  /**
+   * Install a Python package via `pip install <pkg>[==<version>]`
+   * (1.100-31). Falls back to `pip3` when `pip` is not on PATH. Mutating
+   * (approval-gated).
+   */
+  private async installPackage(
+    call: ToolCall,
+    pkg: string,
+    version?: string,
+  ): Promise<ToolResult> {
+    if (pkg.trim() === "") {
+      return this.result(call, "package is required — provide a package name.");
+    }
+    const args = ["install", pkg];
+    if (version && version.trim() !== "") {
+      args.push("==", version);
+    }
+    const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    let r = await this.spawnToolCommand("pip", args, cwd);
+    if (r.error === "ENOENT") {
+      r = await this.spawnToolCommand("pip3", args, cwd);
+    }
+    if (r.error) {
+      return this.result(call, `pip not available: ${r.error}`);
+    }
+    return this.result(call, this.formatToolOutput(r));
+  }
+
+  /**
+   * Spawn a binary (no shell) with a timeout and capture stdout+stderr,
+   * truncated to `MAX_TOOL_OUTPUT`. Reuses the spawn+timeout pattern from
+   * `runCommand`. `error` is `"ENOENT"` when the binary is not on PATH.
+   */
+  private spawnToolCommand(
+    bin: string,
+    args: string[],
+    cwd?: string,
+  ): Promise<{
+    code: number;
+    stdout: string;
+    stderr: string;
+    error?: string;
+  }> {
+    return new Promise((resolve) => {
+      const child = spawn(bin, args, {
+        cwd,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: TOOL_COMMAND_TIMEOUT,
+      });
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      const settle = (r: {
+        code: number;
+        stdout: string;
+        stderr: string;
+        error?: string;
+      }) => {
+        if (settled) return;
+        settled = true;
+        resolve(r);
+      };
+      child.on("timeout", () => child.kill("SIGKILL"));
+      child.stdout.on("data", (chunk: Buffer) => {
+        stdout += chunk.toString();
+        if (stdout.length > MAX_TOOL_OUTPUT) {
+          stdout = stdout.slice(0, MAX_TOOL_OUTPUT) + "\n… (truncated)";
+          child.kill("SIGKILL");
+        }
+      });
+      child.stderr.on("data", (chunk: Buffer) => {
+        stderr += chunk.toString();
+        if (stderr.length > MAX_TOOL_OUTPUT) {
+          stderr = stderr.slice(0, MAX_TOOL_OUTPUT) + "\n… (truncated)";
+          child.kill("SIGKILL");
+        }
+      });
+      child.on("error", (err) => {
+        settle({
+          code: 1,
+          stdout,
+          stderr,
+          error: (err as NodeJS.ErrnoException).code ?? err.message,
+        });
+      });
+      child.on("close", (code) => {
+        settle({ code: code ?? 1, stdout, stderr });
+      });
+    });
+  }
+
+  /** Format a `spawnToolCommand` result as tool output text. */
+  private formatToolOutput(r: {
+    code: number;
+    stdout: string;
+    stderr: string;
+  }): string {
+    const parts: string[] = [`Exit code: ${r.code}`];
+    if (r.stdout) parts.push(`\nstdout:\n${r.stdout}`);
+    if (r.stderr) parts.push(`\nstderr:\n${r.stderr}`);
+    if (!r.stdout && !r.stderr) parts.push("(no output)");
+    return parts.join("\n");
+  }
+
+  /** Synchronous workspace-path guard (same rules as `resolveSafe`). */
+  private resolveSafeSync(relPath: string): string | null {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return null;
+    }
+    const root = folders[0].uri.fsPath;
+    const abs = path.resolve(root, relPath);
+    const rel = path.relative(root, abs);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
+      return null;
+    }
+    return abs;
   }
 
   /** Echo a thought back (no I/O, no state). */
