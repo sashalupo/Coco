@@ -12,13 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-13 — **COMPLETE** (S1–S5 all verified PASS)
-- **Next step:** 1.100-14 — next backlog item (awaiting Planner dispatch)
+- **Current item:** 1.100-14 — in progress (S1 verified PASS)
+- **Next step:** 1.100-14.S2 (next slice of MCP image content blocks)
 - **Last updated:** 2026-10-23
-- **Last commit:** b267290 (1.100-13.S5 smoke guards, verified PASS)
+- **Last commit:** 486f58e (1.100-14.S1, verified PASS)
 - **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 
 ## Verified (recap)
+
+**1.100-14.S1** (2026-10-23) — **PASS**. Image content-block type + pure extractor in `src/mcp.ts` (commit 486f58e). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 486f58e` touches only `src/mcp.ts` (+26/-1) + coder memory; `ninfer` submodule NOT committed. Verified: (a) `McpToolResult.content` widened to `{ type: string; text?: string; data?: string; mimeType?: string }[]` (backward-compatible superset of the old `{ type; text? }` shape); (b) `export function mcpResultToImages(result: McpToolResult): string[]` — pure (no I/O, no vscode import in file), filters parts with `type === "image"` + non-empty string `data` + non-empty string `mimeType`, maps to `data:<mimeType>;base64,<data>`; (c) runtime probe on compiled `out/mcp.js`, 10/10 assertions: valid image → data URL; missing `data` → skipped; empty `data` → skipped; empty `mimeType` → skipped; missing `mimeType` → skipped; non-string `data` → skipped; non-image type → skipped; no content → `[]`; mixed text+2 images+malformed → 2 data URLs in order; (d) no transport change — `McpClient.callTool` (line ~318) still `rpc.request("tools/call", …).then(r => r as McpToolResult)`, `McpHttpClient.callTool` (line ~399) still `post("tools/call", …).then(r => r as McpToolResult)`, `mcpResultToText` unchanged (diff shows it only as context). **Next: 1.100-14.S2.**
+
 
 All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detail pruned.
 
