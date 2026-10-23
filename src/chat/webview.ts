@@ -1914,6 +1914,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					}
 				}
 			}
+			// Auto-select the first model and persist it via the change listener.
+			if (!modelSelect.value && ids && ids.length) {
+				modelSelect.value = String(ids[0]);
+				modelSelect.dispatchEvent(new Event('change'));
+			}
 			syncManual();
 		}
 
