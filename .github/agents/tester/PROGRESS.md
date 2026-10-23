@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-29 — cell output to chat — S4 PASS (2026-10-23) — ITEM COMPLETE
-- **Next step:** item 1.99-29 fully verified (S1–S4) — v1.99 backlog exhausted; next: v1.100 research
+- **Current item:** 1.100-1 — instructions files — S1 PASS (2026-10-23)
+- **Next step:** verify 1.100-1.S2 (settings plumbing; smoke 594 → 597)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1d51aee
-- **Build state:** 584/584 PASS
+- **Last commit:** 7688241 (S1 commit pending)
+- **Build state:** compiles clean; smoke 594/594 PASS
+
+### 1.100-1.S1 — Pure core in `src/instructions.ts` (+10 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 594/594 PASS (584 + 10 `instrf-s1:`), 0 FAIL.
+- All 6 acceptance criteria met (exports pure, section `// 62)` at smoke-test.js:4522, scope = instructions.ts + smoke-test.js + coder PROGRESS.md + `m ninfer`, hand-rolled glob).
+- Last commit: `7688241`.
 
 ### 1.99-29.S4 — FINAL: package.json command + setting schema (2026-10-23) — **PASS**
 

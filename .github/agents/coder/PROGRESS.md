@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-29 (cell output to chat — `llm.addCellOutput`) — **COMPLETE** (S1–S4 done)
-- **Next step:** none — 1.99-29 is the last item in the v1.99 backlog (changelog-researcher PROGRESS.md); orchestrator to pick the next version's backlog
+- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1 done of 6)
+- **Next step:** 1.100-1.S2 — settings plumbing (`instructionsFiles.enabled` / `instructionsFiles.locations`) in `src/presets.ts` + `src/config.ts` (+3 smoke → 597)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1d51aee (HEAD; orchestrator commits — S4 changes uncommitted)
-- **Build state:** compiles clean; smoke test passes (584 assertions)
+- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1 changes uncommitted)
+- **Build state:** compiles clean; smoke 594 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,11 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-1.S1** (2026-10-23) — Pure core in `src/instructions.ts` (+10 smoke). Files: `src/instructions.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/instructions.ts`: appended a new pure section (no vscode/fs) after `combineInstructions`, keeping all existing exports untouched: (a) `export interface InstructionsFileMeta { applyTo?: string; title?: string }`; (b) `export function parseInstructionsFrontMatter(content)` — front-matter only when first line is exactly `---` (BOM `\uFEFF` trimmed); closing delimiter = next line exactly `---` or `...` (none → whole content as body, empty meta); inside, simple `key: value` lines, only `applyTo`/`title` honored, values trimmed + matching surrounding single/double quotes stripped; `body` = everything after the closing delimiter with leading newlines trimmed; (c) `export function globToRegExp(glob)` — hand-rolled (no glob/minimatch): `**/` → `(?:.*/)?`, `**` → `.*`, `*` → `[^/]*`, `?` → `[^/]`, all else regex-escaped, anchored `^…$`; (d) `export function applyToMatches(applyTo, filePath)` — empty → false; split on `|` (trim each alternative); `filePath` normalized to forward slashes + leading `./` stripped; true if any alternative matches; (e) `export function pickAutoAttachFiles(files, contextPaths)` — in order, deduped by path, only files with non-empty `applyTo` matching any `contextPaths` entry; (f) `export const INSTRUCTIONS_FILE_TEMPLATE` (exact template string from the plan); (g) `export function instructionsFileName(name)` — trim, `[^a-zA-Z0-9._-]+` → `-`, strip leading AND trailing `-`/`.` (trailing strip added so `"My File!"` → `My-File`, not `My-File-`), fallback `"instructions"`, append `.instructions.md` when missing.
+  - `scripts/smoke-test.js`: new section `// 62) instructions files core (1.100-1.S1)` after section 61, before `ALL SMOKE TESTS PASSED`; `require(path.join(__dirname, "..", "out", "instructions.js"))`; 10 `instrf-s1:` assertions (front-matter parse of applyTo+title+body; no front-matter → empty meta + body===content; unclosed front-matter → empty meta + full body; quoted values unquoted; `**/*.ts` matches `a/b/c.ts` + `c.ts`; `src/*.ts` matches `src/a.ts` but not `src/a/b.ts`; `applyToMatches` true/false pair; alternation `src/**/*.ts | lib/**/*.py` matches both sides; `pickAutoAttachFiles` order/dedupe/skip-no-applyTo; template round-trip + `instructionsFileName("My File!") === "My-File.instructions.md"`). Total PASS lines now 594 (584 + 10).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 594 PASS, 0 FAIL; `git status --short` → only the 2 in-scope code files.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-29.S4** (2026-10-23) — `package.json` command + setting schema + final smoke. **Item 1.99-29 COMPLETE.** Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: (a) `contributes.commands` — appended `{ "command": "llm.addCellOutput", "title": "LLM: Add Cell Output to Chat", "icon": "$(notebook)" }` after `llm.mcp.listServers` (now 12 commands); (b) `contributes.configuration.properties` — added `llm.chat.addCellOutput.enabled` (boolean, default `true`, description mentions `llm.addCellOutput`) immediately after `llm.chat.newNotebook.enabled`. JSON validity verified with `node -e "JSON.parse(...)"` → OK.
   - `scripts/smoke-test.js`: new section `// 61) addCellOutput schema (1.99-29.S4)` after section 60, before `ALL SMOKE TESTS PASSED`; 3 `cellout-s4:` assertions on `pkgJson` (already parsed at top of file): (a) `contributes.commands` contains `command === "llm.addCellOutput"` with a `title` including "Cell Output"; (b) `contributes.configuration.properties["llm.chat.addCellOutput.enabled"]` exists, `type === "boolean"`, `default === true`; (c) its `description` includes `llm.addCellOutput`. Total PASS lines now 584 (581 + 3).

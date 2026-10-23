@@ -4519,6 +4519,82 @@ function assert(cond, label) {
     "cellout-s4: setting description mentions llm.addCellOutput",
   );
 
+  // 62) instructions files core (1.100-1.S1)
+  const instrfS1 = require(path.join(__dirname, "..", "out", "instructions.js"));
+  const instrfParsed = instrfS1.parseInstructionsFrontMatter(
+    "---\napplyTo: src/**/*.ts\ntitle: TS Rules\nother: ignored\n---\n\n# Rules\n\nBe terse.\n",
+  );
+  assert(
+    instrfParsed.meta.applyTo === "src/**/*.ts" &&
+      instrfParsed.meta.title === "TS Rules" &&
+      instrfParsed.body === "# Rules\n\nBe terse.\n",
+    "instrf-s1: parseInstructionsFrontMatter parses applyTo + title and returns body after closing ---",
+  );
+  const instrfNoFm = instrfS1.parseInstructionsFrontMatter("# Plain\n\nNo front-matter here.");
+  assert(
+    Object.keys(instrfNoFm.meta).length === 0 &&
+      instrfNoFm.body === "# Plain\n\nNo front-matter here.",
+    "instrf-s1: no front-matter → empty meta, body === content",
+  );
+  const instrfUnclosed = instrfS1.parseInstructionsFrontMatter(
+    "---\napplyTo: src/**/*.ts\n# body never closed\n",
+  );
+  assert(
+    Object.keys(instrfUnclosed.meta).length === 0 &&
+      instrfUnclosed.body === "---\napplyTo: src/**/*.ts\n# body never closed\n",
+    "instrf-s1: unclosed front-matter → empty meta, body = full content",
+  );
+  const instrfQuoted = instrfS1.parseInstructionsFrontMatter(
+    "---\napplyTo: \"src/**/*.ts\"\ntitle: 'Quoted Title'\n---\nbody\n",
+  );
+  assert(
+    instrfQuoted.meta.applyTo === "src/**/*.ts" &&
+      instrfQuoted.meta.title === "Quoted Title",
+    "instrf-s1: quoted values are unquoted",
+  );
+  const instrfStarStar = instrfS1.globToRegExp("**/*.ts");
+  assert(
+    instrfStarStar.test("a/b/c.ts") && instrfStarStar.test("c.ts"),
+    "instrf-s1: globToRegExp('**/*.ts') matches a/b/c.ts and c.ts",
+  );
+  const instrfStar = instrfS1.globToRegExp("src/*.ts");
+  assert(
+    instrfStar.test("src/a.ts") && !instrfStar.test("src/a/b.ts"),
+    "instrf-s1: globToRegExp('src/*.ts') matches src/a.ts but not src/a/b.ts (* does not cross /)",
+  );
+  assert(
+    instrfS1.applyToMatches("src/**/*.ts", "src/x/y.ts") === true &&
+      instrfS1.applyToMatches("src/**/*.ts", "lib/y.ts") === false,
+    "instrf-s1: applyToMatches src/**/*.ts → src/x/y.ts true, lib/y.ts false",
+  );
+  assert(
+    instrfS1.applyToMatches("src/**/*.ts | lib/**/*.py", "src/a/b.ts") === true &&
+      instrfS1.applyToMatches("src/**/*.ts | lib/**/*.py", "lib/c.py") === true,
+    "instrf-s1: applyToMatches alternation matches both src/a/b.ts and lib/c.py",
+  );
+  const instrfPicked = instrfS1.pickAutoAttachFiles(
+    [
+      { path: "a.instructions.md", applyTo: "src/**/*.ts" },
+      { path: "b.instructions.md" },
+      { path: "c.instructions.md", applyTo: "lib/**/*.py" },
+      { path: "a.instructions.md", applyTo: "src/**/*.ts" },
+    ],
+    ["src/x/y.ts"],
+  );
+  assert(
+    JSON.stringify(instrfPicked) === JSON.stringify(["a.instructions.md"]),
+    "instrf-s1: pickAutoAttachFiles returns only matching files, preserves order, dedupes, skips no-applyTo",
+  );
+  const instrfTpl = instrfS1.parseInstructionsFrontMatter(
+    instrfS1.INSTRUCTIONS_FILE_TEMPLATE,
+  );
+  assert(
+    instrfTpl.meta.applyTo === "src/**/*.ts" &&
+      instrfTpl.body.trim().length > 0 &&
+      instrfS1.instructionsFileName("My File!") === "My-File.instructions.md",
+    "instrf-s1: INSTRUCTIONS_FILE_TEMPLATE round-trips and instructionsFileName('My File!') === My-File.instructions.md",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
