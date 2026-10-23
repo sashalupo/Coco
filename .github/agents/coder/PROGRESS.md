@@ -13,10 +13,10 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-15 · Enhanced MCP input/output/progress UI — in progress
-- **Current slice:** 1.100-15.S2 DONE (`src/mcp.ts`: `McpHttpClient.setProgressCallback` + SSE progress capture in `post`)
-- **Next step:** 1.100-15.S3 (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current slice:** 1.100-15.S3 DONE (`src/mcpManager.ts`: `McpClientLike.callTool` + `McpManager.execute` widened with optional `onProgress`)
+- **Next step:** 1.100-15.S4 (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): MCP HTTP transport progress capture (1.100-15.S2)
+- **Last commit:** feat(llm): MCP manager progress threading (1.100-15.S3)
 - **Build state:** compiles clean; smoke 758 PASS (smoke slice is S5)
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-15.S3 — `src/mcpManager.ts`: (a) import `McpProgressCallback` from `./mcp`; (b) `McpClientLike.callTool` widened to `callTool(name: string, args: Record<string, unknown>, onProgress?: McpProgressCallback): Promise<McpToolResult>` (optional 3rd param — both concrete classes satisfy it structurally, no `src/mcp.ts` change needed); (c) `McpManager.execute(name, args, onProgress?)` — new optional param passed through to `client.callTool(tool, args, onProgress)`. Return type and all error paths unchanged. Compile clean.
 - [x] 1.100-15.S2 — `src/mcp.ts` `McpHttpClient`: (a) new private field `progressCb: McpProgressCallback | undefined` (after `tools`); (b) `setProgressCallback(cb: McpProgressCallback | undefined): void` — stores the callback (passing `undefined` clears it), documented as the SSE-side mirror of `McpClient.setProgressCallback`; (c) in `post`, in the SSE branch (`contentType.includes("text/event-stream")`), after `parseSseMessages(body)` a `for (const m of messages)` loop invokes `this.progressCb(m.params as McpProgressNotification)` for every plain-object message with `m.method === "notifications/progress"` and plain-object `params` (same guard shape as the stdio side: `params !== null && typeof params === "object" && !Array.isArray(params)`), then the existing `messages.find(m => isPlainObject(m) && m.id === msg.id)` resolution runs unchanged. JSON-body responses, session-id handling, and all error paths untouched. Compile clean.
 - [x] 1.100-15.S1 — `src/mcp.ts`: (a) `export interface McpProgressNotification { progressToken?: unknown; progress: number; total?: number; message?: string; }` + `export type McpProgressCallback = (p: McpProgressNotification) => void;` (after `McpToolResult`); (b) `McpJsonRpc` — new optional 3rd constructor arg `onNotification?: (method: string, params: unknown) => void` stored as a public field (also assignable post-construction); in `handleLine` the existing drop path (`msg.id` not a pending response) now invokes `onNotification(msg.method, msg.params)` when `msg.method` is a string and the hook is set, then returns as before — pending-request resolution unchanged; (c) `McpClient.setProgressCallback(cb: McpProgressCallback | undefined): void` — wires `this.rpc.onNotification` to filter `method === "notifications/progress"` + inline plain-object check (`params !== null && typeof params === "object" && !Array.isArray(params)`) before calling `cb`; passing `undefined` clears the hook. `McpHttpClient` untouched. Compile clean.
 - [x] 1.100-14.S5 — smoke-test guards in `scripts/smoke-test.js` (`mcp-img-s5` block, 8 new assertions, 750 → 758): (a) `mcpResultToImages` pure tests from `out/mcp.js` (text-only → `[]`; single image block → `data:image/png;base64,QUJD`; mixed text+image → 1 image, text ignored; image block missing `data` → skipped → `[]`); (b) `mcpResultToText` regression — image-only result → `""` (no leak); (c) static refs — `src/mcpManager.ts` references `mcpResultToImages` + `images?: string[]`, `out/chat/ChatViewProvider.js` posts `images` in the `tool_result` message (`mcpImages && mcpImages.length ? { images: mcpImages } : {}`), `src/chat/webview.ts` references the `tool-img` class; (d) hard total-count gate raised 750 → 758. **Item 1.100-14 COMPLETE** (S1–S5; smoke 758).

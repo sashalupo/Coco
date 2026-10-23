@@ -10,6 +10,7 @@
 import {
   McpClient,
   McpHttpClient,
+  McpProgressCallback,
   McpServerConfig,
   McpTool,
   McpToolResult,
@@ -27,7 +28,11 @@ import type { Tool } from "./tools";
 export interface McpClientLike {
   tools: McpTool[];
   start(): Promise<void>;
-  callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult>;
+  callTool(
+    name: string,
+    args: Record<string, unknown>,
+    onProgress?: McpProgressCallback,
+  ): Promise<McpToolResult>;
   close(): void;
 }
 
@@ -184,6 +189,7 @@ export class McpManager {
   async execute(
     name: string,
     args: Record<string, unknown>,
+    onProgress?: McpProgressCallback,
   ): Promise<{ content: string; images?: string[] }> {
     try {
       const parsed = parseMcpToolName(name);
@@ -203,7 +209,7 @@ export class McpManager {
           content: `Error: MCP server '${server}' failed to start: ${message}`,
         };
       }
-      const result = await client.callTool(tool, args);
+      const result = await client.callTool(tool, args, onProgress);
       const images = mcpResultToImages(result);
       return {
         content: mcpResultToText(result),
