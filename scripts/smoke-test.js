@@ -6069,11 +6069,77 @@ function assert(cond, label) {
     extS5Src.includes("Streamable HTTP (url)"),
     "mcp-http-s5: extension.ts addServer offers the Streamable HTTP (url) transport quick-pick",
   );
-  if (assertCount !== 750) {
-    console.error(`FAIL: total assertion count is 750 (got ${assertCount})`);
+  // 85) MCP image output regression guards (1.100-14.S5)
+  // (a) mcpResultToImages pure tests (out/mcp.js, required above as mcpHttpS5).
+  assert(
+    mcpHttpS5.mcpResultToImages({
+      content: [{ type: "text", text: "hello" }],
+    }).length === 0,
+    "mcp-img-s5: mcpResultToImages returns [] for a text-only result",
+  );
+  const imgS5Single = mcpHttpS5.mcpResultToImages({
+    content: [{ type: "image", data: "QUJD", mimeType: "image/png" }],
+  });
+  assert(
+    imgS5Single.length === 1 &&
+      imgS5Single[0] === "data:image/png;base64,QUJD",
+    "mcp-img-s5: mcpResultToImages emits one data:<mime>;base64,<data> URI for a single image block",
+  );
+  const imgS5Mixed = mcpHttpS5.mcpResultToImages({
+    content: [
+      { type: "text", text: "caption" },
+      { type: "image", data: "REVG", mimeType: "image/jpeg" },
+    ],
+  });
+  assert(
+    imgS5Mixed.length === 1 &&
+      imgS5Mixed[0] === "data:image/jpeg;base64,REVG",
+    "mcp-img-s5: mcpResultToImages ignores text parts and keeps the image part",
+  );
+  assert(
+    mcpHttpS5.mcpResultToImages({
+      content: [{ type: "image", mimeType: "image/png" }],
+    }).length === 0,
+    "mcp-img-s5: mcpResultToImages skips an image block missing data",
+  );
+  // (b) mcpResultToText regression: image-only result must not leak into text.
+  assert(
+    mcpHttpS5.mcpResultToText({
+      content: [{ type: "image", data: "QUJD", mimeType: "image/png" }],
+    }) === "",
+    "mcp-img-s5: mcpResultToText returns '' for an image-only result (no leak)",
+  );
+  // (c) Static refs: mcpManager returns images; host posts them; webview renders them.
+  const mcpMgrImgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "mcpManager.ts"),
+    "utf8",
+  );
+  assert(
+    mcpMgrImgSrc.includes("mcpResultToImages") &&
+      mcpMgrImgSrc.includes("images?: string[]"),
+    "mcp-img-s5: mcpManager.ts references mcpResultToImages and returns images",
+  );
+  const hostImgJs = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    hostImgJs.includes("mcpImages && mcpImages.length ? { images: mcpImages } : {}"),
+    "mcp-img-s5: ChatViewProvider posts images in the tool_result message",
+  );
+  const webviewImgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewImgSrc.includes("tool-img"),
+    "mcp-img-s5: webview.ts references the tool-img class",
+  );
+  if (assertCount !== 758) {
+    console.error(`FAIL: total assertion count is 758 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 750");
+  console.log("PASS: total assertion count is 758");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
