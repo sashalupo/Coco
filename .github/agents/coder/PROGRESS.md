@@ -13,10 +13,10 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-14 · MCP support for image output
-- **Current slice:** 1.100-14.S2 DONE (`src/mcpManager.ts`: `execute` returns `{ content, images? }` via `mcpResultToImages`)
-- **Next step:** 1.100-14.S3 — per plan in `.github/agents/planner/PROGRESS.md`
+- **Current slice:** 1.100-14.S3 DONE (`src/chat/ChatViewProvider.ts`: `tool_result` post carries `images` from `mcpRes.images`)
+- **Next step:** 1.100-14.S4 — render `msg.images` as thumbnails in the `tool_result` card in `src/chat/webview.ts` (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): McpManager.execute surfaces MCP tool images (1.100-14.S2)
+- **Last commit:** feat(llm): tool_result posts carry MCP tool images (1.100-14.S3)
 - **Build state:** compiles clean; smoke 750 PASS
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-14.S3 — `src/chat/ChatViewProvider.ts` MCP branch of the agent tool loop: hoisted `let mcpImages: string[] | undefined;` next to the `result` declaration; on the `mcpManager.execute` success path `mcpImages = mcpRes.images;` (error/arg-error paths leave it undefined); the single `tool_result` postMessage now appends `...(mcpImages && mcpImages.length ? { images: mcpImages } : {})` after the existing `modified` spread — non-MCP tools post exactly as before (no `images` key). No other file touched. Compile clean.
 - [x] 1.100-14.S2 — `src/mcpManager.ts`: import `mcpResultToImages` from `./mcp`; `execute` return type widened to `{ content: string; images?: string[] }`; success path computes `const images = mcpResultToImages(result)` and returns `{ content: mcpResultToText(result), ...(images.length ? { images } : {}) }`; error paths unchanged (no images). No other method touched. Compile clean.
 - [x] 1.100-14.S1 — image content-block type + pure extractor in `src/mcp.ts`: (a) `McpToolResult.content` widened to `{ type: string; text?: string; data?: string; mimeType?: string }[]` (image blocks carry `data`/`mimeType`); (b) `export function mcpResultToImages(result: McpToolResult): string[]` — pure: for each content part with `type === "image"`, non-empty string `data`, and non-empty string `mimeType`, emit `data:<mimeType>;base64,<data>`; malformed parts skipped; `[]` when none. No transport change (both `callTool` paths already pass raw JSON-RPC result through); `mcpResultToText` untouched. Compile clean.
 - [x] 1.100-13.S5 — smoke-test guards in `scripts/smoke-test.js` (`mcp-http-s5` block, 14 new assertions, 736 → 750): (a) `out/mcp.js` exports `McpHttpClient` + `parseSseMessages`; (b) `parseSseMessages` pure tests (two `data:` events → 2 messages; invalid-JSON `data:` line skipped; empty input → `[]`); (c) `parseMcpServers` url cases (`{ url }` accepted; `{ command, url }` dropped; `{}` dropped); (d) live HTTP transport tests on two mock `http.createServer` servers (ports 18100 SSE / 18101 JSON, both closed before exit): SSE-mode server (`text/event-stream` `data:` bodies, `Mcp-Session-Id: sess-1` header) — `McpHttpClient.start()` discovers tools and the `tools/list` request echoed the session header (echo check via recorded request headers); JSON-mode server (`application/json` single bodies) — `start()` + `callTool("add", {a:2,b:3})` → `"5"`; `McpManager` with a `url` server — `ensureStarted` → running/toolCount 1, `getTools` → `mcp__http__add`, `execute("mcp__http__add", {a:40,b:2})` → `"42"`; (e) static refs: `package.json` `llm.mcp.servers` description contains "Streamable HTTP", `src/mcpManager.ts` references `McpHttpClient` + `McpClientLike`, `src/extension.ts` references `"Streamable HTTP (url)"`; (f) hard gate raised 736 → 750. **Item 1.100-13 COMPLETE** (S1–S5; smoke 750).

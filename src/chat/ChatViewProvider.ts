@@ -1768,6 +1768,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           // (invalid JSON arguments resolve to an error string, never throw);
           // everything else goes to the ToolExecutor as before.
           let result: { tool_call_id: string; content: string };
+          let mcpImages: string[] | undefined;
           if (isMcpToolName(call.function.name)) {
             let mcpArgs: Record<string, unknown> = {};
             let argError: string | null = null;
@@ -1788,6 +1789,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 call.function.name,
                 mcpArgs,
               );
+              mcpImages = mcpRes.images;
               result = { tool_call_id: call.id, content: mcpRes.content };
             }
           } else {
@@ -1805,6 +1807,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             args: call.function.arguments,
             output: result.content,
             ...(commandModified ? { modified: true } : {}),
+            ...(mcpImages && mcpImages.length ? { images: mcpImages } : {}),
           });
           // Phase 17: push the updated todo list to the webview.
           if (call.function.name === "manage_todos") {
