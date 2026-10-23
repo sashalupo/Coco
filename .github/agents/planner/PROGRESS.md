@@ -10,25 +10,33 @@ Turn each changelog feature (from the Changelog Researcher's backlog) into a con
 step-by-step implementation plan for the `llm` VS Code extension. The planner does NOT write
 code — only the Coder writes code.
 
-## Active plan — 1.100-18 · Select and attach UI elements to chat (Experimental) — SKIPPED
+## Active plan — 1.100-19 · Create and launch tasks in agent mode (workspace creation follow-up)
 
-- **Status:** Skipped (not applicable: no preview webview) — decided 2026-10-23
-- **Changelog:** VS Code 1.100 (Apr 2025) — in the built-in Simple Browser, a toolbar "Start" button lets you select any element of a locally-hosted page; attaches a **screenshot of the element + its HTML and CSS** to chat. Config: `chat.sendElementsToChat.enabled` / `.attachCSS` / `.attachImages`. No screenshots (release notes reference a video).
-- **Decision: SKIP.** The feature's core precondition — a **hosted preview webview** that renders a local page — does not exist in this extension. Grounding:
-  - `src/chat/webview.ts` + `src/chat/ChatViewProvider.ts` are the **only** webview (the chat panel). Grep across `src/**` finds **no** `createWebviewPanel`, **no** `iframe`, **no** preview panel, and **no** element-picker (`outerHTML` / `getComputedStyle` / `html2canvas` / `screenshot` / `sendElementsToChat` / `attachCSS` all absent).
-  - The Simple-Browser host part is **VS Code core**; the extension cannot contribute a toolbar button to it.
-  - The reframe note itself flags this as **low priority** and **"depends on whether the extension ever hosts a preview."**
-- **Why not a minimal implementation:** the only way to make "pick element" useful is to host a preview webview that iframes a local dev-server URL. That is a **new, large feature** (preview panel + URL input + iframe + injected selection script + hand-rolled screenshot/CSS capture, since no runtime deps are allowed) — far beyond the scope of this experimental toolbar-button item and outside the extension's identity as a generic OpenAI Chat Completions client. The "attach to chat" half (image attachment + context pills) already exists, but there is no page to pick from.
-- **Revisit trigger:** if the extension ever adds a preview webview (e.g. a `llm.preview` panel that iframes a local dev server), re-plan this as: inject a selection script → capture element `outerHTML` + computed CSS + a canvas screenshot → attach via the existing image-attachment + context-pill path, gated by `llm.chat.sendElements.enabled` / `.attachCSS` / `.attachImages`.
-- **Next item:** 1.100-19 · Create and launch tasks in agent mode (workspace creation follow-up).
+- **Status:** Planned — 2026-10-23
+- **Changelog:** VS Code 1.100 — at the end of the new-workspace creation flow, the user is prompted to **create and run a task** for launching the app/project (task reuse). No images.
+- **Approach:** The `#newWorkspace` flow (1.99-6) is agent-driven: `buildScaffoldPrompt()` in `src/workspaceScaffold.ts` builds the agent instructions, `formatWorkspaceBlock()` in `src/context.ts` renders the block, `ChatViewProvider.ts` injects it. The follow-up is a pure extension of the scaffold prompt + a per-template `tasks.json` template. The existing `run_command` tool (1.98-1, with approval) is reused to run the launch task — **no new tool, no new setting** (gated by the existing `llm.chat.newWorkspace.enabled`).
+- **Files to touch:** `src/workspaceScaffold.ts`, `scripts/smoke-test.js`.
+- **Slices:**
+  - **S-001** — `src/workspaceScaffold.ts`: add `launchTask?: { label: string; command: string }` to `WorkspaceTemplate`; set on `extension` (`Compile`, `npm run compile`), `mcp-server` (`Start`, `npm start`), `dev-env` (`Dev`, `npm run dev`); `generic` has none. Add pure `buildTasksJson(type: string): string` → valid VS Code `tasks.json` (version `2.0.0`, one `shell` task with label/command, `problemMatcher: []`), or `""` for unknown/`generic`.
+    - *Acceptance:* `npm run compile` passes; `buildTasksJson("extension")` contains `"label": "Compile"` and `"command": "npm run compile"`; `buildTasksJson("generic") === ""`; `buildTasksJson("nope") === ""`.
+  - **S-002** — `src/workspaceScaffold.ts`: extend `buildScaffoldPrompt()` — when the template has a `launchTask`, add steps: write `.vscode/tasks.json` via `write_file` with exactly the `buildTasksJson` content (fenced block), then ask the user whether to run the launch task now and, if yes, run it via `run_command`. Keep the existing optional `npm install` step (renumber). `generic` prompt unchanged.
+    - *Acceptance:* `npm run compile` passes; `buildScaffoldPrompt("extension", "x")` contains `.vscode/tasks.json` and `run_command`; `buildScaffoldPrompt("generic", "x")` does NOT contain `tasks.json`.
+  - **S-003** — `scripts/smoke-test.js`: add a `ws-s5` block after the existing `ws-s1` block (~line 3355) requiring `buildTasksJson` from `out/workspaceScaffold.js` and asserting the S-001/S-002 acceptance checks.
+    - *Acceptance:* `node scripts/smoke-test.js` passes with the new assertions.
+- **Acceptance criteria (whole item):** `npm run compile` passes; smoke test passes; `#newWorkspace extension my-ext` prompt now instructs the agent to write `.vscode/tasks.json` (correct launch task) and to ask the user before running it via `run_command`; `generic` scaffold prompt unchanged.
+- **Risks / open questions:**
+  - Task labels/commands chosen per template (`Compile`/`Start`/`Dev`); if different labels are preferred, only S-001 data changes.
+  - `run_command` 60s timeout is fine for compile/start smoke runs; no change needed.
+  - No new setting — reuses the `llm.chat.newWorkspace.enabled` gate (matches "small extension" scope).
+- **Next item:** 1.100-29 · Generate alt text in HTML or Markdown (AI code action).
 
 
 ## Status
 
-- **Current item:** 1.100-18 (skipped: no preview webview) — 1.100-16 planned
-- **Next step:** dispatch the Planner for 1.100-19 (Create and launch tasks in agent mode)
+- **Current item:** 1.100-19 (planned: 3 slices — S-001/S-002 in `src/workspaceScaffold.ts`, S-003 smoke)
+- **Next step:** dispatch the Coder for 1.100-19 S-001
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-18 skip decision)
+- **Last commit:** (planner commit for the 1.100-19 plan)
 - **Build state:** n/a (planner does not build)
 
 ## Plans delivered (recap)
