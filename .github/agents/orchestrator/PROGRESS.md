@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-13** — MCP support for Streamable HTTP — **IN PROGRESS** (5 slices S1–S5; S1–S3 done)
-- **Current slice:** 1.100-13.S3 DONE (verified PASS)
+- **Current item:** **1.100-13** — MCP support for Streamable HTTP — **IN PROGRESS** (5 slices S1–S5; S1–S4 done)
+- **Current slice:** 1.100-13.S4 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-13.S4 — `llm.mcp.addServer` transport quick-pick in `src/extension.ts` (user goal: continue until version 1.107)
+- **Next step:** 1.100-13.S5 — smoke-test guards in `scripts/smoke-test.js` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 37c7244 (tester verified 1.100-13.S3; code 3f8a4fa)
+- **Last commit:** 01dc1f1 (tester verified 1.100-13.S4; code afd54ec)
 - **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
