@@ -359,12 +359,19 @@ export class McpClient {
   /** Tools discovered during the `tools/list` handshake. */
   public tools: McpTool[] = [];
 
-  constructor(config: McpServerConfig) {
+  constructor(config: McpServerConfig, inputs?: Record<string, string>) {
     if (!config.command) {
       throw new Error("McpClient requires a stdio `command` config");
     }
+    // With `inputs`, `${input:name}` env references are resolved first
+    // (throws `missing required input: <name>` when one is absent);
+    // without them the spawn env is byte-identical to the plain path.
+    const env =
+      inputs && Object.keys(inputs).length > 0
+        ? resolveMcpInputs(config, inputs)
+        : (config.env ?? {});
     this.child = spawn(config.command, config.args ?? [], {
-      env: { ...process.env, ...(config.env ?? {}) },
+      env: { ...process.env, ...env },
       stdio: ["pipe", "pipe", "pipe"],
     });
     const stdout = this.child.stdout;

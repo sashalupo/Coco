@@ -56,6 +56,11 @@ export class McpManager {
   private clients = new Map<string, McpClientLike>();
   private statuses = new Map<string, McpServerStatus>();
   private starting = new Map<string, Promise<McpClientLike>>();
+  /**
+   * Session-only `${input:...}` values per server (1.100-16). In-memory by
+   * design — no SecretStorage; values must be re-entered after a reload.
+   */
+  private inputs = new Map<string, Record<string, string>>();
   private notify: (msg: string) => void;
 
   constructor(notify?: (msg: string) => void) {
@@ -75,6 +80,23 @@ export class McpManager {
         this.statuses.delete(name);
       }
     }
+    for (const name of [...this.inputs.keys()]) {
+      if (!(name in servers)) {
+        this.inputs.delete(name);
+      }
+    }
+  }
+
+  /**
+   * Store session-only `${input:...}` values for a server. An empty object
+   * clears the entry. Values are held in memory only (no persistence).
+   */
+  setInputs(name: string, values: Record<string, string>): void {
+    if (Object.keys(values).length === 0) {
+      this.inputs.delete(name);
+      return;
+    }
+    this.inputs.set(name, values);
   }
 
   /**
@@ -96,9 +118,27 @@ export class McpManager {
       return Promise.reject(new Error(`unknown MCP server: ${name}`));
     }
     const p = (async () => {
-      const client: McpClientLike = cfg.url
-        ? new McpHttpClient(cfg)
-        : new McpClient(cfg);
+      let client: McpClientLike;
+      try {
+        // `McpClient` resolves `${input:...}` env refs at construction
+        // (throws `missing required input: <name>` when one is absent);
+        // the HTTP transport ignores inputs entirely.
+        client = cfg.url
+          ? new McpHttpClient(cfg)
+          : new McpClient(cfg, this.inputs.get(name));
+      } catch (e) {
+        // No client exists yet — surface via the existing error path.
+        const message = e instanceof Error ? e.message : String(e);
+        this.statuses.set(name, {
+          name,
+          status: "error",
+          toolCount: 0,
+          error: message,
+        });
+        this.notify(`MCP server '${name}' failed to start: ${message}`);
+        this.starting.delete(name);
+        throw e;
+      }
       try {
         await client.start();
         this.clients.set(name, client);
