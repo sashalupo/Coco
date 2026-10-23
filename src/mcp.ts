@@ -21,6 +21,15 @@ export interface McpServerConfig {
   args?: string[];
   env?: Record<string, string>;
   url?: string;
+  inputs?: Record<string, McpInput>;
+}
+
+/** A user-provided input value for an MCP server (e.g. a secret). */
+export interface McpInput {
+  description?: string;
+  type?: "string" | "number" | "boolean";
+  password?: boolean;
+  required?: boolean;
 }
 
 /** A tool discovered from an MCP server via `tools/list`. */
@@ -105,7 +114,87 @@ export function parseMcpServers(
         cfg.env = env;
       }
     }
+    if (isPlainObject(entry.inputs)) {
+      const inputs: Record<string, McpInput> = {};
+      let ok = true;
+      for (const [k, v] of Object.entries(entry.inputs)) {
+        if (!isPlainObject(v)) {
+          ok = false;
+          break;
+        }
+        if (v.description !== undefined && typeof v.description !== "string") {
+          ok = false;
+          break;
+        }
+        if (
+          v.type !== undefined &&
+          v.type !== "string" &&
+          v.type !== "number" &&
+          v.type !== "boolean"
+        ) {
+          ok = false;
+          break;
+        }
+        if (v.password !== undefined && typeof v.password !== "boolean") {
+          ok = false;
+          break;
+        }
+        if (v.required !== undefined && typeof v.required !== "boolean") {
+          ok = false;
+          break;
+        }
+        inputs[k] = {
+          ...(typeof v.description === "string" ? { description: v.description } : {}),
+          ...(v.type === "string" || v.type === "number" || v.type === "boolean"
+            ? { type: v.type }
+            : {}),
+          ...(typeof v.password === "boolean" ? { password: v.password } : {}),
+          ...(typeof v.required === "boolean" ? { required: v.required } : {}),
+        };
+      }
+      if (ok) {
+        cfg.inputs = inputs;
+      }
+    }
     out[name] = cfg;
+  }
+  return out;
+}
+
+/**
+ * Case-insensitive test for env-var names that look like secrets.
+ * Used to decide whether a value should be stored as a prompted input
+ * reference instead of a literal.
+ */
+export function detectSecretEnvName(name: string): boolean {
+  return /key|token|secret|password|passwd|pwd|apikey|api_key|auth|credential|bearer/i.test(name);
+}
+
+/**
+ * Resolve `${input:name}` references in a server's `env` map against the
+ * provided values. Non-reference values pass through unchanged. Throws
+ * `missing required input: <name>` when a referenced input is absent.
+ * Returns `{}` when `cfg.env` is undefined.
+ */
+export function resolveMcpInputs(
+  cfg: McpServerConfig,
+  provided: Record<string, string>,
+): Record<string, string> {
+  if (!cfg.env) {
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(cfg.env)) {
+    const m = /^\$\{input:([A-Za-z0-9_-]+)\}$/.exec(v);
+    if (!m) {
+      out[k] = v;
+      continue;
+    }
+    const name = m[1];
+    if (!(name in provided)) {
+      throw new Error(`missing required input: ${name}`);
+    }
+    out[k] = provided[name];
   }
   return out;
 }
