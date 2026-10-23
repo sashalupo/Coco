@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** **1.100-10** — Autofix diagnostics from agent mode edits (planned; 4 slices)
-- **Current slice:** 1.100-10.S1 DONE
-- **Next step:** 1.100-10.S2 — pure `newDiagnostics(before, after)` helper in `src/tools/ToolExecutor.ts`
+- **Current item:** **1.100-10** — Autofix diagnostics from agent mode edits (4 slices)
+- **Current slice:** 1.100-10.S2 DONE
+- **Next step:** 1.100-10.S3 — agent-loop autofix hook in `src/chat/ChatViewProvider.ts` (cap 2 rounds)
 - **Last updated:** 2026-10-23
-- **Last commit:** (this commit, 1.100-10.S1)
+- **Last commit:** (this commit, 1.100-10.S2)
 - **Build state:** compiles clean; smoke 690 PASS
 
 ## Plan pointer
@@ -41,7 +41,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 - [x] 1.100-8.S4 — `llm.addContext` grouped quick-pick in `src/extension.ts` + `package.json`
 - [x] 1.100-8.S5 — smoke-test regression guards in `scripts/smoke-test.js`
 - [x] 1.100-10.S1 — `llm.agent.autoFix` setting (default true): `presets.ts` `LlmSettings.agentAutoFix`, `config.ts` read, `package.json` schema
-- [ ] 1.100-10.S2 — `newDiagnostics(before, after)` helper in `src/tools/ToolExecutor.ts`
+- [x] 1.100-10.S2 — pure exported `newDiagnostics(before, after)` + `DiagnosticLike` in `src/tools/ToolExecutor.ts` (key `severity|startLine|startChar|message`; vscode-independent; importable via `out/tools/ToolExecutor.js` under the existing `Module._load` vscode stub)
 - [ ] 1.100-10.S3 — agent-loop autofix hook in `src/chat/ChatViewProvider.ts` (cap 2 rounds)
 - [ ] 1.100-10.S4 — smoke-test regression guards in `scripts/smoke-test.js`
 

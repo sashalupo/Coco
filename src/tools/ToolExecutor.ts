@@ -1543,3 +1543,33 @@ export class ToolExecutor {
     return err instanceof Error ? err.message : String(err);
   }
 }
+
+/**
+ * Plain diagnostic-shaped object (vscode-independent so the helper can be
+ * unit-tested without the vscode API). `vscode.Diagnostic` satisfies this
+ * shape structurally.
+ */
+export interface DiagnosticLike {
+  severity: number;
+  range: { start: { line: number; character: number } };
+  message: string;
+}
+
+/** Comparison key for a diagnostic: severity|startLine|startChar|message. */
+function diagnosticKey(d: DiagnosticLike): string {
+  return `${d.severity}|${d.range.start.line}|${d.range.start.character}|${d.message}`;
+}
+
+/**
+ * Pure diff helper (1.100-10.S2): returns the entries of `after` whose
+ * comparison key (`severity|startLine|startChar|message`) is absent from
+ * `before`, preserving `after` order. Used by the agent-loop autofix hook to
+ * detect problems introduced by a tool-call batch.
+ */
+export function newDiagnostics(
+  before: readonly DiagnosticLike[],
+  after: readonly DiagnosticLike[],
+): DiagnosticLike[] {
+  const beforeKeys = new Set(before.map(diagnosticKey));
+  return after.filter((d) => !beforeKeys.has(diagnosticKey(d)));
+}
