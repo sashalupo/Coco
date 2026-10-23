@@ -11,11 +11,11 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-31 — COMPLETE (whole item verified PASS, all 9 acceptance criteria)
-- **Next step:** 1.100-38 — MCP Tool Annotations (human-readable names, `readOnlyHint` auto-approve)
+- **Current item:** 1.100-38 — COMPLETE (whole item verified PASS, all 7 acceptance criteria)
+- **Next step:** 1.101-1 — Chat tool sets (next backlog item after 1.100-38)
 - **Last updated:** 2026-10-24
-- **Last commit:** 341de11 (1.100-31 S-005, verified PASS)
-- **Build state:** compiles clean; smoke 798/798 PASS (verified 2026-10-24)
+- **Last commit:** 7f98964 (1.100-38 S-005, verified PASS)
+- **Build state:** compiles clean; smoke 805/805 PASS (verified 2026-10-24)
 ## Verified (recap)
 
 Slice detail pruned (see `git log` for full history). All slices verified PASS (build exit 0 + full smoke + scope check via `git show --stat`; `ninfer` submodule never committed).
