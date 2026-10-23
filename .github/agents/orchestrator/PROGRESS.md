@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-10** — Autofix diagnostics from agent mode edits — **IN PROGRESS** (4 slices S1–S4; S1–S3 done)
-- **Current slice:** 1.100-10.S3 DONE (verified PASS after 1 fix)
+- **Current item:** **1.100-10** — Autofix diagnostics from agent mode edits — **IN PROGRESS** (planning)
+- **Current slice:** — (awaiting Planner)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-10.S4 — smoke-test regression guards in `scripts/smoke-test.js` (user goal: continue until version 1.107)
+- **Next step:** dispatch Planner for 1.100-11 (Handling of undo and manual edits in agent mode) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 8f7fb50 (tester re-verified 1.100-10.S3; code b0de672 + fix 308e856)
+- **Last commit:** ac481bd (tester verified 1.100-10.S4; code ede4d2c)
 - **Build state:** compiles clean; smoke 690/690 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
@@ -51,7 +51,7 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
 
-**1.100-10 (in progress):** `llm.agent.autoFix` setting (default on) (S1); `newDiagnostics` diff helper in `src/tools/ToolExecutor.ts` (S2); agent-loop autofix hook (pre-batch snapshot → 500 ms settle → diff → ≤2 follow-up rounds) in `src/chat/ChatViewProvider.ts` (S3).
+**1.100-10 (DONE, S1–S4):** `llm.agent.autoFix` setting (default on) (S1, ee2a9bb); `newDiagnostics` diff helper in `src/tools/ToolExecutor.ts` (S2, 6a0fa00); agent-loop autofix hook (pre-batch snapshot → 500 ms settle → diff → ≤2 follow-up rounds) in `src/chat/ChatViewProvider.ts` (S3, b0de672 + fix 308e856); smoke guards, count 690→701 (S4, ede4d2c). No new tag — `changelog-1.100` already exists (final commit ede4d2c).
 
 Team flow used throughout: Planner (slices) → Coder (one slice) → Tester → orchestrator commits; retry a failed sub-agent up to 5× with the same prompt.
 
