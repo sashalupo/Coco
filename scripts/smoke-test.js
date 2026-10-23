@@ -474,10 +474,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 15, "tools: CODE_TOOLS has 15 tools");
+  assert(CODE_TOOLS.length === 16, "tools: CODE_TOOLS has 16 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages",
+      "read_file,write_file,edit_file,apply_patch,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages",
     "tools: tool names in order",
   );
   assert(
@@ -598,7 +598,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 15,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 16,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -2910,12 +2910,12 @@ function assert(cond, label) {
     (t) => t.function.name === "think",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 15 &&
+    toolsS1.CODE_TOOLS.length === 16 &&
       thinkTool !== undefined &&
       JSON.stringify(thinkTool.function.parameters.required) ===
         JSON.stringify(["thought"]) &&
       thinkTool.function.parameters.properties.thought.type === "string",
-    "think-s1: CODE_TOOLS has 15 tools and think requires [thought] (string)",
+    "think-s1: CODE_TOOLS has 16 tools and think requires [thought] (string)",
   );
   assert(
     toolsS1.isMutatingTool("think") === false &&
@@ -2971,10 +2971,10 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(thinkBodyOn.tools) &&
-      thinkBodyOn.tools.length === 15 &&
+      thinkBodyOn.tools.length === 16 &&
       thinkBodyOn.tools.some((t) => t.function.name === "think") &&
       thinkBodyOn.tool_choice === "auto",
-    "think-s3: toolsEnabled=true → body.tools has 15 tools incl. think, tool_choice auto",
+    "think-s3: toolsEnabled=true → body.tools has 16 tools incl. think, tool_choice auto",
   );
   const thinkBodyOff = buildRequestBody(
     { settings: { ...settings, toolsEnabled: false }, toolbar },
@@ -3078,13 +3078,13 @@ function assert(cond, label) {
     (t) => t.function.name === "fetch_url",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 15 &&
+    toolsS1.CODE_TOOLS.length === 16 &&
       fetchToolEntry !== undefined &&
       JSON.stringify(fetchToolEntry.function.parameters.required) ===
         JSON.stringify(["url"]) &&
       fetchToolEntry.function.parameters.properties.url.type === "string" &&
       toolsS1.isMutatingTool("fetch_url") === false,
-    "fetch-s2: CODE_TOOLS has 15 tools; fetch_url requires [url] (string) and is not mutating",
+    "fetch-s2: CODE_TOOLS has 16 tools; fetch_url requires [url] (string) and is not mutating",
   );
   const { ToolExecutor: FetchExecutor } = require(
     path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
@@ -3112,9 +3112,9 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(fetchBody.tools) &&
-      fetchBody.tools.length === 15 &&
+      fetchBody.tools.length === 16 &&
       fetchBody.tools.some((t) => t.function.name === "fetch_url"),
-    "fetch-s2: toolsEnabled=true → body.tools has 15 tools incl. fetch_url",
+    "fetch-s2: toolsEnabled=true → body.tools has 16 tools incl. fetch_url",
   );
 
   // 20c) Fetch tag context (1.99-4.S3)
@@ -3277,9 +3277,9 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(usagesBody.tools) &&
-      usagesBody.tools.length === 15 &&
+      usagesBody.tools.length === 16 &&
       usagesBody.tools.some((t) => t.function.name === "find_usages"),
-    "usages-s2: toolsEnabled=true → body.tools has 15 tools incl. find_usages",
+    "usages-s2: toolsEnabled=true → body.tools has 16 tools incl. find_usages",
   );
   const usagesResNone = await usagesExecutor.execute({
     id: "u3",
@@ -4262,10 +4262,10 @@ function assert(cond, label) {
   );
 
   // 54) new_notebook tool (1.99-28.S2)
-  assert(CODE_TOOLS.length === 15, "nbnew-s2: CODE_TOOLS has 15 tools");
+  assert(CODE_TOOLS.length === 16, "nbnew-s2: CODE_TOOLS has 16 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages",
+      "read_file,write_file,edit_file,apply_patch,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages",
     "nbnew-s2: tool names in order",
   );
   assert(
@@ -5085,6 +5085,43 @@ function assert(cond, label) {
   assert(
     p12aErr.length > 0 && p12bErr.length > 0,
     "patch-s1: add on existing file and update on missing file both throw",
+  );
+
+  // 75) apply_patch tool (1.100-3.S2)
+  const patchToolEntry = CODE_TOOLS.find(
+    (t) => t.function.name === "apply_patch",
+  );
+  assert(
+    patchToolEntry !== undefined &&
+      JSON.stringify(patchToolEntry.function.parameters.required) ===
+        JSON.stringify(["path", "patch"]),
+    "patch-s2: CODE_TOOLS contains apply_patch with required=[path,patch]",
+  );
+  assert(
+    isMutatingTool("apply_patch") === true,
+    "patch-s2: apply_patch is mutating (flows through the approval gate)",
+  );
+  const patchS2ExecSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  assert(
+    patchS2ExecSrc.includes('case "apply_patch"') &&
+      patchS2ExecSrc.includes('import { applyPatch } from "../patch"'),
+    "patch-s2: executor has case \"apply_patch\" and imports applyPatch from ../patch",
+  );
+  const patchS2ToolRegion = patchS2ExecSrc.slice(
+    patchS2ExecSrc.indexOf("applyPatchTool"),
+  );
+  assert(
+    patchS2ToolRegion.includes("recordSnapshot") &&
+      patchS2ToolRegion.includes("unifiedDiff"),
+    "patch-s2: applyPatchTool wires snapshot + unifiedDiff bookkeeping",
+  );
+  assert(
+    patchToolEntry !== undefined &&
+      patchToolEntry.function.description.includes("edit_file"),
+    "patch-s2: apply_patch description steers the model toward edit_file for small edits",
   );
 
   console.log("\nALL SMOKE TESTS PASSED");

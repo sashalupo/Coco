@@ -139,6 +139,41 @@ export const CODE_TOOLS: Tool[] = [
   {
     type: "function",
     function: {
+      name: "apply_patch",
+      description:
+        "Apply a multi-hunk patch to a file in one call. Use for large or " +
+        "multi-location edits; for a single small replacement prefer edit_file. " +
+        "The patch uses the OpenAI apply-patch format: it must start with " +
+        "'*** Begin Patch' and end with '*** End Patch', and contain exactly " +
+        "one file section — '*** Update File: <path>' (file must exist) or " +
+        "'*** Add File: <path>' (file must not exist) — whose path must equal " +
+        "the path argument. Inside the section, hunks start with '@@' and " +
+        "contain lines prefixed with ' ' (context), '+' (add), or '-' (remove); " +
+        "a line that is exactly '***' is a literal context line (escape). " +
+        "Context lines must match the file EXACTLY (byte-for-byte, including " +
+        "whitespace and indentation) and must be UNIQUE in the file — if a " +
+        "hunk's context is not found or is ambiguous, the patch fails; re-read " +
+        "the file and copy the exact context lines.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Workspace-relative file path.",
+          },
+          patch: {
+            type: "string",
+            description:
+              "The full patch, from `*** Begin Patch` to `*** End Patch`.",
+          },
+        },
+        required: ["path", "patch"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "list_dir",
       description:
         "List the files and subdirectories in a workspace directory.",
@@ -483,6 +518,7 @@ export function isMutatingTool(name: string): boolean {
   return (
     name === "write_file" ||
     name === "edit_file" ||
+    name === "apply_patch" ||
     name === "run_command" ||
     name === "notebook_edit" ||
     name === "new_notebook"

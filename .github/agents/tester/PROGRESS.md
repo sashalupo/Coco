@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-3 — Faster agent mode edits (apply-patch edit format) — **IN PROGRESS** (2 slices S1–S2; S1 verified PASS)
-- **Next step:** verify 1.100-3.S2 (apply_patch tool schema + executor wiring, +5 smoke → 654)
+- **Current item:** 1.100-3 — Faster agent mode edits (apply-patch edit format) — **DONE** (2 slices S1–S2, both verified PASS)
+- **Next step:** dispatch Planner for the next changelog item after 1.100-3
 - **Last updated:** 2026-10-23
-- **Last commit:** (1.100-3.S1 commit)
-- **Build state:** compiles clean; smoke 649/649 PASS (verified 2026-10-23)
+- **Last commit:** 347395f (1.100-3.S1); S2 uncommitted in working tree
+- **Build state:** compiles clean; smoke 654/654 PASS (verified 2026-10-23)
+
+### 1.100-3.S2 — FINAL: `apply_patch` tool schema + executor wiring (+5 smoke) (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 654/654 PASS (649 baseline + 5 new `patch-s2:`), 0 FAIL (grep -c '^PASS:' → 654, '^FAIL:' → 0).
+- All 7 acceptance criteria met: (1) compile exit 0; (2) smoke 654/654; (3) `CODE_TOOLS` = 16 tools, `apply_patch` at src/tools.ts:142 positioned directly after `edit_file` (L100–131), `required: ["path","patch"]` (L167); (4) `isMutatingTool` includes `name === "apply_patch"` (tools.ts:521) → flows through `llm.tools.requireApproval` gate; (5) executor: `import { applyPatch } from "../patch"` (ToolExecutor.ts:15), `case "apply_patch":` (L359) → `applyPatchTool(call, String(args.path ?? ""), String(args.patch ?? ""))`; `applyPatchTool` (L582) mirrors `editFile`: empty-patch guard → `resolveSafe` → `patch.length > MAX_READ_BYTES` guard → read old content (missing → `existed=false`) → `applyPatch` inside try/catch returning `this.result(call, this.msg(err))` with NO write and NO snapshot on failure (snapshot/write only after the catch block) → `lastSnapshot` + `recordSnapshot` → `writeFile` → `recordChange` → `Applied patch to <path> (N hunks)` + `unifiedDiff` block; (6) section `// 75) apply_patch tool (1.100-3.S2)` at smoke-test.js:5090 with exactly 5 `patch-s2:` assertions covering the plan list (required=[path,patch] L5098, isMutatingTool L5102, case+import L5111, recordSnapshot+unifiedDiff L5119, description mentions edit_file L5124); the 8 tool-count assertions are 1-for-1 15→16 bumps verified via `git diff` (2 plan-named: L477 section 5 + L4265 section 54, both also gained `apply_patch` after `edit_file` in the name-order string; 6 deviation: L601 `toolBody.tools.length`, L2913/L3081 `toolsS1.CODE_TOOLS.length`, L2974 `thinkBodyOn.tools.length`, L3115 `fetchBody.tools.length`, L3280 `usagesBody.tools.length`) — no assertion removed or weakened; (7) tool description steers: "Apply a multi-hunk patch to a file in one call. Use for large or multi-location edits; for a single small replacement prefer edit_file." + format sketch + exact-match/unique-context contract.
+- Working-tree scope (S2 uncommitted): `src/tools.ts` (+36), `src/tools/ToolExecutor.ts` (+68), `scripts/smoke-test.js` (+67/−18), `.github/agents/coder/PROGRESS.md` (+13/−4), `m ninfer` — no out-of-scope source files.
+- **ITEM 1.100-3 COMPLETE** (S1–S2 both PASS, 2026-10-23).
 
 ### 1.100-3.S1 — `src/patch.ts` pure patch parser + applier (+12 smoke) (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 649/649 PASS (637 baseline + 12 new `patch-s1:`), 0 FAIL (grep -c '^PASS:' → 649, '^FAIL:' → 0).

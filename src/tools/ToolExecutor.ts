@@ -12,6 +12,7 @@ import * as path from "path";
 import { spawn } from "child_process";
 import type { ToolCall, ToolResult } from "../tools";
 import { unifiedDiff, diffStats } from "../diff";
+import { applyPatch } from "../patch";
 import { scanForSecrets } from "../secrets";
 import {
   applyNotebookEdit,
@@ -355,6 +356,12 @@ export class ToolExecutor {
             String(args.new_string ?? ""),
             args.replace_all === true,
           );
+        case "apply_patch":
+          return await this.applyPatchTool(
+            call,
+            String(args.path ?? ""),
+            String(args.patch ?? ""),
+          );
         case "list_dir":
           return await this.listDir(call, String(args.path ?? ""));
         case "search_files":
@@ -562,6 +569,67 @@ export class ToolExecutor {
       call,
       `Replaced ${n} occurrence${n === 1 ? "" : "s"} in ${relPath} ` +
         `(${oldString.length} chars → ${newString.length} chars)${diffBlock}`,
+    );
+  }
+
+  /**
+   * Apply a multi-hunk `*** Begin Patch` patch to a file (item 1.100-3).
+   * The pure parse/apply logic lives in `applyPatch` (src/patch.ts); this
+   * method only handles the file I/O + snapshot bookkeeping, mirroring
+   * `editFile`. On any parse/match failure the error message is returned as
+   * the result (no write, no snapshot) so the agentic loop can retry.
+   */
+  private async applyPatchTool(
+    call: ToolCall,
+    relPath: string,
+    patch: string,
+  ): Promise<ToolResult> {
+    if (patch.trim() === "") {
+      return this.result(
+        call,
+        "patch is empty — provide the full patch from `*** Begin Patch` to `*** End Patch`.",
+      );
+    }
+    const abs = await this.resolveSafe(relPath);
+    if (!abs) {
+      return this.result(
+        call,
+        `Path not allowed (outside workspace): ${relPath}`,
+      );
+    }
+    if (patch.length > MAX_READ_BYTES) {
+      return this.result(
+        call,
+        `Patch too large (${patch.length} chars): ${relPath}`,
+      );
+    }
+    // Read the old content (if the file exists) for the diff preview and
+    // the undo snapshot.
+    let oldContent = "";
+    let existed = false;
+    try {
+      oldContent = await fs.promises.readFile(abs, "utf8");
+      existed = true;
+    } catch {
+      // File does not exist yet — old content is empty.
+    }
+    let newContent: string;
+    try {
+      newContent = applyPatch(patch, relPath, oldContent, existed);
+    } catch (err) {
+      return this.result(call, this.msg(err));
+    }
+    this.lastSnapshot = { relPath, oldContent, existed };
+    this.recordSnapshot(relPath, oldContent, existed);
+    await fs.promises.mkdir(path.dirname(abs), { recursive: true });
+    await fs.promises.writeFile(abs, newContent, "utf8");
+    this.recordChange(relPath, oldContent, newContent);
+    const hunks = (patch.match(/^@@/gm) ?? []).length;
+    const diff = unifiedDiff(oldContent, newContent, relPath, relPath);
+    const diffBlock = diff ? `\n\nDiff:\n${diff}` : "";
+    return this.result(
+      call,
+      `Applied patch to ${relPath} (${hunks} hunks)${diffBlock}`,
     );
   }
 
