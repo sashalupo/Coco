@@ -12,10 +12,10 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.100-1 (Instructions files — `.instructions.md`) — **complete** (2026-10-23, 6 slices S1–S6 done)
-- **Next step:** item 1.100-1 complete — next: plan item 1.100-2 (Prompt files improvements)
+- **Current item:** 1.100-2 (Prompt files improvements) — **planned** (2026-10-23, 6 slices S1–S6)
+- **Next step:** dispatch Coder for 1.100-2.S1 (prompt front-matter parsing in `src/prompts.ts`)
 - **Last updated:** 2026-10-23
-- **Last commit:** — (no planner commits yet)
+- **Last commit:** (planner commit for the 1.100-2 plan)
 - **Build state:** n/a (planner does not build)
 
 ### Item 1.99-28 — AI notebook editing improvements — new notebook tool
@@ -293,3 +293,89 @@ code — only the Coder writes code.
 - **R4 — `promptTitle` reuse** for the QuickPick label means an `.instructions.md` with no H1 falls back to the filename (label shows `foo.instructions`). No behavior risk.
 - **R5 — Indicator list growth:** the `instructions` webview message now carries default-instruction + auto-attached paths; the webview already renders a plain list, no change needed.
 
+
+### Item 1.100-2 — Prompt files improvements (front matter `mode`/`tools`, Play button, run semantics)
+
+**Changelog:** VS Code 1.100 — "Prompt files improvements": `.prompt.md` front matter gains `mode` (`ask`/`edit`/`agent`) and `tools` (agent-mode tool list); `description` front matter for both prompt and instructions file types; Play button in the prompt-file editor toolbar runs the prompt; `Chat: Use Prompt` → `Chat: Run Prompt` with run-immediately semantics; own language IDs ("Prompt"/"Instructions") so untitled docs work as temporary prompt files.
+**Planned:** 2026-10-23, 6 slices S1–S6
+**Baseline smoke:** 610 assertions
+
+**UI/behavior notes (from image notes):**
+- `run-prompt-from-play-button.png` — a **Play button in the editor title bar** of an open `.prompt.md` file; clicking it runs the prompt (mode switch + tool filter + send).
+- `run-prompt-as-slash-command.png` — a `/prompt-name` slash command running a prompt file in chat. **Decision: deferred** (see Deviations D5).
+
+**Design decisions (justified):**
+1. **Front matter parser in `src/prompts.ts`** (pure, mirrors `parseInstructionsFrontMatter` style from `src/instructions.ts`): first line exactly `---` (after BOM trim), closed by `---`/`...`; honors `mode` (validated against `ask|agent|edit`, invalid → `undefined`), `tools` (comma-separated tool names, trimmed, empties dropped), `description`, `title`. Body = everything after the closing delimiter, leading newlines trimmed. No/unclosed front matter → empty meta, full content as body.
+2. **`promptTitle` prefers front-matter `title`** over the first H1 (fallback chain: fm title → H1 → filename).
+3. **Run-immediately semantics** = host-side `ChatViewProvider.runPrompt(content, filePath)`: parse front matter → `toolbarStore.setMode(normalizeChatMode(meta.mode))` (default `agent`) → set a `pendingPromptTools` filter → push the stripped body as a user message → `runStream`. No webview round-trip for the Play button path.
+4. **Tool filter plumbing:** `RequestConfig.promptTools?: string[]` in `src/request.ts`; when present and non-empty, `body.tools` is filtered to the listed names (MCP tools included if their name matches). Empty/absent → existing behavior. `ChatViewProvider` holds `private pendingPromptTools: string[] | null`, set by `runPrompt`, consumed + cleared in `runStream`.
+5. **Webview `prompt_run` handler** (parity/future slash-command path): sets `#mode-select` value (if valid) and triggers the existing send flow with the given text.
+6. **Command rename:** `llm.usePrompt` → `llm.runPrompt` (title "LLM: Run Prompt", icon `$(play)`). **Deviation D1:** the old `llm.usePrompt` ID is kept as a thin deprecated alias (one-line `executeCommand("llm.runPrompt")`) so existing keybindings/activation events don't break; the QuickPick title becomes "LLM: Run Prompt" and picking a file now **runs** it (mode switch + tool filter + send) instead of `prompt_inject`-ing it as context.
+7. **Play button:** `menus["editor/title"]` entry gated on `resourceFilename =~ /.*\.prompt\.md$/` (works for untitled docs whose name ends in `.prompt.md`, matching the language-ID goal).
+8. **Language IDs:** `contributes.languages` — `llm.prompt` (Prompt, `*.prompt.md`) and `llm.instructions` (Instructions, `*.instructions.md`). No grammars (markdown fallback rendering is fine).
+9. **`PROMPT_TEMPLATE`** gains a front-matter example (`mode: agent`, `tools: read_file, edit_file`, `description: …`).
+
+**Files to touch:** `src/prompts.ts`, `src/request.ts`, `src/chat/ChatViewProvider.ts`, `src/chat/webview.ts`, `src/extension.ts`, `package.json`, `scripts/smoke-test.js`
+
+**Slices:**
+
+- **1.100-2.S1** — `src/prompts.ts`: front-matter parsing + template (+10 smoke).
+  1. Add `export interface PromptFileMeta { mode?: "ask" | "agent" | "edit"; tools?: string[]; description?: string; title?: string }` and `export function parsePromptFrontMatter(content: string): { meta: PromptFileMeta; body: string }` (algorithm per decision 1; `mode` validated via `["ask","agent","edit"].includes(v)`; `tools` split on `,`).
+  2. `promptTitle`: new first fallback — `parsePromptFrontMatter(content).meta.title` before the H1 match.
+  3. `PROMPT_TEMPLATE` → front-matter example + existing H1/comment body.
+  4. Smoke: section `// 68) prompt front matter (1.100-2.S1)`, `require("../out/prompts.js")`, **10 assertions**, prefix `prompt2-s1:` (parse mode/tools/description/title; no front matter; unclosed front matter; invalid mode → `undefined`; quoted values; `tools` with spaces/empties; body after delimiter; `promptTitle` prefers fm title over H1; template round-trips; `stripPromptComments` still works on the body).
+  Acceptance: `npm run compile` passes; smoke → **620** (610 + 10).
+
+- **1.100-2.S2** — `src/request.ts`: `promptTools` filter (+3 smoke).
+  1. `RequestConfig`: add `promptTools?: string[];` (doc: "when set, restrict `body.tools` to these names").
+  2. In the tools block: after building the candidate list (`CODE_TOOLS` + `mcpTools`), if `cfg.promptTools` is a non-empty array → `body.tools = candidates.filter((t) => cfg.promptTools!.includes(t.function.name))`. Ask mode unchanged (`tool_choice: "none"`, no tools).
+  3. Smoke: section `// 69) promptTools filter (1.100-2.S2)`, **3 assertions**, prefix `prompt2-s2:` (build a request with `promptTools: ["read_file"]` → `body.tools` has exactly 1 entry named `read_file`; `promptTools: []` → full tool list; ask mode + `promptTools` → no `tools` field).
+  Acceptance: compile passes; smoke → **623** (620 + 3).
+
+- **1.100-2.S3** — `src/chat/ChatViewProvider.ts`: `runPrompt` + tool filter wiring (+4 smoke).
+  1. Import `parsePromptFrontMatter, stripPromptComments, MAX_PROMPT_CHARS` from `../prompts`.
+  2. `private pendingPromptTools: string[] | null = null;`
+  3. `public async runPrompt(content: string, filePath: string): Promise<void>`:
+     - Guard: `if (this.abortController) { this.postMessage({ type: "error", message: "A request is already running — stop it first." }); return; }`
+     - `const { meta, body: rawBody } = parsePromptFrontMatter(content.slice(0, MAX_PROMPT_CHARS));`
+     - `const text = stripPromptComments(rawBody);` if empty → `postMessage({ type: "error", message: "That prompt file is empty (or only comments)." })`, return.
+     - `await this.toolbarStore.setMode(normalizeChatMode(meta.mode));` (absent → `agent` default via `normalizeChatMode(undefined)`).
+     - `this.pendingPromptTools = meta.tools && meta.tools.length > 0 ? meta.tools : null;`
+     - `this.history.push({ role: "user", content: text });` then `await this.runStream(readSettings(), this.toolbarStore.get(), false);`
+  4. In `runStream`: at the top, `const promptTools = this.pendingPromptTools; this.pendingPromptTools = null;` and pass `promptTools` into the `buildRequestBody` config (alongside `mode: toolbar.mode`).
+  5. Smoke: section `// 70) runPrompt (1.100-2.S3)`, **4 assertions**, prefix `prompt2-s3:` (static source assertions on `src/chat/ChatViewProvider.ts`: contains `runPrompt(`; contains `parsePromptFrontMatter`; contains `pendingPromptTools`; the `buildRequestBody` call site passes `promptTools`).
+  Acceptance: compile passes; smoke → **627** (623 + 4).
+
+- **1.100-2.S4** — `src/chat/webview.ts`: `prompt_run` handler (+2 smoke).
+  1. In `handleHostMessage`, next to `case 'prompt_inject':`: `case 'prompt_run':` — `const text = String(msg.text ?? ''); if (!text) break;` if `msg.mode` is one of `ask|agent|edit` set `modeSelect.value = msg.mode` (the change listener posts the toolbar sync); then set `inputEl.value = text` and invoke the existing send path (same function the Send button calls).
+  2. Smoke: section `// 71) prompt_run webview (1.100-2.S4)`, **2 assertions**, prefix `prompt2-s4:` (webview source contains `prompt_run`; the `prompt_run` region reaches the send invocation).
+  Acceptance: compile passes; smoke → **629** (627 + 2).
+
+- **1.100-2.S5** — `src/extension.ts`: rename to `llm.runPrompt` + run semantics (+4 smoke).
+  1. Rename the `llm.usePrompt` registration to `llm.runPrompt`; QuickPick title → `"LLM: Run Prompt"`, placeHolder → `"Select a prompt to run in chat"`.
+  2. On pick: read file → `parsePromptFrontMatter` → `provider.runPrompt(content, uri.fsPath)` (replaces the `prompt_inject` postMessage); keep the empty-body guard message.
+  3. Add deprecated alias: `vscode.commands.registerCommand("llm.usePrompt", () => vscode.commands.executeCommand("llm.runPrompt"))`.
+  4. Keep the "New Prompt File…" flow unchanged (it now writes the S1 template).
+  5. Smoke: section `// 72) llm.runPrompt command (1.100-2.S5)`, **4 assertions**, prefix `prompt2-s5:` (read `out/extension.js`: contains `"llm.runPrompt"`; contains the deprecated `"llm.usePrompt"` alias; contains `runPrompt(` (calls the provider method); the old inject path is gone from that command).
+  Acceptance: compile passes; smoke → **633** (629 + 4).
+
+- **1.100-2.S6** — `package.json`: command rename, Play button menu, language IDs (+4 smoke).
+  1. `contributes.commands`: replace the `llm.usePrompt` entry with `{ "command": "llm.runPrompt", "title": "LLM: Run Prompt", "icon": "$(play)" }`.
+  2. `activationEvents`: `onCommand:llm.usePrompt` → `onCommand:llm.runPrompt`.
+  3. New `contributes.menus`: `{ "editor/title": [{ "command": "llm.runPrompt", "when": "resourceFilename =~ /.*\\.prompt\\.md$/" }] }`.
+  4. New `contributes.languages`: `llm.prompt` (name "Prompt", extensions `[".prompt.md"]`) and `llm.instructions` (name "Instructions", extensions `[".instructions.md"]`).
+  5. Smoke: section `// 73) runPrompt schema (1.100-2.S6)`, **4 assertions**, prefix `prompt2-s6:` (commands contain `llm.runPrompt` with title "LLM: Run Prompt" and `$(play)` icon; `menus["editor/title"]` has the `llm.runPrompt` entry with the `.prompt.md` `when` clause; `languages` contains both `llm.prompt` and `llm.instructions` with the right extensions).
+  Acceptance: compile passes; smoke → **637** (633 + 4).
+
+**Total expected assertions:** 610 → **637** (+27: S1 +10, S2 +3, S3 +4, S4 +2, S5 +4, S6 +4).
+
+**Overall acceptance (Tester):** A `.prompt.md` file with `mode: ask` + `tools: read_file, edit_file` front matter: the Play button appears in its editor title bar; clicking it (or `LLM: Run Prompt` from the palette) switches the chat mode picker to the front-matter mode, sends the stripped body immediately, and (in agent mode) the request's `tools` array contains only the listed tools. Files without front matter run in the default agent mode with the full tool list. Empty/comment-only files → error notice, no send. A request already running → "stop it first" notice. Untitled docs named `*.prompt.md` get the Play button and the `llm.prompt` language. `npm run compile` clean; `node scripts/smoke-test.js` → **637 PASS**.
+
+**Risks / deviations:**
+- **D1 — command rename:** `llm.usePrompt` kept as a one-line deprecated alias (behavior now = run). Deviation from a hard rename to avoid breaking existing keybindings/activation.
+- **D2 — `prompt_inject` retained:** the webview handler stays (harmless); only the prompt command stops using it.
+- **D3 — `tools` in ask mode:** ignored (ask mode never sends tools); documented in the template comment.
+- **D4 — Play button `when` clause:** `resourceFilename =~ /.*\.prompt\.md$/` covers untitled docs named `*.prompt.md`; a doc with the `llm.prompt` language but a different name won't show the button (acceptable).
+- **D5 — slash command `/prompt-name` deferred:** the `run-prompt-as-slash-command.png` behavior (intercepting `/name` in chat input and matching discovered prompt files) is NOT in this item's slices; it needs its own slice (discovery + name normalization + `handleSend` interception). Flagged for a follow-up item.
+- **R1 — `runPrompt` concurrency:** guarded by the `abortController` check (S3).
+- **R2 — `promptTools` cleared per turn:** set/cleared inside `runStream` so a normal follow-up send in the same conversation uses the full tool list again (the filter applies only to the run turn).
