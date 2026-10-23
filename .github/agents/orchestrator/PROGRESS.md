@@ -13,14 +13,17 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-31** — Notebook tools for agent mode — **NOT STARTED** (no plan yet)
-- **Current slice:** none (1.100-30 complete)
+- **Current item:** **1.100-31** — Notebook tools for agent mode — **IN PROGRESS** (plan: 5 slices; S-001 done)
+- **Current slice:** 1.100-31 S-001 DONE (504abbf, verified PASS 79c0539)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Planner** for 1.100-31 (Notebook tools for agent mode) — first slice of a new item (user goal: continue until version 1.107)
-- **Last updated:** 2026-10-23
-- **Last commit:** 3b0606e (tester verified 1.100-30 S-003; item complete)
-- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-23)
+- **Next step:** dispatch the **Coder** for 1.100-31 S-002 (`src/tools.ts`: 4 tool schemas + isMutatingTool) (user goal: continue until version 1.107)
+- **Last updated:** 2026-10-24
+- **Last commit:** 79c0539 (tester verified 1.100-31 S-001)
+- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-24)
+- **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
+  reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
+  restore the committed 791-state before continuing.
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
