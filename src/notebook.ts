@@ -468,3 +468,56 @@ export function extractCellOutputs(cell: NbCell): CellOutputContext {
   }
   return { text, images };
 }
+
+/**
+ * Structural mirror of `vscode.NotebookCellOutputItem` (item 1.100-30):
+ * declared here so this pure module never imports `vscode`. The real
+ * `vscode.NotebookCellOutput` is structurally compatible and is cast at the
+ * call site in `extension.ts`.
+ */
+export interface NotebookCellOutputItemLike {
+  mime: string;
+  data(): Promise<Uint8Array | Buffer>;
+}
+
+export interface NotebookCellOutputLike {
+  items: NotebookCellOutputItemLike[];
+}
+
+const LIVE_OUTPUT_IMAGE_MIMES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+];
+
+/**
+ * Extract a live notebook cell output into chat context (item 1.100-30):
+ * `text/plain` items concatenated (utf-8) into `text`; image items
+ * (png/jpeg/gif/webp/bmp) base64-encoded as `data:<mime>;base64,<value>`
+ * URLs in `images`; other mimes ignored. Same `{ text, images }` shape as
+ * `extractCellOutputs`. Pure — no vscode import.
+ */
+export async function extractNotebookCellOutput(
+  output: NotebookCellOutputLike
+): Promise<{ text: string; images: string[] }> {
+  const textParts: string[] = [];
+  const images: string[] = [];
+  for (const item of output.items ?? []) {
+    if (!item || typeof item.mime !== "string") continue;
+    let bytes: Uint8Array | Buffer;
+    try {
+      bytes = await item.data();
+    } catch {
+      continue;
+    }
+    if (item.mime === "text/plain") {
+      const s = Buffer.from(bytes).toString("utf-8");
+      if (s) textParts.push(s);
+    } else if (LIVE_OUTPUT_IMAGE_MIMES.includes(item.mime)) {
+      images.push(`data:${item.mime};base64,${Buffer.from(bytes).toString("base64")}`);
+    }
+  }
+  return { text: textParts.join(""), images };
+}
