@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-11 (in progress) — S1, S2, S3 verified PASS
-- **Next step:** verify 1.100-11.S4 (smoke-test guards in scripts/smoke-test.js)
+- **Current item:** 1.100-11 (complete) — S1, S2, S3, S4 verified PASS
+- **Next step:** item 1.100-11 done; await next item from planner
 - **Last updated:** 2026-10-23
-- **Last commit:** dfe2f34 (1.100-11.S3 manual-edit hook, verified PASS)
-- **Build state:** compiles clean; smoke 701/701 PASS (verified 2026-10-23)
+- **Last commit:** 3c4de22 (1.100-11.S4 smoke guards, verified PASS)
+- **Build state:** compiles clean; smoke 714/714 PASS (verified 2026-10-23)
 
 ## Verified (recap)
 
@@ -37,6 +37,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 **1.100-8.S5** (2026-10-23) — PASS. Smoke-test regression guards in `scripts/smoke-test.js` (commit 08f2625): 15 new `pill-s5` assertions — no Done button in input row / no `#done` element; Enter (no Shift) → `doSend()`; New Chat only via `#new-chat`/`#quick-new-chat` (input row has no other session-reset control); pure-function tests of `parsePillRefs`/`dedupePills` against compiled `out/context.js` (parse + within-message dedupe; existing-order merge + id drop); pill pipeline present (`context_pills`/`remove_pill`/`renderPillStrip` in webview, `postContextPills` + `remove_pill` case in ChatViewProvider, `llm.addContext` registered + contributed). Assertions are genuine (string/behavior checks that fail if the feature is removed). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory. Build exit 0; smoke 690/690. **Item 1.100-8 complete (S1–S5 all PASS).**
 
 
+
+**1.100-11.S4** (2026-10-23) — **PASS**. Smoke-test regression guards in `scripts/smoke-test.js` (commit 3c4de22). Build exit 0; smoke 714/714 (701 + 13 new `manual-edit-s4` assertions). Scope clean: commit touches only `scripts/smoke-test.js` (+117) + coder memory; no `src/` or `package.json` changes; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Guards verified genuine: `ToolExecutor.ts` exports `externallyChanged` + `FileSnapshot`; `llm.agent.trackManualEdits` schema (boolean, default true) read from `package.json`; `config.ts` reads `c.get<boolean>("agent.trackManualEdits", true)`; `presets.ts` has `agentTrackManualEdits: boolean;`; `ChatViewProvider.ts` references `settings.agentTrackManualEdits` gate, `externallyChanged`, `touchedFiles`, and the "The user manually modified … Re-read it with read_file before editing it." note. Pure-function tests of compiled `out/tools/ToolExecutor.js` `externallyChanged` (vscode stubbed via `Module._load`): mtime change → `["a.ts"]`; size change → `["b.ts"]`; identical maps → `[]`; deleted path (only in snapshots) → not listed; order preserved (`["a.ts","z.ts","m.ts"]`). Count gate updated 701 → 714 and matches. Item-level acceptance (1.100-11): external change detected before next turn (top-of-loop hook lines 1491-1506, before `streamOneTurn`) with system note + `[manual edit detected: <path>]` delta note; note fires at most once per external change (re-snapshot `snapshotTouchedFiles(changed)` line 1505); agent's own writes never trigger (post-batch baseline `snapshotTouchedFiles(editedPaths)` line 1735); setting off disables via `settings.agentTrackManualEdits` gate (line 1491); no external edits → `externallyChanged` returns `[]` → no note. **Item 1.100-11 complete (S1–S4 all PASS).**
 
 **1.100-11.S3** (2026-10-23) — **PASS**. Agent-loop manual-edit hook in `src/chat/ChatViewProvider.ts` (commit dfe2f34). Build exit 0; smoke 701/701. Scope clean: commit touches only `src/chat/ChatViewProvider.ts` (+105) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: `private touchedFiles: Map<string, FileSnapshot> = new Map()` field (line 169), reset at run start `this.touchedFiles = new Map()` (line 1468) right after `clearChangeSummary()`/`autoFixRounds` reset; top-of-loop hook (lines 1491-1506) before `streamOneTurn` (line 1522): gated on `settings.agentTrackManualEdits && this.touchedFiles.size > 0`, builds current map via `statTouchedFiles()`, calls `externallyChanged`, per changed path pushes system message "The user manually modified <path> while the agent was running. Re-read it with read_file before editing it." + delta note `[manual edit detected: <path>]`, then re-snapshots changed paths (`snapshotTouchedFiles(changed)`) so the note fires at most once per external change; post-batch `snapshotTouchedFiles(editedPaths)` after the autofix block (line 1735) so the agent's own writes become the baseline; `externallyChanged` + `type FileSnapshot` imported from `../tools/ToolExecutor` (lines 57-59); `snapshotTouchedFiles`/`statTouchedFiles` use existing `fs` import (line 9, pre-existing — not added by dfe2f34), skip on stat error; no new npm dependencies.
 
