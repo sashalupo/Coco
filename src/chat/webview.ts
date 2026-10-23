@@ -2530,7 +2530,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						summary.appendChild(label);
 						var name = document.createElement('span');
 						name.className = 'tool-name';
-						name.textContent = msg.tool || 'tool';
+						name.textContent = msg.displayName || msg.tool || 'tool';
 						summary.appendChild(name);
 						details.appendChild(summary);
 						var args = document.createElement('div');
@@ -2601,7 +2601,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							tcSummary.appendChild(tcLabel);
 							var tcName = document.createElement('span');
 							tcName.className = 'tool-name';
-							tcName.textContent = msg.tool || 'tool';
+							tcName.textContent = msg.displayName || msg.tool || 'tool';
 							tcSummary.appendChild(tcName);
 							if (msg.modified === true) {
 								var tcBadge = document.createElement('span');

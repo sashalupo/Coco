@@ -13,11 +13,11 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-38 · MCP Tool Annotations (human-readable names, `readOnlyHint` auto-approve) — IN PROGRESS
-- **Current slice:** 1.100-38.S-003 DONE (1 file: `src/chat/ChatViewProvider.ts` — agent-loop tool-call section: before the approval gate, `mcpAnnotations = isMcpToolName(name) ? this.mcpManager.getToolAnnotations(name) : null` + `displayName = mcpAnnotations?.title || name`; approval gate condition gains `&& !(mcpAnnotations?.readOnlyHint === true)` so read-only MCP tools skip the approval card (non-read-only MCP + built-in mutating tools unchanged); `displayName` added to both `tool_start` and `tool_result` postMessage payloads. Verified: tsc exit 0; smoke 798/798 PASS). Not committed — orchestrator commits.
-- **Next step:** 1.100-38 S-004
+- **Current slice:** 1.100-38.S-004 DONE (1 file: `src/chat/webview.ts` — `tool_start` case and `tool_result` fallback card: `.tool-name` textContent now `msg.displayName || msg.tool || 'tool'` so the MCP annotation `title` renders when present, else the raw tool name; no other rendering changed. Verified: tsc exit 0; smoke 798/798 PASS). Not committed — orchestrator commits.
+- **Next step:** 1.100-38 S-005
 - **Last updated:** 2026-10-24
 - **Last commit:** 504abbf (1.100-31 S-001, verified PASS)
-- **Build state:** compiles clean (tsc exit 0, verified 2026-10-24, 1.100-38 S-003); smoke 798/798 (verified 2026-10-24, 1.100-38 S-003)
+- **Build state:** compiles clean (tsc exit 0, verified 2026-10-24, 1.100-38 S-004); smoke 798/798 (verified 2026-10-24, 1.100-38 S-004)
 
 ## Plan pointer
 
@@ -37,7 +37,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 ## Todo
 
 Slice detail pruned (see `git log` for full history). Recent items:
-- 1.100-38 in progress: MCP tool annotations — S-001 `src/mcp.ts` (pure): `McpToolAnnotations` interface, `McpTool.annotations`, `mcpToolDisplayName()` (title fallback to name); S-002 `src/mcpManager.ts`: `getToolAnnotations(openaiName)` lookup via `parseMcpToolName` + `getServerTools`; S-003 `src/chat/ChatViewProvider.ts`: annotations + `displayName` in agent loop, `readOnlyHint` skips approval gate, `displayName` in `tool_start`/`tool_result` payloads.
+- 1.100-38 in progress: MCP tool annotations — S-001 `src/mcp.ts` (pure): `McpToolAnnotations` interface, `McpTool.annotations`, `mcpToolDisplayName()` (title fallback to name); S-002 `src/mcpManager.ts`: `getToolAnnotations(openaiName)` lookup via `parseMcpToolName` + `getServerTools`; S-003 `src/chat/ChatViewProvider.ts`: annotations + `displayName` in agent loop, `readOnlyHint` skips approval gate, `displayName` in `tool_start`/`tool_result` payloads; S-004 `src/chat/webview.ts`: `tool_start` + `tool_result` fallback card render `msg.displayName || msg.tool || 'tool'` in `.tool-name`.
 - 1.100-31 complete (smoke 798): notebook tools for agent mode — S-001 `extractVariableNames` + `formatKernelState` in `src/notebook.ts` (pure, no vscode import); S-002 `src/tools.ts` — 4 new `CODE_TOOLS` schemas (`run_notebook_cell` {path, cell_index}, `get_kernel_state` {path}, `list_packages` {}, `install_package` {package, version?}); `isMutatingTool` true only for `run_notebook_cell`+`install_package`; S-003 `src/tools/ToolExecutor.ts` — 4 switch cases + private methods (`runNotebookCell` jupyter→python3→python fallback + kernel-state recording, `getKernelState`, `listPackages`/`installPackage` pip→pip3, `spawnToolCommand` helper, `kernelState` Map); S-004 `package.json`+`src/presets.ts`+`src/config.ts`+`src/request.ts` — `llm.chat.notebookTools.enabled` (boolean, default `true`) + `body.tools` filter dropping the 4 execution tools when explicitly `false` (`notebook_edit`/`new_notebook` untouched); S-005 `scripts/smoke-test.js` — `nbtools-s1..s6` guards + count gate 791→798.
 - 1.100-30 complete (smoke 791): drag and drop cell outputs to chat — S-001 `extractNotebookCellOutput` + `NotebookCellOutputLike` in `src/notebook.ts` (pure, no vscode import; affc774); S-002 `registerDragAndDropController` (viewContainerId `llm`, mime `notebook.cellOutput`) in `src/extension.ts` — Alt rule for text-only drops, vision gate, per-item try/catch, reuses `cell_output_inject`; `llm.chat.cellOutputDrop.enabled` setting; local `declare module "vscode"` shim (pinned @types/vscode 1.140.0 predates the API; 26efb84); S-003 smoke guards `drop-s1..s4` in `scripts/smoke-test.js` (controller + viewContainerId, mime + Alt rule, `extractNotebookCellOutput`, setting boolean default true), gate 787→791.
 - 1.100-29 complete (smoke 787): alt-text code action (S-001 `src/codeaction.ts`, S-002 `CodeActionProvider.ts`+`package.json`, S-003 smoke).
