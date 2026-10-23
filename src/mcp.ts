@@ -41,6 +41,17 @@ export interface McpToolResult {
   isError?: boolean;
 }
 
+/** Params of an MCP `notifications/progress` message. */
+export interface McpProgressNotification {
+  progressToken?: unknown;
+  progress: number;
+  total?: number;
+  message?: string;
+}
+
+/** Callback invoked for each MCP progress notification. */
+export type McpProgressCallback = (p: McpProgressNotification) => void;
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -142,10 +153,17 @@ export class McpJsonRpc {
   private pending = new Map<number, PendingRequest>();
   private onData: (chunk: any) => void;
   private closed = false;
+  /** Invoked for incoming notifications (messages without a pending id). */
+  public onNotification?: (method: string, params: unknown) => void;
 
-  constructor(input: NodeJS.ReadableStream, output: NodeJS.WritableStream) {
+  constructor(
+    input: NodeJS.ReadableStream,
+    output: NodeJS.WritableStream,
+    onNotification?: (method: string, params: unknown) => void,
+  ) {
     this.input = input;
     this.output = output;
+    this.onNotification = onNotification;
     this.onData = (chunk: any) => {
       this.buffer +=
         typeof chunk === "string" ? chunk : String(chunk.toString());
@@ -174,6 +192,9 @@ export class McpJsonRpc {
     }
     // Only settle pending requests; ignore notifications and unknown ids.
     if (typeof msg.id !== "number" || !this.pending.has(msg.id)) {
+      if (typeof msg.method === "string" && this.onNotification) {
+        this.onNotification(msg.method, msg.params);
+      }
       return;
     }
     const entry = this.pending.get(msg.id)!;
@@ -322,6 +343,25 @@ export class McpClient {
     return this.rpc
       .request("tools/call", { name, arguments: args })
       .then((r) => r as McpToolResult);
+  }
+
+  /**
+   * Wire (or clear) a callback for `notifications/progress` messages
+   * received over stdio while a tool runs.
+   */
+  setProgressCallback(cb: McpProgressCallback | undefined): void {
+    this.rpc.onNotification = cb
+      ? (method, params) => {
+          if (
+            method === "notifications/progress" &&
+            params !== null &&
+            typeof params === "object" &&
+            !Array.isArray(params)
+          ) {
+            cb(params as McpProgressNotification);
+          }
+        }
+      : undefined;
   }
 
   /** Close the RPC channel and kill the child. Idempotent. */

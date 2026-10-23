@@ -12,12 +12,12 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-14 · MCP support for image output — **COMPLETE** (S1–S5)
-- **Current slice:** 1.100-14.S5 DONE (`scripts/smoke-test.js`: `mcp-img-s5` guard block, 8 new assertions, 750 → 758)
-- **Next step:** 1.100-15 — next backlog item (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current item:** 1.100-15 · Enhanced MCP input/output/progress UI — in progress
+- **Current slice:** 1.100-15.S1 DONE (`src/mcp.ts`: `McpProgressNotification`/`McpProgressCallback` types, `McpJsonRpc.onNotification` hook, `McpClient.setProgressCallback`)
+- **Next step:** 1.100-15.S2 (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-23
-- **Last commit:** test(llm): smoke guards for MCP image output (1.100-14.S5)
-- **Build state:** compiles clean; smoke 758 PASS
+- **Last commit:** feat(llm): MCP progress notification type + stdio capture hook (1.100-15.S1)
+- **Build state:** compiles clean; smoke 758 PASS (smoke slice is S5)
 
 ## Plan pointer
 
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-15.S1 — `src/mcp.ts`: (a) `export interface McpProgressNotification { progressToken?: unknown; progress: number; total?: number; message?: string; }` + `export type McpProgressCallback = (p: McpProgressNotification) => void;` (after `McpToolResult`); (b) `McpJsonRpc` — new optional 3rd constructor arg `onNotification?: (method: string, params: unknown) => void` stored as a public field (also assignable post-construction); in `handleLine` the existing drop path (`msg.id` not a pending response) now invokes `onNotification(msg.method, msg.params)` when `msg.method` is a string and the hook is set, then returns as before — pending-request resolution unchanged; (c) `McpClient.setProgressCallback(cb: McpProgressCallback | undefined): void` — wires `this.rpc.onNotification` to filter `method === "notifications/progress"` + inline plain-object check (`params !== null && typeof params === "object" && !Array.isArray(params)`) before calling `cb`; passing `undefined` clears the hook. `McpHttpClient` untouched. Compile clean.
 - [x] 1.100-14.S5 — smoke-test guards in `scripts/smoke-test.js` (`mcp-img-s5` block, 8 new assertions, 750 → 758): (a) `mcpResultToImages` pure tests from `out/mcp.js` (text-only → `[]`; single image block → `data:image/png;base64,QUJD`; mixed text+image → 1 image, text ignored; image block missing `data` → skipped → `[]`); (b) `mcpResultToText` regression — image-only result → `""` (no leak); (c) static refs — `src/mcpManager.ts` references `mcpResultToImages` + `images?: string[]`, `out/chat/ChatViewProvider.js` posts `images` in the `tool_result` message (`mcpImages && mcpImages.length ? { images: mcpImages } : {}`), `src/chat/webview.ts` references the `tool-img` class; (d) hard total-count gate raised 750 → 758. **Item 1.100-14 COMPLETE** (S1–S5; smoke 758).
 - [x] 1.100-14.S4 — `src/chat/webview.ts`: in the `tool_result` case, after appending `pre.tool-output` in BOTH the found-card and fallback branches, if `msg.images` is a non-empty array append a `div.tool-images` with one `<img class="tool-img">` per URI, guarded by the same `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` regex used for cell outputs (non-matching/non-string URIs skipped; empty container not appended); CSS `.tool-images` (flex, gap 6px, wrap, margin-top 6px, padding 0 8px 8px, border-top) + `.tool-img` (max-width/max-height 240px, border-radius 4px, cursor zoom-in) added after the `.tool-output` rules. No other file touched. Compile clean.
 - [x] 1.100-14.S3 — `src/chat/ChatViewProvider.ts` MCP branch of the agent tool loop: hoisted `let mcpImages: string[] | undefined;` next to the `result` declaration; on the `mcpManager.execute` success path `mcpImages = mcpRes.images;` (error/arg-error paths leave it undefined); the single `tool_result` postMessage now appends `...(mcpImages && mcpImages.length ? { images: mcpImages } : {})` after the existing `modified` spread — non-MCP tools post exactly as before (no `images` key). No other file touched. Compile clean.
