@@ -77,6 +77,93 @@ export function extractTaggedFiles(text: string): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Context pills (1.100-8.S1): pure model + parsing/dedupe helpers. Pills are
+// the UI representation of context references typed into the chat input
+// (`@path/to/file`, `#folder:name`). Rendering lives in the webview (S2);
+// host wiring lives in the ChatViewProvider (S3).
+// ---------------------------------------------------------------------------
+
+/** A single context reference shown as a removable pill above the input. */
+export interface ContextPill {
+  /** Stable identity: `kind + ':' + path` (path may be empty). */
+  id: string;
+  kind: "file" | "folder" | "selection" | "diagnostics" | "image";
+  /** Human-readable label (basename for files, folder name for folders). */
+  label: string;
+  /** The referenced path (workspace-relative when possible). */
+  path?: string;
+}
+
+/** Basename of a path-like token (last `/`-separated segment). */
+function pillLabel(path: string): string {
+  const i = path.lastIndexOf("/");
+  return i === -1 ? path : path.slice(i + 1);
+}
+
+/**
+ * Extract context-reference pills from a user message.
+ *
+ * Recognizes `@path/to/file` references (same token rules as
+ * {@link extractTaggedFiles}) and `#folder:name` references (same token
+ * rules as {@link extractFolderTag}). Each reference becomes a pill with a
+ * stable `id` (`kind + ':' + path`), the `kind`, a human-readable `label`
+ * (basename / folder name), and the `path`. Order of first appearance is
+ * preserved; duplicates within the message are dropped. Pure and testable.
+ */
+export function parsePillRefs(text: string): ContextPill[] {
+  if (!text) {
+    return [];
+  }
+  const out: ContextPill[] = [];
+  const seen = new Set<string>();
+  const add = (kind: ContextPill["kind"], path: string) => {
+    const id = `${kind}:${path}`;
+    if (seen.has(id)) {
+      return;
+    }
+    seen.add(id);
+    out.push({ id, kind, label: pillLabel(path), path });
+  };
+
+  const fileRe = /@([A-Za-z0-9_.\-/]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = fileRe.exec(text)) !== null) {
+    add("file", m[1]);
+  }
+
+  const folderRe = /#folder(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/gi;
+  while ((m = folderRe.exec(text)) !== null) {
+    const name = (m[1] ?? m[2] ?? "").trim();
+    add("folder", name);
+  }
+
+  return out;
+}
+
+/**
+ * Merge an existing pill list with newly parsed references.
+ *
+ * Keeps order (existing pills first, then new refs in their order) and
+ * drops duplicates by `kind + path` (i.e. by pill `id`). Pure and testable.
+ */
+export function dedupePills(
+  existing: ContextPill[],
+  refs: ContextPill[],
+): ContextPill[] {
+  const out: ContextPill[] = [];
+  const seen = new Set<string>();
+  for (const p of [...existing, ...refs]) {
+    const key = `${p.kind}:${p.path ?? ""}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
 /**
  * Format the gathered context into a readable text block.
  *
