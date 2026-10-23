@@ -165,6 +165,12 @@ export class McpManager {
       }
     })();
     this.starting.set(name, p);
+    // If the constructor threw synchronously, the catch block's
+    // `starting.delete(name)` ran before the set above (a no-op), leaving
+    // the rejected promise cached forever. This microtask runs after the
+    // set, so the delete actually removes the entry. Idempotent with the
+    // in-catch/finally deletes on the async failure path.
+    p.catch(() => this.starting.delete(name));
     return p;
   }
 
