@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-3 — Faster agent mode edits (apply-patch edit format) — **DONE** (2 slices S1–S2, both verified PASS)
-- **Next step:** dispatch Planner for the next changelog item after 1.100-3
+- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1 verified PASS)
+- **Next step:** dispatch Coder for 1.100-7.S2 (fetchUrl maxTokens wiring + tools.ts description)
 - **Last updated:** 2026-10-23
-- **Last commit:** 347395f (1.100-3.S1); S2 uncommitted in working tree
-- **Build state:** compiles clean; smoke 654/654 PASS (verified 2026-10-23)
+- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1 uncommitted in working tree
+- **Build state:** compiles clean; smoke 664/664 PASS (verified 2026-10-23)
+
+### 1.100-7.S1 — `src/fetchTool.ts`: `htmlToMarkdown` + `trimToTokenBudget` (pure) (+10 smoke) (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 664/664 PASS (654 baseline + 10 new `fetchmd-s1:`), 0 FAIL (grep -c '^PASS:' → 665 = 664 assertions + 1 total-count check line, which is not counted as an assertion; '^FAIL:' → 0).
+- All 7 acceptance criteria met: (1) compile exit 0; (2) smoke 664 assertions + total-count check `PASS: total assertion count is 664` (Coder's `assertCount` counter + final check, not counted as an assertion — matches Coder report); (3) `src/fetchTool.ts` pure — zero import/require statements (only doc-comment mentions of "vscode import"); `git diff src/fetchTool.ts` is purely additive (+521, 0 removed lines) so `htmlToText` is byte-for-byte unchanged; (4) section `// 76) fetch markdown + budget (1.100-7.S1)` at smoke-test.js:5129 with exactly 10 `fetchmd-s1:` assertions (L5135 headings, L5142 links/images, L5151 emphasis+code, L5160 code fence, L5170 lists, L5179 table, L5189 head/script/style drop + entities, L5193 estimateTokens, L5198 under-budget passthrough, L5217 over-budget nav drop + marker + budget) — 1:1 with the plan list; (5) malformed-HTML spot-check via `require("./out/fetchTool.js")`: `htmlToMarkdown("<div><p>unclosed")` → `"unclosed"`, `htmlToMarkdown("<a href=\"x\"><b>oops")` → `"[**oops"`, `htmlToMarkdown("<ul><li>a<li>b</ul></div></p>")` → `"- a\n\n- b"` — all return strings, none throw (D1); (6) budget spot-check: `trimToTokenBudget("# Only\n" + "word ".repeat(5000), 100)` → `estimateTokens(result.text) = 16 <= 100`, `trimmed: true`, marker `… [trimmed to fit context window: dropped 1 section(s)]` present; (7) regression guard: all 11 pre-existing `fetch-s1:`/`fetch-s2:` assertions still present and passing (0 FAIL overall).
+- Working-tree scope (S1 uncommitted): `src/fetchTool.ts` (+521), `scripts/smoke-test.js` (+98), `.github/agents/coder/PROGRESS.md` (+12/−4), `.github/agents/planner/PROGRESS.md` (+107/−10), `m ninfer` — no out-of-scope source files.
+- **Verdict: PASS.** Next: 1.100-7.S2 (fetchUrl maxTokens wiring + tools.ts description, +5 smoke → 669).
 
 ### 1.100-3.S2 — FINAL: `apply_patch` tool schema + executor wiring (+5 smoke) (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 654/654 PASS (649 baseline + 5 new `patch-s2:`), 0 FAIL (grep -c '^PASS:' → 654, '^FAIL:' → 0).

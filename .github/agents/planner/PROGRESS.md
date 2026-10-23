@@ -12,10 +12,10 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.100-3 (Faster agent mode edits — apply-patch edit format) — **In progress** (planned 2026-10-23, 2 slices S1–S2)
-- **Next step:** dispatch 1.100-3.S1 (pure patch parser/applier in `src/patch.ts`)
+- **Current item:** 1.100-7 (Fetch tool improvements — entire page, Markdown, context-window trimming) — **In progress** (planned 2026-10-23, 4 slices S1–S4)
+- **Next step:** dispatch 1.100-7.S1 (htmlToMarkdown + trimToTokenBudget in `src/fetchTool.ts`)
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-3 plan)
+- **Last commit:** (planner commit for the 1.100-7 plan)
 - **Build state:** n/a (planner does not build)
 
 ### Item 1.99-28 — AI notebook editing improvements — new notebook tool
@@ -461,3 +461,104 @@ code — only the Coder writes code.
 - **R1 — sequential hunk application:** later hunks match against already-patched content.
 - **R2 — large files:** the patch string and target file are both capped at `MAX_READ_BYTES` (256 KB), same as `edit_file`.
 - **R3 — existing assertions touched:** the two hard-coded 15-tool assertions (sections 5 and 54) are updated in S2.
+
+### Item 1.100-7 — Fetch tool improvements (entire page, Markdown format, context-window trimming)
+
+**Changelog reference:** VS Code 1.100 (April 2025) — `#fetch` adds the **entire page** as context, converts pages to **Markdown** (standardized, LLM-friendly), and when the context window would be exceeded, **excludes less relevant sections** to stay within the limit. No images.
+**Planned:** 2026-10-23, 4 slices S1–S4
+**Baseline smoke:** 654 assertions
+
+**Design decisions (justified):**
+1. **`htmlToMarkdown` is a new pure function in `src/fetchTool.ts`** (hand-rolled, no turndown — zero runtime deps). `htmlToText` is **kept unchanged** (still used for non-HTML content types and by existing `fetch-s1:` smoke assertions). `fetchUrl` uses `htmlToMarkdown` for `text/html` responses **only when a token budget is requested** (D2); otherwise it keeps the existing `htmlToText` path so the 1.99-4 behavior and its assertions are untouched.
+2. **Markdown mapping (hand-rolled tokenizer + stack-based recursive descent over a tag token stream):**
+   - `h1`–`h6` → `#`–`######` + space;
+   - `a[href]` → `[text](href)` (no href → plain text); `img[src]` → `![alt](src)`;
+   - `strong`/`b` → `**text**`; `em`/`i` → `*text*`; `code` → `` `text` ``;
+   - `pre` (with optional `code[language-x]`) → fenced block (fence is ``` unless content contains backticks, then ````);
+   - `ul`/`ol`/`li` → `- ` / `1. ` (nesting via 2-space indent per level, capped at 4 levels);
+   - `table`/`tr`/`th`/`td` → pipe rows with a `| --- |` separator after the header row (cells flattened to inline text, `|` escaped as `\|`);
+   - `blockquote` → `> ` prefix per line; `hr` → `---`; `br` → newline;
+   - `script`/`style`/`noscript`/`template`/`head` → dropped entirely;
+   - all other tags → their text content (attributes ignored); the 5 common entities decoded (same set as `htmlToText`);
+   - post-processing: collapse 3+ newlines to 2, trim trailing spaces per line, trim result.
+   - **Deviation D1 (robustness):** malformed HTML (unclosed tags) is handled by a stack-based parser that silently pops the stack at mismatched closes and at EOF — never throws, consistent with the module's "never throws" contract.
+3. **Token budget = `maxTokens` option, estimated as `Math.ceil(chars / 3.5)`** (same estimator family as `request.ts`). New constant `DEFAULT_MAX_TOKENS = 5000` (~17 500 chars — slightly under the existing 20 000-char default, so the default `#fetch` block stays within its `FETCH_BLOCK_MAX_CHARS` cap).
+4. **`trimToTokenBudget(md, maxTokens)` (pure):**
+   - If `estimateTokens(md) <= maxTokens` → return `{ text: md, trimmed: false }`.
+   - **Sections** = top-level Markdown sections: the preamble before the first `# ` heading is section 0; each `# ` (h1) heading starts a new section (h2–h6 stay inside their parent section — splitting only on h1 keeps tables/lists intact).
+   - **Relevance score** (0 = drop first): a section is **low-relevance (score 0)** if its heading text or first non-empty line matches the boilerplate regex `/nav|menu|footer|foot|cookie|privacy|terms|legal|sign ?in|log ?in|log ?out|subscribe|newsletter|copyright|©|social|share|breadcrumb/i`; otherwise score 1.
+   - **Drop order:** all score-0 sections first (in document order), then score-1 sections from the **end** of the document backwards, until the estimate fits. If even the first score-1 section alone exceeds the budget, hard-truncate it at the char equivalent (`maxTokens * 3.5`) — the budget is **always** respected.
+   - Result: `{ text, trimmed }` where `text` ends with `\n… [trimmed to fit context window: dropped N section(s)]` when anything was dropped (or hard-truncated: `… [trimmed to fit context window]`).
+5. **`fetchUrl` integration:** new optional `maxTokens` in the opts. When present (finite, ≥ 1): HTML content is converted via `htmlToMarkdown`, then `trimToTokenBudget(md, maxTokens)` is applied — the **cache stores the full untrimmed Markdown** (cache key = URL, as today), and the budget trim is applied at read time (cache hits get trimmed too, so a cached page respects a smaller budget on later calls). `maxChars` still applies as a final safety net (clamped as today). When `maxTokens` is absent: existing `htmlToText` + `truncate` path, byte-for-byte unchanged.
+6. **Setting: `llm.chat.fetch.maxTokens`** (number, default `5000`) — the user-facing knob for "how much of the page fits my local model's window". `0` or negative → disables the budget (falls back to the plain `maxChars` path). Plumbed `presets.ts` → `config.ts` → `ToolExecutor.fetchUrl(url, maxChars?, maxTokens?)` → `fetchTool.fetchUrl`. The `#fetch` tag path (`ChatViewProvider`) calls `this.toolExecutor.fetchUrl(fetchUrl_)` — the executor reads the setting itself, so **no `ChatViewProvider.ts` change is needed** (the tag path automatically gets Markdown + budget trim).
+7. **`fetch_url` tool description** updated to mention Markdown conversion and the token budget (the model-facing contract changes).
+
+**Files to touch:** `src/fetchTool.ts`, `src/tools.ts`, `src/tools/ToolExecutor.ts`, `src/presets.ts`, `src/config.ts`, `package.json`, `scripts/smoke-test.js`
+
+**Slices:**
+
+- **1.100-7.S1** — `src/fetchTool.ts`: `htmlToMarkdown` + `trimToTokenBudget` (pure) (+10 smoke).
+  Files: `src/fetchTool.ts`, `scripts/smoke-test.js`.
+  1. `src/fetchTool.ts`:
+     - `export function estimateTokens(text: string): number` — `Math.ceil(text.length / 3.5)`.
+     - `export const DEFAULT_MAX_TOKENS = 5000;`
+     - `export function htmlToMarkdown(html: string): string` — per decision 2. Never throws.
+     - `export function trimToTokenBudget(md: string, maxTokens: number): { text: string; trimmed: boolean }` — per decision 4.
+  2. `scripts/smoke-test.js` — new section `// 76) fetch markdown + budget (1.100-7.S1)`, `require("../out/fetchTool.js")`, **10 assertions**, prefix `fetchmd-s1:`:
+     1. Headings: `<h1>A</h1><h3>B</h3>` → `# A` and `### B` lines.
+     2. Links/images: `<a href="https://x">t</a>` → `[t](https://x)`; `<img src="i.png" alt="a">` → `![a](i.png)`.
+     3. Emphasis + code: `<strong>s</strong> <em>e</em> <code>c</code>` → `**s** *e* \`c\``.
+     4. Code fence: `<pre><code class="language-js">let a=1;</code></pre>` → fenced block with `js` language and the code line.
+     5. Lists: nested `<ul><li>a<ul><li>b</li></ul></li></ul>` → `- a` then indented `- b`; `<ol>` → `1. `.
+     6. Table: 2×2 table with `th` header → pipe rows + `| --- |` separator; a `|` inside a cell is escaped.
+     7. `script`/`style`/`head` content is dropped; entities decoded (`&amp;` → `&`).
+     8. `estimateTokens("x".repeat(3500)) === 1000`.
+     9. `trimToTokenBudget` under budget → `trimmed === false`, text unchanged.
+     10. `trimToTokenBudget` over budget: a doc with an h1 "Navigation" section (boilerplate) + two content sections → the nav section is dropped first, result ends with the `… [trimmed to fit context window: dropped N section(s)]` marker, and `estimateTokens(result.text) <= maxTokens`.
+  Acceptance: `npm run compile` passes; smoke → **664** (654 + 10).
+
+- **1.100-7.S2** — `src/fetchTool.ts` `fetchUrl` `maxTokens` wiring + `src/tools.ts` description (+5 smoke).
+  Files: `src/fetchTool.ts`, `src/tools.ts`, `scripts/smoke-test.js`.
+  1. `src/fetchTool.ts`: `fetchUrl` opts gain `maxTokens?: number`. When `maxTokens` is a finite number ≥ 1 and content-type is `text/html`: `const md = htmlToMarkdown(raw);` cache stores `{ text: md, at }` (full, untrimmed); return value = `trimToTokenBudget(md, maxTokens).text` (then the existing `maxChars` `truncate` as final safety net). Cache hits: if `maxTokens` given → trim the cached text; else existing `truncate` path. Non-HTML content: `maxTokens` still trims via `trimToTokenBudget` (sections = paragraphs split on blank lines — reuse the same function; preamble-only docs just hard-truncate). `maxTokens` absent → **existing behavior unchanged** (protects all `fetch-s1:` assertions).
+  2. `src/tools.ts`: `fetch_url` description → "Fetch a publicly accessible webpage and return its content as **Markdown** (HTML converted to Markdown; other content types returned as-is). When `max_tokens` is set, content is trimmed to fit the token budget by dropping low-relevance sections (navigation, footer, boilerplate) first. Read-only: does not change the workspace." `max_chars` param description unchanged; add `max_tokens` param (number, "Optional token budget (estimated as chars/3.5). Content is trimmed to fit by dropping low-relevance sections first.").
+  3. `scripts/smoke-test.js` — section `// 77) fetchUrl maxTokens (1.100-7.S2)`, **5 assertions**, prefix `fetchmd-s2:`:
+     1. `fetchUrl` with injected `fetchFn` (text/html, `maxTokens: 50`) → result is Markdown (contains `# ` heading) and `estimateTokens(result) <= 50` (or the hard-truncation marker present).
+     2. Second call (cache hit) with a **smaller** `maxTokens` → still within budget (trim applied at read time).
+     3. `fetchUrl` **without** `maxTokens` → result identical to the old `htmlToText`-based output for the same fixture (regression guard: 1.99-4 path untouched).
+     4. `CODE_TOOLS` `fetch_url` entry has a `max_tokens` param and its description mentions "Markdown".
+     5. Non-HTML content-type (`text/plain`) with `maxTokens` → trimmed via budget (marker present when over budget), not Markdown-converted.
+  Acceptance: compile passes; smoke → **669** (664 + 5).
+
+- **1.100-7.S3** — Setting plumbing `llm.chat.fetch.maxTokens` (+3 smoke).
+  Files: `src/presets.ts`, `src/config.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`.
+  1. `src/presets.ts`: after `fetchEnabled: boolean;` add `fetchMaxTokens: number;` (doc comment: token budget for `#fetch`/`fetch_url`; 0 disables).
+  2. `src/config.ts`: after `fetchEnabled` add `fetchMaxTokens: c.get<number>("chat.fetch.maxTokens", 5000),`.
+  3. `src/tools/ToolExecutor.ts`: `fetchUrl(url, maxChars?, maxTokens?)` — read the setting when `maxTokens` is not passed: `const budget = maxTokens ?? vscode.workspace.getConfiguration("llm").get<number>("chat.fetch.maxTokens", 5000);` pass `maxTokens: budget > 0 ? budget : undefined` to `fetchTool.fetchUrl`. (The `#fetch` tag path calls `this.toolExecutor.fetchUrl(fetchUrl_)` and therefore picks this up with **no provider change**.)
+  4. `scripts/smoke-test.js` — section `// 78) fetchMaxTokens settings (1.100-7.S3)`, **3 assertions**, prefix `fetchmd-s3:` (static source assertions — `config.ts`/`presets.ts`/`ToolExecutor.ts` import vscode):
+     1. `src/config.ts` contains `c.get<number>("chat.fetch.maxTokens", 5000)`.
+     2. `src/presets.ts` contains `fetchMaxTokens: number;`.
+     3. `src/tools/ToolExecutor.ts` contains `chat.fetch.maxTokens` (the executor reads the setting).
+  Acceptance: compile passes; smoke → **672** (669 + 3).
+
+- **1.100-7.S4** — `package.json` schema + final smoke (+3 smoke).
+  Files: `package.json`, `scripts/smoke-test.js`.
+  1. `package.json` `contributes.configuration.properties`: add after `llm.chat.fetch.enabled`:
+     - `llm.chat.fetch.maxTokens`: `{ "type": "number", "default": 5000, "description": "Token budget (estimated as chars/3.5) for #fetch / fetch_url page content. Pages are converted to Markdown and trimmed to fit by dropping low-relevance sections (navigation, footer, boilerplate) first. Set to 0 to disable the budget (plain character truncation)." }`
+     - Update the `llm.chat.fetch.enabled` description: "…converted to **Markdown** (cached for 10 minutes) and trimmed to the `llm.chat.fetch.maxTokens` budget."
+  2. `scripts/smoke-test.js` — section `// 79) fetch.maxTokens schema (1.100-7.S4)`, **3 assertions**, prefix `fetchmd-s4:` (against the already-loaded `pkgJson`):
+     1. `properties["llm.chat.fetch.maxTokens"]` is `type: "number"` with `default === 5000`.
+     2. Its description mentions `Markdown` and `maxTokens`/budget.
+     3. `properties["llm.chat.fetch.enabled"].description` mentions `Markdown`.
+  Acceptance: compile passes; smoke → **675** (654 + 21).
+
+**Total expected assertions after all slices:** 654 → **675** (+21: S1 +10, S2 +5, S3 +3, S4 +3).
+
+**Overall acceptance (Tester):** With `llm.chat.fetch.maxTokens` at its default (5000): sending `#fetch <url>` (or an agent-mode `fetch_url` call) attaches the **entire page** converted to **Markdown** (headings, links, lists, code fences, tables rendered per the mapping above); when the page's estimated tokens exceed the budget, low-relevance sections (nav/footer/cookie/privacy/sign-in/…) are dropped first, then trailing sections, and the block ends with the `… [trimmed to fit context window]` marker — the result always fits the budget. Setting the value to `0` restores the 1.99-4 plain-text + char-truncation behavior. Cache still works (10 min TTL, 20 entries) and cached pages are re-trimmed to a smaller budget on later calls. `npm run compile` clean; `node scripts/smoke-test.js` → **675 PASS**.
+
+**Risks / deviations:**
+- **D1 — malformed HTML:** stack-based parser silently recovers (pop on mismatch/EOF); never throws (module contract).
+- **D2 — Markdown only under a budget:** the default `#fetch` path *does* get Markdown (the executor always passes the setting's default 5000), but `fetchTool.fetchUrl` called without `maxTokens` (e.g. direct tests) keeps the old `htmlToText` path — this is what keeps the 1.99-4 `fetch-s1:` assertions green.
+- **R1 — h1-only section splitting:** pages with no h1 headings produce a single preamble section → the trim degrades to a hard char-truncation (still budget-safe).
+- **R2 — boilerplate regex false positives:** a content section legitimately titled "Menu" is dropped first. Mitigation: it is only dropped *first*, never *last*.
+- **R3 — `FETCH_BLOCK_MAX_CHARS` (20 000) vs 5000 tokens (~17 500 chars):** the default budget keeps the `#fetch` block under the existing `formatFetchBlock` cap, so no `context.ts` change is needed.
+- **R4 — token estimator:** `chars/3.5` is a coarse estimate (same family as `request.ts`); the hard-truncation fallback guarantees the budget is never exceeded.

@@ -190,7 +190,9 @@ const server = http.createServer((req, res) => {
   res.end(JSON.stringify({ error: "not found" }));
 });
 
+let assertCount = 0;
 function assert(cond, label) {
+  assertCount++;
   if (!cond) {
     console.error("FAIL:", label);
     process.exit(1);
@@ -5123,6 +5125,102 @@ function assert(cond, label) {
       patchToolEntry.function.description.includes("edit_file"),
     "patch-s2: apply_patch description steers the model toward edit_file for small edits",
   );
+
+  // 76) fetch markdown + budget (1.100-7.S1)
+  const fetchMd = require("../out/fetchTool.js");
+  const mdHeadings = fetchMd.htmlToMarkdown("<h1>A</h1><h3>B</h3>");
+  assert(
+    mdHeadings.split("\n").includes("# A") &&
+      mdHeadings.split("\n").includes("### B"),
+    "fetchmd-s1: h1/h3 become # / ### heading lines",
+  );
+  const mdLinks = fetchMd.htmlToMarkdown(
+    '<a href="https://x">t</a> <img src="i.png" alt="a">',
+  );
+  assert(
+    mdLinks.includes("[t](https://x)") && mdLinks.includes("![a](i.png)"),
+    "fetchmd-s1: a[href] becomes [text](href), img becomes ![alt](src)",
+  );
+  const mdEmph = fetchMd.htmlToMarkdown(
+    "<strong>s</strong> <em>e</em> <code>c</code>",
+  );
+  assert(
+    mdEmph.includes("**s**") &&
+      mdEmph.includes("*e*") &&
+      mdEmph.includes("`c`"),
+    "fetchmd-s1: strong/em/code become ** / * / backticks",
+  );
+  const mdFence = fetchMd.htmlToMarkdown(
+    '<pre><code class="language-js">let a=1;</code></pre>',
+  );
+  assert(
+    mdFence.includes("```js") &&
+      mdFence.includes("let a=1;") &&
+      mdFence.split("```").length >= 3,
+    "fetchmd-s1: pre>code[language-js] becomes a fenced block with js language",
+  );
+  const mdList = fetchMd.htmlToMarkdown(
+    "<ul><li>a<ul><li>b</li></ul></li></ul><ol><li>c</li></ol>",
+  );
+  const mdListLines = mdList.split("\n");
+  assert(
+    mdListLines.includes("- a") &&
+      mdListLines.includes("  - b") &&
+      mdListLines.includes("1. c"),
+    "fetchmd-s1: nested ul indents 2 spaces, ol uses 1. numbering",
+  );
+  const mdTable = fetchMd.htmlToMarkdown(
+    "<table><tr><th>H1</th><th>H2</th></tr><tr><td>a|b</td><td>d</td></tr></table>",
+  );
+  assert(
+    mdTable.includes("| H1 | H2 |") &&
+      mdTable.includes("| --- | --- |") &&
+      mdTable.includes("| a\\|b | d |"),
+    "fetchmd-s1: table becomes pipe rows with | --- | separator, | escaped in cells",
+  );
+  const mdDropped = fetchMd.htmlToMarkdown(
+    "<head><title>T</title><style>.x{}</style></head><body><script>var x=1;</script><p>a&amp;b</p></body>",
+  );
+  assert(
+    !mdDropped.includes("T") &&
+      !mdDropped.includes(".x{}") &&
+      !mdDropped.includes("var x=1") &&
+      mdDropped.includes("a&b"),
+    "fetchmd-s1: head/script/style content dropped, entities decoded",
+  );
+  assert(
+    fetchMd.estimateTokens("x".repeat(3500)) === 1000,
+    "fetchmd-s1: estimateTokens(3500 chars) === 1000",
+  );
+  const mdUnder = fetchMd.trimToTokenBudget("# A\nshort", 5000);
+  assert(
+    mdUnder.trimmed === false && mdUnder.text === "# A\nshort",
+    "fetchmd-s1: under budget returns unchanged text, trimmed === false",
+  );
+  const mdDoc =
+    "# Navigation\n" +
+    "Menu items here\n".repeat(20) +
+    "\n# Alpha\n" +
+    "Content alpha\n".repeat(10) +
+    "\n# Beta\n" +
+    "Content beta\n".repeat(10);
+  const mdOver = fetchMd.trimToTokenBudget(mdDoc, 150);
+  assert(
+    mdOver.trimmed === true &&
+      !mdOver.text.includes("Navigation") &&
+      mdOver.text.includes("Alpha") &&
+      mdOver.text.includes("Beta") &&
+      mdOver.text.endsWith(
+        "\n… [trimmed to fit context window: dropped 1 section(s)]",
+      ) &&
+      fetchMd.estimateTokens(mdOver.text) <= 150,
+    "fetchmd-s1: over budget drops the boilerplate nav section first, marker + budget respected",
+  );
+  if (assertCount !== 664) {
+    console.error(`FAIL: total assertion count is 664 (got ${assertCount})`);
+    process.exit(1);
+  }
+  console.log("PASS: total assertion count is 664");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
