@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **IN PROGRESS** (6 slices S1–S6; S1–S3 done)
-- **Current slice:** 1.100-15.S3 DONE (verified PASS; fix 59e6731)
+- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **IN PROGRESS** (6 slices S1–S6; S1–S4 done)
+- **Current slice:** 1.100-15.S4 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-15.S4 — chat `tool_progress` post in `src/chat/ChatViewProvider.ts` (user goal: continue until version 1.107)
+- **Next step:** 1.100-15.S5 — webview progress bar + `prettyJson` in `src/chat/webview.ts` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** c70c447 (tester verified 1.100-15.S3; code ca9294e + 59e6731)
+- **Last commit:** 1740669 (tester verified 1.100-15.S4; code 0b8ce56)
 - **Build state:** compiles clean; smoke 758/758 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
