@@ -12,10 +12,10 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — **Done** (2026-10-23, all 6 slices S1–S6 complete)
-- **Next step:** plan next pending backlog item
+- **Current item:** 1.100-3 (Faster agent mode edits — apply-patch edit format) — **In progress** (planned 2026-10-23, 2 slices S1–S2)
+- **Next step:** dispatch 1.100-3.S1 (pure patch parser/applier in `src/patch.ts`)
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-2 plan)
+- **Last commit:** (planner commit for the 1.100-3 plan)
 - **Build state:** n/a (planner does not build)
 
 ### Item 1.99-28 — AI notebook editing improvements — new notebook tool
@@ -379,3 +379,85 @@ code — only the Coder writes code.
 - **D5 — slash command `/prompt-name` deferred:** the `run-prompt-as-slash-command.png` behavior (intercepting `/name` in chat input and matching discovered prompt files) is NOT in this item's slices; it needs its own slice (discovery + name normalization + `handleSend` interception). Flagged for a follow-up item.
 - **R1 — `runPrompt` concurrency:** guarded by the `abortController` check (S3).
 - **R2 — `promptTools` cleared per turn:** set/cleared inside `runStream` so a normal follow-up send in the same conversation uses the full tool list again (the filter applies only to the run turn).
+
+### Item 1.100-3 — Faster agent mode edits (apply-patch edit format)
+
+**Changelog reference:** VS Code 1.100 (April 2025) — "Faster agent mode edits": agent mode supports OpenAI's apply-patch editing format and Anthropic's replace-string tool for significantly faster edits, especially in large files.
+**Planned:** 2026-10-23, 2 slices S1–S2
+**Baseline smoke:** 637 assertions
+
+**UI/behavior notes:** No images. No UI change — this is a model-facing tool. The model now has a second edit tool (`apply_patch`) alongside the existing `edit_file` (the Anthropic-style replace-string) and chooses per edit: `edit_file` for a single small targeted replacement, `apply_patch` for multi-hunk / large-file edits in one call.
+
+**Design decisions (justified):**
+1. **Patch format = OpenAI's `*** Begin Patch` format** (not unified diff). Grammar:
+   - `*** Begin Patch` … `*** End Patch` (both required, exactly one patch per call).
+   - Sections: `*** Update File: <path>` and `*** Add File: <path>` only. **Deviation D1:** `*** Delete File` / rename (`*** Update File: <old> => <new>`) are NOT supported — the tool takes a single `path` argument, so the patch may only touch that one file; a section header naming a different file is a parse error.
+   - Inside a file section, hunks start with `@@` (optionally followed by context text, which is ignored). Lines: ` ` (space) = context, `+` = add, `-` = remove. A line that is exactly `***` is a literal context line (the standard escape). Any other line starting with `*** ` is a parse error.
+   - **Deviation D2:** the tool's `path` argument is authoritative; the path in `*** Update File:` / `*** Add File:` must equal it (after normalization) or the call fails.
+2. **Hunk matching (hand-rolled, pure TS — no npm deps).** For each hunk: build the context string from its context lines (space-prefixed) in order. Find occurrences in the file content by scanning for the first context line, then verifying the full context sequence matches at that position (context lines need not be contiguous in the hunk — lines between them in the file are preserved and untouched). Rules:
+   - **0 matches** → error `hunk N: context not found in <path> — re-read the file and copy the exact context lines (including whitespace and indentation).`
+   - **>1 matches** → error `hunk N: context is not unique in <path> (M matches) — add more context lines to disambiguate.`
+   - On match, the region from the first context line to the last context line is replaced by: context lines interleaved with the `+`/`-` lines in hunk order (i.e. `-` lines drop, `+` lines insert, context lines stay). Hunks are applied **sequentially** against the evolving content (later hunks see earlier hunks' results).
+   - **Deviation D3:** matching is **exact** (byte-for-byte, including whitespace) — no whitespace-insensitive fallback.
+3. **`*** Add File`** requires the file to NOT exist (error otherwise); the resulting content is the hunk lines with `+` prefixes stripped. `*** Update File` requires the file to exist.
+4. **Mutating + approval gate.** `apply_patch` is added to `isMutatingTool` → flows through the existing `llm.tools.requireApproval` gate, identical to `edit_file`.
+5. **Executor mirrors `editFile` bookkeeping** (`ToolExecutor.ts` L505): `resolveSafe` → size guard (`MAX_READ_BYTES`) → read → `lastSnapshot` + `recordSnapshot` → write → `recordChange` → `unifiedDiff` block in the result. On any parse/match failure: **no write, no snapshot**, error text returned as the `ToolResult` so the agentic loop can retry.
+6. **No `request.ts` change needed** — `buildRequestBody` sends `[...CODE_TOOLS, ...mcpTools]` (L336), so the new schema entry is automatically exposed.
+7. **Tool description** steers the choice: "Apply a multi-hunk patch to a file in one call. Use for large or multi-location edits; for a single small replacement prefer edit_file."
+
+**Files to touch:** `src/patch.ts` (new), `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`
+
+**Slices:**
+
+- **1.100-3.S1** — `src/patch.ts`: pure patch parser + applier (+12 smoke).
+  Files: `src/patch.ts` (new), `scripts/smoke-test.js`.
+  1. `src/patch.ts` (pure, no vscode/fs imports — smoke-requireable from `out/patch.js`):
+     - `export interface PatchOp { kind: "ctx" | "add" | "del"; text: string }` and `export interface PatchFile { op: "update" | "add"; path: string; hunks: PatchOp[][] }`.
+     - `export function parsePatch(patch: string): { files: PatchFile[] }` — throws `Error` with a descriptive message on: missing `*** Begin Patch` / `*** End Patch`; unknown `*** ` directive; a file-section path that differs from other sections (multi-file patch → error "one file per patch"); a hunk with no `@@`; a line that is neither ` ` / `+` / `-` / `***` prefixed nor a directive.
+     - `export function applyPatchToContent(oldContent: string, file: PatchFile): string` — implements decision 2 (sequential hunk application, exact context matching, 0-match / >1-match errors naming the hunk index, 1-based).
+     - `export function applyPatch(patch: string, path: string, oldContent: string, fileExists: boolean): string` — top-level: `parsePatch`, assert exactly one file section and its path equals `path` (normalized: forward slashes, no leading `./`), enforce add-vs-update existence rule, delegate to `applyPatchToContent` (empty `oldContent` for add).
+  2. `scripts/smoke-test.js` — new section `// 74) apply_patch core (1.100-3.S1)`, `require("../out/patch.js")`, **12 assertions**, prefix `patch-s1:`:
+     1. Single-hunk update: context + one `-` + one `+` → expected new content.
+     2. Multi-hunk update (2 hunks, second hunk's context shifted by the first) → both applied.
+     3. Pure-insertion hunk (context + `+` lines, no `-`) → lines inserted between context.
+     4. `*** Add File` content assembly (all-`+` hunk) → exact content.
+     5. Context not found → throws, message contains `context not found` and the hunk index.
+     6. Non-unique context (same 2 context lines appear twice) → throws, message contains `not unique`.
+     7. Missing `*** End Patch` → throws.
+     8. Unknown directive (`*** Foo Bar: x`) → throws.
+     9. Two file sections in one patch → throws (one file per patch).
+     10. File-section path ≠ expected path → throws.
+     11. `***` literal context line is preserved as a literal `***` line in the output.
+     12. `applyPatch` existence rules: `add` on existing file → throws; `update` on missing file → throws.
+  Acceptance: `npm run compile` passes; smoke → **649** (637 + 12).
+
+- **1.100-3.S2** — `apply_patch` tool schema + executor wiring (+5 smoke).
+  Files: `src/tools.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`.
+  1. `src/tools.ts`:
+     - `CODE_TOOLS`: add `apply_patch` entry **after `edit_file`** — params `path` (string, workspace-relative) + `patch` (string, "the full patch, from `*** Begin Patch` to `*** End Patch`"); `required: ["path", "patch"]`. Description per decision 7, including the format sketch and the exact-match/unique-context contract.
+     - `isMutatingTool`: add `name === "apply_patch"`.
+  2. `src/tools/ToolExecutor.ts`:
+     - Import `applyPatch` from `../patch`.
+     - `execute` switch: `case "apply_patch":` → `this.applyPatchTool(call, String(args.path ?? ""), String(args.patch ?? ""))`.
+     - `private async applyPatchTool(call, relPath, patch): Promise<ToolResult>` — mirrors `editFile` (L505): empty-patch guard; `resolveSafe`; `patch.length > MAX_READ_BYTES` guard; read old content (missing → `existed=false`); `applyPatch(patch, relPath, oldContent, existed)` inside try/catch → on throw return `this.result(call, err.message)` (no write, no snapshot); on success: `lastSnapshot` + `recordSnapshot` → `writeFile` → `recordChange` → result `Applied patch to <path> (N hunks)${diffBlock}` using the existing `unifiedDiff`.
+  3. `scripts/smoke-test.js`:
+     - **Update the two existing hard-coded tool-list assertions** (L481 section 5 and L4269 section 54): `CODE_TOOLS.length === 15` → `16`, and the expected name string gains `apply_patch` after `edit_file` in both places.
+     - New section `// 75) apply_patch tool (1.100-3.S2)`, **5 assertions**, prefix `patch-s2:`:
+       1. `CODE_TOOLS` contains `apply_patch` with `required === ["path","patch"]`.
+       2. `isMutatingTool("apply_patch") === true`.
+       3. `src/tools/ToolExecutor.ts` source contains `case "apply_patch"` and imports `applyPatch` from `../patch` (static source assertion).
+       4. The `applyPatchTool` region of the executor source contains `recordSnapshot` and `unifiedDiff` (snapshot + diff bookkeeping wired).
+       5. The `apply_patch` tool description mentions `edit_file` (the model is steered between the two edit tools).
+  Acceptance: `npm run compile` passes; smoke → **654** (649 + 5).
+
+**Total expected assertions after all slices:** 637 → **654** (+17: S1 +12, S2 +5).
+
+**Overall acceptance (Tester):** In agent mode the model sees both `edit_file` and `apply_patch` in the tools list. A well-formed `apply_patch` call with a multi-hunk `*** Begin Patch` patch edits the target file in one call: the file content reflects all hunks, the result message includes the unified diff, the change appears in the per-run change summary, and Keep/Undo + `revertAll` restore the pre-patch content (snapshot path identical to `edit_file`). A non-matching or non-unique context returns a descriptive error naming the hunk, with **no file write and no snapshot**. `apply_patch` is subject to the `llm.tools.requireApproval` gate. `npm run compile` clean; `node scripts/smoke-test.js` → **654 PASS**.
+
+**Risks / deviations:**
+- **D1 — no delete/rename sections:** `*** Delete File` and `*** Update File: old => new` are rejected as parse errors; single-file-per-call via the `path` argument.
+- **D2 — `path` argument is authoritative:** the section-header path must match it.
+- **D3 — exact, whitespace-sensitive context matching** (no fuzzy fallback), consistent with `edit_file`.
+- **R1 — sequential hunk application:** later hunks match against already-patched content.
+- **R2 — large files:** the patch string and target file are both capped at `MAX_READ_BYTES` (256 KB), same as `edit_file`.
+- **R3 — existing assertions touched:** the two hard-coded 15-tool assertions (sections 5 and 54) are updated in S2.

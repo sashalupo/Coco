@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-2 — Prompt files improvements — **COMPLETE** (S1–S6 all PASS, 2026-10-23); next changelog item
-- **Next step:** item 1.100-2 complete — pick up the next changelog item (oldest unverified)
+- **Current item:** 1.100-3 — Faster agent mode edits (apply-patch edit format) — **IN PROGRESS** (2 slices S1–S2; S1 verified PASS)
+- **Next step:** verify 1.100-3.S2 (apply_patch tool schema + executor wiring, +5 smoke → 654)
 - **Last updated:** 2026-10-23
-- **Last commit:** f95ce52 (1.100-2.S6)
-- **Build state:** compiles clean; smoke 637/637 PASS
+- **Last commit:** (1.100-3.S1 commit)
+- **Build state:** compiles clean; smoke 649/649 PASS (verified 2026-10-23)
+
+### 1.100-3.S1 — `src/patch.ts` pure patch parser + applier (+12 smoke) (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 649/649 PASS (637 baseline + 12 new `patch-s1:`), 0 FAIL (grep -c '^PASS:' → 649, '^FAIL:' → 0).
+- All 5 acceptance criteria met: (1) compile exit 0; (2) smoke 649/649; (3) `src/patch.ts` pure — zero import/require statements (only doc-comment mentions of "vscode import"); (4) section `// 74) apply_patch core (1.100-3.S1)` at smoke-test.js:4916 with `require(path.join(__dirname, "..", "out", "patch.js"))` and exactly 12 `patch-s1:` assertions covering all 12 planned cases (single-hunk update L4933, multi-hunk L4953, pure-insertion L4968, Add File assembly L4980, context-not-found w/ hunk index L4995, non-unique L5010, missing End Patch L5020, unknown directive L5030, two file sections L5042, path mismatch L5057, `***` literal escape L5071, add/update existence rules L5087); (5) error phrasing matches plan verbatim: `hunk ${n}: context not found in ${file.path} — re-read the file and copy the exact context lines (including whitespace and indentation).` (patch.ts:202) and `hunk ${n}: context is not unique in ${file.path} (${matches.length} matches) — add more context lines to disambiguate.` (patch.ts:207).
+- Exports verified: `PatchOp` (L20), `PatchFile` (L27), `parsePatch` (L49), `applyPatchToContent` (L164), `applyPatch` (L250).
+- **Verdict: PASS.** Next: 1.100-3.S2 (apply_patch tool schema + executor wiring, +5 smoke → 654).
 
 ### 1.100-2.S6 — FINAL: package.json schema — `llm.runPrompt` command, Play button menu, language IDs (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 637/637 PASS (633 baseline + 4 new `prompt2-s6:`), 0 FAIL.

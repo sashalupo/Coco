@@ -4913,6 +4913,180 @@ function assert(cond, label) {
     "prompt2-s6: languages contains llm.instructions with extensions ['.instructions.md']",
   );
 
+  // 74) apply_patch core (1.100-3.S1)
+  const patchMod = require(path.join(__dirname, "..", "out", "patch.js"));
+  const { parsePatch, applyPatchToContent, applyPatch } = patchMod;
+  const p1Old = "line1\nline2\nline3\nline4";
+  const p1Patch = [
+    "*** Begin Patch",
+    "*** Update File: a.txt",
+    "@@",
+    " line1",
+    "-line2",
+    "+LINE2",
+    " line3",
+    " line4",
+    "*** End Patch",
+  ].join("\n");
+  assert(
+    applyPatch(p1Patch, "a.txt", p1Old, true) === "line1\nLINE2\nline3\nline4",
+    "patch-s1: single-hunk update replaces the - line with the + line",
+  );
+  const p2Old = "a\nb\nc\nd\ne";
+  const p2Patch = [
+    "*** Begin Patch",
+    "*** Update File: a.txt",
+    "@@",
+    " a",
+    "-b",
+    "+B",
+    " c",
+    "@@",
+    " c",
+    "-d",
+    "+D",
+    " e",
+    "*** End Patch",
+  ].join("\n");
+  assert(
+    applyPatch(p2Patch, "a.txt", p2Old, true) === "a\nB\nc\nD\ne",
+    "patch-s1: multi-hunk update applies both hunks sequentially",
+  );
+  const p3Old = "top\nbottom";
+  const p3Patch = [
+    "*** Begin Patch",
+    "*** Update File: a.txt",
+    "@@",
+    " top",
+    "+mid1",
+    "+mid2",
+    " bottom",
+    "*** End Patch",
+  ].join("\n");
+  assert(
+    applyPatch(p3Patch, "a.txt", p3Old, true) === "top\nmid1\nmid2\nbottom",
+    "patch-s1: pure-insertion hunk inserts + lines between context lines",
+  );
+  const p4Patch = [
+    "*** Begin Patch",
+    "*** Add File: new.txt",
+    "@@",
+    "+hello",
+    "+world",
+    "*** End Patch",
+  ].join("\n");
+  assert(
+    applyPatch(p4Patch, "new.txt", "", false) === "hello\nworld",
+    "patch-s1: *** Add File assembles content from all-+ hunk",
+  );
+  let p5Err = "";
+  try {
+    applyPatch(
+      ["*** Begin Patch", "*** Update File: a.txt", "@@", " nothere", "-x", "+y", "*** End Patch"].join("\n"),
+      "a.txt",
+      "line1\nline2",
+      true,
+    );
+  } catch (e) {
+    p5Err = String(e.message);
+  }
+  assert(
+    p5Err.includes("context not found") && p5Err.includes("hunk 1"),
+    "patch-s1: context not found throws with hunk index",
+  );
+  let p6Err = "";
+  try {
+    applyPatch(
+      ["*** Begin Patch", "*** Update File: a.txt", "@@", " same", "-x", "+y", " same", "*** End Patch"].join("\n"),
+      "a.txt",
+      "same\nsame\nx\nsame\nsame\ny",
+      true,
+    );
+  } catch (e) {
+    p6Err = String(e.message);
+  }
+  assert(
+    p6Err.includes("not unique"),
+    "patch-s1: non-unique context throws 'not unique'",
+  );
+  let p7Err = "";
+  try {
+    parsePatch("*** Begin Patch\n*** Update File: a.txt\n@@\n x\n");
+  } catch (e) {
+    p7Err = String(e.message);
+  }
+  assert(
+    p7Err.length > 0 && p7Err.includes("End Patch"),
+    "patch-s1: missing *** End Patch throws",
+  );
+  let p8Err = "";
+  try {
+    parsePatch("*** Begin Patch\n*** Foo Bar: x\n*** End Patch");
+  } catch (e) {
+    p8Err = String(e.message);
+  }
+  assert(
+    p8Err.length > 0 && p8Err.includes("unknown patch directive"),
+    "patch-s1: unknown *** directive throws",
+  );
+  let p9Err = "";
+  try {
+    parsePatch(
+      ["*** Begin Patch", "*** Update File: a.txt", "@@", " x", "*** Update File: b.txt", "@@", " y", "*** End Patch"].join("\n"),
+    );
+  } catch (e) {
+    p9Err = String(e.message);
+  }
+  assert(
+    p9Err.length > 0 && p9Err.includes("one file per patch"),
+    "patch-s1: two file sections in one patch throws",
+  );
+  let p10Err = "";
+  try {
+    applyPatch(
+      ["*** Begin Patch", "*** Update File: other.txt", "@@", " x", "*** End Patch"].join("\n"),
+      "a.txt",
+      "x",
+      true,
+    );
+  } catch (e) {
+    p10Err = String(e.message);
+  }
+  assert(
+    p10Err.length > 0 && p10Err.includes("other.txt") && p10Err.includes("a.txt"),
+    "patch-s1: file-section path != expected path throws",
+  );
+  const p11Old = "a\n***\nb";
+  const p11Patch = [
+    "*** Begin Patch",
+    "*** Update File: a.txt",
+    "@@",
+    " a",
+    "***",
+    " b",
+    "*** End Patch",
+  ].join("\n");
+  assert(
+    applyPatch(p11Patch, "a.txt", p11Old, true) === "a\n***\nb",
+    "patch-s1: *** literal context line is preserved as a literal *** line",
+  );
+  let p12aErr = "";
+  let p12bErr = "";
+  try {
+    applyPatch(p4Patch, "new.txt", "existing", true);
+  } catch (e) {
+    p12aErr = String(e.message);
+  }
+  try {
+    applyPatch(p1Patch, "a.txt", "", false);
+  } catch (e) {
+    p12bErr = String(e.message);
+  }
+  assert(
+    p12aErr.length > 0 && p12bErr.length > 0,
+    "patch-s1: add on existing file and update on missing file both throw",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
