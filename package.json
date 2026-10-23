@@ -73,6 +73,11 @@
         "icon": "$(notebook)"
       },
       {
+        "command": "llm.addContext",
+        "title": "LLM: Add Context to Chat",
+        "icon": "$(add)"
+      },
+      {
         "command": "llm.attachInstructions",
         "title": "LLM: Attach Instructions File",
         "icon": "$(book)"

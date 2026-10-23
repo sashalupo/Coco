@@ -506,6 +506,124 @@ export function activate(context: vscode.ExtensionContext): void {
       provider.postMessage({ type: "cell_output_inject", text, images: imgs });
       await vscode.commands.executeCommand("workbench.view.llm");
     }),
+    // 1.100-8.S4: streamlined context picker — a two-step quick pick
+    // (category → item) that inserts a context reference into the chat
+    // input via the `context_inject` webview message. Files → `@<rel
+    // path>` (file pill), folders → `#folder:<name>` (folder pill),
+    // selection → `@<rel path>` (selection is re-gathered at send time via
+    // the context flags), problems → `#problems` (re-gathered at send time).
+    vscode.commands.registerCommand("llm.addContext", async () => {
+      const rel = (uri: vscode.Uri): string => {
+        const ws = vscode.workspace.getWorkspaceFolder(uri);
+        return ws ? vscode.workspace.asRelativePath(uri) : uri.fsPath;
+      };
+
+      // Build the category list (only include groups that have items).
+      const categories: { id: string; label: string; description: string }[] =
+        [];
+      const fileUris = await vscode.workspace.findFiles(
+        "**/*",
+        "**/node_modules/**",
+        20,
+      );
+      if (fileUris.length > 0) {
+        categories.push({
+          id: "files",
+          label: "$(file) Files",
+          description: `${fileUris.length} workspace file(s)`,
+        });
+      }
+      const folders = (vscode.workspace.workspaceFolders ?? []).slice(0, 20);
+      if (folders.length > 0) {
+        categories.push({
+          id: "folders",
+          label: "$(folder) Folders",
+          description: `${folders.length} workspace folder(s)`,
+        });
+      }
+      const editor = vscode.window.activeTextEditor;
+      const selection =
+        editor && !editor.selection.isEmpty ? editor : undefined;
+      if (selection) {
+        categories.push({
+          id: "selection",
+          label: "$(list-selection) Selection",
+          description: `${rel(selection.document.uri)} (lines ${
+            selection.selection.start.line + 1
+          }–${selection.selection.end.line + 1})`,
+        });
+      }
+      const diagEntries = vscode.languages
+        .getDiagnostics()
+        .filter(([, ds]) => ds.length > 0)
+        .slice(0, 10);
+      if (diagEntries.length > 0) {
+        categories.push({
+          id: "problems",
+          label: "$(warning) Problems",
+          description: `${diagEntries.reduce((n, [, ds]) => n + ds.length, 0)} diagnostic(s)`,
+        });
+      }
+      if (categories.length === 0) {
+        vscode.window.showInformationMessage(
+          "No context to add — open a file or select some text first.",
+        );
+        return;
+      }
+      const cat = await vscode.window.showQuickPick(
+        categories.map((c) => ({
+          label: c.label,
+          description: c.description,
+          id: c.id,
+        })),
+        {
+          title: "LLM: Add Context to Chat",
+          placeHolder: "Select a context category",
+        },
+      );
+      if (!cat) {
+        return; // cancelled
+      }
+
+      let ref = "";
+      if (cat.id === "files") {
+        const picked = await vscode.window.showQuickPick(
+          fileUris.map((uri) => ({ label: rel(uri), uri })),
+          {
+            title: "LLM: Add Context to Chat",
+            placeHolder: "Select a file",
+          },
+        );
+        if (picked) {
+          ref = `@${rel(picked.uri)}`;
+        }
+      } else if (cat.id === "folders") {
+        const picked = await vscode.window.showQuickPick(
+          folders.map((f) => ({
+            label: f.name,
+            description: f.uri.fsPath,
+            name: f.name,
+          })),
+          {
+            title: "LLM: Add Context to Chat",
+            placeHolder: "Select a folder",
+          },
+        );
+        if (picked) {
+          ref = `#folder:${picked.name}`;
+        }
+      } else if (cat.id === "selection" && selection) {
+        ref = `@${rel(selection.document.uri)}`;
+      } else if (cat.id === "problems") {
+        ref = "#problems";
+      }
+      if (!ref) {
+        return; // cancelled
+      }
+
+      provider.postMessage({ type: "context_inject", content: ref });
+      await vscode.commands.executeCommand("workbench.view.llm");
+    }),
     vscode.commands.registerCommand("llm.attachInstructions", async () => {
       const cfg = vscode.workspace.getConfiguration("llm");
       const enabled = cfg.get<boolean>("instructionsFiles.enabled", true);

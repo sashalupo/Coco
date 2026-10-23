@@ -2101,6 +2101,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					inputEl.focus();
 					break;
 				}
+				case 'context_inject': {
+					// 1.100-8.S4: llm.addContext inserts a context reference
+					// (@path, #folder:name, #problems) into the input.
+					const text = String(msg.content ?? '');
+					if (!text) break;
+					if (!inputEl) break;
+					const existing = inputEl.value;
+					inputEl.value = existing ? text + '\\n\\n' + existing : text;
+					inputEl.focus();
+					break;
+				}
 				case 'prompt_run': {
 					const text = String(msg.text ?? '');
 					if (!text) break;
