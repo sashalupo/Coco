@@ -19,6 +19,9 @@ import {
 import {
   buildRequestBody,
   estimateMessagesTokens,
+  summarizeSplit,
+  buildTranscript,
+  SUMMARY_MARKER,
   type ChatCompletionRequest,
   type ChatMessage,
 } from "../request";
@@ -71,6 +74,7 @@ import {
 } from "../instructions";
 import {
   ApprovalStore,
+  CONTEXT_TO_TOKENS,
   isVisionCapableModel,
   modeAddendum,
   normalizeChatMode,
@@ -128,6 +132,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * front matter; consumed (and cleared) by the next `runStream`.
    */
   private pendingPromptTools: string[] | null = null;
+
+  /**
+   * 1.100-12.S3: re-entrancy guard for the automatic summarization pass —
+   * true while `maybeSummarizeHistory` is awaiting the engine.
+   */
+  private summarizing = false;
 
   /**
    * Resolver for the pending editable command approval (null when none is
@@ -667,6 +677,111 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         type: "compact_result",
         message: `Compaction failed: ${message}`,
       });
+    }
+  }
+
+  /**
+   * 1.100-12.S3: automatic summarization pass. When the estimated history
+   * tokens cross `chatSummarizeThreshold` of the toolbar context budget
+   * (`CONTEXT_TO_TOKENS`), summarize the older turns into a single
+   * `SUMMARY_MARKER` message (same shape as `handleCompact`, but split by
+   * `summarizeSplit` so tool-call groups and prior summaries stay intact).
+   * No-op when the context preset is auto/unbounded or the split is null.
+   */
+  private async maybeSummarizeHistory(
+    settings: LlmSettings,
+    toolbar: ToolbarState,
+  ): Promise<void> {
+    const windowTokens = CONTEXT_TO_TOKENS[toolbar.context];
+    const splitIdx = summarizeSplit(
+      this.history,
+      settings.chatSummarizeThreshold,
+      windowTokens,
+    );
+    if (splitIdx === null) {
+      return;
+    }
+    this.summarizing = true;
+    try {
+      const toSummarize = this.history.slice(0, splitIdx);
+      const toKeep = this.history.slice(splitIdx);
+      const transcript = buildTranscript(toSummarize);
+      const model = toolbar.model ?? settings.model;
+
+      // Use the engine to generate a summary (non-streaming via chatStream),
+      // mirroring `handleCompact`.
+      const body: ChatCompletionRequest = {
+        messages: [
+          {
+            role: "system",
+            content:
+              "Summarize the following conversation concisely. Preserve key decisions, " +
+              "file paths, code changes, and task context. Keep it under 500 words. " +
+              "Format as a brief narrative. End with a line describing the current task state.",
+          },
+          { role: "user", content: transcript },
+        ],
+        max_completion_tokens: 1024,
+        temperature: 0.3,
+        stream: false,
+      };
+      if (model) {
+        body.model = model;
+      }
+
+      let summary = "";
+      for await (const chunk of this.client.chatStream(body)) {
+        if (chunk.done) {
+          break;
+        }
+        if (chunk.content) {
+          summary += chunk.content;
+        }
+      }
+
+      if (!summary.trim()) {
+        this.postMessage({
+          type: "delta",
+          content: "\n\n[summarization failed — keeping full history]",
+        });
+        return;
+      }
+
+      // Replace the summarized portion with a single marker message.
+      const summaryMsg: ChatMessage = {
+        role: "user",
+        content: `${SUMMARY_MARKER}\n${summary.trim()}`,
+        summarized: true,
+      };
+      this.history = [summaryMsg, ...toKeep];
+      this.saveCurrentConversation();
+
+      const beforeTokens = estimateMessagesTokens(toSummarize);
+      const afterTokens = estimateMessagesTokens([summaryMsg]);
+      this.postMessage({
+        type: "delta",
+        content: `\n\n[summarized conversation history: ${toSummarize.length} messages → 1 summary]`,
+      });
+      this.postMessage({
+        type: "summarize_result",
+        message: `Summarized ${toSummarize.length} messages (~${beforeTokens} tok → ~${afterTokens} tok).`,
+      });
+      // Refresh the webview with the new history.
+      const all = this.conversationStore.getAll();
+      this.postMessage({
+        type: "restore",
+        messages: this.history,
+        conversations: all.map((c) => ({ id: c.id, title: c.title })),
+        activeId: this.currentConvId,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.postMessage({
+        type: "delta",
+        content: `\n\n[summarization failed — keeping full history] (${message})`,
+      });
+    } finally {
+      this.summarizing = false;
     }
   }
 
@@ -1504,6 +1619,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           if (changed.length > 0) {
             this.snapshotTouchedFiles(changed);
           }
+        }
+        // 1.100-12.S3: automatic summarization — when the estimated history
+        // tokens cross the threshold of the context budget, compress the
+        // older turns into a single summary message before the next turn.
+        if (settings.chatSummarizeEnabled && !this.summarizing) {
+          await this.maybeSummarizeHistory(settings, toolbar);
         }
         // Show the step/iteration budget (Phase 9.2) so the user can see how
         // far the agentic loop has progressed and stop it (the Stop button
