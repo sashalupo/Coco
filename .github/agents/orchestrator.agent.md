@@ -123,7 +123,12 @@ slice is verified.
 2. **Memory last.** Before ending any session (or finishing any task), update `PROGRESS.md`:
    move completed items to Done, add new discoveries/decisions, and refresh the Todo list.
    Never let the file drift from reality.
-3. **Commit after every step.** Use git. Commit after each completed, compiling, tested step.
+3. **Compaction rule.** Once an entire version or changelog item is complete, compact the memory:
+   summarize the final outcome in a short recap section and remove the tiny per-slice detail from
+   the active memory. Keep only the high-level summary and the next version/item pointer. The
+   old micro-steps (for example `1.100-1`, `1.100-2.S1`, `1.100-2.S2`, etc.) should be folded
+   into that recap and then pruned from the working `PROGRESS.md`.
+4. **Commit after every step.** Use git. Commit after each completed, compiling, tested step.
    Do NOT commit broken or half-finished code. See the Git policy below.
 4. **Verify before claiming done.** The Tester agent must confirm the build passes and the
    acceptance check is met. A task is only "done" when the Tester reports success.

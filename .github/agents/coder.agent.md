@@ -49,7 +49,11 @@ a single session never overflows:
 2. **Memory last.** Before ending any session (or finishing any task), update `PROGRESS.md`:
    move completed items to Done, add new discoveries/decisions, and refresh the Todo list.
    Never let the file drift from reality.
-3. **Commit after every step.** Use git. Commit after each completed, compiling step. Do NOT
+3. **Compaction rule.** Once a version or feature is complete, compact the memory: write a brief
+   summary of the completed work and remove the detailed step-by-step notes from the active
+   `PROGRESS.md`. Keep only the recap and the next pointer. Tiny steps such as `1.100-1`,
+   `1.100-2.S1`, etc. should be folded into the recap and then pruned.
+4. **Commit after every step.** Use git. Commit after each completed, compiling step. Do NOT
    commit broken or half-finished code. See the Git policy below.
 4. **Verify before claiming done.** After editing, run the build (`npm run compile`) and check
    for errors. A task is only "done" when it compiles cleanly.

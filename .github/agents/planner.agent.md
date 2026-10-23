@@ -46,7 +46,11 @@ a single session never overflows:
 2. **Memory last.** Before ending any session (or finishing any task), update `PROGRESS.md`:
    move completed plans to Done, add new discoveries/decisions, and refresh the Todo list.
    Never let the file drift from reality.
-3. **Study the changelog entry fully.** Read the text AND any images (screenshots, diagrams)
+3. **Compaction rule.** Once a version or backlog item is complete, compact the memory: write a
+   short recap of the final plan outcome, then remove the tiny step-by-step detail from the active
+   `PROGRESS.md`. Retain only the summary and the current next item. Individual entries like
+   `1.100-1`, `1.100-2.S1`, etc. should be folded into the recap and then pruned.
+4. **Study the changelog entry fully.** Read the text AND any images (screenshots, diagrams)
    in the changelog entry. Images often show the exact UI layout, button placement, and styling
    that the plan must capture. Use the `web` tool to fetch the changelog and any linked images.
 4. **Ground the plan in the real codebase.** Read the relevant source files (read-only) so the

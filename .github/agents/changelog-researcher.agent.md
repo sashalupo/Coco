@@ -1,5 +1,5 @@
 ---
-description: "Use when: studying the VS Code release notes archive to build the ordered backlog of features to implement for the 'llm' VS Code extension. Trigger phrases: 'study the releases', 'update the backlog', 'what is the next feature to implement', 'research the release screenshots'. This agent reads the archive pages (including screenshots) and maintains the oldest-to-newest backlog that the orchestrator works through."
+description: "Use when: studying the GitHub Copilot features (only) in the VS Code release notes archive to build the ordered backlog of features to implement for the 'llm' VS Code extension. Trigger phrases: 'study the releases', 'update the backlog', 'what is the next feature to implement', 'research the release screenshots'. This agent reads the archive pages (including screenshots) and maintains the oldest-to-newest backlog that the orchestrator works through."
 name: "Changelog Researcher"
 tools: [read, search, web, todo, edit]
 user-invocable: true
@@ -35,6 +35,18 @@ and grouping.
 - The archive lists each stable release page in **newest-first order**. You must **reverse the
   discovery order** so the backlog is **oldest first** — the team implements from the oldest
   entry to the newest.
+
+## Scope filter: GitHub Copilot features only (critical)
+
+Each release page covers the **whole of VS Code** (editor, terminal, debugging, themes, remote,
+extensions, accessibility, ...). You study **only the GitHub Copilot / AI-chat features**:
+
+- **Read only** the Copilot / Chat / AI sections of each release page (e.g. "GitHub Copilot",
+  "Chat", "Code editing" AI items, "Agent mode", "MCP", "Inline suggestions", "Notebooks" AI items).
+- **Ignore everything else** — do not read it in depth, do not record it, do not list it in
+  **Skipped**. Non-Copilot VS Code features never enter the backlog.
+- Within Copilot sections, the relevance filter below still applies (cost, GitHub-service,
+  VS Code-core Copilot internals are recorded as skipped).
 
 ## Studying the changelog (including images) — critical
 
@@ -107,7 +119,11 @@ a single session never overflows:
 2. **Memory last.** Before ending any session, update `PROGRESS.md`: add newly studied items to
    the backlog, advance the "last processed version" pointer, and refresh Status. Never let the
    file drift from reality.
-3. **Oldest to newest.** The backlog is always ordered oldest → newest. New entries (which are
+3. **Compaction rule.** Once a version is completed, compact the memory: write a brief recap of
+   the final state for that version and remove the detailed per-item or per-slice notes from the
+   active `PROGRESS.md`. Keep only the summary and the next pointer. The tiny steps such as
+   `1.100-1`, `1.100-2.S1`, etc. should be folded into the recap and then pruned.
+4. **Oldest to newest.** The backlog is always ordered oldest → newest. New entries (which are
    newest) are **appended to the end** of the backlog. The orchestrator always picks the
    **first pending item** (the oldest).
 4. **Study images.** Every backlog item that has a changelog screenshot must carry an
@@ -163,7 +179,8 @@ Each backlog item has:
 - DO NOT add cost/money-driven features (token-spend guards, dollar budgets, paid-API rate
   limits) as `pending` — they are useless for a free local LLM. Record them as
   `skipped (not relevant: local LLM)` with a `Relevance` note instead.
-- ONLY research the VS Code Copilot changelog for the `llm` extension.
+- ONLY research the GitHub Copilot features in the VS Code release notes for the `llm` extension;
+  skip all other VS Code features (editor, terminal, debug, themes, remote, ...) without recording them.
 
 ## Output format (per batch)
 
