@@ -11,6 +11,7 @@ export interface WorkspaceTemplate {
   label: string;
   description: string;
   files: { path: string; content: string }[];
+  launchTask?: { label: string; command: string };
 }
 
 /** The four supported workspace templates. */
@@ -19,6 +20,7 @@ export const WORKSPACE_TEMPLATES: readonly WorkspaceTemplate[] = [
     type: "extension",
     label: "VS Code extension",
     description: "A minimal VS Code extension project",
+    launchTask: { label: "Compile", command: "npm run compile" },
     files: [
       {
         path: "package.json",
@@ -89,6 +91,7 @@ tsconfig.json
     type: "mcp-server",
     label: "MCP server",
     description: "A minimal Model Context Protocol server (stdio)",
+    launchTask: { label: "Start", command: "npm start" },
     files: [
       {
         path: "package.json",
@@ -194,6 +197,7 @@ responses to stdout.
     type: "dev-env",
     label: "Dev environment",
     description: "A minimal TypeScript dev environment with scripts",
+    launchTask: { label: "Dev", command: "npm run dev" },
     files: [
       {
         path: "package.json",
@@ -270,6 +274,29 @@ A minimal generic project scaffold.
 /** Returns the list of supported workspace template types in order. */
 export function listWorkspaceTypes(): string[] {
   return ["extension", "mcp-server", "dev-env", "generic"];
+}
+
+/**
+ * Build a VS Code tasks.json string for the given workspace type.
+ * Returns `""` for unknown types or types without a launchTask.
+ */
+export function buildTasksJson(type: string): string {
+  const template = WORKSPACE_TEMPLATES.find((t) => t.type === type);
+  if (!template || !template.launchTask) {
+    return "";
+  }
+  const obj = {
+    version: "2.0.0",
+    tasks: [
+      {
+        label: template.launchTask.label,
+        type: "shell",
+        command: template.launchTask.command,
+        problemMatcher: [],
+      },
+    ],
+  };
+  return JSON.stringify(obj, null, 2);
 }
 
 /**
