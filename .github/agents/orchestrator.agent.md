@@ -91,6 +91,24 @@ slice of a feature per session**:
 - **Token budget heuristic:** if the Planner's plan for a slice involves reading or editing
   more than ~3 source files, the slice is too big — split it.
 
+## Background preparation + invalidation rule
+
+While the current slice is active, the orchestrator may prepare the next backlog item in a
+background lane using the **Changelog Researcher** and **Planner**. This is a look-ahead only:
+preparation is allowed to reduce idle time, but it is never authoritative until the current
+slice is verified.
+
+- **Prepared work is provisional.** The next item may be researched and planned in advance,
+  but the prepared material is not considered committed or final.
+- **Failure invalidates the prepared next item.** If the active slice fails for any reason
+  (Coder mistake, Tester failure, wrong acceptance criteria, broken plan assumptions, or
+  sub-agent retry exhaustion), the pre-prepared next item must be discarded immediately.
+- **On invalidation:** re-read the current memory, reset the next-item preparation state,
+  re-run the **Changelog Researcher** for the next valid item, and re-run the **Planner** to
+  create fresh plan material.
+- **Never carry stale prep into recovery.** A failed active slice must not keep stale
+  research/planning notes alive; recovery starts from a clean, freshly prepared state.
+
 ## Non-negotiable operating rules
 
 1. **Memory first.** On EVERY session start, read `.github/agents/orchestrator/PROGRESS.md`

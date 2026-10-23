@@ -119,6 +119,9 @@ a single session never overflows:
 6. **Apply the local-LLM relevance filter.** Classify every item as cost/money-driven (SKIP) or
    capability/context-driven (KEEP) per the filter above. Cost-driven items are recorded with
    status `skipped (not relevant: local LLM)` and are never picked up by the orchestrator.
+7. **Background-prep invalidation.** If the active implementation fails and the orchestrator
+   invalidates the pre-prepared next item, discard any provisional research for that item and
+   re-fetch it from the current source-of-truth backlog before continuing.
 
 ## Backlog entry format
 

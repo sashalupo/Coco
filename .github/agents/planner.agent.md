@@ -54,6 +54,9 @@ a single session never overflows:
    structure.
 5. **Keep the plan minimal and surgical.** Each step should be a single file or single concern,
    independently compilable (`npm run compile` passes) and independently committable.
+6. **Background-prep invalidation.** If the active implementation fails and the orchestrator
+   invalidates the pre-prepared next item, discard any provisional plan for that item and re-plan
+   it from the current source-of-truth memory before continuing.
 
 ## The product (what you are planning for)
 
