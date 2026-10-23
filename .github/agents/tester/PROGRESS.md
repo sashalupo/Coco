@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-13 (in progress) — S1, S2, S3 verified PASS
-- **Next step:** verify 1.100-13.S4 (llm.mcp.addServer transport quick-pick in src/extension.ts)
+- **Current item:** 1.100-13 (in progress) — S1, S2, S3, S4 verified PASS
+- **Next step:** verify 1.100-13.S5 (smoke-test guards in scripts/smoke-test.js)
 - **Last updated:** 2026-10-23
-- **Last commit:** 3f8a4fa (1.100-13.S3 manager transport selection, verified PASS)
+- **Last commit:** afd54ec (1.100-13.S4 addServer transport quick-pick, verified PASS)
 - **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -38,6 +38,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 
 
+
+**1.100-13.S4** (2026-10-23) — **PASS**. `llm.mcp.addServer` transport quick-pick in `src/extension.ts` (commit afd54ec). Build exit 0; smoke 736/736. Scope clean: commit touches only `src/extension.ts` (+49/-8) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) after the name prompt, `vscode.window.showQuickPick` with exactly `stdio (command)` / `Streamable HTTP (url)` options (values `stdio`/`http`), cancel returns; (b) stdio path unchanged — command input (non-empty validation) + optional space-separated args input, writes `servers[name] = { command, args? }` via `cfg.update("servers", servers, ConfigurationTarget.Workspace)`; (c) HTTP path — URL input box with validation (non-empty + `/^https?:\/\//` prefix), writes `servers[name] = { url }` via the same `cfg.update` mechanism; (d) success messages mention the transport ("via Streamable HTTP" / "via stdio"); (e) `git show --stat afd54ec` confirms only `src/extension.ts` + coder memory changed. **Next: 1.100-13.S5 (smoke-test guards in scripts/smoke-test.js).**
 
 **1.100-13.S3** (2026-10-23) — **PASS**. Manager transport selection in `src/mcpManager.ts` (commit 3f8a4fa). Build exit 0; smoke 736/736. Scope clean: commit touches only `src/mcpManager.ts` (+25/-5) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `McpHttpClient` + `McpToolResult` imported from `./mcp` (import block lines 9-18); (b) `export interface McpClientLike` (lines 22-27) with `tools: McpTool[]`, `start(): Promise<void>`, `callTool(name, args): Promise<McpToolResult>`, `close(): void` — the added `start()` is correct and necessary: `ensureStarted` awaits `client.start()` (line ~95) and both `McpClient` (src/mcp.ts line 278) and `McpHttpClient` (line 364) have `async start(): Promise<void>`; (c) `clients = new Map<string, McpClientLike>()` (line 44) and `starting = new Map<string, Promise<McpClientLike>>()` (line 46); (d) `ensureStarted` picks transport `cfg.url ? new McpHttpClient(cfg) : new McpClient(cfg)` (lines 93-95); (e) `refresh`/`getTools`/`getServerTools`/`execute`/`dispose` use only the `McpClientLike` surface (`.tools`, `.callTool`, `.close`, `.start`) — no behavior change for stdio servers; (f) `git show --stat 3f8a4fa` confirms only `src/mcpManager.ts` + coder memory changed. **Next: 1.100-13.S4 (llm.mcp.addServer transport quick-pick in src/extension.ts).**
 
