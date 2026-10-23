@@ -14,12 +14,12 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.100-19** — Create and launch tasks in agent mode — **IN PROGRESS** (3 slices S-001–S-003; S-001 done; 1.100-18 skipped: no preview webview)
-- **Current slice:** 1.100-19 S-001 DONE (verified PASS; code 5e3bde9)
+- **Current slice:** 1.100-19 S-002 DONE (verified PASS; code 2c014c2)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-19 S-002 — extend `buildScaffoldPrompt()` with tasks.json write + ask-and-run steps (user goal: continue until version 1.107)
+- **Next step:** 1.100-19 S-003 — smoke guards in `scripts/smoke-test.js` (last slice of item) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** a9a9417 (tester verified 1.100-19 S-001; code 5e3bde9)
+- **Last commit:** 7dc2fb8 (tester verified 1.100-19 S-002; code 2c014c2)
 - **Build state:** compiles clean; smoke 774/774 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
