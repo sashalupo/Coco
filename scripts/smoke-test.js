@@ -5432,11 +5432,131 @@ function assert(cond, label) {
     ),
     "pill-s5: package.json contributes the llm.addContext command",
   );
-  if (assertCount !== 690) {
-    console.error(`FAIL: total assertion count is 690 (got ${assertCount})`);
+  // 81) agent autofix regression guards (1.100-10.S4)
+  const autofixS4AutoFix = pkgJson.contributes.configuration.properties[
+    "llm.agent.autoFix"
+  ];
+  assert(
+    autofixS4AutoFix &&
+      autofixS4AutoFix.type === "boolean" &&
+      autofixS4AutoFix.default === true,
+    "autofix-s4: llm.agent.autoFix is a boolean with default true",
+  );
+  const autofixS4CfgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    autofixS4CfgSrc.includes('c.get<boolean>("agent.autoFix", true)'),
+    "autofix-s4: config reads agent.autoFix with default true",
+  );
+  const autofixS4PresetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    autofixS4PresetsSrc.includes("agentAutoFix: boolean;"),
+    "autofix-s4: presets LlmSettings has agentAutoFix: boolean",
+  );
+  const autofixS4ExecSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  assert(
+    autofixS4ExecSrc.includes("export function newDiagnostics") &&
+      autofixS4ExecSrc.includes("export interface DiagnosticLike"),
+    "autofix-s4: ToolExecutor exports newDiagnostics and DiagnosticLike",
+  );
+  const autofixS4HostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    autofixS4HostSrc.includes("settings.agentAutoFix"),
+    "autofix-s4: ChatViewProvider gates the autofix loop on settings.agentAutoFix",
+  );
+  assert(
+    autofixS4HostSrc.includes("const MAX_AUTOFIX_ROUNDS = 2;"),
+    "autofix-s4: ChatViewProvider caps autofix at MAX_AUTOFIX_ROUNDS = 2",
+  );
+  const autofixS4BeforeIdx = autofixS4HostSrc.indexOf(
+    "this.autofixSnapshot(editedPaths) : []",
+  );
+  const autofixS4BatchIdx = autofixS4HostSrc.indexOf(
+    "for (const call of toolCalls)",
+  );
+  assert(
+    autofixS4BeforeIdx !== -1 &&
+      autofixS4BatchIdx !== -1 &&
+      autofixS4BeforeIdx < autofixS4BatchIdx,
+    "autofix-s4: pre-batch diagnostics snapshot is taken before the tool batch loop",
+  );
+  assert(
+    autofixS4HostSrc.includes("setTimeout(r, 500)"),
+    "autofix-s4: ChatViewProvider waits 500 ms for the language server to settle",
+  );
+  // Pure-function test of the compiled newDiagnostics helper (vscode stubbed
+  // via the existing Module._load pattern).
+  const originalLoadAutofix = Module._load;
+  Module._load = function (request, parent, isMain) {
+    if (request === "vscode") {
+      return {
+        workspace: {
+          workspaceFolders: [{ uri: { fsPath: process.cwd() } }],
+          getConfiguration: () => ({ get: (_k, d) => d }),
+        },
+      };
+    }
+    return originalLoadAutofix.apply(this, arguments);
+  };
+  delete require.cache[
+    require.resolve(path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"))
+  ];
+  const { newDiagnostics } = require(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+  );
+  Module._load = originalLoadAutofix;
+  const autofixS4Diag = (severity, line, character, message) => ({
+    severity,
+    range: { start: { line, character } },
+    message,
+  });
+  const autofixS4Before = [
+    autofixS4Diag(0, 0, 0, "old error"),
+    autofixS4Diag(1, 3, 5, "kept warning"),
+  ];
+  const autofixS4After = [
+    autofixS4Diag(1, 3, 5, "kept warning"),
+    autofixS4Diag(0, 7, 2, "new error"),
+    autofixS4Diag(0, 0, 0, "old error"),
+  ];
+  const autofixS4Fresh = newDiagnostics(autofixS4Before, autofixS4After);
+  assert(
+    autofixS4Fresh.length === 1 &&
+      autofixS4Fresh[0].message === "new error" &&
+      autofixS4Fresh[0].range.start.line === 7,
+    "autofix-s4: newDiagnostics returns only after-entries absent from before",
+  );
+  const autofixS4After2 = [
+    autofixS4Diag(0, 9, 0, "second new"),
+    autofixS4Diag(0, 1, 0, "first new"),
+  ];
+  const autofixS4Fresh2 = newDiagnostics([], autofixS4After2);
+  assert(
+    autofixS4Fresh2.length === 2 &&
+      autofixS4Fresh2[0].message === "second new" &&
+      autofixS4Fresh2[1].message === "first new",
+    "autofix-s4: newDiagnostics preserves after order",
+  );
+  assert(
+    newDiagnostics(autofixS4Before, autofixS4Before).length === 0,
+    "autofix-s4: newDiagnostics returns [] for identical lists",
+  );
+  if (assertCount !== 701) {
+    console.error(`FAIL: total assertion count is 701 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 690");
+  console.log("PASS: total assertion count is 701");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
