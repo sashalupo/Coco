@@ -13,10 +13,10 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-12 · Conversation summary (context-window management)
-- **Current slice:** 1.100-12.S1 DONE (pure helpers in `src/request.ts`)
-- **Next step:** 1.100-12.S2 — settings `llm.chat.summarize.enabled` (default true) + `llm.chat.summarize.threshold` (default 0.7) in `package.json` / `presets.ts` / `config.ts`
+- **Current slice:** 1.100-12.S2 DONE (summarize settings)
+- **Next step:** 1.100-12.S3 — automatic summarization pass in `src/chat/ChatViewProvider.ts` (`maybeSummarizeHistory` + agent-loop hook after the 1.100-11 manual-edit block)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): summarizeSplit/buildTranscript helpers (1.100-12.S1)
+- **Last commit:** feat(llm): llm.chat.summarize settings (1.100-12.S2)
 - **Build state:** compiles clean; smoke 714 PASS
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-12.S2 — settings: `llm.chat.summarize.enabled` (boolean, default true) + `llm.chat.summarize.threshold` (number, default 0.7, min 0, max 1) in `package.json` schema (after `llm.agent.trackManualEdits`); `LlmSettings.chatSummarizeEnabled: boolean` + `chatSummarizeThreshold: number` in `src/presets.ts` (after `agentTrackManualEdits`, ~line 125); reads in `src/config.ts` `readSettings()` `chat.summarize.enabled` default true + `chat.summarize.threshold` default 0.7 (after `agentTrackManualEdits`, ~line 89). No context-window size setting — window comes from the toolbar context preset via `CONTEXT_TO_TOKENS`. Compile clean; smoke 714 PASS.
 - [x] 1.100-12.S1 — pure helpers in `src/request.ts` (no vscode import): (a) `summarized?: boolean` flag on `ChatMessage`; (b) `export const SUMMARY_MARKER = "[Summarized conversation history]"`; (c) `export function summarizeSplit(messages, threshold, windowTokens): number | null` — `null` when `windowTokens <= 0`, `threshold <= 0`, `estimateMessagesTokens(messages) < threshold * windowTokens`, or fewer than 6 messages; naive split keeps last 4 (same keep-count as `handleCompact`); split point walked forward past tool-call groups (`role === "tool"` or non-empty `tool_calls`) and past `summarized` messages; `null` if walking leaves fewer than 4 to keep; (d) `export function buildTranscript(messages): string` — `User:/Assistant:/System:/Tool:` lines joined by blank lines (same shape as `handleCompact`'s transcript). Compile clean; smoke 714 PASS.
 - [x] 1.100-11.S1 — pure exported `FileSnapshot` interface + `externallyChanged(snapshots, current)` in `src/tools/ToolExecutor.ts` (next to `newDiagnostics`, ~line 1575): returns paths in `current` whose `mtimeMs` or `size` differs from the stored snapshot (iteration order = `current` order); paths only in `snapshots` (deleted externally) ignored; no vscode import, no I/O
 - [x] 1.100-11.S2 — `llm.agent.trackManualEdits` setting (default true): `presets.ts` `LlmSettings.agentTrackManualEdits` (after `agentAutoFix`, ~line 124), `config.ts` read `agent.trackManualEdits` default true (after `agentAutoFix`, ~line 88), `package.json` schema entry next to `llm.agent.autoFix`

@@ -370,6 +370,18 @@
           "default": true,
           "description": "Prompt the agent about manual edits the user makes to files during an agent run (the agent is told to re-read manually modified files before editing them)."
         },
+        "llm.chat.summarize.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically summarize older conversation turns when the estimated history crosses the token threshold (keeps long agent sessions within the context window)."
+        },
+        "llm.chat.summarize.threshold": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Fraction of the selected context budget at which the conversation is summarized (0 disables)."
+        },
         "llm.statusBar.enabled": {
           "type": "boolean",
           "default": true,

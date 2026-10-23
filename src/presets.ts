@@ -122,6 +122,10 @@ export interface LlmSettings {
   agentAutoFix: boolean;
   /** Prompt the agent about manual edits the user makes to files during an agent run. */
   agentTrackManualEdits: boolean;
+  /** Automatically summarize older conversation turns when the estimated history crosses the token threshold. */
+  chatSummarizeEnabled: boolean;
+  /** Fraction of the selected context budget at which the conversation is summarized (0 disables). */
+  chatSummarizeThreshold: number;
   /** MCP server configurations (name → command/args/env). */
   mcpServers: Record<string, McpServerConfig>;
 }
