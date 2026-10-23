@@ -17,9 +17,9 @@ dispatches, verifies each stage, records, and commits.
 - **Current slice:** 1.100-16.S4 DONE (verified PASS; code 5f230bc)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-18 — Select and attach UI elements to chat (Planner dispatch first) (user goal: continue until version 1.107)
+- **Next step:** 1.100-19 — Create and launch tasks in agent mode (Planner dispatch first) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 26ae207 (tester verified 1.100-16.S4; code 5f230bc)
+- **Last commit:** eefa457 (planner skipped 1.100-18: no preview webview)
 - **Build state:** compiles clean; smoke 774/774 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
