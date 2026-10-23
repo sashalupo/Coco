@@ -13,10 +13,10 @@ after each compiling step.
 ## Status
 
 - **Current item:** **1.100-10** — Autofix diagnostics from agent mode edits (4 slices)
-- **Current slice:** 1.100-10.S3 DONE
+- **Current slice:** 1.100-10.S3 DONE (bug fixed: before-snapshot now taken pre-batch)
 - **Next step:** 1.100-10.S4 — smoke-test regression guards in `scripts/smoke-test.js`
 - **Last updated:** 2026-10-23
-- **Last commit:** (this commit, 1.100-10.S2)
+- **Last commit:** fix(llm): take autofix before-snapshot pre-batch (1.100-10.S3)
 - **Build state:** compiles clean; smoke 690 PASS
 
 ## Plan pointer
@@ -42,7 +42,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 - [x] 1.100-8.S5 — smoke-test regression guards in `scripts/smoke-test.js`
 - [x] 1.100-10.S1 — `llm.agent.autoFix` setting (default true): `presets.ts` `LlmSettings.agentAutoFix`, `config.ts` read, `package.json` schema
 - [x] 1.100-10.S2 — pure exported `newDiagnostics(before, after)` + `DiagnosticLike` in `src/tools/ToolExecutor.ts` (key `severity|startLine|startChar|message`; vscode-independent; importable via `out/tools/ToolExecutor.js` under the existing `Module._load` vscode stub)
-- [x] 1.100-10.S3 — agent-loop autofix hook in `src/chat/ChatViewProvider.ts` (cap 2 rounds): `MAX_AUTOFIX_ROUNDS = 2`, `autoFixRounds` reset next to `clearChangeSummary()`, post-batch hook in the `for(;;)` loop — `autofixEditedPaths(toolCalls)` (write_file/edit_file/apply_patch/notebook_edit `path` args, deduped), `autofixSnapshot(relPaths)` (vscode.languages.getDiagnostics per file URI, `DiagnosticLike` shape), 500 ms settle, `newDiagnostics(before, after)` diff; new problems + `settings.agentAutoFix` + rounds < 2 → injected system message ("New problems appeared in <files>: <text> Fix them.") + `[auto-fix n/2]` delta note + loop continues; past cap → `[new problems remain]` delta only. Helpers `autofixEditedPaths`/`autofixSnapshot`/`formatNewDiagnostics` (10-entry cap) at file bottom.
+- [x] 1.100-10.S3 — agent-loop autofix hook in `src/chat/ChatViewProvider.ts` (cap 2 rounds): `MAX_AUTOFIX_ROUNDS = 2`, `autoFixRounds` reset next to `clearChangeSummary()`, post-batch hook in the `for(;;)` loop — `autofixEditedPaths(toolCalls)` (write_file/edit_file/apply_patch/notebook_edit `path` args, deduped), `autofixSnapshot(relPaths)` (vscode.languages.getDiagnostics per file URI, `DiagnosticLike` shape), 500 ms settle, `newDiagnostics(before, after)` diff; new problems + `settings.agentAutoFix` + rounds < 2 → injected system message ("New problems appeared in <files>: <text> Fix them.") + `[auto-fix n/2]` delta note + loop continues; past cap → `[new problems remain]` delta only. Helpers `autofixEditedPaths`/`autofixSnapshot`/`formatNewDiagnostics` (10-entry cap) at file bottom. **Fix (Tester-found bug):** the `before` snapshot was originally taken AFTER the batch loop, so the diff only caught diagnostics appearing in the 500 ms post-batch window and missed problems the edits themselves introduced. Now `editedPaths` + `before` snapshot are computed BEFORE the `for (const call of toolCalls)` batch loop; the settle + `after` snapshot + diff + system-message/delta logic stays post-batch.
 - [ ] 1.100-10.S4 — smoke-test regression guards in `scripts/smoke-test.js`
 
 ## Notes / decisions

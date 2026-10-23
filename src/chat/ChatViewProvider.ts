@@ -1499,6 +1499,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           break;
         }
 
+        // 1.100-10.S3: take the "before" diagnostics snapshot BEFORE the
+        // batch executes so the post-batch diff catches problems the edits
+        // themselves introduced (not just ones appearing in the settle
+        // window after the batch).
+        const editedPaths = this.autofixEditedPaths(toolCalls);
+        const before =
+          editedPaths.length > 0 ? this.autofixSnapshot(editedPaths) : [];
+
         // Execute each tool call and append the results to the history.
         // When requireApproval is on, mutating tools (write_file, edit_file)
         // are held: post an approval card and await the user's decision.
@@ -1651,12 +1659,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
 
         // 1.100-10.S3: autofix hook — diff diagnostics for the files this
-        // batch edited against the pre-batch snapshot. New problems trigger
-        // an injected system turn (capped at MAX_AUTOFIX_ROUNDS per run);
-        // past the cap they are only reported in a delta note.
-        const editedPaths = this.autofixEditedPaths(toolCalls);
+        // batch edited against the pre-batch snapshot (taken before the
+        // batch ran, above). New problems trigger an injected system turn
+        // (capped at MAX_AUTOFIX_ROUNDS per run); past the cap they are
+        // only reported in a delta note.
         if (editedPaths.length > 0) {
-          const before = this.autofixSnapshot(editedPaths);
           // Give the language server a moment to settle after the edits.
           await new Promise((r) => setTimeout(r, 500));
           const after = this.autofixSnapshot(editedPaths);
