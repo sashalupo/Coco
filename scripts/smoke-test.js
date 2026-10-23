@@ -5332,11 +5332,111 @@ function assert(cond, label) {
       fetchmdS4Enabled.description.includes("Markdown"),
     "fetchmd-s4: llm.chat.fetch.enabled description mentions Markdown",
   );
-  if (assertCount !== 675) {
-    console.error(`FAIL: total assertion count is 675 (got ${assertCount})`);
+  // 80) chat input pill regression guards (1.100-8.S5)
+  const pillS5WebviewSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  const pillS5InputRowStart = pillS5WebviewSrc.indexOf('<div class="input-row">');
+  const pillS5InputRow =
+    pillS5InputRowStart === -1
+      ? ""
+      : pillS5WebviewSrc.slice(
+          pillS5InputRowStart,
+          pillS5WebviewSrc.indexOf("</div>", pillS5InputRowStart),
+        );
+  assert(
+    pillS5InputRowStart !== -1 && !pillS5InputRow.includes(">Done<"),
+    "pill-s5: input row has no Done button label",
+  );
+  assert(
+    !pillS5WebviewSrc.includes('id="done"'),
+    "pill-s5: webview has no #done element",
+  );
+  assert(
+    pillS5WebviewSrc.includes("e.key === 'Enter' && !e.shiftKey"),
+    "pill-s5: Enter (without Shift) still triggers send",
+  );
+  assert(
+    pillS5WebviewSrc.includes("doSend();"),
+    "pill-s5: Enter handler calls doSend()",
+  );
+  assert(
+    pillS5WebviewSrc.includes('id="new-chat"'),
+    "pill-s5: New Chat control (#new-chat) exists",
+  );
+  assert(
+    pillS5WebviewSrc.includes('id="quick-new-chat"'),
+    "pill-s5: quick New Chat control (#quick-new-chat) exists",
+  );
+  assert(
+    pillS5InputRowStart !== -1 &&
+      !pillS5InputRow.includes("new-chat") &&
+      !pillS5InputRow.includes("newChat"),
+    "pill-s5: input row has no other session-reset control (New Chat only)",
+  );
+  const { parsePillRefs, dedupePills } = require(
+    path.join(__dirname, "..", "out", "context.js"),
+  );
+  const pillS5Refs = parsePillRefs("see @src/a.ts and #folder:src again @src/a.ts");
+  assert(
+    pillS5Refs.length === 2 &&
+      pillS5Refs[0].kind === "file" &&
+      pillS5Refs[0].path === "src/a.ts" &&
+      pillS5Refs[1].kind === "folder" &&
+      pillS5Refs[1].path === "src",
+    "pill-s5: parsePillRefs parses @file and #folder refs, dedupes within message",
+  );
+  const pillS5Merged = dedupePills(
+    [{ id: "file:src/a.ts", kind: "file", label: "a.ts", path: "src/a.ts" }],
+    parsePillRefs("@src/a.ts @src/b.ts"),
+  );
+  assert(
+    pillS5Merged.length === 2 &&
+      pillS5Merged[0].path === "src/a.ts" &&
+      pillS5Merged[1].path === "src/b.ts",
+    "pill-s5: dedupePills keeps existing order and drops duplicate ids",
+  );
+  assert(
+    pillS5WebviewSrc.includes("case 'context_pills'"),
+    "pill-s5: webview handles context_pills host message",
+  );
+  assert(
+    pillS5WebviewSrc.includes("remove_pill") &&
+      pillS5WebviewSrc.includes("renderPillStrip"),
+    "pill-s5: webview posts remove_pill and renders the pill strip",
+  );
+  const pillS5HostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    pillS5HostSrc.includes("postContextPills"),
+    "pill-s5: ChatViewProvider has postContextPills()",
+  );
+  assert(
+    pillS5HostSrc.includes('case "remove_pill"'),
+    "pill-s5: ChatViewProvider handles remove_pill webview message",
+  );
+  const pillS5ExtSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    pillS5ExtSrc.includes('registerCommand("llm.addContext"'),
+    "pill-s5: extension.ts registers llm.addContext",
+  );
+  assert(
+    pkgJson.contributes.commands.some(
+      (c) => c.command === "llm.addContext",
+    ),
+    "pill-s5: package.json contributes the llm.addContext command",
+  );
+  if (assertCount !== 690) {
+    console.error(`FAIL: total assertion count is 690 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 675");
+  console.log("PASS: total assertion count is 690");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
