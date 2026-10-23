@@ -12,12 +12,12 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-19 · Create and launch tasks in agent mode (workspace creation follow-up)
-- **Current slice:** 1.100-19.S-002 DONE (scaffold prompt + tasks.json injection in `buildScaffoldPrompt`)
-- **Next step:** 1.100-19.S-003 (smoke-test regression guards in `scripts/smoke-test.js`)
+- **Current item:** 1.100-19 · Create and launch tasks in agent mode (workspace creation follow-up) — **COMPLETE** (S-001, S-002, S-003)
+- **Current slice:** 1.100-19.S-003 DONE (smoke-test regression guards in `scripts/smoke-test.js`)
+- **Next step:** 1.100-29 · Generate alt text in HTML or Markdown (AI code action) — awaiting planner plan
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): extend scaffold prompt with tasks.json write + ask-and-run (1.100-19 S-002)
-- **Build state:** compiles clean
+- **Last commit:** test(llm): smoke guards for workspace scaffold tasks.json (1.100-19 S-003)
+- **Build state:** compiles clean; smoke 780/780
 
 ## Plan pointer
 
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-19.S-003 — `scripts/smoke-test.js` only: new `ws-s5` block after the `ws-s1` block requiring `buildTasksJson` from `out/workspaceScaffold.js` (plain `require`, no vscode import), 6 new assertions (774 → 780): (a) `buildTasksJson("extension")` parses to version `2.0.0`, exactly one task, `label === "Compile"`, `command === "npm run compile"`, `type === "shell"`, `problemMatcher` empty array; (b) `buildTasksJson("generic") === ""`; (c) `buildTasksJson("nope") === ""`; (d) `mcp-server` → `Start`/`npm start`, `dev-env` → `Dev`/`npm run dev`; (e) `buildScaffoldPrompt("extension","x")` contains `.vscode/tasks.json` + `run_command` + `"label": "Compile"`; (f) `buildScaffoldPrompt("generic","x")` does NOT contain `tasks.json`. Hard gate raised 774 → 780. **Item 1.100-19 COMPLETE** (S-001–S-003; smoke 780).
 - [x] 1.100-19.S-002 — `src/workspaceScaffold.ts` `buildScaffoldPrompt`: when template has `launchTask`, prompt now includes (a) a step to write `.vscode/tasks.json` via `write_file` with the `buildTasksJson` output in a fenced `json` block, (b) a final step to ask the user whether to run the launch task and if yes run it via `run_command`; steps renumbered dynamically; `generic` template prompt unchanged (no tasks.json steps). Acceptance: `buildScaffoldPrompt("extension","x")` contains `.vscode/tasks.json` + `run_command`; `buildScaffoldPrompt("generic","x")` does NOT contain `tasks.json`. Compile clean.
 - [x] 1.100-19.S-001 — `src/workspaceScaffold.ts`: (a) `launchTask?: { label: string; command: string }` added to `WorkspaceTemplate` interface; (b) set on `extension` (`Compile` / `npm run compile`), `mcp-server` (`Start` / `npm start`), `dev-env` (`Dev` / `npm run dev`); `generic` has none; (c) pure exported `buildTasksJson(type: string): string` — looks up template by type, returns `JSON.stringify(obj, null, 2)` with version `2.0.0` + one shell task (label/command/problemMatcher: []) when `launchTask` present, `""` for unknown type or no `launchTask`. Compile clean.
 - [x] 1.100-16.S4 — `scripts/smoke-test.js` only: new `mcp-inputs-s1..s4` block before the hard gate, 8 new assertions (766 → 774): (a) `parseMcpServers` accepts a valid `inputs` map (`API_KEY: { type: "string", password: true, required: true }`) and keeps `env.API_KEY === "${input:API_KEY}"` verbatim; (b) `parseMcpServers` drops `inputs` with a bad `type` ("text") while keeping the server entry (`inputs === undefined`); (c) `detectSecretEnvName` true for `API_KEY`/`GITHUB_TOKEN`/`db_password`/`AUTH_HEADER`/`client_secret`/`Bearer`; (d) false for `PORT`/`LOG_LEVEL`/`HOME`; (e) `resolveMcpInputs` resolves `${input:API_KEY}` from provided map and passes non-refs through (`{ API_KEY: "secret123", PORT: "8080" }`); (f) `resolveMcpInputs` throws `missing required input: API_KEY` for an absent ref; (g) `McpManager` (no-op notify) with a stdio server `env: { API_KEY: "${input:API_KEY}" }` — `ensureStarted("srv")` without `setInputs` rejects with `missing required input: API_KEY` and `statuses.get("srv").status === "error"`; (h) static: `src/extension.ts` contains `detectSecretEnvName` + `setInputs`, `package.json` contains `inputs`. Hard gate raised 766 → 774. **Item 1.100-16 COMPLETE** (S1–S4; smoke 774).

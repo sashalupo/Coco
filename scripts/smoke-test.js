@@ -3407,6 +3407,53 @@ function assert(cond, label) {
     "ws-s1: buildScaffoldPrompt content; unknown type → ''; generic has no npm install",
   );
 
+  // 25b) Workspace scaffold tasks.json (1.100-19 S-003)
+  const { buildTasksJson } = require(path.join(
+    __dirname,
+    "..",
+    "out",
+    "workspaceScaffold.js",
+  ));
+  const wsTasksExt = JSON.parse(buildTasksJson("extension"));
+  assert(
+    wsTasksExt.version === "2.0.0" &&
+      wsTasksExt.tasks.length === 1 &&
+      wsTasksExt.tasks[0].label === "Compile" &&
+      wsTasksExt.tasks[0].command === "npm run compile" &&
+      wsTasksExt.tasks[0].type === "shell" &&
+      Array.isArray(wsTasksExt.tasks[0].problemMatcher) &&
+      wsTasksExt.tasks[0].problemMatcher.length === 0,
+    "ws-s5: buildTasksJson('extension') → version 2.0.0, one shell task Compile / npm run compile, empty problemMatcher",
+  );
+  assert(
+    buildTasksJson("generic") === "",
+    "ws-s5: buildTasksJson('generic') === '' (no launchTask)",
+  );
+  assert(
+    buildTasksJson("nope") === "",
+    "ws-s5: buildTasksJson('nope') === '' (unknown type)",
+  );
+  const wsTasksMcp = JSON.parse(buildTasksJson("mcp-server"));
+  const wsTasksDev = JSON.parse(buildTasksJson("dev-env"));
+  assert(
+    wsTasksMcp.tasks[0].label === "Start" &&
+      wsTasksMcp.tasks[0].command === "npm start" &&
+      wsTasksDev.tasks[0].label === "Dev" &&
+      wsTasksDev.tasks[0].command === "npm run dev",
+    "ws-s5: buildTasksJson('mcp-server') → Start / npm start; buildTasksJson('dev-env') → Dev / npm run dev",
+  );
+  const wsPromptTasks = buildScaffoldPrompt("extension", "x");
+  assert(
+    wsPromptTasks.includes(".vscode/tasks.json") &&
+      wsPromptTasks.includes("run_command") &&
+      wsPromptTasks.includes('"label": "Compile"'),
+    "ws-s5: buildScaffoldPrompt('extension') contains .vscode/tasks.json + run_command + \"label\": \"Compile\"",
+  );
+  assert(
+    !buildScaffoldPrompt("generic", "x").includes("tasks.json"),
+    "ws-s5: buildScaffoldPrompt('generic') does NOT contain tasks.json",
+  );
+
   // 26) New workspace tag context (1.99-6.S2)
   const {
     extractNewWorkspaceTag,
@@ -6392,11 +6439,11 @@ function assert(cond, label) {
     "mcp-inputs-s3: extension.ts references detectSecretEnvName + setInputs; package.json mentions inputs",
   );
 
-  if (assertCount !== 774) {
-    console.error(`FAIL: total assertion count is 774 (got ${assertCount})`);
+  if (assertCount !== 780) {
+    console.error(`FAIL: total assertion count is 780 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 774");
+  console.log("PASS: total assertion count is 780");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
