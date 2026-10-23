@@ -335,14 +335,28 @@ export class McpClient {
     }
   }
 
-  /** Call a discovered tool by name. */
+  /**
+   * Call a discovered tool by name. When `onProgress` is provided it is
+   * wired for the duration of the call and cleared once the call settles
+   * (success or failure). Note: a concurrent `callTool` on the same client
+   * would overwrite the first's callback — acceptable for now.
+   */
   callTool(
     name: string,
     args: Record<string, unknown>,
+    onProgress?: McpProgressCallback,
   ): Promise<McpToolResult> {
+    if (onProgress) {
+      this.setProgressCallback(onProgress);
+    }
     return this.rpc
       .request("tools/call", { name, arguments: args })
-      .then((r) => r as McpToolResult);
+      .then((r) => r as McpToolResult)
+      .finally(() => {
+        if (onProgress) {
+          this.setProgressCallback(undefined);
+        }
+      });
   }
 
   /**
@@ -437,14 +451,27 @@ export class McpHttpClient {
     }
   }
 
-  /** Call a discovered tool by name. */
+  /**
+   * Call a discovered tool by name. When `onProgress` is provided it is
+   * wired for the duration of the call and cleared once the call settles
+   * (success or failure). Note: a concurrent `callTool` on the same client
+   * would overwrite the first's callback — acceptable for now.
+   */
   callTool(
     name: string,
     args: Record<string, unknown>,
+    onProgress?: McpProgressCallback,
   ): Promise<McpToolResult> {
-    return this.post("tools/call", { name, arguments: args }).then(
-      (r) => r as McpToolResult,
-    );
+    if (onProgress) {
+      this.setProgressCallback(onProgress);
+    }
+    return this.post("tools/call", { name, arguments: args })
+      .then((r) => r as McpToolResult)
+      .finally(() => {
+        if (onProgress) {
+          this.setProgressCallback(undefined);
+        }
+      });
   }
 
   /**
