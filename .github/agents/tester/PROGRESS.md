@@ -12,11 +12,11 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-13 (in progress) — S1, S2, S3, S4 verified PASS
-- **Next step:** verify 1.100-13.S5 (smoke-test guards in scripts/smoke-test.js)
+- **Current item:** 1.100-13 — **COMPLETE** (S1–S5 all verified PASS)
+- **Next step:** 1.100-14 — next backlog item (awaiting Planner dispatch)
 - **Last updated:** 2026-10-23
-- **Last commit:** afd54ec (1.100-13.S4 addServer transport quick-pick, verified PASS)
-- **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
+- **Last commit:** b267290 (1.100-13.S5 smoke guards, verified PASS)
+- **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 
 ## Verified (recap)
 
@@ -38,6 +38,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 
 
+
+**1.100-13.S5** (2026-10-23) — **PASS**. Smoke-test regression guards in `scripts/smoke-test.js` (commit b267290). Build exit 0; smoke 750/750 (736 + 14 new `mcp-http-s5` assertions), clean exit (live mock servers on ports 18100/18101 closed, no hang). Scope clean: `git show --stat b267290` touches only `scripts/smoke-test.js` (+261) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Coverage verified: (a) `out/mcp.js` exports `McpHttpClient` (function) + `parseSseMessages` (function); (b) pure `parseSseMessages` tests — two `data:` events → 2 messages with correct payloads, invalid-JSON `data:` line skipped (2 of 3 kept, ids 1 and 2), empty input → `[]`; (c) `parseMcpServers` — `{ url }` kept (url preserved, no command), `{ command, url }` dropped, `{}` dropped; (d) live HTTP tests — SSE-mode mock server (text/event-stream responses, `Mcp-Session-Id: sess-1` echoed on `tools/list` request header, `start()` discovers `echo` tool) and JSON-mode mock server (plain-JSON `start()` + `callTool("add",{a:2,b:3})` → "5"), plus `McpManager` with a `url` server: `ensureStarted` → status `running` toolCount 1, `getTools` → namespaced `mcp__http__add`, `execute("mcp__http__add",{a:40,b:2})` → content "42"; (e) static refs — `package.json` `llm.mcp.servers` description contains "Streamable HTTP", `src/mcpManager.ts` references `McpHttpClient` + `McpClientLike`, `src/extension.ts` contains "Streamable HTTP (url)"; (f) hard gate raised 736 → 750 and matches actual count. Pure-function assertions independently verified against `src/mcp.ts`: `parseSseMessages` (line 102) keeps `data:` lines, strips prefix, JSON.parse each, skips malformed — matches all three assertions; `parseMcpServers` (line 50) drops entries where `hasCommand === hasUrl` (neither or both) — matches the url-kept/both-dropped/empty-dropped assertions. Item-level acceptance (1.100-13): `{ "url": "http://host:port/mcp" }` server connects via Streamable HTTP (POST JSON-RPC, SSE or plain-JSON response, `Mcp-Session-Id` echoed — S1 + S5 live tests), tools exposed as `mcp__<server>__<tool>` (S5 `mcp__http__add`), execution through the existing chat tool loop (pre-existing `mcp-s5` guard: ChatViewProvider routes to `mcpManager.execute`), stdio servers unchanged (S3 `McpClientLike` surface, stdio path in S4 unchanged), `llm.mcp.addServer` offers both transports (S4 + S5 static ref). **Item 1.100-13 complete (S1–S5 all PASS).**
 
 **1.100-13.S4** (2026-10-23) — **PASS**. `llm.mcp.addServer` transport quick-pick in `src/extension.ts` (commit afd54ec). Build exit 0; smoke 736/736. Scope clean: commit touches only `src/extension.ts` (+49/-8) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) after the name prompt, `vscode.window.showQuickPick` with exactly `stdio (command)` / `Streamable HTTP (url)` options (values `stdio`/`http`), cancel returns; (b) stdio path unchanged — command input (non-empty validation) + optional space-separated args input, writes `servers[name] = { command, args? }` via `cfg.update("servers", servers, ConfigurationTarget.Workspace)`; (c) HTTP path — URL input box with validation (non-empty + `/^https?:\/\//` prefix), writes `servers[name] = { url }` via the same `cfg.update` mechanism; (d) success messages mention the transport ("via Streamable HTTP" / "via stdio"); (e) `git show --stat afd54ec` confirms only `src/extension.ts` + coder memory changed. **Next: 1.100-13.S5 (smoke-test guards in scripts/smoke-test.js).**
 
