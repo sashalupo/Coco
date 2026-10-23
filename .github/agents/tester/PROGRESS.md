@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-11 (in progress) — S1 verified PASS
-- **Next step:** verify 1.100-11.S2 (`llm.agent.trackManualEdits` setting)
+- **Current item:** 1.100-11 (in progress) — S1, S2 verified PASS
+- **Next step:** verify 1.100-11.S3 (agent-loop manual-edit hook in ChatViewProvider)
 - **Last updated:** 2026-10-23
-- **Last commit:** 02e835e (1.100-11.S1 externallyChanged helper, verified PASS)
+- **Last commit:** 9eb5918 (1.100-11.S2 trackManualEdits setting, verified PASS)
 - **Build state:** compiles clean; smoke 701/701 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -37,6 +37,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 **1.100-8.S5** (2026-10-23) — PASS. Smoke-test regression guards in `scripts/smoke-test.js` (commit 08f2625): 15 new `pill-s5` assertions — no Done button in input row / no `#done` element; Enter (no Shift) → `doSend()`; New Chat only via `#new-chat`/`#quick-new-chat` (input row has no other session-reset control); pure-function tests of `parsePillRefs`/`dedupePills` against compiled `out/context.js` (parse + within-message dedupe; existing-order merge + id drop); pill pipeline present (`context_pills`/`remove_pill`/`renderPillStrip` in webview, `postContextPills` + `remove_pill` case in ChatViewProvider, `llm.addContext` registered + contributed). Assertions are genuine (string/behavior checks that fail if the feature is removed). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory. Build exit 0; smoke 690/690. **Item 1.100-8 complete (S1–S5 all PASS).**
 
 
+
+**1.100-11.S2** (2026-10-23) — **PASS**. `llm.agent.trackManualEdits` setting (commit 9eb5918): `src/presets.ts` `LlmSettings.agentTrackManualEdits: boolean` (line 124, with doc comment); `src/config.ts` `readSettings()` reads `c.get<boolean>("agent.trackManualEdits", true)` (line 88, default true); `package.json` contributes `llm.agent.trackManualEdits` (boolean, default true, description: prompt the agent about manual edits during an agent run). Scope clean: commit touches only `src/presets.ts` (+2), `src/config.ts` (+1), `package.json` (+5) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Build exit 0; smoke 701/701.
 
 **1.100-11.S1** (2026-10-23) — **PASS**. Pure exported `externallyChanged`/`FileSnapshot` helper in `src/tools/ToolExecutor.ts` (commit 02e835e, lines 1582-1611): `export interface FileSnapshot { mtimeMs: number; size: number }`; `export function externallyChanged(snapshots, current): string[]` — pure (no I/O, no vscode dependency in the helper), iterates `current` in order, pushes path when absent from `snapshots` or `mtimeMs`/`size` differs; paths only in `snapshots` (deleted) ignored. Scope clean: commit touches only `src/tools/ToolExecutor.ts` (+30) + coder memory; no changes to other src files or `scripts/smoke-test.js`. Build exit 0; smoke 701/701. Runtime probe on `out/tools/ToolExecutor.js` (vscode stubbed via `Module._load`): mtime change → listed; size change → listed; identical maps → `[]`; deleted path (only in snapshots) → not listed; order preserved (`['c.ts','a.ts']`) — 5/5 assertions.
 
