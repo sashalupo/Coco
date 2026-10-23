@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-28 — new notebook tool — S4 PASS (2026-10-22)
-- **Next step:** item 1.99-28 S4 verified — next: 1.99-28 S5 (package.json setting schema + final smoke — FINAL slice)
+- **Current item:** 1.99-28 — new notebook tool — S5 PASS (2026-10-22) — ITEM COMPLETE
+- **Next step:** item 1.99-28 fully verified (S1–S5) — next: 1.99-29 (cell output to chat)
 - **Last updated:** 2026-10-22
-- **Last commit:** 178a1e9
-- **Build state:** 566/566 PASS
+- **Last commit:** b619b69
+- **Build state:** 568/568 PASS
+
+### 1.99-28.S5 — FINAL: package.json setting schema + final smoke (2026-10-22) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **568 PASS lines** (566 prior + 2 new `nbnew-s5:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 568/568 PASS; (3) 2 `nbnew-s5:` assertions in section `// 57) newNotebook setting schema (1.99-28.S5)` (smoke-test.js:4333): `package.json` has `llm.chat.newNotebook.enabled` boolean/default true (L4342), description mentions `/newNotebook` (L4347) — all PASS; (4) `package.json` valid JSON, setting after `searchResults.enabled` PASS; (5) scope: only package.json, smoke-test.js, coder PROGRESS.md + `m ninfer` — PASS; (6) all 5 smoke sections present (53–57) PASS.
+- **Verdict:** **PASS** — all 6 criteria met. **Item 1.99-28 (new notebook tool) fully verified (S1–S5) — ITEM COMPLETE.**
 
 ### 1.99-28.S4 — `/newNotebook` chat command (host-side) + `notebook_created` webview notice (2026-10-22) — **PASS**
 

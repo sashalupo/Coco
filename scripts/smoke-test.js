@@ -4330,6 +4330,23 @@ function assert(cond, label) {
     "nbnew-s4: webview renders notebook_created",
   );
 
+  // 57) newNotebook setting schema (1.99-28.S5)
+  const nbnewS5Setting =
+    pkgJson.contributes.configuration.properties[
+      "llm.chat.newNotebook.enabled"
+    ];
+  assert(
+    nbnewS5Setting !== undefined &&
+      nbnewS5Setting.type === "boolean" &&
+      nbnewS5Setting.default === true,
+    "nbnew-s5: package.json has llm.chat.newNotebook.enabled",
+  );
+  assert(
+    typeof nbnewS5Setting?.description === "string" &&
+      nbnewS5Setting.description.includes("/newNotebook"),
+    "nbnew-s5: setting description mentions /newNotebook",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

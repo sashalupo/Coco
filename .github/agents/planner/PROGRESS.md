@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-28 (AI notebook editing improvements — new notebook tool) — **planned** (2026-10-22, 5 slices S1–S5)
-- **Next step:** orchestrator runs the slice pipeline starting at 1.99-28.S1
+- **Current item:** 1.99-28 (AI notebook editing improvements — new notebook tool) — **complete** (2026-10-22, 5 slices S1–S5 done)
+- **Next step:** item 1.99-28 complete — orchestrator moves to next backlog item (1.99-29)
 - **Last updated:** 2026-10-22
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -2281,7 +2281,7 @@ regardless of `llm.tools.enabled`; `npm run compile` clean; smoke test fully gre
   3. Smoke: section `// 56)`. 3 assertions, prefix `nbnew-s4:`.
   Acceptance: compile passes; smoke → **566** (563 + 3).
 
-- **1.99-28.S5** — `package.json` setting schema + final smoke.
+- **1.99-28.S5** (Done — item 1.99-28 complete) — `package.json` setting schema + final smoke.
   Files: `package.json`, `scripts/smoke-test.js`.
   1. `package.json`: add `llm.chat.newNotebook.enabled` (boolean, default true).
   2. Smoke: section `// 57)`. 2 assertions, prefix `nbnew-s5:`.

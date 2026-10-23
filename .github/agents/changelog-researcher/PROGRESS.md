@@ -468,7 +468,7 @@ researcher does NOT write code — it builds and maintains the backlog.
   chat query; `/newNotebook` in ask mode; notebook tool in agent/edit mode. (Navigate
   through AI edits / undo AI edits sub-features are VS Code core notebook UI — skipped.)
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-22 — 5 slices S1–S5; typed cell markers, planNewNotebook, new_notebook tool, /newNotebook command, setting)
 - **Gap vs existing:** `src/notebook.ts` exists (create/modify notebooks). Add a
   `new_notebook` agent tool + `/newNotebook` chat command that plans cells from the query
   and creates the notebook.
@@ -505,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-28** New notebook tool (`/newNotebook`)
 - **1.99-29** Cell output to chat (text/image)
 
 ## Todo

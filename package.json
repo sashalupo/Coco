@@ -286,6 +286,11 @@
           "default": true,
           "description": "Allow the `#searchResults <query>` (or `#searchResults:<query>`) tag to include workspace text-search results (file:line: snippet, capped at 50 matches) in chat context. Mirrors the VS Code 1.99 `#searchResults` tool (text-search fallback — the AI semantic Search view is VS Code core)."
         },
+        "llm.chat.newNotebook.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow the `/newNotebook <query>` chat command to create a new Jupyter notebook (markdown title + objective + starter code cell) in the workspace `notebooks/` folder. Works in ask mode (no model round-trip); the `new_notebook` agent tool is available in agent/edit mode when llm.tools.enabled is on."
+        },
         "llm.completions.model": {
           "type": "string",
           "default": "",
