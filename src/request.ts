@@ -24,6 +24,8 @@ export interface ChatMessage {
   tool_calls?: ToolCall[];
   /** Optional images (base64 data URLs) attached to this message (multimodal). */
   images?: string[];
+  /** True when this message is a conversation-summary replacement (never re-summarized). */
+  summarized?: boolean;
 }
 
 /** One part of a multimodal message content array (OpenAI shape). */
@@ -233,6 +235,82 @@ export function trimHistory(
     start++;
   }
   return { messages: [...system, ...history.slice(start)], trimmed: start > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Conversation summarization (soft alternative to trimHistory)
+// ---------------------------------------------------------------------------
+
+/** Marker prefix for the single message that replaces summarized history. */
+export const SUMMARY_MARKER = "[Summarized conversation history]";
+
+/**
+ * Compute the split index for automatic conversation summarization.
+ *
+ * Returns the index `i` such that `messages[0..i)` should be summarized into a
+ * single summary message and `messages[i..]` is kept verbatim, or `null` when
+ * no summarization is due:
+ *
+ * - `null` when `windowTokens <= 0` (auto/unbounded) or `threshold <= 0`.
+ * - `null` when the estimated total is below `threshold * windowTokens`.
+ * - `null` when there are fewer than 6 messages.
+ * - Otherwise the naive split keeps the last 4 messages (same keep-count as
+ *   `handleCompact`); the split point is walked forward so it never breaks a
+ *   tool-call group (a `tool` result or an assistant message with `tool_calls`)
+ *   and never lands on a `summarized` message. `null` if walking forward would
+ *   leave fewer than 4 messages to keep.
+ */
+export function summarizeSplit(
+  messages: ChatMessage[],
+  threshold: number,
+  windowTokens: number,
+): number | null {
+  if (windowTokens <= 0 || threshold <= 0) {
+    return null;
+  }
+  if (estimateMessagesTokens(messages) < threshold * windowTokens) {
+    return null;
+  }
+  if (messages.length < 6) {
+    return null;
+  }
+  const keepCount = 4;
+  let i = messages.length - keepCount;
+  // Walk forward past tool-call groups and previously summarized messages so
+  // the split point lands on a clean boundary.
+  while (
+    i < messages.length &&
+    (messages[i].role === "tool" ||
+      (messages[i].tool_calls?.length ?? 0) > 0 ||
+      messages[i].summarized === true)
+  ) {
+    i++;
+  }
+  if (messages.length - i < keepCount) {
+    return null;
+  }
+  return i;
+}
+
+/**
+ * Build a plain-text transcript of messages for the summarization prompt:
+ * one `"Role: content"` line per message (User/Assistant/System/Tool), joined
+ * by blank lines (same shape as the transcript built in `handleCompact`).
+ */
+export function buildTranscript(messages: ChatMessage[]): string {
+  return messages
+    .map((m) => {
+      const role =
+        m.role === "user"
+          ? "User"
+          : m.role === "assistant"
+            ? "Assistant"
+            : m.role === "system"
+              ? "System"
+              : "Tool";
+      return `${role}: ${m.content || ""}`;
+    })
+    .join("\n\n");
 }
 
 // ---------------------------------------------------------------------------

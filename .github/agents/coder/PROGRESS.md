@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-11 COMPLETE — 1.100-10 complete
-- **Current slice:** 1.100-11.S4 DONE (smoke-test regression guards)
-- **Next step:** item 1.100-12 (awaiting planner plan)
+- **Current item:** 1.100-12 · Conversation summary (context-window management)
+- **Current slice:** 1.100-12.S1 DONE (pure helpers in `src/request.ts`)
+- **Next step:** 1.100-12.S2 — settings `llm.chat.summarize.enabled` (default true) + `llm.chat.summarize.threshold` (default 0.7) in `package.json` / `presets.ts` / `config.ts`
 - **Last updated:** 2026-10-23
-- **Last commit:** test(llm): smoke guards for manual-edit detection (1.100-11.S4)
+- **Last commit:** feat(llm): summarizeSplit/buildTranscript helpers (1.100-12.S1)
 - **Build state:** compiles clean; smoke 714 PASS
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-12.S1 — pure helpers in `src/request.ts` (no vscode import): (a) `summarized?: boolean` flag on `ChatMessage`; (b) `export const SUMMARY_MARKER = "[Summarized conversation history]"`; (c) `export function summarizeSplit(messages, threshold, windowTokens): number | null` — `null` when `windowTokens <= 0`, `threshold <= 0`, `estimateMessagesTokens(messages) < threshold * windowTokens`, or fewer than 6 messages; naive split keeps last 4 (same keep-count as `handleCompact`); split point walked forward past tool-call groups (`role === "tool"` or non-empty `tool_calls`) and past `summarized` messages; `null` if walking leaves fewer than 4 to keep; (d) `export function buildTranscript(messages): string` — `User:/Assistant:/System:/Tool:` lines joined by blank lines (same shape as `handleCompact`'s transcript). Compile clean; smoke 714 PASS.
 - [x] 1.100-11.S1 — pure exported `FileSnapshot` interface + `externallyChanged(snapshots, current)` in `src/tools/ToolExecutor.ts` (next to `newDiagnostics`, ~line 1575): returns paths in `current` whose `mtimeMs` or `size` differs from the stored snapshot (iteration order = `current` order); paths only in `snapshots` (deleted externally) ignored; no vscode import, no I/O
 - [x] 1.100-11.S2 — `llm.agent.trackManualEdits` setting (default true): `presets.ts` `LlmSettings.agentTrackManualEdits` (after `agentAutoFix`, ~line 124), `config.ts` read `agent.trackManualEdits` default true (after `agentAutoFix`, ~line 88), `package.json` schema entry next to `llm.agent.autoFix`
 - [x] 1.100-11.S4 — smoke-test regression guards in `scripts/smoke-test.js` (13 new assertions, 701 → 714): `manual-edit-s4:` `ToolExecutor.ts` exports `externallyChanged` + `FileSnapshot`; `package.json` `llm.agent.trackManualEdits` boolean default true; `config.ts` reads `agent.trackManualEdits` default true; `presets.ts` `agentTrackManualEdits: boolean`; `ChatViewProvider.ts` references `settings.agentTrackManualEdits`, `externallyChanged`, `touchedFiles`, and the "The user manually modified … Re-read it with read_file before editing it." system note; pure-function tests of compiled `out/tools/ToolExecutor.js` `externallyChanged` (mtime change → listed; size change → listed; identical maps → `[]`; path only in snapshots (deleted) → not listed; `current` iteration order preserved) via the existing `Module._load` vscode stub. **Item 1.100-11 COMPLETE** (S1–S4; smoke 714).
