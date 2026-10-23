@@ -6282,11 +6282,121 @@ function assert(cond, label) {
       webviewProgSrc.includes("tool-progress"),
     "mcp-progress-s6: webview.ts references tool_progress, prettyJson, and tool-progress",
   );
-  if (assertCount !== 766) {
-    console.error(`FAIL: total assertion count is 766 (got ${assertCount})`);
+
+  // 18m) MCP inputs for secrets (1.100-16.S1..S4)
+  const { detectSecretEnvName, resolveMcpInputs } = require(
+    path.join(__dirname, "..", "out", "mcp.js"),
+  );
+  // (a) parseMcpServers accepts a valid inputs map and keeps env refs verbatim.
+  const inputsParsed = parseMcpServers({
+    test: {
+      command: "node",
+      args: ["-e", "x"],
+      env: { API_KEY: "${input:API_KEY}" },
+      inputs: { API_KEY: { type: "string", password: true, required: true } },
+    },
+  });
+  assert(
+    inputsParsed.test &&
+      inputsParsed.test.inputs &&
+      inputsParsed.test.inputs.API_KEY.type === "string" &&
+      inputsParsed.test.inputs.API_KEY.password === true &&
+      inputsParsed.test.inputs.API_KEY.required === true &&
+      inputsParsed.test.env.API_KEY === "${input:API_KEY}",
+    "mcp-inputs-s1: parseMcpServers accepts a valid inputs map and keeps env refs verbatim",
+  );
+  // (b) parseMcpServers drops inputs with a bad type but keeps the server entry.
+  const inputsBadType = parseMcpServers({
+    test: { command: "node", inputs: { API_KEY: { type: "text" } } },
+  });
+  assert(
+    inputsBadType.test && inputsBadType.test.inputs === undefined,
+    "mcp-inputs-s1: parseMcpServers drops inputs with a bad type (server kept)",
+  );
+  // (c) detectSecretEnvName true cases.
+  assert(
+    detectSecretEnvName("API_KEY") === true &&
+      detectSecretEnvName("GITHUB_TOKEN") === true &&
+      detectSecretEnvName("db_password") === true &&
+      detectSecretEnvName("AUTH_HEADER") === true &&
+      detectSecretEnvName("client_secret") === true &&
+      detectSecretEnvName("Bearer") === true,
+    "mcp-inputs-s1: detectSecretEnvName true for key/token/password/auth/secret/bearer names",
+  );
+  // (d) detectSecretEnvName false cases.
+  assert(
+    detectSecretEnvName("PORT") === false &&
+      detectSecretEnvName("LOG_LEVEL") === false &&
+      detectSecretEnvName("HOME") === false,
+    "mcp-inputs-s1: detectSecretEnvName false for non-secret names",
+  );
+  // (e) resolveMcpInputs resolves references and passes non-refs through.
+  assert(
+    JSON.stringify(
+      resolveMcpInputs(
+        { env: { API_KEY: "${input:API_KEY}", PORT: "8080" } },
+        { API_KEY: "secret123" },
+      ),
+    ) === JSON.stringify({ API_KEY: "secret123", PORT: "8080" }),
+    "mcp-inputs-s1: resolveMcpInputs resolves ${input:...} refs and passes non-refs through",
+  );
+  // (f) resolveMcpInputs throws on a missing reference.
+  let inputsMissingErr = null;
+  try {
+    resolveMcpInputs({ env: { API_KEY: "${input:API_KEY}" } }, {});
+  } catch (e) {
+    inputsMissingErr = e;
+  }
+  assert(
+    inputsMissingErr &&
+      String(inputsMissingErr.message).includes("missing required input: API_KEY"),
+    "mcp-inputs-s1: resolveMcpInputs throws 'missing required input: API_KEY' for an absent ref",
+  );
+  // (g) McpManager.ensureStarted without setInputs rejects with the missing-input
+  // error and records an error status.
+  const mgrInputs = new McpManager(() => {});
+  mgrInputs.setServers({
+    srv: {
+      command: "node",
+      args: ["-e", "process.exit(0)"],
+      env: { API_KEY: "${input:API_KEY}" },
+    },
+  });
+  let mgrInputsErr = null;
+  try {
+    await mgrInputs.ensureStarted("srv");
+  } catch (e) {
+    mgrInputsErr = e;
+  }
+  assert(
+    mgrInputsErr &&
+      String(mgrInputsErr.message).includes("missing required input: API_KEY") &&
+      mgrInputs.statuses.get("srv").status === "error",
+    "mcp-inputs-s2: McpManager.ensureStarted without setInputs rejects with missing-input error and error status",
+  );
+  mgrInputs.dispose();
+  // (h) static refs: extension.ts wires detectSecretEnvName + setInputs;
+  // package.json description mentions inputs.
+  const extInputsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  const pkgInputsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "package.json"),
+    "utf8",
+  );
+  assert(
+    extInputsSrc.includes("detectSecretEnvName") &&
+      extInputsSrc.includes("setInputs") &&
+      pkgInputsSrc.includes("inputs"),
+    "mcp-inputs-s3: extension.ts references detectSecretEnvName + setInputs; package.json mentions inputs",
+  );
+
+  if (assertCount !== 774) {
+    console.error(`FAIL: total assertion count is 774 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 766");
+  console.log("PASS: total assertion count is 774");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
