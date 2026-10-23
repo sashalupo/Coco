@@ -10,41 +10,43 @@ Turn each changelog feature (from the Changelog Researcher's backlog) into a con
 step-by-step implementation plan for the `llm` VS Code extension. The planner does NOT write
 code — only the Coder writes code.
 
-## Active plan — 1.100-30 · Drag and drop cell outputs to chat (VS Code 1.100)
+## Active plan — 1.100-31 · Notebook tools for agent mode (VS Code 1.100)
 
 - **Status:** Planned — 2026-10-23
-- **Changelog:** Notebook cell outputs (image and text) can be dragged into the Chat view to attach them; text outputs require holding Alt to avoid clashing with text selection. UX extension of 1.99-29 (`llm.addCellOutput`).
-- **Approach:** `vscode.window.registerDragAndDropController` (VS Code 1.80+) targeting view container `"llm"` with `dropMimeTypes: ["notebook.cellOutput"]`. Reuses the existing `cell_output_inject` webview message (1.99-29) — **no webview changes**.
+- **Changelog:** New LLM tools for agent mode: **Run cell** (agent runs notebook cells and reacts to results), **Get kernel state** (which cells executed, active variables), **List/Install packages** (delegated to pip). No screenshots (release notes reference a video of the agent running a cell). Tooling item, no UI.
+- **Approach:** 4 new tools (`run_notebook_cell`, `get_kernel_state`, `list_packages`, `install_package`) + in-memory kernel state in `ToolExecutor`. Pure helpers in `src/notebook.ts`. Gated by `llm.chat.notebookTools.enabled`.
 - **Grounding (verified):**
-  - No drag-and-drop code exists yet (grep `registerDragAndDropController|enableDrop` → 0 hits).
-  - Chat panel: `WebviewViewProvider` in `src/chat/ChatViewProvider.ts:106`, view container `"llm"` (`package.json:94-101`).
-  - `llm.addCellOutput` (`src/extension.ts:566`): gate `llm.chat.addCellOutput.enabled`, `extractCellOutputs(cell)` (`src/notebook.ts:415` → `{ text, images }` base64 data URLs), vision gate `llm.chat.vision.enabled`, posts `cell_output_inject`.
-  - Webview handles `cell_output_inject` (`src/chat/webview.ts:2199`): text → input, images → `pendingImages` (cap `MAX_IMAGES = 4`) → attach strip.
-  - Smoke gate: `scripts/smoke-test.js:6496-6500` (`assertCount !== 787`).
-- **Files to touch:** `src/notebook.ts`, `src/extension.ts`, `package.json`, `scripts/smoke-test.js`.
+  - `src/notebook.ts` is a **pure module** (no `vscode` import) with `parseNotebook`, `formatNotebookForContext`, `applyNotebookEdit` — the right home for new pure helpers.
+  - `src/tools.ts`: `CODE_TOOLS` array (line 48) ends with `find_usages`; `isMutatingTool` (line ~525) lists `notebook_edit`/`new_notebook`.
+  - `src/tools/ToolExecutor.ts`: `execute()` switch (line ~336) has `notebook_edit`/`new_notebook` cases; `runCommand` (line 766) already uses `spawn` from `child_process` with a timeout — the pattern to reuse.
+  - `src/request.ts` (line ~410): tools are sent when `settings.toolsEnabled`; per-tool gating happens here.
+  - `src/config.ts:85` / `src/presets.ts:118`: `newNotebookEnabled` pattern to copy.
+  - Smoke gate: `scripts/smoke-test.js:6535-6539` at **791**; tool-name list asserted at lines 482 and 4318.
+- **Files to touch:** `src/notebook.ts`, `src/tools.ts`, `src/tools/ToolExecutor.ts`, `src/config.ts`, `src/presets.ts`, `src/request.ts`, `package.json`, `scripts/smoke-test.js`.
 - **Slices:**
-  - **S-001** — `src/notebook.ts` (1 file): add `export function extractNotebookCellOutput(output: NotebookCellOutputLike): { text: string; images: string[] }` where `NotebookCellOutputLike` is a **structural** type (`{ items: { mime: string; data(): Promise<Uint8Array | Buffer> }[] }`) — `src/notebook.ts` is a PURE module (no `vscode` import; the `vscode.NotebookCellOutput` instance is structurally compatible and is cast at the call site in `extension.ts`). `text/plain` items → `text`; `image/png|jpeg|gif|webp|bmp` items → `data:<mime>;base64,...` data URLs. Same shape as `extractCellOutputs`.
-    - *Acceptance:* `npm run compile` passes; `src/notebook.ts` still has no `vscode` import; the helper is unit-testable from the smoke test against `out/notebook.js` with a fake output object.
-  - **S-002** — `src/extension.ts` + `package.json` (2 files):
-    - `package.json`: new setting `llm.chat.cellOutputDrop.enabled` (boolean, default `true`).
-    - `extension.ts`: in `activate()`, register `vscode.window.registerDragAndDropController({ target: { viewContainerId: "llm" }, handleDrop: async (e) => { … } }, { dropMimeTypes: ["notebook.cellOutput"] })`. `handleDrop`: return if `llm.chat.cellOutputDrop.enabled` is off; for each item with `type === "notebook.cellOutput"`, `extractNotebookCellOutput(item.data as unknown as NotebookCellOutputLike)`; **Alt rule** — text-only output (`text` non-empty, no images) is skipped unless `e.modifiers.alt`; images attach on plain drop; gate images on `llm.chat.vision.enabled`; post `{ type: "cell_output_inject", text, images }` to the chat provider.
-    - *Acceptance:* `npm run compile` passes; setting present; controller targets `"llm"`; Alt rule present.
-  - **S-003** — `scripts/smoke-test.js` (1 file): 4 new assertions — (1) `extension.ts` includes `registerDragAndDropController` + `viewContainerId: "llm"`; (2) `extension.ts` includes `notebook.cellOutput` + `e.modifiers.alt`; (3) `notebook.ts` includes `extractNotebookCellOutput`; (4) `package.json` has `llm.chat.cellOutputDrop.enabled` (boolean, default `true`). Bump hard gate **787 → 791** (count check + PASS message).
-    - *Acceptance:* `node scripts/smoke-test.js` passes at 791/791.
-- **Acceptance criteria (whole item):** compile passes; smoke 791/791; image output attaches on plain drop; text-only output attaches only with Alt; both gates work; no new runtime deps; no webview changes.
+  - **S-001** — `src/notebook.ts` (1 file, pure): add `extractVariableNames(source: string): string[]` (regex over `import x`/`from m import a as b`/`x = ...`/`def x`/`class X`, deduped, order-preserving) and `formatKernelState(path: string, executed: number[], variables: string[]): string` (one-line-per-cell executed summary + variable list, or "no cells executed yet"). No `vscode` import.
+    - *Acceptance:* `npm run compile` passes; `src/notebook.ts` still has no `vscode` import; helpers unit-testable from the smoke test against `out/notebook.js`.
+  - **S-002** — `src/tools.ts` (1 file): add 4 schemas to `CODE_TOOLS` — `run_notebook_cell` (`path`, `cell_index`; required both), `get_kernel_state` (`path`), `list_packages` (no params), `install_package` (`package`, optional `version`). Add `run_notebook_cell` and `install_package` to `isMutatingTool` (they mutate kernel state / the environment); `get_kernel_state` and `list_packages` are read-only.
+    - *Acceptance:* `npm run compile` passes; all 4 names present in `CODE_TOOLS`; `isMutatingTool("run_notebook_cell")` and `isMutatingTool("install_package")` true; the two read-only ones false.
+  - **S-003** — `src/tools/ToolExecutor.ts` (1 file): add 4 cases to the `execute()` switch + private methods. In-memory kernel state: `private kernelState = new Map<string, { executed: number[]; variables: string[] }>()` keyed by workspace-relative path. `runNotebookCell`: resolve path via `resolveSafe`, read `.ipynb`, `parseNotebook`, validate `cell_index` is a code cell; execute via `spawn("jupyter", ["execute", "--to", "stdout", path])` — on ENOENT fall back to `spawn("python3", ["-c", <cell source>])` (then `python`); capture stdout+stderr truncated to ~8000 chars; on success record the cell index in `executed` and merge `extractVariableNames(source)` into `variables`; return the output. `getKernelState`: return `formatKernelState(...)` from the map (empty → "no cells executed yet"). `listPackages`: `spawn("pip", ["list"])` (fallback `pip3`), truncate. `installPackage`: `spawn("pip", ["install", pkg])` with timeout, capture output. Reuse the existing `spawn` + timeout pattern from `runCommand`.
+    - *Acceptance:* `npm run compile` passes; all 4 cases route; mutating tools go through the existing approval gate (they're in `isMutatingTool`).
+  - **S-004** — `src/config.ts` + `src/presets.ts` + `src/request.ts` + `package.json` (4 files): new setting `llm.chat.notebookTools.enabled` (boolean, default `true`) in `package.json` (next to `llm.chat.newNotebook.enabled`); `notebookToolsEnabled` in `Settings` (`presets.ts`) + `readSettings` (`config.ts`); in `request.ts` where `body.tools` is built, filter out the 4 notebook-execution tools (`run_notebook_cell`, `get_kernel_state`, `list_packages`, `install_package`) when the gate is off (leave `notebook_edit`/`new_notebook` untouched — they have their own gate).
+    - *Acceptance:* `npm run compile` passes; setting present with default `true`; with the gate off the 4 tools are absent from `body.tools` while `notebook_edit` remains.
+  - **S-005** — `scripts/smoke-test.js` (1 file): new assertions — (1) tool-name list now includes the 4 new names (update the two existing list assertions at lines 482 and 4318); (2) `run_notebook_cell` required = `[path,cell_index]`; (3) `isMutatingTool` true for `run_notebook_cell`/`install_package`, false for `get_kernel_state`/`list_packages`; (4) `notebook.ts` exports `extractVariableNames` + `formatKernelState` (unit-test `extractVariableNames` on a sample cell); (5) `ToolExecutor.ts` includes `kernelState` + `jupyter`; (6) `package.json` has `llm.chat.notebookTools.enabled` (boolean, default `true`); (7) `request.ts` filters the 4 tools on the gate. Bump hard gate **791 → 798** (count check + PASS message).
+    - *Acceptance:* `node scripts/smoke-test.js` passes at 798/798.
+- **Acceptance criteria (whole item):** compile passes; smoke 798/798; the 4 tools appear in agent/edit mode when `llm.tools.enabled` + `llm.chat.notebookTools.enabled` are on; `run_notebook_cell` and `install_package` require approval when `llm.tools.requireApproval` is on; `get_kernel_state`/`list_packages` are read-only; no new runtime npm deps; no webview changes.
 - **Risks / open questions:**
-  - `e.modifiers.alt` availability (safe failure: text-only never attaches).
-  - `"notebook.cellOutput"` mime literal (safe failure: controller doesn't fire).
-  - Multiple outputs per drag handled by iterating items (webview caps at 4 images).
-- **Next item:** 1.100-31 · Notebook tools for agent mode (followed by 1.100-38 · MCP Tool Annotations).
-
+  - `jupyter` CLI may not be installed → ENOENT fallback to `python3`/`python` (safe failure: clear error message to the engine).
+  - Kernel state is in-memory only (lost on extension reload) — acceptable for this item; 1.101-15 extends it later.
+  - `pip` vs `pip3` vs `python -m pip` — try `pip`, fall back to `pip3`; document in the tool description.
+- **Next item:** 1.100-38 · MCP Tool Annotations.
 
 ## Status
 
-- **Current item:** 1.100-30 (planned: 3 slices — S-001 in `src/notebook.ts`, S-002 in `src/extension.ts` + `package.json`, S-003 smoke 787→791)
-- **Next step:** dispatch the Coder for 1.100-30 S-001
+- **Current item:** 1.100-31 (planned: 5 slices — S-001 `src/notebook.ts`, S-002 `src/tools.ts`, S-003 `src/tools/ToolExecutor.ts`, S-004 config/presets/request/package.json, S-005 smoke 791→798)
+- **Next step:** dispatch the Coder for 1.100-31 S-001
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-30 plan)
+- **Last commit:** (planner commit for the 1.100-31 plan)
 - **Build state:** n/a (planner does not build)
 
 ## Plans delivered (recap)
