@@ -10,115 +10,88 @@ Turn each changelog feature (from the Changelog Researcher's backlog) into a con
 step-by-step implementation plan for the `llm` VS Code extension. The planner does NOT write
 code — only the Coder writes code.
 
-## Active plan — 1.100-13 · MCP support for Streamable HTTP
+## Active plan — 1.100-14 · MCP support for image output
 
 - **Status:** Planned (2026-10-23)
-- **Changelog:** VS Code 1.100 (Apr 2025) — new **Streamable HTTP** transport for MCP
-  servers, configured via `url` like SSE servers; backwards-compatible with SSE servers.
-  Local reframe: `llm.mcp.servers` entries may now be `{ url }` (HTTP) instead of
-  `{ command, args?, env? }` (stdio). No screenshots — no UI-fidelity requirement beyond
-  the existing MCP UI.
-- **Grounding notes:** `src/mcp.ts` (pure, no `vscode` import) holds `McpServerConfig`
-  (`command`/`args`/`env`), `parseMcpServers` (drops entries without a non-empty string
-  `command`), `McpJsonRpc`, `McpClient` (spawn + `initialize` handshake with 10 s timeout
-  + `tools/list` + `callTool` + `close`), and the pure name/result mappers.
-  `src/mcpManager.ts` (pure) holds `McpManager` with `clients = Map<string, McpClient>`;
-  `ensureStarted` does `new McpClient(cfg)`; everything else (`getTools`, `execute`,
-  `refresh`, `dispose`) only uses `.tools`, `.callTool`, `.close` — a common interface
-  keeps the diff tiny. `src/config.ts` line 91 calls `parseMcpServers` (no change needed
-  there). `package.json` line 390: `llm.mcp.servers` is a free-form `object` — only the
-  description changes. `src/extension.ts` `llm.mcp.addServer` (line 365) hardcodes the
-  stdio prompt flow. Smoke test already has an `http.createServer` mock (PORT 18099) and
-  an MCP section (~line 2510); hard gate is 736 (line 5817). Node 18+ `fetch` is
-  available; no new npm dependencies.
-- **Spec (minimal, engine-agnostic):** client POSTs JSON-RPC 2.0 to a single `url` with
-  `Content-Type: application/json` and `Accept: application/json, text/event-stream`;
-  response is either a single JSON body or an SSE stream where each `data:` line is a
-  JSON-RPC message (first message with the matching `id` settles the request); the
-  `Mcp-Session-Id` response header (if present) is echoed on subsequent requests;
-  `initialize` (protocolVersion `2025-03-26`) → `notifications/initialized` (POST, 202)
-  → `tools/list`. Plain-JSON responses are handled by the same code path (content-type
-  check) — that is the SSE backwards compatibility.
-- **Files to touch:** `src/mcp.ts`, `package.json`, `src/mcpManager.ts`,
-  `src/extension.ts`, `scripts/smoke-test.js`.
+- **Changelog:** VS Code 1.100 (Apr 2025) — MCP servers can return **images** as part of
+  tool output, rendered in chat (with a note that not all models can read images from
+  tool output). No screenshots — no UI-fidelity requirement beyond the existing
+  tool-result card.
+- **Grounding notes:** `src/mcp.ts` (pure) holds `McpToolResult` whose `content` is typed
+  `{ type: string; text?: string }[]`; both transports (`McpClient.callTool` stdio and
+  `McpHttpClient.callTool` HTTP) already pass the raw JSON-RPC `result` through as
+  `r as McpToolResult`, so image blocks (`{ type: "image", data, mimeType }`) already
+  arrive intact — only the type + a pure extractor are missing. `mcpResultToText`
+  filters `type === "text"`, so it already ignores image blocks (no change needed).
+  `src/mcpManager.ts` `execute` returns `{ content: string }` via `mcpResultToText`.
+  `src/chat/ChatViewProvider.ts` MCP branch (~line 1787) does
+  `result = { tool_call_id, content: mcpRes.content }` and posts `tool_result` with
+  `output`. `src/chat/webview.ts` `tool_result` case (~line 2504) renders a
+  `pre.tool-output` in both the found-card and fallback branches; existing image
+  rendering (`msg-images`/`msg-img`, `data:` URIs, and the cell-output
+  `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` guard) is reusable. Smoke test MCP
+  section ~line 2760; hard gate is 750 (line 6072).
+- **Spec (minimal, engine-agnostic):** MCP tool results may contain content blocks of
+  type `image` with `data` (base64) and `mimeType` alongside `text` blocks. Parse image
+  blocks (both transports — already pass-through), surface them as `data:` URIs through
+  the manager to the chat layer, and render them as `<img>` thumbnails in the tool-result
+  card. Text-only results behave exactly as before.
+- **Files to touch:** `src/mcp.ts`, `src/mcpManager.ts`, `src/chat/ChatViewProvider.ts`,
+  `src/chat/webview.ts`, `scripts/smoke-test.js`.
 - **Slices (in order):**
-  - `1.100-13.S1` — HTTP transport client + config shape in `src/mcp.ts`:
-    (a) `McpServerConfig` gains an optional `url?: string` field (single interface;
-    validation enforces exactly one of `command`/`url`); (b) `parseMcpServers` accepts
-    an entry with a non-empty string `url` (HTTP) or a non-empty string `command`
-    (stdio, existing behavior); entries with neither or with both are dropped;
-    (c) `export function parseSseMessages(text: string): unknown[]` — pure SSE parser:
-    keep lines starting with `data:`, strip the prefix, `JSON.parse` each payload
-    (skip malformed), return the parsed JSON-RPC messages; (d) `export class
-    McpHttpClient` mirroring `McpClient`'s public surface (`tools: McpTool[]`,
-    `start()`, `callTool(name, args)`, `close()`): `start()` uses the same 10 s timeout
-    pattern, POSTs `initialize` (protocolVersion `"2025-03-26"`, same `clientInfo`),
-    captures the `Mcp-Session-Id` response header into a private field and echoes it on
-    every subsequent POST, POSTs `notifications/initialized` (expect 202, ignore body),
-    POSTs `tools/list` and stores `tools`; private `post(method, params)` uses
-    `fetch(url, { method: "POST", headers: { "Content-Type": "application/json",
-    "Accept": "application/json, text/event-stream", ...(sessionId ? {
-    "Mcp-Session-Id": sessionId } : {}) }, body: JSON.stringify(msg) })`, reads the full
-    body as text, and if the response `content-type` includes `text/event-stream` runs
-    `parseSseMessages(body)` and takes the first message with the matching `id`,
-    otherwise `JSON.parse(body)` directly; non-2xx (except 202 for notifications)
-    rejects with the status + body tail; `close()` is an idempotent flag that makes
-    further `post` calls reject.
-  - `1.100-13.S2` — `package.json`: update the `llm.mcp.servers` description to
-    `"MCP servers to connect to. Each entry: { command, args?, env? } (stdio) or { url }
-    (Streamable HTTP / SSE)."` No schema shape change (free-form object).
-  - `1.100-13.S3` — manager transport selection in `src/mcpManager.ts`: import
-    `McpHttpClient` (and the `McpToolResult` type) from `./mcp`; add `export interface
-    McpClientLike { tools: McpTool[]; callTool(name: string, args:
-    Record<string, unknown>): Promise<McpToolResult>; close(): void; }` (both clients
-    satisfy it structurally); change the `clients`/`starting` maps from `McpClient` to
-    `McpClientLike`; `ensureStarted` picks the transport: `const client: McpClientLike =
-    cfg.url ? new McpHttpClient(cfg) : new McpClient(cfg);` — `refresh`, `getTools`,
-    `execute`, `dispose` are unchanged.
-  - `1.100-13.S4` — `llm.mcp.addServer` in `src/extension.ts`: after the name prompt,
-    add a `vscode.window.showQuickPick` ("stdio (command)" / "Streamable HTTP (url)");
-    stdio keeps the existing command/args flow; HTTP prompts for the URL (validate
-    non-empty, `http://`/`https://` prefix) and writes `servers[name] = { url }`; the
-    success message mentions the transport.
-  - `1.100-13.S5` — smoke-test guards in `scripts/smoke-test.js`:
-    (a) `out/mcp.js` exports `McpHttpClient` and `parseSseMessages`;
-    (b) `parseSseMessages` pure tests: two `data:` events → 2 messages; a `data:` line
-    with invalid JSON is skipped; empty input → `[]`;
-    (c) `parseMcpServers`: `{ url: "http://x" }` accepted; `{ command: "x", url:
-    "http://y" }` dropped; `{}` dropped;
-    (d) live HTTP transport test against a second mock `http.createServer` (separate
-    port, e.g. 18100): (i) SSE-mode server — responds `text/event-stream` with
-    `data: {initialize result}\n\n` / `data: {tools/list result}\n\n` and sets
-    `Mcp-Session-Id: sess-1`; assert `McpHttpClient.start()` discovers tools and that
-    the `tools/list` request carried the `Mcp-Session-Id: sess-1` header (echo check);
-    (ii) JSON-mode server — responds `application/json` single body; assert `start()` +
-    `callTool` work; (iii) `McpManager` with a `url` server: `ensureStarted` → running
-    status, `getTools` returns namespaced tools, `execute("mcp__http__tool", …)`
-    returns the tool text;
-    (e) `package.json` description contains "Streamable HTTP"; `mcpManager.ts`
-    references `McpHttpClient` and `McpClientLike`; `extension.ts` `addServer`
-    references the transport quick-pick ("Streamable HTTP (url)");
-    (f) raise the hard total-count gate (736 → new total).
-- **First slice:** `1.100-13.S1`.
-- **Acceptance:** compile + smoke pass; a server declared as `{ "url":
-  "http://host:port/mcp" }` in `llm.mcp.servers` connects via Streamable HTTP (POST
-  JSON-RPC, SSE or plain-JSON response, `Mcp-Session-Id` echoed), exposes its tools as
-  `mcp__<server>__<tool>`, and executes them through the existing chat tool loop; stdio
-  servers (`command`) behave exactly as before; `llm.mcp.addServer` can add both kinds.
-- **Open questions:** (1) `Mcp-Session-Id` is optional per spec — only echoed when
-  present; (2) SSE responses may interleave server→client notifications before the
-  matching response — the client takes the first message with the matching `id` and
-  ignores the rest (no persistent client→server push is needed for this minimal
-  client); (3) protocol version `2025-03-26` is sent for HTTP while stdio keeps
-  `2024-11-05` — acceptable, servers negotiate down.
+  - `1.100-14.S1` — image content-block type + pure extractor in `src/mcp.ts`:
+    (a) widen `McpToolResult.content` to
+    `{ type: string; text?: string; data?: string; mimeType?: string }[]`;
+    (b) `export function mcpResultToImages(result: McpToolResult): string[]` — pure:
+    for each part with `type === "image"`, a non-empty string `data`, and a non-empty
+    string `mimeType`, emit `` `data:${mimeType};base64,${data}` ``; skip malformed
+    parts; return `[]` when none. No transport change.
+  - `1.100-14.S2` — `src/mcpManager.ts`: import `mcpResultToImages` from `./mcp`; change
+    `execute`'s return type to `{ content: string; images?: string[] }`; on the success
+    path compute `const images = mcpResultToImages(result)` and return
+    `{ content: mcpResultToText(result), ...(images.length ? { images } : {}) }`; error
+    paths unchanged (no images).
+  - `1.100-14.S3` — `src/chat/ChatViewProvider.ts`: in the MCP branch capture
+    `mcpRes.images` (e.g. `const mcpImages = mcpRes.images`); when posting the
+    `tool_result` message add
+    `...(mcpImages && mcpImages.length ? { images: mcpImages } : {})`; non-MCP tools
+    unchanged.
+  - `1.100-14.S4` — `src/chat/webview.ts`: in the `tool_result` case, after appending the
+    `pre.tool-output` in **both** the found-card and fallback branches, if `msg.images`
+    is a non-empty array append a `div.tool-images` with one `<img class="tool-img">` per
+    `data:` URI (guard with the same
+    `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` regex used for cell outputs); add
+    CSS `.tool-images` (flex, gap, wrap, margin-top) and `.tool-img` (max-width ~240px,
+    border-radius, `cursor: zoom-in`) near the existing `.tool-output`/`.msg-img` rules.
+  - `1.100-14.S5` — smoke-test guards in `scripts/smoke-test.js`:
+    (a) `mcpResultToImages` pure tests: text-only → `[]`; single image block → one
+    `data:<mime>;base64,<data>` URI; mixed text+image → 1 image (text ignored); image
+    block missing `data` → skipped → `[]`;
+    (b) `mcpResultToText` regression: a result with only image blocks → `""` (images not
+    leaked into text);
+    (c) static: `src/mcpManager.ts` references `mcpResultToImages` and returns `images`;
+    `out/chat/ChatViewProvider.js` posts `images` in the `tool_result` message;
+    `src/chat/webview.ts` references the `tool-img` class;
+    (d) raise the hard total-count gate (750 → 758, 8 new assertions).
+- **First slice:** `1.100-14.S1`.
+- **Acceptance:** compile + smoke pass; an MCP tool result containing `image` content
+  blocks (base64 `data` + `mimeType`) is parsed on both stdio and HTTP transports,
+  surfaced through `McpManager.execute` → the chat `tool_result` message, and rendered
+  as `data:`-URI thumbnails in the tool-result card; text-only results behave exactly as
+  before.
+- **Open questions:** (1) images are rendered in the card but are NOT re-injected into
+  the model context as attachments (the backlog's "vision-capable models can consume
+  them" is a note, not a requirement) — out of scope here; (2) `mimeType` is trusted
+  from the server and only rendered when it matches a known image type —
+  malformed/unknown types are skipped.
 
 
 ## Status
 
-- **Current item:** 1.100-13 (planned) — 1.100-12 complete
-- **Next step:** dispatch `1.100-13.S1` (HTTP transport client + config shape in `src/mcp.ts`) to the Coder
+- **Current item:** 1.100-14 (planned) — 1.100-13 planned
+- **Next step:** dispatch `1.100-14.S1` (image content blocks + `mcpResultToImages` in `src/mcp.ts`) to the Coder
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-13 plan)
+- **Last commit:** (planner commit for the 1.100-14 plan)
 - **Build state:** n/a (planner does not build)
 
 ## Plans delivered (recap)
