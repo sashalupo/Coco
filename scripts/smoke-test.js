@@ -5814,11 +5814,266 @@ function assert(cond, label) {
     sumS5WebviewSrc.includes("Summarized conversation history"),
     "summarize-s5: webview shows the Summarized conversation history label",
   );
-  if (assertCount !== 736) {
-    console.error(`FAIL: total assertion count is 736 (got ${assertCount})`);
+  // 84) MCP Streamable HTTP regression guards (1.100-13.S5)
+  const mcpHttpS5 = require(path.join(__dirname, "..", "out", "mcp.js"));
+  assert(
+    typeof mcpHttpS5.McpHttpClient === "function" &&
+      typeof mcpHttpS5.parseSseMessages === "function",
+    "mcp-http-s5: out/mcp.js exports McpHttpClient and parseSseMessages",
+  );
+  // (b) parseSseMessages pure tests.
+  const sseS5Two = mcpHttpS5.parseSseMessages(
+    'data: {"jsonrpc":"2.0","id":1,"result":"a"}\n\n' +
+      'data: {"jsonrpc":"2.0","id":2,"result":"b"}\n\n',
+  );
+  assert(
+    sseS5Two.length === 2 &&
+      sseS5Two[0].result === "a" &&
+      sseS5Two[1].result === "b",
+    "mcp-http-s5: parseSseMessages parses two data: events into 2 messages",
+  );
+  const sseS5Bad = mcpHttpS5.parseSseMessages(
+    'data: {"jsonrpc":"2.0","id":1,"result":"ok"}\n' +
+      "data: {not-json}\n" +
+      'data: {"jsonrpc":"2.0","id":2,"result":"ok2"}\n',
+  );
+  assert(
+    sseS5Bad.length === 2 &&
+      sseS5Bad[0].id === 1 &&
+      sseS5Bad[1].id === 2,
+    "mcp-http-s5: parseSseMessages skips a data: line with invalid JSON",
+  );
+  assert(
+    mcpHttpS5.parseSseMessages("").length === 0,
+    "mcp-http-s5: parseSseMessages returns [] for empty input",
+  );
+  // (c) parseMcpServers url cases.
+  const sseS5Url = mcpHttpS5.parseMcpServers({
+    http: { url: "http://x" },
+    both: { command: "x", url: "http://y" },
+    none: {},
+  });
+  assert(
+    sseS5Url.http.url === "http://x" &&
+      !sseS5Url.http.command &&
+      !("both" in sseS5Url) &&
+      !("none" in sseS5Url),
+    "mcp-http-s5: parseMcpServers accepts { url }, drops both-transport and empty entries",
+  );
+  // (d) Live HTTP transport tests against second mock servers (ports 18100/18101).
+  const MCP_SSE_PORT = 18100;
+  const MCP_JSON_PORT = 18101;
+  const mcpSseSeen = [];
+  const mcpSseServer = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+    });
+    req.on("end", () => {
+      const msg = JSON.parse(body);
+      mcpSseSeen.push({ method: msg.method, sessionId: req.headers["mcp-session-id"] ?? null });
+      if (msg.method === "initialize") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Mcp-Session-Id": "sess-1",
+        });
+        res.end(
+          'data: {"jsonrpc":"2.0","id":' +
+            msg.id +
+            ',"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{"name":"mock","version":"1.0.0"}}}\n\n',
+        );
+        return;
+      }
+      if (msg.method === "notifications/initialized") {
+        res.writeHead(202);
+        res.end();
+        return;
+      }
+      if (msg.method === "tools/list") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Mcp-Session-Id": "sess-1",
+        });
+        res.end(
+          'data: {"jsonrpc":"2.0","id":' +
+            msg.id +
+            ',"result":{"tools":[{"name":"echo","description":"echoes","inputSchema":{"type":"object","properties":{"text":{"type":"string"}}}}]}}\n\n',
+        );
+        return;
+      }
+      if (msg.method === "tools/call") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Mcp-Session-Id": "sess-1",
+        });
+        res.end(
+          'data: ' +
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id: msg.id,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: "sse:" + (msg.params.arguments.text ?? ""),
+                  },
+                ],
+              },
+            }) +
+            "\n\n",
+        );
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+  });
+  await new Promise((r) => mcpSseServer.listen(MCP_SSE_PORT, r));
+  const sseClient = new mcpHttpS5.McpHttpClient({
+    url: `http://localhost:${MCP_SSE_PORT}`,
+  });
+  await sseClient.start();
+  assert(
+    sseClient.tools.length === 1 && sseClient.tools[0].name === "echo",
+    "mcp-http-s5: SSE-mode server — McpHttpClient.start() discovers tools",
+  );
+  const sseListReq = mcpSseSeen.find((r) => r.method === "tools/list");
+  assert(
+    sseListReq !== undefined && sseListReq.sessionId === "sess-1",
+    "mcp-http-s5: SSE-mode server — tools/list request carried the Mcp-Session-Id: sess-1 header",
+  );
+  sseClient.close();
+  mcpSseServer.close();
+  const mcpJsonServer = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+    });
+    req.on("end", () => {
+      const msg = JSON.parse(body);
+      if (msg.method === "initialize") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              protocolVersion: "2025-03-26",
+              capabilities: {},
+              serverInfo: { name: "mock-json", version: "1.0.0" },
+            },
+          }),
+        );
+        return;
+      }
+      if (msg.method === "notifications/initialized") {
+        res.writeHead(202);
+        res.end();
+        return;
+      }
+      if (msg.method === "tools/list") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              tools: [
+                {
+                  name: "add",
+                  description: "adds",
+                  inputSchema: {
+                    type: "object",
+                    properties: { a: { type: "number" }, b: { type: "number" } },
+                  },
+                },
+              ],
+            },
+          }),
+        );
+        return;
+      }
+      if (msg.method === "tools/call") {
+        const { a, b } = msg.params.arguments;
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            id: msg.id,
+            result: {
+              content: [{ type: "text", text: String(Number(a) + Number(b)) }],
+            },
+          }),
+        );
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+  });
+  await new Promise((r) => mcpJsonServer.listen(MCP_JSON_PORT, r));
+  const jsonClient = new mcpHttpS5.McpHttpClient({
+    url: `http://localhost:${MCP_JSON_PORT}`,
+  });
+  await jsonClient.start();
+  const jsonCall = await jsonClient.callTool("add", { a: 2, b: 3 });
+  assert(
+    jsonClient.tools.length === 1 &&
+      jsonClient.tools[0].name === "add" &&
+      jsonCall.content[0].text === "5",
+    "mcp-http-s5: JSON-mode server — start() + callTool work over a plain JSON body",
+  );
+  jsonClient.close();
+  const mgrS5 = new McpManager();
+  mgrS5.setServers({ http: { url: `http://localhost:${MCP_JSON_PORT}` } });
+  await mgrS5.ensureStarted("http");
+  const mgrS5Status = mgrS5.listServers().find((s) => s.name === "http");
+  assert(
+    mgrS5Status.status === "running" && mgrS5Status.toolCount === 1,
+    "mcp-http-s5: McpManager url server — ensureStarted yields running status with toolCount 1",
+  );
+  const mgrS5Tools = mgrS5.getTools();
+  assert(
+    mgrS5Tools.length === 1 &&
+      mgrS5Tools[0].function.name === "mcp__http__add",
+    "mcp-http-s5: McpManager url server — getTools returns the namespaced mcp__http__add tool",
+  );
+  const mgrS5Res = await mgrS5.execute("mcp__http__add", { a: 40, b: 2 });
+  assert(
+    mgrS5Res.content === "42",
+    "mcp-http-s5: McpManager url server — execute(mcp__http__add) returns the tool text",
+  );
+  mgrS5.dispose();
+  mcpJsonServer.close();
+  // (e) Static source/manifest references.
+  assert(
+    pkgJson.contributes.configuration.properties["llm.mcp.servers"].description.includes(
+      "Streamable HTTP",
+    ),
+    "mcp-http-s5: package.json llm.mcp.servers description mentions Streamable HTTP",
+  );
+  const mcpMgrS5Src = fs.readFileSync(
+    path.join(__dirname, "..", "src", "mcpManager.ts"),
+    "utf8",
+  );
+  assert(
+    mcpMgrS5Src.includes("McpHttpClient") &&
+      mcpMgrS5Src.includes("McpClientLike"),
+    "mcp-http-s5: mcpManager.ts references McpHttpClient and McpClientLike",
+  );
+  const extS5Src = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    extS5Src.includes("Streamable HTTP (url)"),
+    "mcp-http-s5: extension.ts addServer offers the Streamable HTTP (url) transport quick-pick",
+  );
+  if (assertCount !== 750) {
+    console.error(`FAIL: total assertion count is 750 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 736");
+  console.log("PASS: total assertion count is 750");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

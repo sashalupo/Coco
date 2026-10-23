@@ -12,12 +12,12 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-13 · MCP support for Streamable HTTP
-- **Current slice:** 1.100-13.S4 DONE (`src/extension.ts`: `llm.mcp.addServer` transport quick-pick)
-- **Next step:** 1.100-13.S5 — smoke-test guards in `scripts/smoke-test.js` (McpHttpClient/parseSseMessages exports + pure tests, parseMcpServers url cases, live HTTP transport test on port 18100, package.json description, addServer quick-pick reference, raise hard gate 736 → new total)
+- **Current item:** 1.100-13 · MCP support for Streamable HTTP — **COMPLETE** (S1–S5)
+- **Current slice:** 1.100-13.S5 DONE (`scripts/smoke-test.js`: `mcp-http-s5` guard block, 14 new assertions, 736 → 750)
+- **Next step:** 1.100-14 — next backlog item (awaiting Planner dispatch)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): addServer transport quick-pick (1.100-13.S4)
-- **Build state:** compiles clean; smoke 736 PASS
+- **Last commit:** test(llm): smoke guards for MCP Streamable HTTP (1.100-13.S5)
+- **Build state:** compiles clean; smoke 750 PASS
 
 ## Plan pointer
 
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-13.S5 — smoke-test guards in `scripts/smoke-test.js` (`mcp-http-s5` block, 14 new assertions, 736 → 750): (a) `out/mcp.js` exports `McpHttpClient` + `parseSseMessages`; (b) `parseSseMessages` pure tests (two `data:` events → 2 messages; invalid-JSON `data:` line skipped; empty input → `[]`); (c) `parseMcpServers` url cases (`{ url }` accepted; `{ command, url }` dropped; `{}` dropped); (d) live HTTP transport tests on two mock `http.createServer` servers (ports 18100 SSE / 18101 JSON, both closed before exit): SSE-mode server (`text/event-stream` `data:` bodies, `Mcp-Session-Id: sess-1` header) — `McpHttpClient.start()` discovers tools and the `tools/list` request echoed the session header (echo check via recorded request headers); JSON-mode server (`application/json` single bodies) — `start()` + `callTool("add", {a:2,b:3})` → `"5"`; `McpManager` with a `url` server — `ensureStarted` → running/toolCount 1, `getTools` → `mcp__http__add`, `execute("mcp__http__add", {a:40,b:2})` → `"42"`; (e) static refs: `package.json` `llm.mcp.servers` description contains "Streamable HTTP", `src/mcpManager.ts` references `McpHttpClient` + `McpClientLike`, `src/extension.ts` references `"Streamable HTTP (url)"`; (f) hard gate raised 736 → 750. **Item 1.100-13 COMPLETE** (S1–S5; smoke 750).
 - [x] 1.100-13.S4 — `llm.mcp.addServer` transport quick-pick in `src/extension.ts` (~line 365): after the name prompt, `vscode.window.showQuickPick` with "stdio (command)" / "Streamable HTTP (url)"; HTTP path prompts for the URL (validateInput: non-empty + `^https?://` prefix) and writes `servers[name] = { url }` via the same `cfg.update("servers", …, Workspace)` mechanism; stdio path unchanged (command/args flow); `servers` type widened to `{ command?; args?; env?; url? }`; success messages now mention the transport ("via Streamable HTTP" / "via stdio"). Compile clean; smoke 736 PASS.
 - [x] 1.100-13.S3 — `src/mcpManager.ts` transport selection: imports extended (`McpHttpClient`, `McpToolResult` from `./mcp`); new `export interface McpClientLike { tools: McpTool[]; start(): Promise<void>; callTool(name, args): Promise<McpToolResult>; close(): void; }` (both `McpClient` and `McpHttpClient` satisfy it structurally; `start()` added because `ensureStarted` calls it); `clients`/`starting` maps retyped `McpClient` → `McpClientLike`; `ensureStarted` return type `Promise<McpClientLike>` and picks transport `cfg.url ? new McpHttpClient(cfg) : new McpClient(cfg)`; `refresh`/`getTools`/`execute`/`dispose` unchanged (only `execute`'s local `client` type widened). Compile clean; smoke 736 PASS.
 - [x] 1.100-13.S2 — `package.json`: `llm.mcp.servers` description updated to `"MCP servers to connect to. Each entry: { command, args?, env? } (stdio) or { url } (Streamable HTTP / SSE)."` — no schema shape change (free-form object). Compile clean; smoke 736 PASS.
