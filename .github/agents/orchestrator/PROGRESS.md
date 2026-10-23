@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-29** — Cell output to chat (text/image) — `llm.addCellOutput` — **DONE** (4 slices S1–S4)
-- **Current slice:** 1.99-29.S4 DONE (item complete)
+- **Current item:** **1.100-1** — Instructions files (`.instructions.md`) — **in progress** (planned, 6 slices S1–S6)
+- **Current slice:** 1.100-1.S1 next (pure core in `src/instructions.ts`)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** v1.99 backlog exhausted — dispatch Changelog Researcher to study VS Code **1.100** and append entries, then continue oldest→newest
+- **Next step:** dispatch Coder for 1.100-1.S1 (smoke 584 → 594)
 - **Last updated:** 2026-10-22
-- **Last commit:** 1d51aee (feat(llm): llm.addCellOutput command (1.99-29.S3)); S4 commit pending
+- **Last commit:** 1e0f2fa (v1.100 research)
 - **Build state:** compiles clean; smoke test passes (584 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the

@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-29 (Cell output to chat — `llm.addCellOutput`) — **complete** (2026-10-23, 4 slices S1–S4 done)
-- **Next step:** item 1.99-29 complete — v1.99 backlog exhausted; next: v1.100 research
+- **Current item:** 1.100-1 (Instructions files — `.instructions.md`) — **planned** (2026-10-23, 6 slices S1–S6)
+- **Next step:** dispatch slice 1.100-1.S1 (pure core in `src/instructions.ts`; smoke 584 → 594)
 - **Last updated:** 2026-10-23
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -152,4 +152,144 @@ code — only the Coder writes code.
 - **R2 — Untitled/unsaved notebooks:** `openTextDocument(editor.notebook.uri)` works for untitled docs too (returns the in-memory doc); no special handling needed.
 - **R3 — Large outputs:** 20k-char text cap + 4×10MB image cap keep the chat input and request body bounded; the existing `handleSend` sanitizer (14MB data-URL cap) is a second line of defense.
 - **R4 — `execute_result` images:** some kernels emit images only in `display_data`; both types are handled, so no loss.
+
+### Item 1.100-1 — Instructions files (`.instructions.md`)
+
+**Changelog reference:** VS Code 1.100 — "Instructions files": a parallel `.instructions.md` file type alongside custom instructions, with `applyTo` front-matter globs that auto-attach the file when the chat context references matching files, plus commands to attach a discovered file to chat and to scaffold a new one. Reframed engine-agnostic for the `llm` extension.
+
+**UI/behavior notes:**
+- **Auto-attach:** invisible to the user — when the active file or an `@tagged` file matches an `.instructions.md` file's `applyTo` glob, the file's body (front-matter stripped) is folded into the system prompt, and the file path appears in the existing `instructions` indicator (host→webview `{ type: "instructions", files: [...] }`).
+- **`llm.attachInstructions`:** QuickPick titled "LLM: Attach Instructions File" listing discovered files (label = front-matter `title` or filename, description = workspace-relative path). Picking one prepends its body to the chat input (same UX as `llm.usePrompt`) and opens the LLM view.
+- **`llm.newInstructionsFile`:** input box → creates `.instructions/<name>.instructions.md` under the workspace root with a front-matter template, then opens it.
+- No new webview chrome; the only new host→webview message is `instructions_inject` (text prepend, identical pattern to `prompt_inject` at `webview.ts` L2008).
+
+**Files to touch:** `src/instructions.ts`, `src/presets.ts`, `src/config.ts`, `src/chat/ChatViewProvider.ts`, `src/chat/webview.ts`, `src/extension.ts`, `package.json`, `scripts/smoke-test.js`
+
+**Baseline smoke:** 584 assertions.
+
+**Slices:**
+
+- **1.100-1.S1** — Pure core in `src/instructions.ts` (+10 smoke).
+  Files: `src/instructions.ts`, `scripts/smoke-test.js`.
+  1. `src/instructions.ts` — add (all pure, no vscode/fs):
+     - `export interface InstructionsFileMeta { applyTo?: string; title?: string }`
+     - `export function parseInstructionsFrontMatter(content: string): { meta: InstructionsFileMeta; body: string }` — front-matter exists only when the **first line is exactly `---`** (after trimming a BOM). Find the next line that is exactly `---` (or `...`); if none, treat the whole content as body with empty meta. Inside: parse simple `key: value` lines; only `applyTo` and `title` are honored (others ignored); values trimmed and stripped of matching surrounding single/double quotes. `body` = everything after the closing delimiter, with leading newlines trimmed. No front-matter → `{ meta: {}, body: content }`.
+     - `export function globToRegExp(glob: string): RegExp` — hand-rolled (no `glob`/`minimatch`): scan left→right; `**/` → `(?:.*/)?`, `**` → `.*`, `*` → `[^/]*`, `?` → `[^/]`, every other character regex-escaped. Anchored `^…$`.
+     - `export function applyToMatches(applyTo: string, filePath: string): boolean` — empty `applyTo` → `false`; split `applyTo` on `|` (alternation of globs); normalize `filePath` to forward slashes and strip a leading `./`; true if any alternative's `globToRegExp` matches.
+     - `export function pickAutoAttachFiles(files: ReadonlyArray<{ path: string; applyTo?: string }>, contextPaths: ReadonlyArray<string>): string[]` — return `files` (in order, deduped by path) whose `applyTo` is non-empty and matches **any** `contextPaths` entry. Files without `applyTo` are never auto-attached (attachable only via the command).
+     - `export const INSTRUCTIONS_FILE_TEMPLATE: string` = `"---\napplyTo: src/**/*.ts\n---\n\n# My Instructions\n\n<!-- Instructions the LLM should follow when working on files\n     matching the applyTo glob above. -->\n"`
+     - `export function instructionsFileName(name: string): string` — trim; replace `[^a-zA-Z0-9._-]` runs with `-`; strip leading `-`/`.`; fallback `"instructions"`; append `.instructions.md` if the result doesn't already end with it.
+  2. `scripts/smoke-test.js` — new section `// 62) instructions files core (1.100-1.S1)`, `require("../out/instructions.js")`, **10 assertions**, prefix `instrf-s1:`:
+     1. `parseInstructionsFrontMatter` parses `applyTo` + `title` and returns the body after the closing `---`.
+     2. No front-matter → `meta` empty, `body === content`.
+     3. Unclosed front-matter (opening `---`, no close) → empty meta, body = full content.
+     4. Quoted values (`applyTo: "src/**/*.ts"`) are unquoted.
+     5. `globToRegExp("**/*.ts")` matches `a/b/c.ts` and `c.ts`.
+     6. `globToRegExp("src/*.ts")` matches `src/a.ts` but **not** `src/a/b.ts` (`*` doesn't cross `/`).
+     7. `applyToMatches("src/**/*.ts", "src/x/y.ts")` true; `applyToMatches("src/**/*.ts", "lib/y.ts")` false.
+     8. `applyToMatches` alternation: `"src/**/*.ts | lib/**/*.py"` matches both sides.
+     9. `pickAutoAttachFiles` returns only matching files, preserves order, dedupes, and skips files without `applyTo`.
+     10. `INSTRUCTIONS_FILE_TEMPLATE` round-trips: `parseInstructionsFrontMatter(INSTRUCTIONS_FILE_TEMPLATE)` yields `meta.applyTo === "src/**/*.ts"` and non-empty body; `instructionsFileName("My File!")` === `"My-File.instructions.md"`.
+  Acceptance: `npm run compile` passes; smoke → **594** (584 + 10).
+
+- **1.100-1.S2** — Settings plumbing (+3 smoke).
+  Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`.
+  1. `src/presets.ts` — after `promptFiles: string[];` (L96) add to `LlmSettings`: `instructionsFilesEnabled: boolean;` and `instructionsFilesLocations: string[];` (with doc comments).
+  2. `src/config.ts` — after `promptFiles` (L74) add: `instructionsFilesEnabled: c.get<boolean>("instructionsFiles.enabled", true),` and `instructionsFilesLocations: c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"]),`
+  3. `scripts/smoke-test.js` — section `// 63) instructionsFiles settings (1.100-1.S2)`, **3 assertions**, prefix `instrf-s2:` (static source assertions — `config.ts`/`presets.ts` import vscode and can't be required):
+     1. `src/config.ts` contains `c.get<boolean>("instructionsFiles.enabled", true)`.
+     2. `src/config.ts` contains `c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])`.
+     3. `src/presets.ts` contains both `instructionsFilesEnabled: boolean;` and `instructionsFilesLocations: string[];`.
+  Acceptance: `npm run compile` passes; smoke → **597** (594 + 3).
+
+- **1.100-1.S3** — `applyTo` auto-attach in `ChatViewProvider.ts` (+3 smoke).
+  Files: `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`.
+  1. `src/chat/ChatViewProvider.ts`:
+     - Extend the existing `../instructions` import (L55) with `parseInstructionsFrontMatter`, `pickAutoAttachFiles`.
+     - New private method `private async loadInstructionsFiles(settings: LlmSettings, contextPaths: string[]): Promise<{ block: string; files: InstructionFile[] }>`:
+       - Gate: `if (!settings.instructionsFilesEnabled) return { block: "", files: [] };` and `if (contextPaths.length === 0) return { block: "", files: [] };`
+       - `root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath`; no root → empty.
+       - Discover: for each glob in `settings.instructionsFilesLocations`, `vscode.workspace.findFiles(glob, "**/node_modules/**", 100)`; dedupe by `fsPath`.
+       - Read each (cap `MAX_INSTRUCTION_CHARS`, `truncated` flag), `parseInstructionsFrontMatter(raw)` → collect `{ path: relPath, applyTo: meta.applyTo, body, truncated }` (`relPath = vscode.workspace.asRelativePath(uri)`).
+       - `const matched = pickAutoAttachFiles(discovered, contextPaths);`
+       - Build `InstructionFile[]` from matched entries using the **body** (front-matter stripped) as `content`; return `{ block: combineInstructions(files), files }`.
+     - In `handleSend`, immediately after the tagged-files block (after L1073, before `const contextBlock = buildContextBlock(ctxInput)` at L1074):
+       - `const contextPaths = [ctxInput.file?.path, ...(ctxInput.taggedFiles ?? []).map((f) => f.path)].filter((p): p is string => typeof p === "string" && p.length > 0);`
+       - `const instrFiles = await this.loadInstructionsFiles(settings, contextPaths);`
+       - After `finalContextBlock` is finalized (post-`#newWorkspace`, ~L1205), if `instrFiles.block` is non-empty append it: `finalContextBlock = finalContextBlock ? finalContextBlock + "\n\n" + instrFiles.block : instrFiles.block;`
+       - Extend the existing indicator post (L1220): `files: [...instructionFiles.map((f) => f.path), ...instrFiles.files.map((f) => f.path)]`.
+  2. `scripts/smoke-test.js` — section `// 64) applyTo auto-attach (1.100-1.S3)`, **3 assertions**, prefix `instrf-s3:` (static source assertions on `src/chat/ChatViewProvider.ts`):
+     1. Contains `loadInstructionsFiles`.
+     2. Contains `pickAutoAttachFiles` (the pure matcher is actually wired in).
+     3. Contains `instructionsFilesEnabled` (the setting gate is checked).
+  Acceptance: `npm run compile` passes; smoke → **600** (597 + 3).
+
+- **1.100-1.S4** — Webview `instructions_inject` handler (+2 smoke).
+  Files: `src/chat/webview.ts`, `scripts/smoke-test.js`.
+  1. `src/chat/webview.ts` — in `handleHostMessage`, add next to `case 'prompt_inject':` (L2008):
+     ```js
+     case 'instructions_inject': {
+         const text = String(msg.content ?? '');
+         if (!text) break;
+         if (!inputEl) break;
+         const existing = inputEl.value;
+         inputEl.value = existing ? text + '\n\n' + existing : text;
+         inputEl.focus();
+         break;
+     }
+     ```
+     (Identical prepend-to-`#input` pattern as `prompt_inject`; `msg.content` is the front-matter-stripped body.)
+  2. `scripts/smoke-test.js` — section `// 65) instructions_inject webview (1.100-1.S4)`, **2 assertions**, prefix `instrf-s4:` (read `src/chat/webview.ts` as text):
+     1. Contains `instructions_inject`.
+     2. `webviewSrc.slice(webviewSrc.indexOf("instructions_inject"))` contains `inputEl.focus` (handler focuses the input after prepending).
+  Acceptance: `npm run compile` passes; smoke → **602** (600 + 2).
+
+- **1.100-1.S5** — Commands `llm.attachInstructions` + `llm.newInstructionsFile` (+4 smoke).
+  Files: `src/extension.ts`, `scripts/smoke-test.js`.
+  1. `src/extension.ts`:
+     - Extend the `./instructions` import with `parseInstructionsFrontMatter`, `INSTRUCTIONS_FILE_TEMPLATE`, `instructionsFileName`; reuse `promptTitle` for the QuickPick label.
+     - `vscode.commands.registerCommand("llm.attachInstructions", async () => { … })` — modeled on `llm.usePrompt` (L198):
+       - `const cfg = vscode.workspace.getConfiguration("llm");` `enabled = cfg.get<boolean>("instructionsFiles.enabled", true)`; off → `showInformationMessage("llm.instructionsFiles.enabled is off.")`, return.
+       - `globs = cfg.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])` filtered to non-empty strings; none → info message "No instructions file locations configured (llm.instructionsFiles.locations).", return.
+       - Discover via `vscode.workspace.findFiles(glob, "**/node_modules/**", 200)` per glob, deduped by `fsPath`.
+       - QuickPick items: `label = promptTitle(raw, fsPath)` (first H1 or filename), `description = vscode.workspace.asRelativePath(uri)`, `uri`. Empty discovery → info message "No .instructions.md files found.", return.
+       - On pick: `readFile` → `parseInstructionsFrontMatter` → `body = stripPromptComments(meta.body)` (reuse the existing comment-stripping); empty → info message "That instructions file is empty.", return.
+       - `provider.postMessage({ type: "instructions_inject", title, content: body });` then `await vscode.commands.executeCommand("workbench.view.llm");`
+     - `vscode.commands.registerCommand("llm.newInstructionsFile", async () => { … })` — modeled on "New Prompt File…" (L261–300):
+       - `showInputBox({ prompt: "Instructions file name", validateInput: /^[a-zA-Z0-9._-]+$/ })`; cancelled → return.
+       - `root = vscode.workspace.workspaceFolders?.[0]?.uri`; none → `showErrorMessage("Open a workspace to create instructions files.")`, return.
+       - `target = vscode.Uri.joinPath(root, ".instructions", instructionsFileName(name));` exists guard (`fs.stat` → "That instructions file already exists.", return).
+       - `fs.createDirectory(joinPath(root, ".instructions"))` → `fs.writeFile(target, Buffer.from(INSTRUCTIONS_FILE_TEMPLATE, "utf8"))` → `openTextDocument` + `showTextDocument`.
+  2. `scripts/smoke-test.js` — section `// 66) instructions commands (1.100-1.S5)`, **4 assertions**, prefix `instrf-s5:` (read `out/extension.js` as text):
+     1. Contains `"llm.attachInstructions"`.
+     2. Contains `"llm.newInstructionsFile"`.
+     3. Contains `instructions_inject` (the attach command posts the webview message).
+     4. Contains `INSTRUCTIONS_FILE_TEMPLATE` (the new-file command writes the template).
+  Acceptance: `npm run compile` passes; smoke → **606** (602 + 4).
+
+- **1.100-1.S6** — `package.json` schema (+4 smoke).
+  Files: `package.json`, `scripts/smoke-test.js`.
+  1. `package.json` `contributes.commands` — add:
+     - `{ "command": "llm.attachInstructions", "title": "LLM: Attach Instructions File", "icon": "$(book)" }`
+     - `{ "command": "llm.newInstructionsFile", "title": "LLM: New Instructions File", "icon": "$(new-file)" }`
+  2. `package.json` `contributes.configuration.properties` — add after `llm.promptFiles.locations`:
+     - `llm.instructionsFiles.enabled`: `{ "type": "boolean", "default": true, "description": "Discover .instructions.md files and auto-attach them (via their applyTo front-matter glob) when the chat context references matching files." }`
+     - `llm.instructionsFiles.locations`: `{ "type": "array", "items": { "type": "string" }, "default": ["**/*.instructions.md"], "description": "Glob patterns (workspace-relative) for .instructions.md files. Pick one via the 'LLM: Attach Instructions File' command (llm.attachInstructions) to prepend it to the chat input." }`
+  3. `scripts/smoke-test.js` — section `// 67) instructionsFiles schema (1.100-1.S6)`, **4 assertions**, prefix `instrf-s6:` (against the already-loaded `pkgJson`):
+     1. `contributes.commands` contains `llm.attachInstructions` with a title including "Attach Instructions".
+     2. `contributes.commands` contains `llm.newInstructionsFile` with a title including "New Instructions File".
+     3. `properties["llm.instructionsFiles.enabled"]` is `type: "boolean"` with `default === true`.
+     4. `properties["llm.instructionsFiles.locations"]` is `type: "array"` with string items and a `default` array containing `"**/*.instructions.md"`.
+  Acceptance: `npm run compile` passes; smoke → **610** (584 + 26).
+
+**Total expected assertions after all slices:** 584 → **610** (+26: S1 +10, S2 +3, S3 +3, S4 +2, S5 +4, S6 +4).
+
+**Overall acceptance (Tester):** With `llm.instructionsFiles.enabled` on and a `.instructions.md` file (e.g. `.instructions/ts.instructions.md` with `applyTo: src/**/*.ts`) in the workspace: opening `src/foo.ts` and sending a chat message folds the file's body into the system prompt and lists the file in the instructions indicator; `@src/foo.ts` tags trigger the same. `llm.attachInstructions` (palette) lists discovered `.instructions.md` files; picking one prepends its body to the chat input and opens the LLM view. `llm.newInstructionsFile` creates `.instructions/<name>.instructions.md` from the template and opens it. Setting off → no discovery, no auto-attach, `llm.attachInstructions` shows the info message. No workspace / no matches → info messages, no crash. `npm run compile` clean; `node scripts/smoke-test.js` → **610 PASS**.
+
+**Risks / open questions:**
+- **R1 — `applyTo` semantics:** files **without** `applyTo` are never auto-attached (command-only); files **with** `applyTo` attach only on a context-path match. Context paths = active file + `@tagged` files only (not diagnostics or `#codebase` sweep results).
+- **R2 — Default glob breadth:** `**/*.instructions.md` can match files in nested repos; mitigated by the `**/node_modules/**` exclude and the 100-file discovery cap.
+- **R3 — Front-matter parser is intentionally minimal** (flat `key: value`, two keys). Nested YAML or other keys are ignored — documented in the template comment.
+- **R4 — `promptTitle` reuse** for the QuickPick label means an `.instructions.md` with no H1 falls back to the filename (label shows `foo.instructions`). No behavior risk.
+- **R5 — Indicator list growth:** the `instructions` webview message now carries default-instruction + auto-attached paths; the webview already renders a plain list, no change needed.
 
