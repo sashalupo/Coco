@@ -94,6 +94,10 @@ export interface LlmSettings {
   instructionFiles: string[];
   /** Glob patterns (workspace-relative) for reusable prompt files. */
   promptFiles: string[];
+  /** Enable `.instructions.md` discovery + `applyTo` auto-attach. */
+  instructionsFilesEnabled: boolean;
+  /** Glob patterns (workspace-relative) for `.instructions.md` files. */
+  instructionsFilesLocations: string[];
   /** Enable the `#codebase` chat tag (workspace sweep injected as context). */
   codebaseSearchEnabled: boolean;
   /** Enable the `#problems` chat tag (diagnostics injected as context). */

@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-1 — instructions files — S1 PASS (2026-10-23)
-- **Next step:** verify 1.100-1.S2 (settings plumbing; smoke 594 → 597)
+- **Current item:** 1.100-1 — instructions files — S2 PASS (2026-10-23)
+- **Next step:** verify 1.100-1.S3 (applyTo auto-attach; smoke 597 → 600)
 - **Last updated:** 2026-10-23
-- **Last commit:** 7688241 (S1 commit pending)
-- **Build state:** compiles clean; smoke 594/594 PASS
+- **Last commit:** 4ffde6b (S2 commit pending)
+- **Build state:** compiles clean; smoke 597/597 PASS
+
+### 1.100-1.S2 — Settings plumbing (+3 smoke) (2026-10-23) — **PASS**
+- Build: exit 0, zero errors. Smoke: 597/597 PASS (594 + 3 `instrf-s2:`), 0 FAIL.
+- All 6 acceptance criteria met: presets.ts L98/L100 `instructionsFilesEnabled: boolean;` + `instructionsFilesLocations: string[];` after `promptFiles` (L96); config.ts L75/L76 exact `c.get` entries after `promptFiles` (L74); smoke section `// 63)` at L4598 with exactly 3 static `instrf-s2:` assertions; scope = presets.ts + config.ts + smoke-test.js + coder PROGRESS.md + `m ninfer`, no package.json drift.
+- Known deviation (acceptable): smoke locals named `instrfCfgSrc`/`instrfPresetsSrc` (avoids redeclaration of `configSrcS2` from an earlier section).
+- Last commit: `4ffde6b`.
 
 ### 1.100-1.S1 — Pure core in `src/instructions.ts` (+10 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 594/594 PASS (584 + 10 `instrf-s1:`), 0 FAIL.

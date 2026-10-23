@@ -72,6 +72,8 @@ export function readSettings(): LlmSettings {
     instructionsEnabled: c.get<boolean>("instructions.enabled", true),
     instructionFiles: c.get<string[]>("instructions.files", []),
     promptFiles: c.get<string[]>("promptFiles.locations", [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]),
+    instructionsFilesEnabled: c.get<boolean>("instructionsFiles.enabled", true),
+    instructionsFilesLocations: c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"]),
     codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true),
     problemsEnabled: c.get<boolean>("chat.problems.enabled", true),
     folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true),

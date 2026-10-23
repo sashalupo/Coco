@@ -14,13 +14,13 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.100-1** — Instructions files (`.instructions.md`) — **in progress** (planned, 6 slices S1–S6)
-- **Current slice:** 1.100-1.S1 DONE (pure core, 594 PASS)
+- **Current slice:** 1.100-1.S2 DONE (settings plumbing, 597 PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.100-1.S2 (settings plumbing; smoke 594 → 597)
+- **Next step:** dispatch Coder for 1.100-1.S3 (applyTo auto-attach in ChatViewProvider; smoke 597 → 600)
 - **Last updated:** 2026-10-22
-- **Last commit:** 7688241 (plan); S1 commit pending
-- **Build state:** compiles clean; smoke 594/594 PASS
+- **Last commit:** 4ffde6b (S1); S2 commit pending
+- **Build state:** compiles clean; smoke 597/597 PASS
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2

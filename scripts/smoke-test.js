@@ -4595,6 +4595,31 @@ function assert(cond, label) {
     "instrf-s1: INSTRUCTIONS_FILE_TEMPLATE round-trips and instructionsFileName('My File!') === My-File.instructions.md",
   );
 
+  // 63) instructionsFiles settings (1.100-1.S2)
+  const instrfCfgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    instrfCfgSrc.includes('c.get<boolean>("instructionsFiles.enabled", true)'),
+    "instrf-s2: config reads instructionsFiles.enabled (default true)",
+  );
+  assert(
+    instrfCfgSrc.includes(
+      'c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])',
+    ),
+    "instrf-s2: config reads instructionsFiles.locations (default **/*.instructions.md)",
+  );
+  const instrfPresetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    instrfPresetsSrc.includes("instructionsFilesEnabled: boolean;") &&
+      instrfPresetsSrc.includes("instructionsFilesLocations: string[];"),
+    "instrf-s2: presets LlmSettings has instructionsFilesEnabled + instructionsFilesLocations",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

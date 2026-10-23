@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1 done of 6)
-- **Next step:** 1.100-1.S2 — settings plumbing (`instructionsFiles.enabled` / `instructionsFiles.locations`) in `src/presets.ts` + `src/config.ts` (+3 smoke → 597)
+- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **in progress** (S1–S2 done of 6)
+- **Next step:** 1.100-1.S3 — `applyTo` auto-attach in `src/chat/ChatViewProvider.ts` (+3 smoke → 600)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1 changes uncommitted)
-- **Build state:** compiles clean; smoke 594 PASS
+- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2 changes uncommitted)
+- **Build state:** compiles clean; smoke 597 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,12 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-1.S2** (2026-10-23) — Settings plumbing (+3 smoke). Files: `src/presets.ts`, `src/config.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `LlmSettings` gains `instructionsFilesEnabled: boolean;` (doc: "Enable `.instructions.md` discovery + `applyTo` auto-attach.") and `instructionsFilesLocations: string[];` (doc: "Glob patterns (workspace-relative) for `.instructions.md` files.") immediately after `promptFiles: string[];`.
+  - `src/config.ts`: `readSettings` gains `instructionsFilesEnabled: c.get<boolean>("instructionsFiles.enabled", true)` and `instructionsFilesLocations: c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])` immediately after the `promptFiles` line.
+  - `scripts/smoke-test.js`: new section `// 63) instructionsFiles settings (1.100-1.S2)` after section 62, before `ALL SMOKE TESTS PASSED`; 3 `instrf-s2:` static source assertions (files read as text — `config.ts`/`presets.ts` import vscode and can't be required): (a) `src/config.ts` contains `c.get<boolean>("instructionsFiles.enabled", true)`; (b) `src/config.ts` contains `c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"])`; (c) `src/presets.ts` contains both `instructionsFilesEnabled: boolean;` and `instructionsFilesLocations: string[];`. Local vars named `instrfCfgSrc`/`instrfPresetsSrc` (the plan's implied `configSrcS2` collided with an existing declaration at line 2753 from an earlier section — renamed, no other deviation).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 597 PASS (594 + 3), 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.100-1.S1** (2026-10-23) — Pure core in `src/instructions.ts` (+10 smoke). Files: `src/instructions.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/instructions.ts`: appended a new pure section (no vscode/fs) after `combineInstructions`, keeping all existing exports untouched: (a) `export interface InstructionsFileMeta { applyTo?: string; title?: string }`; (b) `export function parseInstructionsFrontMatter(content)` — front-matter only when first line is exactly `---` (BOM `\uFEFF` trimmed); closing delimiter = next line exactly `---` or `...` (none → whole content as body, empty meta); inside, simple `key: value` lines, only `applyTo`/`title` honored, values trimmed + matching surrounding single/double quotes stripped; `body` = everything after the closing delimiter with leading newlines trimmed; (c) `export function globToRegExp(glob)` — hand-rolled (no glob/minimatch): `**/` → `(?:.*/)?`, `**` → `.*`, `*` → `[^/]*`, `?` → `[^/]`, all else regex-escaped, anchored `^…$`; (d) `export function applyToMatches(applyTo, filePath)` — empty → false; split on `|` (trim each alternative); `filePath` normalized to forward slashes + leading `./` stripped; true if any alternative matches; (e) `export function pickAutoAttachFiles(files, contextPaths)` — in order, deduped by path, only files with non-empty `applyTo` matching any `contextPaths` entry; (f) `export const INSTRUCTIONS_FILE_TEMPLATE` (exact template string from the plan); (g) `export function instructionsFileName(name)` — trim, `[^a-zA-Z0-9._-]+` → `-`, strip leading AND trailing `-`/`.` (trailing strip added so `"My File!"` → `My-File`, not `My-File-`), fallback `"instructions"`, append `.instructions.md` when missing.
   - `scripts/smoke-test.js`: new section `// 62) instructions files core (1.100-1.S1)` after section 61, before `ALL SMOKE TESTS PASSED`; `require(path.join(__dirname, "..", "out", "instructions.js"))`; 10 `instrf-s1:` assertions (front-matter parse of applyTo+title+body; no front-matter → empty meta + body===content; unclosed front-matter → empty meta + full body; quoted values unquoted; `**/*.ts` matches `a/b/c.ts` + `c.ts`; `src/*.ts` matches `src/a.ts` but not `src/a/b.ts`; `applyToMatches` true/false pair; alternation `src/**/*.ts | lib/**/*.py` matches both sides; `pickAutoAttachFiles` order/dedupe/skip-no-applyTo; template round-trip + `instructionsFileName("My File!") === "My-File.instructions.md"`). Total PASS lines now 594 (584 + 10).
