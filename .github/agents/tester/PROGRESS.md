@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-10 (in progress) — S1, S2 verified
-- **Next step:** verify `1.100-10.S3` (agent-loop autofix hook in `src/chat/ChatViewProvider.ts`)
+- **Current item:** 1.100-10 (in progress) — S1, S2 verified; S3 FAILED (ordering bug)
+- **Next step:** Coder fixes S3 (move pre-batch snapshot before the tool batch), then re-verify `1.100-10.S3`
 - **Last updated:** 2026-10-23
-- **Last commit:** 6a0fa00 (1.100-10.S2)
+- **Last commit:** b0de672 (1.100-10.S3, failed verification)
 - **Build state:** compiles clean; smoke 690/690 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -36,6 +36,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 **1.100-8.S5** (2026-10-23) — PASS. Smoke-test regression guards in `scripts/smoke-test.js` (commit 08f2625): 15 new `pill-s5` assertions — no Done button in input row / no `#done` element; Enter (no Shift) → `doSend()`; New Chat only via `#new-chat`/`#quick-new-chat` (input row has no other session-reset control); pure-function tests of `parsePillRefs`/`dedupePills` against compiled `out/context.js` (parse + within-message dedupe; existing-order merge + id drop); pill pipeline present (`context_pills`/`remove_pill`/`renderPillStrip` in webview, `postContextPills` + `remove_pill` case in ChatViewProvider, `llm.addContext` registered + contributed). Assertions are genuine (string/behavior checks that fail if the feature is removed). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory. Build exit 0; smoke 690/690. **Item 1.100-8 complete (S1–S5 all PASS).**
 
+
+**1.100-10.S3** (2026-10-23) — **FAIL** (commit b0de672). Agent-loop autofix hook in `src/chat/ChatViewProvider.ts`. Build exit 0; smoke 690/690. Scope clean (commit touches only `src/chat/ChatViewProvider.ts` + coder memory; `ninfer` submodule NOT committed — only ` m ninfer` in working tree). Passing criteria: `newDiagnostics` imported from `src/tools/ToolExecutor.ts` (line 56); `MAX_AUTOFIX_ROUNDS = 2` named constant (line 86); new diags + `settings.agentAutoFix` + `autoFixRounds < MAX_AUTOFIX_ROUNDS` → system message "New problems appeared in … Fix them." + delta note + counter increment + loop continues (lines 1663-1678); past cap → delta note only, loop proceeds (else branch); `autoFixRounds` reset at run start right after `clearChangeSummary()` (line 1453); loop terminates (cap 2 + outer `MAX_TOOL_ITERATIONS = 8`). **BUG:** the "before" diagnostics snapshot is taken AFTER the tool batch executes, not before. Batch runs at line 1505 (`for (const call of toolCalls)`); `const before = this.autofixSnapshot(editedPaths)` is at line 1659, then 500 ms settle, then `after` at line 1662. Only two `autofixSnapshot` calls exist (1659, 1662). Consequence: the diff misses diagnostics introduced by the edits themselves — it only catches ones appearing in the 500 ms window after the post-batch snapshot, so the autofix hook effectively never fires for the intended case. **Fix for Coder:** move the `before` snapshot to before the batch loop (i.e. before line 1505, after `editedPaths` is computed from `toolCalls`), keep the 500 ms settle + `after` snapshot where they are.
 
 **1.100-10.S2** (2026-10-23) — PASS. Pure exported `newDiagnostics(before, after)` helper in `src/tools/ToolExecutor.ts` (commit 6a0fa00): `DiagnosticLike` interface (severity/range.start/message, vscode-independent); key = `severity|startLine|startChar|message`; returns `after` entries whose key is absent from `before`, preserving `after` order. Behavior verified via `node -e` on `out/tools/ToolExecutor.js` with vscode stub: mixed before/after → only new entry returned; empty before → all after in order; identical lists → 0. Scope clean: commit touches only `src/tools/ToolExecutor.ts` + coder memory — no changes to `src/chat/ChatViewProvider.ts` or `scripts/smoke-test.js`. Build exit 0; smoke 690/690.
 
