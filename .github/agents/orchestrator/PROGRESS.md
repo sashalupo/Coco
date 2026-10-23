@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-14** — MCP support for image output — **IN PROGRESS** (5 slices S1–S5; S1–S4 done)
-- **Current slice:** 1.100-14.S4 DONE (verified PASS)
+- **Current item:** **1.100-14** — MCP support for image output — **DONE** (5 slices S1–S5 all verified PASS)
+- **Current slice:** 1.100-14.S5 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-14.S5 — smoke-test guards in `scripts/smoke-test.js` (user goal: continue until version 1.107)
+- **Next step:** 1.100-15 — Enhanced MCP input/output/progress UI (Planner dispatch first) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 0613946 (tester verified 1.100-14.S4; code 7535819)
-- **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
+- **Last commit:** 7cc6153 (tester verified 1.100-14.S5; code 45939ec)
+- **Build state:** compiles clean; smoke 758/758 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -50,6 +50,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-14 (DONE, S1–S5):** `McpToolResult.content` widened + `mcpResultToImages` pure extractor in `src/mcp.ts` (S1, 486f58e); `McpManager.execute` returns `{ content, images? }` (S2, 215b394); `tool_result` posts carry `images` in `src/chat/ChatViewProvider.ts` (S3, 814fbea); `.tool-images`/`.tool-img` thumbnail rendering in `src/chat/webview.ts` (S4, 7535819); smoke guards `mcp-img-s5`, count 750→758 (S5, 45939ec). No new tag — `changelog-1.100` already exists (final commit 45939ec).
 
 **1.100-13 (DONE, S1–S5):** `McpHttpClient` + `parseSseMessages` + `url`-entry `parseMcpServers` in `src/mcp.ts` (S1, 61f7b85); `llm.mcp.servers` description documents Streamable HTTP (S2, e542ced); `McpClientLike` + transport pick in `src/mcpManager.ts` (S3, 3f8a4fa); `llm.mcp.addServer` transport quick-pick (stdio / Streamable HTTP url) in `src/extension.ts` (S4, afd54ec); smoke guards `mcp-http-s5` incl. live SSE/JSON mock servers, count 736→750 (S5, b267290). No new tag — `changelog-1.100` already exists (final commit b267290).
 
