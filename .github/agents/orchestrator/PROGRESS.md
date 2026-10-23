@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-30** — Drag and drop cell outputs to chat — **IN PROGRESS** (3 slices S-001–S-003; S-001 done)
-- **Current slice:** 1.100-30 S-001 DONE (verified PASS; code affc774)
+- **Current item:** **1.100-31** — Notebook tools for agent mode — **NOT STARTED** (no plan yet)
+- **Current slice:** none (1.100-30 complete)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-30 S-002 — drag-and-drop controller in `src/extension.ts` + `llm.chat.cellOutputDrop.enabled` setting (Coder dispatch) (user goal: continue until version 1.107)
+- **Next step:** dispatch the **Planner** for 1.100-31 (Notebook tools for agent mode) — first slice of a new item (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 6121f19 (tester verified 1.100-30 S-001; code affc774)
-- **Build state:** compiles clean; smoke 787/787 PASS (verified 2026-10-23)
+- **Last commit:** 3b0606e (tester verified 1.100-30 S-003; item complete)
+- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -50,6 +50,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.100-30 (DONE, S-001–S-003):** `extractNotebookCellOutput` + `NotebookCellOutputLike` in `src/notebook.ts` (S-001, affc774); `registerDragAndDropController` (viewContainerId `llm`, mime `notebook.cellOutput`) in `src/extension.ts` — Alt rule for text-only drops, vision gate, reuses `cell_output_inject` — + `llm.chat.cellOutputDrop.enabled` setting (S-002, 26efb84); smoke guards `drop-s1..s4`, count 787→791 (S-003, aa35cbb). No new tag — `changelog-1.100` already exists (final commit 3b0606e).
 
 **1.100-29 (DONE, S-001–S-003):** pure alt-text helpers `findImageRef`/`isPlaceholderAlt`/`buildAltTextPrompt`/`parseAltText` in `src/codeaction.ts` (S-001, d01fc92); QuickFix "Generate alt text" on HTML/Markdown image lines with placeholder alt + one-shot vision `chatStream` resolve + `llm.codeAction.altText.enabled` setting (S-002, df5f480); smoke guards `alt-s1`, count 780→787 (S-003, ef5a845). No new tag — `changelog-1.100` already exists (final commit ef5a845).
 
