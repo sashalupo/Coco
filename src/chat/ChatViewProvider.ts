@@ -37,8 +37,11 @@ import {
   formatSearchResultsBlock,
   extractNewWorkspaceTag,
   formatWorkspaceBlock,
+  parsePillRefs,
+  dedupePills,
   type ContextFile,
   type ContextInput,
+  type ContextPill,
 } from "../context";
 import { buildScaffoldPrompt } from "../workspaceScaffold";
 import { notebookNameFromQuery } from "../notebook";
@@ -147,6 +150,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    */
   private preRunHistory: ChatMessage[] | null = null;
 
+  /**
+   * 1.100-8.S3: the current context-pill list owned by the host. Pills are
+   * derived from `@`/`#folder:` references in the pending input text (via
+   * `parsePillRefs`) and can be removed individually by the webview
+   * (`remove_pill`). Consumed (and cleared) at send time in `runStream`.
+   */
+  private pendingPills: ContextPill[] = [];
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly client: LlmClient,
@@ -199,13 +210,26 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.postMessage({ type: "hello", message: "LLM chat panel ready" });
         this.pushToolbarState();
         this.pushHistory();
+        this.postContextPills();
         void this.loadModels();
         break;
       case "send":
+        // 1.100-8.S3: parse `@`/`#folder:` refs from the pending input into
+        // pills (merged with any already-present pills) and push the strip.
+        {
+          const text = String(msg.text ?? "");
+          this.pendingPills = dedupePills(this.pendingPills, parsePillRefs(text));
+          this.postContextPills();
+        }
         void this.handleSend(
           String(msg.text ?? ""),
           Array.isArray(msg.images) ? msg.images : []
         );
+        break;
+      case "remove_pill":
+        // 1.100-8.S3: the webview's × button removed a pill — drop it from
+        // the host state and re-post the updated list.
+        this.removePill(String(msg.id ?? ""));
         break;
       case "toolbar":
         this.applyToolbarMessage(msg);
@@ -483,6 +507,32 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       totalRemoved,
       hasCheckpoint: this.preRunHistory !== null,
     });
+  }
+
+  /**
+   * 1.100-8.S3: push the current context-pill list to the webview so the
+   * pill strip above the input reflects the host state. Called whenever the
+   * pill set changes (send, remove_pill, new chat, conversation switch,
+   * webview ready).
+   */
+  private postContextPills(): void {
+    this.postMessage({ type: "context_pills", pills: this.pendingPills });
+  }
+
+  /**
+   * 1.100-8.S3: remove a pill by id (posted by the webview's × button) and
+   * re-post the updated list. No-op when the id is unknown.
+   */
+  private removePill(id: string): void {
+    if (!id) {
+      return;
+    }
+    const next = this.pendingPills.filter((p) => p.id !== id);
+    if (next.length === this.pendingPills.length) {
+      return;
+    }
+    this.pendingPills = next;
+    this.postContextPills();
   }
 
   /**
@@ -834,8 +884,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.saveCurrentConversation();
     this.currentConvId = this.generateId();
     this.history = [];
+    // 1.100-8.S3: a fresh conversation starts with no pending context pills.
+    this.pendingPills = [];
     this.postMessage({ type: "clear" });
     this.pushHistory();
+    this.postContextPills();
   }
 
   /** Switch to a previously saved conversation by id. */
@@ -851,7 +904,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
     this.currentConvId = id;
     this.history = target.messages;
+    // 1.100-8.S3: switching conversations resets the pending pill list.
+    this.pendingPills = [];
     this.postMessage({ type: "restore", messages: this.history });
+    this.postContextPills();
   }
 
   /**
@@ -1120,6 +1176,40 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
       }
 
+      // 1.100-8.S3: consume the pending context pills — file pills are read
+      // into `ctxInput.taggedFiles` (merged with `@`-tagged files) and folder
+      // pills are swept via `folderSweep` (same path as the `#folder:` tag).
+      // The pill list is cleared and re-posted so the strip empties after send.
+      const filePills = this.pendingPills.filter(
+        (p) => p.kind === "file" && p.path,
+      );
+      const folderPills = this.pendingPills.filter(
+        (p) => p.kind === "folder" && p.path,
+      );
+      this.pendingPills = [];
+      this.postContextPills();
+      if (filePills.length > 0) {
+        const pillFiles: ContextFile[] = [];
+        for (const pill of filePills) {
+          const abs = await this.toolExecutor.resolveSafe(pill.path!);
+          if (!abs) {
+            continue; // outside workspace — skip silently
+          }
+          try {
+            const content = await fs.promises.readFile(abs, "utf8");
+            pillFiles.push({ path: pill.path!, content });
+          } catch {
+            // unreadable — skip
+          }
+        }
+        if (pillFiles.length > 0) {
+          ctxInput.taggedFiles = [
+            ...(ctxInput.taggedFiles ?? []),
+            ...pillFiles,
+          ];
+        }
+      }
+
       // 1.100-1.S3: `.instructions.md` auto-attach — collect the workspace
       // paths referenced by the context (active file + @tagged files) so
       // `applyTo` front-matter globs can be matched against them.
@@ -1187,6 +1277,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         const f = extractFolderTag(lastUser.content);
         if (f !== null) {
           const folderBlock = await this.toolExecutor.folderSweep(f);
+          if (folderBlock) {
+            finalContextBlock = finalContextBlock
+              ? finalContextBlock + "\n\n" + folderBlock
+              : folderBlock;
+          }
+        }
+      }
+
+      // 1.100-8.S3: folder pills — sweep each pill-referenced folder (same
+      // gating as the `#folder:` tag) and append the results to the context
+      // block.
+      if (settings.folderContextEnabled && this.toolExecutor) {
+        for (const pill of folderPills) {
+          const folderBlock = await this.toolExecutor.folderSweep(pill.path!);
           if (folderBlock) {
             finalContextBlock = finalContextBlock
               ? finalContextBlock + "\n\n" + folderBlock
