@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** none (1.100-8.S2 verified) — **idle**
-- **Next step:** verify the next coded slice (1.100-8.S3)
+- **Current item:** none (1.100-8.S3 verified) — **idle**
+- **Next step:** verify the next coded slice (1.100-8.S4)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1131053 (1.100-8.S2)
+- **Last commit:** 120a210 (1.100-8.S3)
 - **Build state:** compiles clean; smoke 675/675 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -29,6 +29,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 **1.100-8.S1** (2026-10-23) — PASS. `ContextPill` model + `parsePillRefs`/`dedupePills` pure helpers in `src/context.ts` (no `vscode` import in file). Behavior verified via `node -e` on `out/context.js`: `@src/a.ts` → file pill, `#folder:src` → folder pill; dedupe keeps existing-first order, drops by kind+path. Build exit 0; smoke 675/675.
 
 **1.100-8.S2** (2026-10-23) — PASS. Pill strip UI in `src/chat/webview.ts` (commit 1131053): `#pill-strip` container above input; `renderPillStrip(pills)` renders icon+label+× remove button, hides strip when empty; `context_pills` host msg stores pills + re-renders; × posts `remove_pill` with pill id; pills cleared on `clear`; CSS uses existing theme vars (`--input-bg`, `--fg`, `--border`, `--muted`, `--think-bg`). Scope clean: commit touches only `src/chat/webview.ts` + coder memory. Build exit 0; smoke 675/675.
+
+**1.100-8.S3** (2026-10-23) — PASS. Host-side pill consumption in `src/chat/ChatViewProvider.ts` (commit 120a210): `pendingPills: ContextPill[]` host state; `postContextPills()` posts `{ type: 'context_pills', pills }` and is called on webview ready, `send`, `remove_pill`, new chat/clear, and conversation switch; `remove_pill` handled via `removePill(id)` (filter by id, re-post, no-op on unknown id); on `send` input parsed via `parsePillRefs`/`dedupePills` (imported from `src/context.ts`), file pills read into `ctxInput.taggedFiles` (via `resolveSafe` + `readFile`), folder pills swept via `toolExecutor.folderSweep` gated on `settings.folderContextEnabled`; pill list cleared + re-posted after send. Scope clean: commit touches only `src/chat/ChatViewProvider.ts` + coder memory. Build exit 0; smoke 675/675.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7). Smoke 675.
 
