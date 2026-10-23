@@ -11,15 +11,16 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-30 — in progress (S-001, S-002 verified PASS)
-- **Next step:** 1.100-30 S-003 (smoke 787→791)
+- **Current item:** 1.100-30 — COMPLETE (S-001, S-002, S-003 verified PASS)
+- **Next step:** 1.100-31 — Notebook tools for agent mode
 - **Last updated:** 2026-10-23
-- **Last commit:** 26efb84 (1.100-30 S-002, verified PASS)
-- **Build state:** compiles clean; smoke 787/787 PASS (verified 2026-10-23)
+- **Last commit:** aa35cbb (1.100-30 S-003, verified PASS)
+- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-23)
 ## Verified (recap)
 
 Slice detail pruned (see `git log` for full history). All slices verified PASS (build exit 0 + full smoke + scope check via `git show --stat`; `ninfer` submodule never committed).
 
+- **1.100-30 S-003** (aa35cbb) — PASS. `scripts/smoke-test.js` only: 4 new assertions `drop-s1`…`drop-s4` (drag-and-drop controller on `viewContainerId: "llm"`; `notebook.cellOutput` + `e.modifiers.alt` Alt rule; `extractNotebookCellOutput` in `src/notebook.ts`; `llm.chat.cellOutputDrop.enabled` boolean default true in `package.json`); hard gate 787→791. Verified: compile exit 0; smoke 791/791; scope via `git show --stat aa35cbb` (only `scripts/smoke-test.js` + coder PROGRESS.md; `ninfer` not committed); grep confirmed all 4 assertions + gate 791. Item 1.100-30 complete.
 - **1.100-30 S-002** (26efb84) — PASS. `registerDragAndDropController` in `src/extension.ts` targeting `viewContainerId: "llm"`, `dropMimeTypes: ["notebook.cellOutput"]`; Alt rule (`e.modifiers.alt` for text-only), vision gate, `cell_output_inject` post; `llm.chat.cellOutputDrop.enabled` (boolean, default true) in `package.json`. Scope: only `src/extension.ts`, `package.json`, coder PROGRESS.md; `webview.ts` untouched; `ninfer` not committed. Compile exit 0; smoke 787/787.
 - **1.100-30 S-001** (affc774) — PASS. `extractNotebookCellOutput` in `src/notebook.ts` (pure, no vscode import); runtime probe 5/5. Smoke 787/787.
 - **1.100-29 S-001–S-003** (d01fc92, df5f480, ef5a845) — PASS. Alt-text code action; item complete. Smoke 787/787.
