@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-29** — Generate alt text in HTML or Markdown (AI code action) — **IN PROGRESS** (3 slices S-001–S-003; S-001 done)
-- **Current slice:** 1.100-29 S-001 DONE (verified PASS; code d01fc92)
+- **Current item:** **1.100-29** — Generate alt text in HTML or Markdown (AI code action) — **IN PROGRESS** (3 slices S-001–S-003; S-001–S-002 done)
+- **Current slice:** 1.100-29 S-002 DONE (verified PASS; code df5f480)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-29 S-002 — provider branch + `llm.codeAction.altText.enabled` setting (Coder dispatch) (user goal: continue until version 1.107)
+- **Next step:** 1.100-29 S-003 — smoke `alt-s1` block, gate 780→787 (Coder dispatch) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** d2e33ba (tester verified 1.100-29 S-001; code d01fc92)
+- **Last commit:** dd537df (tester verified 1.100-29 S-002; code df5f480)
 - **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
