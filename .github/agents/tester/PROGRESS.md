@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-2 — Prompt files improvements — S1+S2 PASS (2026-10-23)
-- **Next step:** 1.100-2.S3 (next slice of Prompt files improvements)
+- **Current item:** 1.100-2 — Prompt files improvements — S1+S2+S3 PASS (2026-10-23)
+- **Next step:** 1.100-2.S4 (next slice of Prompt files improvements, if any)
 - **Last updated:** 2026-10-23
-- **Last commit:** ba9228a (1.100-2.S2)
-- **Build state:** compiles clean; smoke 623/623 PASS
+- **Last commit:** 4daff77 (1.100-2.S3)
+- **Build state:** compiles clean; smoke 627/627 PASS
+
+### 1.100-2.S3 — `ChatViewProvider.runPrompt` + `pendingPromptTools` wiring (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 627/627 PASS (623 baseline + 4 new `prompt2-s3:`), 0 FAIL.
+- All 5 acceptance criteria met: (1) compile exit 0; (2) smoke total 627 (grep -c '^PASS:' → 627, 0 FAIL); (3) section `// 70) runPrompt (1.100-2.S3)` at smoke-test.js:4824 with exactly 4 `prompt2-s3:` assertions (L4830 runPrompt(, L4834 parsePromptFrontMatter, L4838 pendingPromptTools, L4844 buildRequestBody call site passes promptTools); (4) `src/chat/ChatViewProvider.ts`: `public async runPrompt(content: string, filePath: string)` (L1041) with (a) abortController guard posting error (L1042–1047), (b) `parsePromptFrontMatter(content.slice(0, MAX_PROMPT_CHARS))` (L1049–1051), (c) empty-body guard after stripPromptComments (L1052–1058), (d) `toolbarStore.setMode(normalizeChatMode(meta.mode))` (L1060), (e) `pendingPromptTools = meta.tools?.length ? meta.tools : null` (L1061–1062), (f) history push + `runStream` (L1063–1064); `runStream` consumes + clears `pendingPromptTools` (L1079–1080) and passes `promptTools: promptTools ?? undefined` into the `buildRequestBody` config (L1305); (5) `git show --stat 4daff77` → exactly `src/chat/ChatViewProvider.ts` (+49), `scripts/smoke-test.js` (+24), `.github/agents/coder/PROGRESS.md` (+12/−4) — no out-of-scope files.
+- Last commit: `4daff77`.
 
 ### 1.100-2.S2 — `RequestConfig.promptTools` tool-name filter in `buildRequestBody` (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 623/623 PASS (620 baseline + 3 new `prompt2-s2:`), 0 FAIL.
