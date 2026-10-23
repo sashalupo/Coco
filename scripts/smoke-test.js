@@ -6135,11 +6135,158 @@ function assert(cond, label) {
     webviewImgSrc.includes("tool-img"),
     "mcp-img-s5: webview.ts references the tool-img class",
   );
-  if (assertCount !== 758) {
-    console.error(`FAIL: total assertion count is 758 (got ${assertCount})`);
+  // 86) MCP progress regression guards (1.100-15.S6)
+  // (a) stdio: a real fake stdio server (node -e) that emits a
+  // notifications/progress line before the tools/call response.
+  const mcpProgressFakeServer =
+    "let b='';process.stdin.on('data',c=>{b+=c;let i;while((i=b.indexOf('\\n'))!==-1){const l=b.slice(0,i);b=b.slice(i+1);if(!l.trim())continue;const m=JSON.parse(l);if(m.method==='initialize'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result:{protocolVersion:'2024-11-05',capabilities:{},serverInfo:{name:'fake',version:'0.0.1'}}})+'\\n');}else if(m.method==='tools/list'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result:{tools:[{name:'work',description:'works',inputSchema:{type:'object',properties:{}}}]}})+'\\n');}else if(m.method==='tools/call'){process.stdout.write(JSON.stringify({jsonrpc:'2.0',method:'notifications/progress',params:{progressToken:'t',progress:50,total:100,message:'halfway'}})+'\\n');process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result:{content:[{type:'text',text:'done'}]}})+'\\n');}}});";
+  const progStdioClient = new McpClient({
+    command: "node",
+    args: ["-e", mcpProgressFakeServer],
+  });
+  await progStdioClient.start();
+  const progStdioSeen = [];
+  const progStdioP = progStdioClient.callTool("work", {}, (p) => progStdioSeen.push(p));
+  const progStdioRes = await progStdioP;
+  assert(
+    progStdioSeen.length === 1 &&
+      progStdioSeen[0].progress === 50 &&
+      progStdioSeen[0].total === 100 &&
+      progStdioSeen[0].message === "halfway",
+    "mcp-progress-s6: stdio — setProgressCallback fires with progress 50/100 'halfway'",
+  );
+  assert(
+    progStdioSeen[0].progressToken === "t",
+    "mcp-progress-s6: stdio — progress notification carries the progressToken",
+  );
+  assert(
+    progStdioRes.content[0].text === "done",
+    "mcp-progress-s6: stdio — callTool still resolves with the tool result",
+  );
+  progStdioClient.close();
+  // (b) HTTP: a second SSE mock server (port 18102) whose tools/call SSE body
+  // carries a notifications/progress event before the response event.
+  const MCP_PROG_PORT = 18102;
+  const mcpProgServer = http.createServer((req, res) => {
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+    });
+    req.on("end", () => {
+      const msg = JSON.parse(body);
+      if (msg.method === "initialize") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Mcp-Session-Id": "sess-p",
+        });
+        res.end(
+          'data: {"jsonrpc":"2.0","id":' +
+            msg.id +
+            ',"result":{"protocolVersion":"2025-03-26","capabilities":{},"serverInfo":{"name":"mock-prog","version":"1.0.0"}}}\n\n',
+        );
+        return;
+      }
+      if (msg.method === "notifications/initialized") {
+        res.writeHead(202);
+        res.end();
+        return;
+      }
+      if (msg.method === "tools/list") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Mcp-Session-Id": "sess-p",
+        });
+        res.end(
+          'data: {"jsonrpc":"2.0","id":' +
+            msg.id +
+            ',"result":{"tools":[{"name":"work","description":"works","inputSchema":{"type":"object","properties":{}}}]}}\n\n',
+        );
+        return;
+      }
+      if (msg.method === "tools/call") {
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Mcp-Session-Id": "sess-p",
+        });
+        res.end(
+          'data: {"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"t","progress":50,"total":100,"message":"halfway"}}\n\n' +
+            'data: {"jsonrpc":"2.0","id":' +
+            msg.id +
+            ',"result":{"content":[{"type":"text","text":"done"}]}}\n\n',
+        );
+        return;
+      }
+      res.writeHead(404);
+      res.end();
+    });
+  });
+  await new Promise((r) => mcpProgServer.listen(MCP_PROG_PORT, r));
+  const progHttpClient = new mcpHttpS5.McpHttpClient({
+    url: `http://localhost:${MCP_PROG_PORT}`,
+  });
+  await progHttpClient.start();
+  const progHttpSeen = [];
+  const progHttpP = progHttpClient.callTool("work", {}, (p) => progHttpSeen.push(p));
+  const progHttpRes = await progHttpP;
+  assert(
+    progHttpSeen.length === 1 &&
+      progHttpSeen[0].progress === 50 &&
+      progHttpSeen[0].total === 100 &&
+      progHttpSeen[0].message === "halfway",
+    "mcp-progress-s6: HTTP SSE — setProgressCallback fires with progress 50/100 'halfway'",
+  );
+  assert(
+    progHttpRes.content[0].text === "done",
+    "mcp-progress-s6: HTTP SSE — callTool still resolves with the tool result",
+  );
+  progHttpClient.close();
+  mcpProgServer.close();
+  // (c) manager threading: McpManager.execute passes the onProgress callback
+  // through to client.callTool (same function identity).
+  const mgrProg = new McpManager();
+  const mgrProgStub = {
+    tools: [{ name: "work", description: "works", inputSchema: { type: "object", properties: {} } }],
+    start: async () => {},
+    callTool: async (name, args, onProgress) => {
+      mgrProgStub.lastOnProgress = onProgress;
+      return { content: [{ type: "text", text: "ok" }] };
+    },
+    close: () => {},
+  };
+  mgrProg.setServers({ prog: { command: "node" } });
+  mgrProg.clients.set("prog", mgrProgStub);
+  mgrProg.statuses.set("prog", { name: "prog", status: "running", toolCount: 1 });
+  const mgrProgCb = () => {};
+  const mgrProgRes = await mgrProg.execute("mcp__prog__work", {}, mgrProgCb);
+  assert(
+    mgrProgStub.lastOnProgress === mgrProgCb && mgrProgRes.content === "ok",
+    "mcp-progress-s6: McpManager.execute threads onProgress to client.callTool (same identity)",
+  );
+  mgrProg.dispose();
+  // (d) static refs: host posts tool_progress; webview renders it + prettyJson.
+  const hostProgJs = fs.readFileSync(
+    path.join(__dirname, "..", "out", "chat", "ChatViewProvider.js"),
+    "utf8",
+  );
+  assert(
+    hostProgJs.includes('type: "tool_progress"'),
+    "mcp-progress-s6: ChatViewProvider.js posts tool_progress",
+  );
+  const webviewProgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewProgSrc.includes("tool_progress") &&
+      webviewProgSrc.includes("prettyJson") &&
+      webviewProgSrc.includes("tool-progress"),
+    "mcp-progress-s6: webview.ts references tool_progress, prettyJson, and tool-progress",
+  );
+  if (assertCount !== 766) {
+    console.error(`FAIL: total assertion count is 766 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 758");
+  console.log("PASS: total assertion count is 766");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
