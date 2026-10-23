@@ -4714,6 +4714,78 @@ function assert(cond, label) {
     "instrf-s6: llm.instructionsFiles.locations is a string array defaulting to ['**/*.instructions.md']",
   );
 
+  // 68) prompt front matter (1.100-2.S1)
+  const prompts2 = require("../out/prompts.js");
+  const p2s1Full = prompts2.parsePromptFrontMatter(
+    "---\nmode: Agent\ntools: read_file, edit_file\ndescription: Does things\ntitle: My Prompt\n---\n# H1\n\nBody text\n",
+  );
+  assert(
+    p2s1Full.meta.mode === "agent" &&
+      JSON.stringify(p2s1Full.meta.tools) === '["read_file","edit_file"]' &&
+      p2s1Full.meta.description === "Does things" &&
+      p2s1Full.meta.title === "My Prompt",
+    "prompt2-s1: parses mode/tools/description/title from a full front matter block",
+  );
+  const p2s1NoFm = prompts2.parsePromptFrontMatter("# Just a heading\n\nBody");
+  assert(
+    Object.keys(p2s1NoFm.meta).length === 0 &&
+      p2s1NoFm.body === "# Just a heading\n\nBody",
+    "prompt2-s1: no front matter → empty meta, full content as body",
+  );
+  const p2s1Unclosed = prompts2.parsePromptFrontMatter(
+    "---\nmode: agent\ntools: read_file\n",
+  );
+  assert(
+    Object.keys(p2s1Unclosed.meta).length === 0 &&
+      p2s1Unclosed.body === "---\nmode: agent\ntools: read_file\n",
+    "prompt2-s1: unclosed front matter → empty meta, full content as body",
+  );
+  const p2s1BadMode = prompts2.parsePromptFrontMatter(
+    "---\nmode: turbo\n---\nBody\n",
+  );
+  assert(
+    p2s1BadMode.meta.mode === undefined && p2s1BadMode.body === "Body\n",
+    "prompt2-s1: invalid mode (turbo) → meta.mode === undefined",
+  );
+  const p2s1Quoted = prompts2.parsePromptFrontMatter(
+    "---\ntitle: \"Quoted Title\"\ndescription: 'Quoted Desc'\n---\nBody\n",
+  );
+  assert(
+    p2s1Quoted.meta.title === "Quoted Title" &&
+      p2s1Quoted.meta.description === "Quoted Desc",
+    "prompt2-s1: quoted values (double/single) are unquoted",
+  );
+  const p2s1Tools = prompts2.parsePromptFrontMatter(
+    "---\ntools: read_file, , edit_file,\n---\nBody\n",
+  );
+  assert(
+    JSON.stringify(p2s1Tools.meta.tools) === '["read_file","edit_file"]',
+    "prompt2-s1: tools with spaces and empty entries → trimmed, empties dropped",
+  );
+  const p2s1Body = prompts2.parsePromptFrontMatter(
+    "---\nmode: ask\n---\n\n\nFirst line\n",
+  );
+  assert(
+    p2s1Body.body === "First line\n",
+    "prompt2-s1: body after the closing delimiter has leading newlines trimmed",
+  );
+  assert(
+    prompts2.promptTitle(
+      "---\ntitle: FM Title\n---\n# H1 Title\n\nBody\n",
+      "x.prompt.md",
+    ) === "FM Title",
+    "prompt2-s1: promptTitle prefers front-matter title over an H1 in the body",
+  );
+  const p2s1Tpl = prompts2.parsePromptFrontMatter(prompts2.PROMPT_TEMPLATE);
+  assert(
+    p2s1Tpl.meta.mode === "agent" && p2s1Tpl.body.trim().length > 0,
+    "prompt2-s1: PROMPT_TEMPLATE round-trips (mode agent, non-empty body)",
+  );
+  assert(
+    prompts2.stripPromptComments(p2s1Tpl.body).includes("# My Prompt"),
+    "prompt2-s1: stripPromptComments still works on the parsed template body",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

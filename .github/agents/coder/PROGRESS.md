@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-1 (instructions files — `.instructions.md`) — **COMPLETE** (all 6 slices S1–S6 done)
-- **Next step:** item 1.100-1 complete — next item 1.100-2 (Prompt files improvements)
+- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1 done, S2–S6 pending)
+- **Next step:** 1.100-2.S2 — `src/request.ts`: `promptTools` filter (+3 smoke)
 - **Last updated:** 2026-10-23
-- **Last commit:** 1e0f2fa (v1.100 research; orchestrator commits — S1+S2+S3+S4+S5+S6 changes uncommitted)
-- **Build state:** compiles clean; smoke 610 PASS
+- **Last commit:** (1.100-2.S1 commit — prompt front-matter parsing)
+- **Build state:** compiles clean; smoke 620 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,10 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-2.S1** (2026-10-23) — `src/prompts.ts`: prompt front-matter parsing + template (+10 smoke). Files: `src/prompts.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/prompts.ts`: (a) new `export interface PromptFileMeta { mode?: "ask" | "agent" | "edit"; tools?: string[]; description?: string; title?: string }`; (b) new `export function parsePromptFrontMatter(content)` — pure, mirrors `parseInstructionsFrontMatter` house style (BOM trim; front matter only when first line is exactly `---`; closed by `---` or `...`; unclosed/absent → empty meta + full content as body; simple `key: value` lines with case-insensitive keys; matching surrounding single/double quotes stripped; `mode` validated against `ask`/`agent`/`edit` case-insensitively and normalized to lowercase, invalid → `undefined`; `tools` comma-split, trimmed, empties dropped, empty → `undefined`; `description`/`title` strings; body = everything after the closing delimiter with leading newlines trimmed); (c) `promptTitle` — new FIRST fallback `parsePromptFrontMatter(content).meta.title` before the H1 match (chain: fm title → H1 → filename); (d) `PROMPT_TEMPLATE` — front-matter example at top (`mode: agent`, `tools: read_file, edit_file`, `description: One-line description of what this prompt does`) followed by the existing `# My Prompt` H1 + HTML-comment body; doc comment notes `tools` is ignored in ask mode.
+  - `scripts/smoke-test.js`: new section `// 68) prompt front matter (1.100-2.S1)` after section 67, before `ALL SMOKE TESTS PASSED`; `require("../out/prompts.js")` (local `prompts2` — the existing `prompts` binding from section 36 is still in scope); 10 `prompt2-s1:` assertions (full fm parse of mode/tools/description/title incl. case-insensitive `Agent` → `agent`; no front matter → empty meta + body===content; unclosed front matter → empty meta + full body; invalid mode `turbo` → `meta.mode === undefined`; double/single-quoted title+description unquoted; `tools: read_file, , edit_file,` → `["read_file","edit_file"]`; body leading newlines trimmed; `promptTitle` prefers fm `title` over H1; `PROMPT_TEMPLATE` round-trips → `meta.mode === "agent"` + non-empty body; `stripPromptComments` on the parsed template body still yields `# My Prompt`). Total PASS lines now 620 (610 + 10).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 620 PASS, 0 FAIL.
 - **1.100-1.S6** (2026-10-23) — `package.json` schema (+4 smoke). **Item 1.100-1 COMPLETE (all 6 slices).** Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `package.json`: (a) `contributes.commands` — appended `{ "command": "llm.attachInstructions", "title": "LLM: Attach Instructions File", "icon": "$(book)" }` and `{ "command": "llm.newInstructionsFile", "title": "LLM: New Instructions File", "icon": "$(new-file)" }` after `llm.addCellOutput` (now 14 commands); (b) `contributes.configuration.properties` — added `llm.instructionsFiles.enabled` (boolean, default `true`) and `llm.instructionsFiles.locations` (array of strings, default `["**/*.instructions.md"]`) immediately after `llm.promptFiles.locations`. JSON validity verified with `node -e "JSON.parse(...)"` → `json ok`.
   - `scripts/smoke-test.js`: new section `// 67) instructionsFiles schema (1.100-1.S6)` after section 66, before `ALL SMOKE TESTS PASSED`; reuses the file-scoped parsed `pkgJson`; 4 `instrf-s6:` assertions: (a) `contributes.commands` contains `llm.attachInstructions` with a title including "Attach Instructions"; (b) contains `llm.newInstructionsFile` with a title including "New Instructions File"; (c) `properties["llm.instructionsFiles.enabled"]` is `type: "boolean"` with `default === true`; (d) `properties["llm.instructionsFiles.locations"]` is `type: "array"` with string items and a `default` array containing `"**/*.instructions.md"`. Total PASS lines now 610 (606 + 4).
