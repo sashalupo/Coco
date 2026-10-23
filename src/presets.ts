@@ -116,6 +116,8 @@ export interface LlmSettings {
   searchResultsEnabled: boolean;
   /** Enable the `new_notebook` agent tool (create a new Jupyter notebook planned from a query). */
   newNotebookEnabled: boolean;
+  /** Enable the notebook execution tools (run_notebook_cell, get_kernel_state, list_packages, install_package) in agent mode. */
+  notebookToolsEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
   /** Auto-fix new errors introduced by agent-mode file edits (up to 2 follow-up rounds per run). */

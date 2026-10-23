@@ -422,6 +422,18 @@ export function buildRequestBody(
       const allowed = new Set(cfg.promptTools);
       tools = tools.filter((t) => allowed.has(t.function?.name));
     }
+    // Notebook execution tools gate: when explicitly disabled, drop the 4
+    // execution tools (notebook_edit/new_notebook keep their own gates).
+    // Defaults to enabled (setting default true) when the field is absent.
+    if (settings.notebookToolsEnabled === false) {
+      const notebookExecTools = new Set([
+        "run_notebook_cell",
+        "get_kernel_state",
+        "list_packages",
+        "install_package",
+      ]);
+      tools = tools.filter((t) => !notebookExecTools.has(t.function?.name));
+    }
     body.tools = tools;
     body.tool_choice = "auto";
   }

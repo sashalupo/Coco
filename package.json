@@ -355,6 +355,11 @@
           "default": true,
           "description": "Allow the `/newNotebook <query>` chat command to create a new Jupyter notebook (markdown title + objective + starter code cell) in the workspace `notebooks/` folder. Works in ask mode (no model round-trip); the `new_notebook` agent tool is available in agent/edit mode when llm.tools.enabled is on."
         },
+        "llm.chat.notebookTools.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the notebook execution tools (run_notebook_cell, get_kernel_state, list_packages, install_package) in agent mode."
+        },
         "llm.chat.addCellOutput.enabled": {
           "type": "boolean",
           "default": true,
