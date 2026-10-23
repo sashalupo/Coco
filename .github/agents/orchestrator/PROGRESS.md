@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **IN PROGRESS** (6 slices S1–S6; S1 done)
-- **Current slice:** 1.100-15.S1 DONE (verified PASS)
+- **Current item:** **1.100-15** — Enhanced MCP input/output/progress UI — **IN PROGRESS** (6 slices S1–S6; S1–S2 done)
+- **Current slice:** 1.100-15.S2 DONE (verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-15.S2 — HTTP transport progress capture in `src/mcp.ts` (user goal: continue until version 1.107)
+- **Next step:** 1.100-15.S3 — manager threading in `src/mcpManager.ts` (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** 6d343b6 (tester verified 1.100-15.S1; code 7aa4c4a)
+- **Last commit:** b4b67c9 (tester verified 1.100-15.S2; code a1e8cd5)
 - **Build state:** compiles clean; smoke 758/758 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
