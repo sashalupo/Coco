@@ -13,6 +13,7 @@ import {
   McpServerConfig,
   McpTool,
   McpToolResult,
+  mcpResultToImages,
   mcpResultToText,
   mcpToolsToOpenAITools,
   parseMcpToolName,
@@ -177,12 +178,13 @@ export class McpManager {
   /**
    * Execute an `mcp__server__tool` call. Never throws: every failure path
    * resolves with `{ content: "Error: ..." }` (same shape the chat loop
-   * consumes from `ToolExecutor.execute` results).
+   * consumes from `ToolExecutor.execute` results). Successful results may
+   * additionally carry `images` (data-URLs from image content blocks).
    */
   async execute(
     name: string,
     args: Record<string, unknown>,
-  ): Promise<{ content: string }> {
+  ): Promise<{ content: string; images?: string[] }> {
     try {
       const parsed = parseMcpToolName(name);
       if (!parsed) {
@@ -202,7 +204,11 @@ export class McpManager {
         };
       }
       const result = await client.callTool(tool, args);
-      return { content: mcpResultToText(result) };
+      const images = mcpResultToImages(result);
+      return {
+        content: mcpResultToText(result),
+        ...(images.length ? { images } : {}),
+      };
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       return { content: `Error: MCP tool execution failed: ${message}` };
