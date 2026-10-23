@@ -468,6 +468,26 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		border-radius: 4px;
 		cursor: zoom-in;
 	}
+	/* Tool progress bar (1.100-15.S5): MCP notifications/progress */
+	.tool-progress {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 6px;
+		padding: 0 8px;
+		font-size: 11px;
+	}
+	.tool-progress-bar {
+		height: 6px;
+		border-radius: 3px;
+		background: var(--vscode-focusBorder, #007fd4);
+		transition: width .2s;
+		min-width: 0;
+	}
+	.tool-progress-text {
+		color: var(--vscode-descriptionForeground, #888);
+		white-space: nowrap;
+	}
 	/* Tool running indicator (Phase 16) */
 	.tool-running {
 		padding: 6px 8px;
@@ -1698,6 +1718,21 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			strip.hidden = pendingImages.length === 0;
 		}
 
+		// --- JSON pretty-print (1.100-15.S5): pure helper for tool args/output ---
+		// JSON-parse the string; on success return the 2-space-indented form, except
+		// when the parsed value is a bare string (return the raw input). On parse
+		// failure or empty input, return the input unchanged.
+		function prettyJson(s) {
+			if (typeof s !== 'string' || !s) { return s; }
+			try {
+				var v = JSON.parse(s);
+				if (typeof v === 'string') { return s; }
+				return JSON.stringify(v, null, 2);
+			} catch (e) {
+				return s;
+			}
+		}
+
 		// --- Context pills (1.100-8.S2): removable chips above the input ---
 		// Pills are owned by the host (S3); the webview only renders them and
 		// posts remove_pill back. Shape mirrors ContextPill in src/context.ts.
@@ -2500,7 +2535,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						details.appendChild(summary);
 						var args = document.createElement('div');
 						args.className = 'tool-args';
-						args.textContent = msg.args || '';
+						args.textContent = prettyJson(msg.args || '');
 						details.appendChild(args);
 						var running = document.createElement('div');
 						running.className = 'tool-running';
@@ -2536,7 +2571,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							}
 							var out = document.createElement('pre');
 							out.className = 'tool-output';
-							out.textContent = msg.output || '';
+							out.textContent = prettyJson(msg.output || '');
 							details.appendChild(out);
 							// MCP tool images (1.100-14.S4): data-URI thumbnails.
 							if (Array.isArray(msg.images) && msg.images.length) {
@@ -2581,7 +2616,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							tcDetails.appendChild(tcArgs);
 							var tcOut = document.createElement('pre');
 							tcOut.className = 'tool-output';
-							tcOut.textContent = msg.output || '';
+							tcOut.textContent = prettyJson(msg.output || '');
 							tcDetails.appendChild(tcOut);
 							// MCP tool images (1.100-14.S4): data-URI thumbnails.
 							if (Array.isArray(msg.images) && msg.images.length) {
@@ -2599,6 +2634,46 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							}
 							tcEl.appendChild(tcDetails);
 							messagesEl.appendChild(tcEl);
+						}
+						messagesEl.scrollTop = messagesEl.scrollHeight;
+					})();
+					break;
+				case 'tool_progress':
+					// 1.100-15.S5: MCP notifications/progress — update the progress
+					// bar inside the running tool card (posted by ChatViewProvider S4).
+					(function () {
+						if (!msg.id) { return; }
+						var existing = messagesEl.querySelector('[data-tool-id="' + msg.id + '"]');
+						if (!existing) { return; }
+						var details = existing.querySelector('.tool-card');
+						if (!details) { return; }
+						var prog = details.querySelector('.tool-progress');
+						if (!prog) {
+							prog = document.createElement('div');
+							prog.className = 'tool-progress';
+							var bar = document.createElement('span');
+							bar.className = 'tool-progress-bar';
+							prog.appendChild(bar);
+							var text = document.createElement('span');
+							text.className = 'tool-progress-text';
+							prog.appendChild(text);
+							details.appendChild(prog);
+						}
+						var barEl = prog.querySelector('.tool-progress-bar');
+						var textEl = prog.querySelector('.tool-progress-text');
+						var total = typeof msg.total === 'number' ? msg.total : 0;
+						if (barEl) {
+							if (total > 0) {
+								barEl.style.display = '';
+								barEl.style.width = ((msg.progress / total) * 100) + '%';
+							} else {
+								barEl.style.display = 'none';
+							}
+						}
+						if (textEl) {
+							textEl.textContent = (typeof msg.message === 'string' && msg.message)
+								? msg.message
+								: String(msg.progress) + (total > 0 ? ' / ' + total : '');
 						}
 						messagesEl.scrollTop = messagesEl.scrollHeight;
 					})();
