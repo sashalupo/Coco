@@ -32,7 +32,12 @@ export interface McpTool {
 
 /** The result of an MCP `tools/call`. */
 export interface McpToolResult {
-  content?: { type: string; text?: string }[];
+  content?: {
+    type: string;
+    text?: string;
+    data?: string;
+    mimeType?: string;
+  }[];
   isError?: boolean;
 }
 
@@ -562,4 +567,23 @@ export function mcpResultToText(result: McpToolResult): string {
     .map((c) => c.text ?? "");
   const text = parts.join("\n");
   return result.isError ? `Error: ${text}` : text;
+}
+
+/**
+ * Extract image data URLs from an MCP tool result: for each `content` part
+ * of type `"image"` with a non-empty string `data` and `mimeType`, emit a
+ * `data:<mimeType>;base64,<data>` URL. Malformed parts are skipped; returns
+ * `[]` when there are no image parts.
+ */
+export function mcpResultToImages(result: McpToolResult): string[] {
+  return (result.content ?? [])
+    .filter(
+      (c) =>
+        c.type === "image" &&
+        typeof c.data === "string" &&
+        c.data.length > 0 &&
+        typeof c.mimeType === "string" &&
+        c.mimeType.length > 0,
+    )
+    .map((c) => `data:${c.mimeType};base64,${c.data}`);
 }

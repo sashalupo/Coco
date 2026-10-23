@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-13 · MCP support for Streamable HTTP — **COMPLETE** (S1–S5)
-- **Current slice:** 1.100-13.S5 DONE (`scripts/smoke-test.js`: `mcp-http-s5` guard block, 14 new assertions, 736 → 750)
-- **Next step:** 1.100-14 — next backlog item (awaiting Planner dispatch)
+- **Current item:** 1.100-14 · MCP support for image output
+- **Current slice:** 1.100-14.S1 DONE (`src/mcp.ts`: widened `McpToolResult.content` + pure `mcpResultToImages`)
+- **Next step:** 1.100-14.S2 — per plan in `.github/agents/planner/PROGRESS.md`
 - **Last updated:** 2026-10-23
-- **Last commit:** test(llm): smoke guards for MCP Streamable HTTP (1.100-13.S5)
+- **Last commit:** feat(llm): MCP image content blocks + mcpResultToImages (1.100-14.S1)
 - **Build state:** compiles clean; smoke 750 PASS
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-14.S1 — image content-block type + pure extractor in `src/mcp.ts`: (a) `McpToolResult.content` widened to `{ type: string; text?: string; data?: string; mimeType?: string }[]` (image blocks carry `data`/`mimeType`); (b) `export function mcpResultToImages(result: McpToolResult): string[]` — pure: for each content part with `type === "image"`, non-empty string `data`, and non-empty string `mimeType`, emit `data:<mimeType>;base64,<data>`; malformed parts skipped; `[]` when none. No transport change (both `callTool` paths already pass raw JSON-RPC result through); `mcpResultToText` untouched. Compile clean.
 - [x] 1.100-13.S5 — smoke-test guards in `scripts/smoke-test.js` (`mcp-http-s5` block, 14 new assertions, 736 → 750): (a) `out/mcp.js` exports `McpHttpClient` + `parseSseMessages`; (b) `parseSseMessages` pure tests (two `data:` events → 2 messages; invalid-JSON `data:` line skipped; empty input → `[]`); (c) `parseMcpServers` url cases (`{ url }` accepted; `{ command, url }` dropped; `{}` dropped); (d) live HTTP transport tests on two mock `http.createServer` servers (ports 18100 SSE / 18101 JSON, both closed before exit): SSE-mode server (`text/event-stream` `data:` bodies, `Mcp-Session-Id: sess-1` header) — `McpHttpClient.start()` discovers tools and the `tools/list` request echoed the session header (echo check via recorded request headers); JSON-mode server (`application/json` single bodies) — `start()` + `callTool("add", {a:2,b:3})` → `"5"`; `McpManager` with a `url` server — `ensureStarted` → running/toolCount 1, `getTools` → `mcp__http__add`, `execute("mcp__http__add", {a:40,b:2})` → `"42"`; (e) static refs: `package.json` `llm.mcp.servers` description contains "Streamable HTTP", `src/mcpManager.ts` references `McpHttpClient` + `McpClientLike`, `src/extension.ts` references `"Streamable HTTP (url)"`; (f) hard gate raised 736 → 750. **Item 1.100-13 COMPLETE** (S1–S5; smoke 750).
 - [x] 1.100-13.S4 — `llm.mcp.addServer` transport quick-pick in `src/extension.ts` (~line 365): after the name prompt, `vscode.window.showQuickPick` with "stdio (command)" / "Streamable HTTP (url)"; HTTP path prompts for the URL (validateInput: non-empty + `^https?://` prefix) and writes `servers[name] = { url }` via the same `cfg.update("servers", …, Workspace)` mechanism; stdio path unchanged (command/args flow); `servers` type widened to `{ command?; args?; env?; url? }`; success messages now mention the transport ("via Streamable HTTP" / "via stdio"). Compile clean; smoke 736 PASS.
 - [x] 1.100-13.S3 — `src/mcpManager.ts` transport selection: imports extended (`McpHttpClient`, `McpToolResult` from `./mcp`); new `export interface McpClientLike { tools: McpTool[]; start(): Promise<void>; callTool(name, args): Promise<McpToolResult>; close(): void; }` (both `McpClient` and `McpHttpClient` satisfy it structurally; `start()` added because `ensureStarted` calls it); `clients`/`starting` maps retyped `McpClient` → `McpClientLike`; `ensureStarted` return type `Promise<McpClientLike>` and picks transport `cfg.url ? new McpHttpClient(cfg) : new McpClient(cfg)`; `refresh`/`getTools`/`execute`/`dispose` unchanged (only `execute`'s local `client` type widened). Compile clean; smoke 736 PASS.
