@@ -453,6 +453,21 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		max-height: 320px;
 		overflow: auto;
 	}
+	/* Tool result images (1.100-14.S4): MCP image content blocks */
+	.tool-images {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		margin-top: 6px;
+		padding: 0 8px 8px;
+		border-top: 1px solid var(--border);
+	}
+	.tool-img {
+		max-width: 240px;
+		max-height: 240px;
+		border-radius: 4px;
+		cursor: zoom-in;
+	}
 	/* Tool running indicator (Phase 16) */
 	.tool-running {
 		padding: 6px 8px;
@@ -2523,6 +2538,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							out.className = 'tool-output';
 							out.textContent = msg.output || '';
 							details.appendChild(out);
+							// MCP tool images (1.100-14.S4): data-URI thumbnails.
+							if (Array.isArray(msg.images) && msg.images.length) {
+								var imgsEl = document.createElement('div');
+								imgsEl.className = 'tool-images';
+								msg.images.forEach(function (img) {
+									if (typeof img !== 'string') { return; }
+									if (!/^data:image\\/(jpeg|png|gif|webp|bmp);base64,/.test(img)) { return; }
+									var im = document.createElement('img');
+									im.className = 'tool-img';
+									im.src = img;
+									imgsEl.appendChild(im);
+								});
+								if (imgsEl.childNodes.length) { details.appendChild(imgsEl); }
+							}
 							details.open = false;
 						} else {
 							// Fallback: no running card found (e.g. restored) — create one.
@@ -2554,6 +2583,20 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							tcOut.className = 'tool-output';
 							tcOut.textContent = msg.output || '';
 							tcDetails.appendChild(tcOut);
+							// MCP tool images (1.100-14.S4): data-URI thumbnails.
+							if (Array.isArray(msg.images) && msg.images.length) {
+								var tcImgsEl = document.createElement('div');
+								tcImgsEl.className = 'tool-images';
+								msg.images.forEach(function (img) {
+									if (typeof img !== 'string') { return; }
+									if (!/^data:image\\/(jpeg|png|gif|webp|bmp);base64,/.test(img)) { return; }
+									var tcIm = document.createElement('img');
+									tcIm.className = 'tool-img';
+									tcIm.src = img;
+									tcImgsEl.appendChild(tcIm);
+								});
+								if (tcImgsEl.childNodes.length) { tcDetails.appendChild(tcImgsEl); }
+							}
 							tcEl.appendChild(tcDetails);
 							messagesEl.appendChild(tcEl);
 						}

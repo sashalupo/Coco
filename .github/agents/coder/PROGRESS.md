@@ -13,10 +13,10 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-14 · MCP support for image output
-- **Current slice:** 1.100-14.S3 DONE (`src/chat/ChatViewProvider.ts`: `tool_result` post carries `images` from `mcpRes.images`)
-- **Next step:** 1.100-14.S4 — render `msg.images` as thumbnails in the `tool_result` card in `src/chat/webview.ts` (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current slice:** 1.100-14.S4 DONE (`src/chat/webview.ts`: `tool_result` card renders `msg.images` as `.tool-img` thumbnails in both found-card and fallback branches)
+- **Next step:** 1.100-14.S5 — smoke-test guards in `scripts/smoke-test.js` (per plan in `.github/agents/planner/PROGRESS.md`)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): tool_result posts carry MCP tool images (1.100-14.S3)
+- **Last commit:** feat(llm): render MCP tool images in tool-result card (1.100-14.S4)
 - **Build state:** compiles clean; smoke 750 PASS
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-14.S4 — `src/chat/webview.ts`: in the `tool_result` case, after appending `pre.tool-output` in BOTH the found-card and fallback branches, if `msg.images` is a non-empty array append a `div.tool-images` with one `<img class="tool-img">` per URI, guarded by the same `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` regex used for cell outputs (non-matching/non-string URIs skipped; empty container not appended); CSS `.tool-images` (flex, gap 6px, wrap, margin-top 6px, padding 0 8px 8px, border-top) + `.tool-img` (max-width/max-height 240px, border-radius 4px, cursor zoom-in) added after the `.tool-output` rules. No other file touched. Compile clean.
 - [x] 1.100-14.S3 — `src/chat/ChatViewProvider.ts` MCP branch of the agent tool loop: hoisted `let mcpImages: string[] | undefined;` next to the `result` declaration; on the `mcpManager.execute` success path `mcpImages = mcpRes.images;` (error/arg-error paths leave it undefined); the single `tool_result` postMessage now appends `...(mcpImages && mcpImages.length ? { images: mcpImages } : {})` after the existing `modified` spread — non-MCP tools post exactly as before (no `images` key). No other file touched. Compile clean.
 - [x] 1.100-14.S2 — `src/mcpManager.ts`: import `mcpResultToImages` from `./mcp`; `execute` return type widened to `{ content: string; images?: string[] }`; success path computes `const images = mcpResultToImages(result)` and returns `{ content: mcpResultToText(result), ...(images.length ? { images } : {}) }`; error paths unchanged (no images). No other method touched. Compile clean.
 - [x] 1.100-14.S1 — image content-block type + pure extractor in `src/mcp.ts`: (a) `McpToolResult.content` widened to `{ type: string; text?: string; data?: string; mimeType?: string }[]` (image blocks carry `data`/`mimeType`); (b) `export function mcpResultToImages(result: McpToolResult): string[]` — pure: for each content part with `type === "image"`, non-empty string `data`, and non-empty string `mimeType`, emit `data:<mimeType>;base64,<data>`; malformed parts skipped; `[]` when none. No transport change (both `callTool` paths already pass raw JSON-RPC result through); `mcpResultToText` untouched. Compile clean.
