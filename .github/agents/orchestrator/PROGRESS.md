@@ -13,11 +13,11 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-38** — MCP Tool Annotations — **IN PROGRESS** (plan: 5 slices; none done yet)
-- **Current slice:** none (1.100-31 complete, verified PASS)
+- **Current item:** **1.100-38** — MCP Tool Annotations — **IN PROGRESS** (plan: 5 slices; S-001 done)
+- **Current slice:** 1.100-38 S-001 DONE (b565dec)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Coder** for 1.100-38 S-001 (`src/mcp.ts`: McpToolAnnotations + mcpToolDisplayName) (user goal: continue until version 1.107)
+- **Next step:** dispatch the **Coder** for 1.100-38 S-002 (`src/mcpManager.ts`: getToolAnnotations) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-24
 - **Last commit:** 341de11 (1.100-31 S-005 smoke guards; item verified PASS)
 - **Build state:** compiles clean; smoke 798/798 PASS (verified 2026-10-24)
