@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-2** — Prompt files improvements (front matter `mode`/`tools`, play button, run semantics) — **DONE** (6 slices S1–S6)
-- **Current slice:** 1.100-2.S6 DONE (item complete)
+- **Current item:** **1.100-3** — Faster agent mode edits (apply-patch / replace-string edit formats) — **DONE** (2 slices S1–S2)
+- **Current slice:** 1.100-3.S2 DONE (item complete)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Planner for item 1.100-3 (Faster agent mode edits — apply-patch / replace-string edit formats)
+- **Next step:** research 1.101–1.107 release notes into the backlog (user goal: continue until version 1.107), then dispatch Planner for item 1.100-7 (Fetch tool improvements)
 - **Last updated:** 2026-10-23
-- **Last commit:** f95ce52 (1.100-2.S6, item complete); tester memory 8fdf5ca
-- **Build state:** compiles clean; smoke 637/637 PASS (verified 2026-10-23)
+- **Last commit:** 7e26397 (1.100-3.S2, item complete)
+- **Build state:** compiles clean; smoke 654/654 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -42,6 +42,9 @@ The ordered backlog (oldest → newest) lives in
 pending item** (the oldest).
 
 ## Done
+- **1.100-3 plan** (2026-10-23) — Planner produced 2-slice plan: pure `src/patch.ts` (OpenAI `*** Begin Patch` parser + exact-context applier) (S1) + `apply_patch` tool schema in `CODE_TOOLS` (after `edit_file`) + `isMutatingTool` + `applyPatchTool` executor (S2). Deviations: D1 no delete/rename sections (one file per call, `path` arg authoritative); D3 exact whitespace-sensitive context matching. Smoke 637 → 654.
+- **1.100-3.S1** (2026-10-23) — `src/patch.ts` (pure, no vscode/fs): `PatchOp`/`PatchFile`, `parsePatch` (Begin/End Patch, Update/Add File sections, `@@` hunks, ` `/`+`/`-` lines, `***` literal escape, descriptive errors), `applyPatchToContent` (sequential hunks, exact non-contiguous context matching, 0-match/>1-match errors naming 1-based hunk index), `applyPatch` (single-section + path-normalization + existence rules); 12 `patch-s1:` smoke assertions. Tester PASS (649 assertions). Commit 347395f.
+- **1.100-3.S2 (FINAL)** (2026-10-23) — `src/tools.ts`: `apply_patch` in `CODE_TOOLS` after `edit_file` (`required: ["path","patch"]`, steering description + format sketch + exact-match/unique-context contract) + `isMutatingTool`; `src/tools/ToolExecutor.ts`: `case "apply_patch"` + `applyPatchTool` mirroring `editFile` (no write/no snapshot on parse-match failure, snapshot+recordChange+unifiedDiff on success); 5 `patch-s2:` smoke assertions. Deviation: 6 additional pre-existing hard-coded `15`-tool assertions updated 1-for-1 to `16` (verified by Tester). Tester PASS (654 assertions). **Item 1.100-3 complete — no tag (changelog-1.100 already exists from 1.100-1).** Commits: 347395f (S1), 7e26397 (S2).
 - **1.100-2 plan** (2026-10-23) — Planner produced 6-slice plan: prompt front-matter parser in `src/prompts.ts` (S1) + `RequestConfig.promptTools` filter in `src/request.ts` (S2) + `ChatViewProvider.runPrompt` + `pendingPromptTools` wiring (S3) + webview `prompt_run` handler (S4) + `llm.runPrompt` command rename w/ deprecated `llm.usePrompt` alias (S5) + package.json (Play button `editor/title` menu, language IDs `llm.prompt`/`llm.instructions`) (S6). Deviations: D1 old command kept as alias, D5 slash-command `/prompt-name` deferred to follow-up. Smoke 610 → 637. Plan commit 7783a12.
 - **1.100-2.S6 (FINAL)** (2026-10-23) — `package.json`: `llm.runPrompt` command (title "LLM: Run Prompt", icon `$(play)`) replacing `llm.usePrompt`; `onCommand:llm.runPrompt` activation; `menus["editor/title"]` Play button (`resourceFilename =~ /.*\.prompt\.md$/`); `languages` `llm.prompt` + `llm.instructions`; 4 `prompt2-s6:` smoke assertions. Deviations: `when`-clause assertion checks `prompt`+`md` substrings (JSON-escaped backslashes); 2 stale section-40 `rp-s5:` assertions updated 1-for-1 to `llm.runPrompt`. Tester PASS (637 assertions). **Item 1.100-2 complete — no tag (changelog-1.100 already exists from 1.100-1).** Commits: 5e5f603 (S1), ba9228a (S2), 4daff77 (S3), b0a1772 (S4), 25bc0c0 (S5), f95ce52 (S6).
 - **1.100-2.S5** (2026-10-23) — `src/extension.ts`: `llm.usePrompt` → `llm.runPrompt` (title "LLM: Run Prompt"); on pick → `provider.runPrompt(content, uri.fsPath)` (prompt_inject path removed); deprecated alias `llm.usePrompt` → `executeCommand("llm.runPrompt")`; "New Prompt File…" unchanged; 4 `prompt2-s5:` smoke assertions. Deviation: stale section-38 assertion (`rp-s3: extension.ts posts prompt_inject`) inverted in place to "no longer posts" (1-for-1, count unchanged). Tester PASS (633 assertions). Commit 25bc0c0.
