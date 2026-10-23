@@ -12,8 +12,8 @@ code — only the Coder writes code.
 
 ## Status
 
-- **Current item:** 1.99-29 (Cell output to chat — `llm.addCellOutput`) — **planned** (2026-10-23, 4 slices S1–S4)
-- **Next step:** dispatch 1.99-29.S1 (Coder)
+- **Current item:** 1.99-29 (Cell output to chat — `llm.addCellOutput`) — **complete** (2026-10-23, 4 slices S1–S4 done)
+- **Next step:** item 1.99-29 complete — v1.99 backlog exhausted; next: v1.100 research
 - **Last updated:** 2026-10-23
 - **Last commit:** — (no planner commits yet)
 - **Build state:** n/a (planner does not build)
@@ -136,7 +136,7 @@ code — only the Coder writes code.
   2. `scripts/smoke-test.js`: section `// 60) llm.addCellOutput command (1.99-29.S3)`, prefix `cellout-s3:`, 3 assertions (read `out/extension.js` as text): contains `"llm.addCellOutput"`; contains `activeNotebookEditor`; contains `extractCellOutputs` and `cell_output_inject`.
   Acceptance: `npm run compile` passes; smoke → **581** (578 + 3).
 
-- **1.99-29.S4** — `package.json` command + setting schema + final smoke.
+- **1.99-29.S4** (Done — item 1.99-29 complete) — `package.json` command + setting schema + final smoke.
   Files: `package.json`, `scripts/smoke-test.js`.
   1. `package.json` `contributes.commands`: add `{ "command": "llm.addCellOutput", "title": "LLM: Add Cell Output to Chat", "icon": "$(notebook)" }`.
   2. `package.json` `contributes.configuration.properties`: add `llm.chat.addCellOutput.enabled` (boolean, default `true`, description: "Enable the 'LLM: Add Cell Output to Chat' command (llm.addCellOutput), which injects the active notebook's cell outputs (text and images) into the chat input.").

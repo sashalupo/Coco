@@ -477,7 +477,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 - **Description:** Add notebook cell outputs (text, errors, images) to chat as context via
   the "Add cell output to chat" action (triple-dot menu / right-click).
 - **Relevance:** keep (capability/context)
-- **Status:** pending
+- **Status:** done (2026-10-23 — 4 slices S1–S4; extractCellOutputs, cell_output_inject webview handler, llm.addCellOutput command, setting)
 - **Gap vs existing:** image attachments exist (1.98-14). Add a command
   `llm.addCellOutput` that reads the active notebook cell's outputs (text/error → text
   context; image → base64 attachment) and injects them into the chat input.
@@ -505,7 +505,6 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 ## Pending (oldest → newest — orchestrator picks the first)
 
-- **1.99-29** Cell output to chat (text/image)
 
 ## Todo
 

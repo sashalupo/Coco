@@ -65,6 +65,11 @@
       {
         "command": "llm.mcp.listServers",
         "title": "LLM: MCP: List Servers"
+      },
+      {
+        "command": "llm.addCellOutput",
+        "title": "LLM: Add Cell Output to Chat",
+        "icon": "$(notebook)"
       }
     ],
     "viewsContainers": {
@@ -290,6 +295,11 @@
           "type": "boolean",
           "default": true,
           "description": "Allow the `/newNotebook <query>` chat command to create a new Jupyter notebook (markdown title + objective + starter code cell) in the workspace `notebooks/` folder. Works in ask mode (no model round-trip); the `new_notebook` agent tool is available in agent/edit mode when llm.tools.enabled is on."
+        },
+        "llm.chat.addCellOutput.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the 'LLM: Add Cell Output to Chat' command (llm.addCellOutput), which injects the active notebook's cell outputs (text and images) into the chat input."
         },
         "llm.completions.model": {
           "type": "string",

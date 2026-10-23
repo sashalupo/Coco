@@ -12,12 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.99-29 (cell output to chat — `llm.addCellOutput`) — in progress
-- **Current slice:** 1.99-29.S3 DONE
-- **Next step:** 1.99-29.S4 (package.json command + setting contributions, per planner plan)
+- **Current item:** 1.99-29 (cell output to chat — `llm.addCellOutput`) — **COMPLETE** (S1–S4 done)
+- **Next step:** none — 1.99-29 is the last item in the v1.99 backlog (changelog-researcher PROGRESS.md); orchestrator to pick the next version's backlog
 - **Last updated:** 2026-10-23
-- **Last commit:** 14dde26 (HEAD; orchestrator commits — S3 changes uncommitted)
-- **Build state:** compiles clean; smoke test passes (581 assertions)
+- **Last commit:** 1d51aee (HEAD; orchestrator commits — S4 changes uncommitted)
+- **Build state:** compiles clean; smoke test passes (584 assertions)
 
 ## Plan pointer
 
@@ -25,6 +24,11 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.99-29.S4** (2026-10-23) — `package.json` command + setting schema + final smoke. **Item 1.99-29 COMPLETE.** Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: (a) `contributes.commands` — appended `{ "command": "llm.addCellOutput", "title": "LLM: Add Cell Output to Chat", "icon": "$(notebook)" }` after `llm.mcp.listServers` (now 12 commands); (b) `contributes.configuration.properties` — added `llm.chat.addCellOutput.enabled` (boolean, default `true`, description mentions `llm.addCellOutput`) immediately after `llm.chat.newNotebook.enabled`. JSON validity verified with `node -e "JSON.parse(...)"` → OK.
+  - `scripts/smoke-test.js`: new section `// 61) addCellOutput schema (1.99-29.S4)` after section 60, before `ALL SMOKE TESTS PASSED`; 3 `cellout-s4:` assertions on `pkgJson` (already parsed at top of file): (a) `contributes.commands` contains `command === "llm.addCellOutput"` with a `title` including "Cell Output"; (b) `contributes.configuration.properties["llm.chat.addCellOutput.enabled"]` exists, `type === "boolean"`, `default === true`; (c) its `description` includes `llm.addCellOutput`. Total PASS lines now 584 (581 + 3).
+  - Verified: `npm run compile` exit 0; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 584 PASS, 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits).
 - **1.99-29.S3** (2026-10-23) — `llm.addCellOutput` command (host). Files: `src/extension.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/extension.ts`: (a) new import `import { parseNotebook, extractCellOutputs } from "./notebook";` after the `./prompts` import; (b) new `vscode.commands.registerCommand("llm.addCellOutput", async () => {...})` appended to the commands block after `llm.mcp.listServers` — reads `llm.chat.addCellOutput.enabled` (default true; off → info message, return); reads `vscode.window.activeNotebookEditor` (none → info message, return); `openTextDocument(editor.notebook.uri)` + `parseNotebook(doc.getText())` (null → "Could not parse notebook.", return); finds the last code cell with non-empty `outputs` via `[...parsed.cells].reverse().find(...)` (none → "run a cell first", return); `extractCellOutputs(cell)` (both empty → "outputs are empty", return); vision gate `llm.chat.vision.enabled` (default true) filters images; posts `{ type: "cell_output_inject", text, images: imgs }` via `provider.postMessage(...)` (public method on `ChatViewProvider`, `src/chat/ChatViewProvider.ts:1912`); then `await vscode.commands.executeCommand("workbench.view.llm")`.
   - `scripts/smoke-test.js`: new section `// 60) llm.addCellOutput command (1.99-29.S3)` after section 59, before `ALL SMOKE TESTS PASSED`; reads `out/extension.js` as text; 3 `cellout-s3:` assertions: (a) contains `llm.addCellOutput`; (b) contains `activeNotebookEditor`; (c) contains `extractCellOutputs` AND `cell_output_inject`. Total PASS lines now 581 (578 + 3).

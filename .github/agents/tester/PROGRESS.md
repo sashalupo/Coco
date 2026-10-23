@@ -12,11 +12,18 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.99-29 — cell output to chat — S3 PASS (2026-10-23)
-- **Next step:** 1.99-29.S4 (package.json command + setting schema — FINAL slice)
+- **Current item:** 1.99-29 — cell output to chat — S4 PASS (2026-10-23) — ITEM COMPLETE
+- **Next step:** item 1.99-29 fully verified (S1–S4) — v1.99 backlog exhausted; next: v1.100 research
 - **Last updated:** 2026-10-23
-- **Last commit:** 14dde26
-- **Build state:** 581/581 PASS
+- **Last commit:** 1d51aee
+- **Build state:** 584/584 PASS
+
+### 1.99-29.S4 — FINAL: package.json command + setting schema (2026-10-23) — **PASS**
+
+- **Build:** `npm run compile` → exit 0, zero errors.
+- **Smoke test:** `node scripts/smoke-test.js` → ALL SMOKE TESTS PASSED, exit 0, **584 PASS lines** (581 prior + 3 new `cellout-s4:`), 0 FAIL.
+- **Acceptance checks:** (1) build exit 0 PASS; (2) smoke 584/584 PASS; (3) 3 `cellout-s4:` assertions in section `// 61)` (smoke-test.js:4496) — command+title, boolean/default true, description mentions llm.addCellOutput PASS; (4) package.json valid JSON, 12 commands, setting after newNotebook.enabled (L294→L299) PASS; (5) scope: only package.json, smoke-test.js, coder PROGRESS.md + `m ninfer` PASS; (6) all 4 item sections present (58–61) PASS.
+- **Verdict:** **PASS** — all 6 criteria met. **Item 1.99-29 (cell output to chat) fully verified (S1–S4) — ITEM COMPLETE.**
 
 ### 1.99-29.S3 — llm.addCellOutput command (2026-10-23) — **PASS**
 

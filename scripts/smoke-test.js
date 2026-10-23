@@ -4493,6 +4493,32 @@ function assert(cond, label) {
     "cellout-s3: extension.js uses extractCellOutputs and posts cell_output_inject",
   );
 
+  // 61) addCellOutput schema (1.99-29.S4)
+  const celloutS4Cmd = pkgJson.contributes.commands.find(
+    (c) => c.command === "llm.addCellOutput",
+  );
+  assert(
+    celloutS4Cmd !== undefined &&
+      typeof celloutS4Cmd.title === "string" &&
+      celloutS4Cmd.title.includes("Cell Output"),
+    "cellout-s4: package.json has llm.addCellOutput command with Cell Output title",
+  );
+  const celloutS4Setting =
+    pkgJson.contributes.configuration.properties[
+      "llm.chat.addCellOutput.enabled"
+    ];
+  assert(
+    celloutS4Setting !== undefined &&
+      celloutS4Setting.type === "boolean" &&
+      celloutS4Setting.default === true,
+    "cellout-s4: package.json has llm.chat.addCellOutput.enabled (boolean, default true)",
+  );
+  assert(
+    typeof celloutS4Setting?.description === "string" &&
+      celloutS4Setting.description.includes("llm.addCellOutput"),
+    "cellout-s4: setting description mentions llm.addCellOutput",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);
