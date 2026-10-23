@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-29** — Generate alt text in HTML or Markdown (AI code action) — **DONE** (3 slices S-001–S-003 all verified PASS)
-- **Current slice:** 1.100-29 S-003 DONE (verified PASS; code ef5a845)
+- **Current item:** **1.100-30** — Drag and drop cell outputs to chat — **IN PROGRESS** (3 slices S-001–S-003; S-001 done)
+- **Current slice:** 1.100-30 S-001 DONE (verified PASS; code affc774)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-30 — Drag and drop cell outputs to chat (Planner dispatch first) (user goal: continue until version 1.107)
+- **Next step:** 1.100-30 S-002 — drag-and-drop controller in `src/extension.ts` + `llm.chat.cellOutputDrop.enabled` setting (Coder dispatch) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** e6a20ff (tester verified 1.100-29 S-003; code ef5a845)
+- **Last commit:** 6121f19 (tester verified 1.100-30 S-001; code affc774)
 - **Build state:** compiles clean; smoke 787/787 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
