@@ -10,6 +10,24 @@ Turn each changelog feature (from the Changelog Researcher's backlog) into a con
 step-by-step implementation plan for the `llm` VS Code extension. The planner does NOT write
 code — only the Coder writes code.
 
+## Active plan — 1.100-8 · Chat input improvements (attachment pills, streamlined picker, no Done button)
+
+- **Status:** Planned (2026-10-23)
+- **Changelog:** VS Code 1.100 (Apr 2025) — `#`/`@` context refs render as attachment pills;
+  one streamlined context quick-pick (files/folders/other); no Done button (New Chat only).
+- **Files to touch:** `src/context.ts`, `src/chat/webview.ts`, `src/chat/ChatViewProvider.ts`,
+  `src/extension.ts`, `package.json`, `scripts/smoke-test.js`.
+- **Slices (in order):**
+  - `1.100-8.S1` — `ContextPill` type + `parsePillRefs`/`dedupePills` pure helpers in `src/context.ts`.
+  - `1.100-8.S2` — pill strip UI (CSS + `#pill-strip` + `renderPillStrip` + `context_pills` msg) in `src/chat/webview.ts`.
+  - `1.100-8.S3` — host consumes `send.pills` into `ctxInput` + `postContextPills()` in `src/chat/ChatViewProvider.ts`.
+  - `1.100-8.S4` — `llm.addContext` grouped quick-pick (files/folders/selection/problems) in `src/extension.ts` + `package.json` contribution.
+  - `1.100-8.S5` — smoke-test regression guards (no Done button, Enter submits, New Chat only, `@` tags still work) in `scripts/smoke-test.js`.
+- **First slice:** `1.100-8.S1`.
+- **Acceptance:** compile + smoke pass; pills render/removable above input; picked context injected at send; `@` text tags unchanged; no Done button.
+- **Open questions:** folder walk depth (top-level, cap ~20); keybinding for `llm.addContext` (none initially); selection/diagnostics pills act as opt-in flags re-gathered at send time.
+
+
 ## Status
 
 - **Current item:** none (1.100-7 complete) — **idle**
