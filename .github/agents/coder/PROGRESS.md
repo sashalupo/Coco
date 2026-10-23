@@ -17,7 +17,7 @@ after each compiling step.
 - **Next step:** 1.100-16.S2 (`src/mcp.ts` + `src/mcpManager.ts`: `McpClient` inputs arg + `McpManager.setInputs`/`ensureStarted` wiring)
 - **Last updated:** 2026-10-23
 - **Last commit:** feat(llm): MCP inputs types + secret detection + resolution (1.100-16.S1)
-- **Build state:** compiles clean; smoke 766 PASS (smoke slice is S4 per plan)
+- **Build state:** compiles clean; smoke 766 PASS (smoke slice is S4)
 
 ## Plan pointer
 
