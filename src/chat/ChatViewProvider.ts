@@ -1673,6 +1673,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           const isMutating =
             isMutatingTool(call.function.name) ||
             isMcpToolName(call.function.name);
+          // 1.100-38.S3: MCP tool annotations — human-readable display name
+          // and readOnlyHint (read-only MCP tools skip the approval gate).
+          const mcpAnnotations = isMcpToolName(call.function.name)
+            ? this.mcpManager.getToolAnnotations(call.function.name)
+            : null;
+          const displayName = mcpAnnotations?.title || call.function.name;
           // 1.98-1.S3: run_command goes through the editable command
           // approval gate (command_approval card); other mutating tools
           // keep the plain approval_request path unchanged.
@@ -1681,7 +1687,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             settings.requireApproval &&
             isMutating &&
             !settings.autoApprove &&
-            !this.approvalStore.isApproved(call.function.name)
+            !this.approvalStore.isApproved(call.function.name) &&
+            !(mcpAnnotations?.readOnlyHint === true)
           ) {
             if (call.function.name === "run_command") {
               let parsed: Record<string, unknown> = {};
@@ -1763,6 +1770,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             id: call.id,
             tool: call.function.name,
             args: call.function.arguments,
+            displayName,
           });
           // 1.99-2.S5: route `mcp__server__tool` calls to the McpManager
           // (invalid JSON arguments resolve to an error string, never throw);
@@ -1814,6 +1822,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             id: call.id,
             tool: call.function.name,
             args: call.function.arguments,
+            displayName,
             output: result.content,
             ...(commandModified ? { modified: true } : {}),
             ...(mcpImages && mcpImages.length ? { images: mcpImages } : {}),
