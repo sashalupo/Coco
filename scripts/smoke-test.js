@@ -4786,6 +4786,40 @@ function assert(cond, label) {
     "prompt2-s1: stripPromptComments still works on the parsed template body",
   );
 
+  // 69) promptTools filter (1.100-2.S2)
+  const p2s2Filtered = buildRequestBody(
+    { settings: toolSettings, toolbar, promptTools: ["read_file"] },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(p2s2Filtered.tools) &&
+      p2s2Filtered.tools.length === 1 &&
+      p2s2Filtered.tools[0].function.name === "read_file",
+    "prompt2-s2: promptTools [read_file] → body.tools has exactly 1 entry named read_file",
+  );
+  const p2s2Empty = buildRequestBody(
+    { settings: toolSettings, toolbar, promptTools: [] },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    Array.isArray(p2s2Empty.tools) &&
+      p2s2Empty.tools.length === CODE_TOOLS.length,
+    "prompt2-s2: promptTools [] → full tool list (same count as without promptTools)",
+  );
+  const p2s2Ask = buildRequestBody(
+    {
+      settings: toolSettings,
+      toolbar,
+      mode: "ask",
+      promptTools: ["read_file"],
+    },
+    [{ role: "user", content: "hi" }],
+  ).body;
+  assert(
+    !("tools" in p2s2Ask),
+    "prompt2-s2: ask mode + promptTools → no tools field in the body",
+  );
+
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
   process.exit(0);

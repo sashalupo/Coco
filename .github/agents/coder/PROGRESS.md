@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1 done, S2–S6 pending)
-- **Next step:** 1.100-2.S2 — `src/request.ts`: `promptTools` filter (+3 smoke)
+- **Current item:** 1.100-2 (Prompt files improvements) — in progress (S1–S2 done, S3–S6 pending)
+- **Next step:** 1.100-2.S3 — `src/chat/ChatViewProvider.ts`: `runPrompt` + tool filter wiring (+4 smoke)
 - **Last updated:** 2026-10-23
-- **Last commit:** (1.100-2.S1 commit — prompt front-matter parsing)
-- **Build state:** compiles clean; smoke 620 PASS
+- **Last commit:** (1.100-2.S2 commit — `RequestConfig.promptTools` filter)
+- **Build state:** compiles clean; smoke 623 PASS
 
 ## Plan pointer
 
@@ -24,6 +24,10 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-2.S2** (2026-10-23) — `src/request.ts`: `RequestConfig.promptTools` tool-name filter (+3 smoke). Files: `src/request.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/request.ts`: (a) `RequestConfig` gains `promptTools?: string[];` with doc comment "When set (non-empty), restrict `body.tools` to these tool names."; (b) `buildRequestBody` tools block — after building the candidate list (`CODE_TOOLS` + any `mcpTools`), if `cfg.promptTools` is a non-empty array the list is filtered to tools whose `function.name` is in the set (MCP tools included if their name matches); empty/absent `promptTools` → existing behavior unchanged; ask mode unchanged (no tools, `tool_choice: "none"`).
+  - `scripts/smoke-test.js`: new section `// 69) promptTools filter (1.100-2.S2)` after section 68, before `ALL SMOKE TESTS PASSED`; 3 `prompt2-s2:` assertions: (a) `promptTools: ["read_file"]` → `body.tools` exactly 1 entry named `read_file`; (b) `promptTools: []` → full tool list (count === `CODE_TOOLS.length`); (c) ask mode + `promptTools: ["read_file"]` → no `tools` field in the body. Total PASS lines now 623 (620 + 3).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, 623 PASS, 0 FAIL.
 - **1.100-2.S1** (2026-10-23) — `src/prompts.ts`: prompt front-matter parsing + template (+10 smoke). Files: `src/prompts.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/prompts.ts`: (a) new `export interface PromptFileMeta { mode?: "ask" | "agent" | "edit"; tools?: string[]; description?: string; title?: string }`; (b) new `export function parsePromptFrontMatter(content)` — pure, mirrors `parseInstructionsFrontMatter` house style (BOM trim; front matter only when first line is exactly `---`; closed by `---` or `...`; unclosed/absent → empty meta + full content as body; simple `key: value` lines with case-insensitive keys; matching surrounding single/double quotes stripped; `mode` validated against `ask`/`agent`/`edit` case-insensitively and normalized to lowercase, invalid → `undefined`; `tools` comma-split, trimmed, empties dropped, empty → `undefined`; `description`/`title` strings; body = everything after the closing delimiter with leading newlines trimmed); (c) `promptTitle` — new FIRST fallback `parsePromptFrontMatter(content).meta.title` before the H1 match (chain: fm title → H1 → filename); (d) `PROMPT_TEMPLATE` — front-matter example at top (`mode: agent`, `tools: read_file, edit_file`, `description: One-line description of what this prompt does`) followed by the existing `# My Prompt` H1 + HTML-comment body; doc comment notes `tools` is ignored in ask mode.
   - `scripts/smoke-test.js`: new section `// 68) prompt front matter (1.100-2.S1)` after section 67, before `ALL SMOKE TESTS PASSED`; `require("../out/prompts.js")` (local `prompts2` — the existing `prompts` binding from section 36 is still in scope); 10 `prompt2-s1:` assertions (full fm parse of mode/tools/description/title incl. case-insensitive `Agent` → `agent`; no front matter → empty meta + body===content; unclosed front matter → empty meta + full body; invalid mode `turbo` → `meta.mode === undefined`; double/single-quoted title+description unquoted; `tools: read_file, , edit_file,` → `["read_file","edit_file"]`; body leading newlines trimmed; `promptTitle` prefers fm `title` over H1; `PROMPT_TEMPLATE` round-trips → `meta.mode === "agent"` + non-empty body; `stripPromptComments` on the parsed template body still yields `# My Prompt`). Total PASS lines now 620 (610 + 10).

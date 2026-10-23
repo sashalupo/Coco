@@ -109,6 +109,8 @@ export interface RequestConfig {
   mcpTools?: Tool[];
   /** Unified Chat view mode. Absent = "agent" (existing behavior). */
   mode?: ChatMode;
+  /** When set (non-empty), restrict `body.tools` to these tool names. */
+  promptTools?: string[];
 }
 
 /** The JSON body sent to POST /v1/chat/completions. */
@@ -330,8 +332,19 @@ export function buildRequestBody(
   } else // Built-in CODE_TOOLS first, then any MCP tools (byte-identical to the
   // pre-MCP behavior when no MCP tools are present).
   if (settings.toolsEnabled) {
-    body.tools =
+    let tools =
       mcpTools && mcpTools.length > 0 ? [...CODE_TOOLS, ...mcpTools] : CODE_TOOLS;
+    // Prompt-level tool filter: when a non-empty promptTools list is set,
+    // keep only tools whose function.name is in the list (MCP tools included
+    // if their name matches). Empty/absent → existing behavior unchanged.
+    if (
+      Array.isArray(cfg.promptTools) &&
+      cfg.promptTools.length > 0
+    ) {
+      const allowed = new Set(cfg.promptTools);
+      tools = tools.filter((t) => allowed.has(t.function?.name));
+    }
+    body.tools = tools;
     body.tool_choice = "auto";
   }
 
