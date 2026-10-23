@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** **1.100-10 COMPLETE** (all 4 slices done) — next: item 1.100-11
-- **Current slice:** 1.100-10.S4 DONE (smoke guards added, 690 → 701)
-- **Next step:** item 1.100-11 (await planner plan)
+- **Current item:** 1.100-11 (in progress) — 1.100-10 complete
+- **Current slice:** 1.100-11.S1 DONE (pure `externallyChanged` helper)
+- **Next step:** 1.100-11.S2 — `llm.agent.trackManualEdits` setting (default true): `config.ts` + `presets.ts` + `package.json`
 - **Last updated:** 2026-10-23
-- **Last commit:** test(llm): smoke guards for agent autofix (1.100-10.S4)
+- **Last commit:** feat(llm): externallyChanged file-snapshot helper (1.100-11.S1)
 - **Build state:** compiles clean; smoke 701 PASS
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-11.S1 — pure exported `FileSnapshot` interface + `externallyChanged(snapshots, current)` in `src/tools/ToolExecutor.ts` (next to `newDiagnostics`, ~line 1575): returns paths in `current` whose `mtimeMs` or `size` differs from the stored snapshot (iteration order = `current` order); paths only in `snapshots` (deleted externally) ignored; no vscode import, no I/O
 - [x] 1.100-8.S2 — pill strip UI in `src/chat/webview.ts`
 - [x] 1.100-8.S3 — host consumes `send.pills` into `ctxInput` + `postContextPills()` in `src/chat/ChatViewProvider.ts`
 - [x] 1.100-8.S4 — `llm.addContext` grouped quick-pick in `src/extension.ts` + `package.json`

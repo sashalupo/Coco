@@ -1573,3 +1573,33 @@ export function newDiagnostics(
   const beforeKeys = new Set(before.map(diagnosticKey));
   return after.filter((d) => !beforeKeys.has(diagnosticKey(d)));
 }
+
+/**
+ * Lightweight file fingerprint (1.100-11.S1): mtime + size, taken via
+ * `fs.stat`. No content hashing — sufficient to detect external edits of
+ * agent-touched files between turns.
+ */
+export interface FileSnapshot {
+  mtimeMs: number;
+  size: number;
+}
+
+/**
+ * Pure external-change detection helper (1.100-11.S1): returns the paths
+ * present in `current` whose `mtimeMs` or `size` differs from the stored
+ * snapshot in `snapshots`, preserving `current` iteration order. Paths only
+ * in `snapshots` (deleted externally) are ignored. No vscode import, no I/O.
+ */
+export function externallyChanged(
+  snapshots: ReadonlyMap<string, FileSnapshot>,
+  current: ReadonlyMap<string, FileSnapshot>,
+): string[] {
+  const changed: string[] = [];
+  for (const [path, snap] of current) {
+    const prev = snapshots.get(path);
+    if (!prev || prev.mtimeMs !== snap.mtimeMs || prev.size !== snap.size) {
+      changed.push(path);
+    }
+  }
+  return changed;
+}
