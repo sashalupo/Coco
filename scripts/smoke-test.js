@@ -666,6 +666,7 @@ function assert(cond, label) {
         workspace: {
           workspaceFolders: [{ uri: { fsPath: editRoot } }],
           textDocuments: [{ uri: diagUri }],
+          getConfiguration: () => ({ get: (_k, d) => d }),
         },
         languages: {
           // Two overloads: getDiagnostics(uri) -> Diagnostic[] for one file,
@@ -5284,11 +5285,36 @@ function assert(cond, label) {
       s2d.length < s2Plain.length,
     "fetchmd-s2: non-HTML content with maxTokens is budget-trimmed (marker present), not Markdown-converted",
   );
-  if (assertCount !== 669) {
-    console.error(`FAIL: total assertion count is 669 (got ${assertCount})`);
+  // 78) fetchMaxTokens settings (1.100-7.S3)
+  const fetchmdS3CfgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    fetchmdS3CfgSrc.includes('c.get<number>("chat.fetch.maxTokens", 5000)'),
+    "fetchmd-s3: config reads chat.fetch.maxTokens (default 5000)",
+  );
+  const fetchmdS3PresetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    fetchmdS3PresetsSrc.includes("fetchMaxTokens: number;"),
+    "fetchmd-s3: presets LlmSettings has fetchMaxTokens: number",
+  );
+  const fetchmdS3ExecSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  assert(
+    fetchmdS3ExecSrc.includes("chat.fetch.maxTokens"),
+    "fetchmd-s3: ToolExecutor reads the chat.fetch.maxTokens setting",
+  );
+  if (assertCount !== 672) {
+    console.error(`FAIL: total assertion count is 672 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 669");
+  console.log("PASS: total assertion count is 672");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

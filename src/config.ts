@@ -78,6 +78,7 @@ export function readSettings(): LlmSettings {
     problemsEnabled: c.get<boolean>("chat.problems.enabled", true),
     folderContextEnabled: c.get<boolean>("chat.folderContext.enabled", true),
     fetchEnabled: c.get<boolean>("chat.fetch.enabled", true),
+    fetchMaxTokens: c.get<number>("chat.fetch.maxTokens", 5000),
     usagesEnabled: c.get<boolean>("chat.usages.enabled", true),
     newWorkspaceEnabled: c.get<boolean>("chat.newWorkspace.enabled", true),
     searchResultsEnabled: c.get<boolean>("chat.searchResults.enabled", true),

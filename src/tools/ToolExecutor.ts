@@ -413,6 +413,7 @@ export class ToolExecutor {
             call,
             String(args.url ?? ""),
             typeof args.max_chars === "number" ? args.max_chars : undefined,
+            typeof args.max_tokens === "number" ? args.max_tokens : undefined,
           );
         case "find_usages":
           return await this.findUsages(
@@ -1373,8 +1374,11 @@ export class ToolExecutor {
    * over the pure `fetchTool` module; never throws — failures come back as
    * error strings the engine can read.
    */
-  public async fetchUrl(url: string, maxChars?: number): Promise<string> {
-    return fetchUrl(url, { maxChars });
+  public async fetchUrl(url: string, maxChars?: number, maxTokens?: number): Promise<string> {
+    const budget =
+      maxTokens ??
+      vscode.workspace.getConfiguration("llm").get<number>("chat.fetch.maxTokens", 5000);
+    return fetchUrl(url, { maxChars, maxTokens: budget > 0 ? budget : undefined });
   }
 
   /**
@@ -1423,8 +1427,9 @@ export class ToolExecutor {
     call: ToolCall,
     url: string,
     maxChars?: number,
+    maxTokens?: number,
   ): Promise<ToolResult> {
-    return this.result(call, await this.fetchUrl(url, maxChars));
+    return this.result(call, await this.fetchUrl(url, maxChars, maxTokens));
   }
 
   /**

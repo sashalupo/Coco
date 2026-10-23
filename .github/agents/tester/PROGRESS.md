@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S2 verified PASS)
-- **Next step:** dispatch Coder for 1.100-7.S3 (setting plumbing `llm.chat.fetch.maxTokens`)
+- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S3 verified PASS)
+- **Next step:** dispatch Coder for 1.100-7.S4 (package.json schema + final smoke, +3 → 675)
 - **Last updated:** 2026-10-23
-- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1+S2 uncommitted in working tree
-- **Build state:** compiles clean; smoke 669/669 PASS (verified 2026-10-23)
+- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1–S3 uncommitted in working tree
+- **Build state:** compiles clean; smoke 672/672 PASS (verified 2026-10-23)
+
+### 1.100-7.S3 — Setting plumbing `llm.chat.fetch.maxTokens` (+3 smoke) (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 672/672 PASS (669 baseline + 3 new `fetchmd-s3:`), 0 FAIL (grep -c '^PASS:' → 673 = 672 assertions + 1 total-count check line; '^FAIL:' → 0).
+- All 6 acceptance criteria met: (1) compile exit 0; (2) smoke 672 assertions + total-count check `PASS: total assertion count is 672`; (3) `src/config.ts` L81 `fetchMaxTokens: c.get<number>("chat.fetch.maxTokens", 5000),` right after `fetchEnabled` (L80); `src/presets.ts` L110 `fetchMaxTokens: number;` right after `fetchEnabled: boolean;` (L108); `src/tools/ToolExecutor.ts` L1377–1381 `fetchUrl(url, maxChars?, maxTokens?)` computes `const budget = maxTokens ?? vscode.workspace.getConfiguration("llm").get<number>("chat.fetch.maxTokens", 5000)` and passes `maxTokens: budget > 0 ? budget : undefined` (0/invalid → undefined → old path; `maxChars` untouched); (4) model-provided `max_tokens` wins: `case "fetch_url"` (L411–417) passes `typeof args.max_tokens === "number" ? args.max_tokens : undefined` into `fetchUrlTool` (L1426–1432) → `this.fetchUrl(url, maxChars, maxTokens)`; setting 0 → `budget > 0` false → `undefined` → old `htmlToText`+`truncate` path; `#fetch` tag path calls `this.toolExecutor.fetchUrl(url)` with no provider change and picks up the setting; (5) section `// 78) fetchMaxTokens settings (1.100-7.S3)` at smoke-test.js:5288 with exactly 3 `fetchmd-s3:` static source assertions (L5295 config `c.get<number>("chat.fetch.maxTokens", 5000)`, L5303 presets `fetchMaxTokens: number;`, L5311 ToolExecutor `chat.fetch.maxTokens`) — 1:1 with plan list; (6) no regression: all pre-existing `fetch-s1:`/`fetch-s2:`/`fetchmd-s1:`/`fetchmd-s2:` assertions still pass (0 FAIL overall).
+- Coder deviation (forced, verified sensible): section-20b vscode mock lacked `workspace.getConfiguration` — added `getConfiguration: () => ({ get: (_k, d) => d })` (smoke-test.js:669, returns the default; no assertion added/removed).
+- **Verdict: PASS.** Next: 1.100-7.S4 (package.json schema + final smoke, +3 → 675).
 
 ### 1.100-7.S2 — `fetchUrl` `maxTokens` wiring + `tools.ts` description (+5 smoke) (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 669/669 PASS (664 baseline + 5 new `fetchmd-s2:`), 0 FAIL (grep -c '^PASS:' → 670 = 669 assertions + 1 total-count check line; '^FAIL:' → 0).

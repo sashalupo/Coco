@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-7 (Fetch tool improvements — entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S2 done)
-- **Next step:** dispatch Coder for 1.100-7.S3 (setting plumbing `llm.chat.fetch.maxTokens`)
+- **Current item:** 1.100-7 (Fetch tool improvements — entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S3 done)
+- **Next step:** dispatch Coder for 1.100-7.S4 (`package.json` schema `llm.chat.fetch.maxTokens` + final smoke) — FINAL slice
 - **Last updated:** 2026-10-23
 - **Last commit:** (1.100-2.S6 commit — `package.json` schema: `llm.runPrompt` command, Play button menu, language IDs)
-- **Build state:** compiles clean; smoke 669 PASS (1.100-7.S1+S2 not yet committed — orchestrator commits after Tester)
+- **Build state:** compiles clean; smoke 672 PASS (1.100-7.S1–S3 not yet committed — orchestrator commits after Tester)
 
 ## Plan pointer
 
@@ -24,6 +24,13 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-7.S3** (2026-10-23) — Setting plumbing `llm.chat.fetch.maxTokens` (+3 smoke). Files: `src/presets.ts`, `src/config.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `src/presets.ts`: `LlmSettings` gains `fetchMaxTokens: number;` (doc: token budget for `#fetch`/`fetch_url`; 0 disables) immediately after `fetchEnabled: boolean;`.
+  - `src/config.ts`: `readSettings` gains `fetchMaxTokens: c.get<number>("chat.fetch.maxTokens", 5000),` immediately after the `fetchEnabled` line.
+  - `src/tools/ToolExecutor.ts`: (a) `public async fetchUrl(url, maxChars?, maxTokens?)` — `const budget = maxTokens ?? vscode.workspace.getConfiguration("llm").get<number>("chat.fetch.maxTokens", 5000);` then `fetchUrl(url, { maxChars, maxTokens: budget > 0 ? budget : undefined })` (0/invalid → `undefined` → old path; `maxChars` handling intact); (b) `fetchUrlTool` gains a `maxTokens?` param passed through; (c) `case "fetch_url"` passes `typeof args.max_tokens === "number" ? args.max_tokens : undefined` (model-provided `max_tokens` wins over the setting). The `#fetch` tag path calls `this.toolExecutor.fetchUrl(url)` and picks up the setting with no provider change.
+  - `scripts/smoke-test.js`: (a) new section `// 78) fetchMaxTokens settings (1.100-7.S3)` before the total-count check; 3 `fetchmd-s3:` static source assertions: `config.ts` contains `c.get<number>("chat.fetch.maxTokens", 5000)`; `presets.ts` contains `fetchMaxTokens: number;`; `src/tools/ToolExecutor.ts` contains `chat.fetch.maxTokens`. (b) Total-count check updated 669 → 672. (c) **Deviation (forced):** the section-20b vscode mock (`Module._load` fake) lacked `workspace.getConfiguration` — the executor's `fetchUrl` now calls it, so the pre-existing `fetch-s2: fetch_url tool call executes via ToolExecutor` assertion threw; added `getConfiguration: () => ({ get: (_k, d) => d })` to that mock (returns the default — no assertion added/removed, count unchanged).
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, **672 PASS** (669 + 3) + total-count check line (raw `grep -c '^PASS:'` = 673), 0 FAIL.
+  - Not committed (per task instruction — orchestrator commits after Tester verifies).
 - **1.100-7.S2** (2026-10-23) — `src/fetchTool.ts` `fetchUrl` `maxTokens` wiring + `src/tools.ts` `fetch_url` description (+5 smoke). Files: `src/fetchTool.ts`, `src/tools.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/fetchTool.ts`: `fetchUrl` opts gain `maxTokens?: number` (normalized: finite, ≥ 1 → `Math.floor`, else `undefined`). Cache-hit path: `maxTokens` given → `trimToTokenBudget(hit.text, maxTokens).text` then existing `truncate`; absent → existing `truncate` path unchanged. Fresh-fetch path: `maxTokens` given → HTML via `htmlToMarkdown` (non-HTML raw), cache stores the full untrimmed text, return = `trimToTokenBudget(text, maxTokens).text` then `truncate` as final safety net; `maxTokens` absent → existing `htmlToText`/raw + `truncate` path byte-for-byte unchanged (protects all `fetch-s1:` assertions). Doc comment updated to describe both paths.
   - `src/tools.ts`: `fetch_url` description → "Fetch a publicly accessible webpage and return its content as **Markdown** (HTML converted to Markdown; other content types returned as-is). When `max_tokens` is set, content is trimmed to fit the token budget by dropping low-relevance sections (navigation, footer, boilerplate) first. Read-only: does not change the workspace."; `max_chars` param unchanged; new `max_tokens` param (number, "Optional token budget (estimated as chars/3.5). Content is trimmed to fit by dropping low-relevance sections first.").

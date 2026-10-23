@@ -106,6 +106,8 @@ export interface LlmSettings {
   folderContextEnabled: boolean;
   /** Enable the `#fetch` chat tag (webpage content injected as context). */
   fetchEnabled: boolean;
+  /** Token budget (estimated as chars/3.5) for `#fetch`/`fetch_url` page content; 0 disables the budget. */
+  fetchMaxTokens: number;
   /** Enable the `#usages` chat tag (workspace usages report injected as context). */
   usagesEnabled: boolean;
   /** Allow the #newWorkspace tag to inject a project scaffold prompt. */
