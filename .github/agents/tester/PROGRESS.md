@@ -11,12 +11,14 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-29 — in progress (S-001 verified PASS)
-- **Next step:** 1.100-29 S-002
+- **Current item:** 1.100-29 — in progress (S-001, S-002 verified PASS)
+- **Next step:** 1.100-29 S-003
 - **Last updated:** 2026-10-23
-- **Last commit:** d01fc92 (1.100-29 S-001, verified PASS)
+- **Last commit:** df5f480 (1.100-29 S-002, verified PASS)
 - **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
 ## Verified (recap)
+
+**1.100-29 S-002** (2026-10-23) — **PASS**. Generate alt text code action — provider branch + setting in src/codeaction/CodeActionProvider.ts + package.json (commit df5f480). Build exit 0; smoke 780/780 (no new smoke assertions this slice). Scope clean: git show --stat df5f480 touches only src/codeaction/CodeActionProvider.ts (+175), package.json (+5) + coder PROGRESS.md; ninfer submodule NOT committed. Verified: (1) compile exit 0; (2) smoke 780/780 ALL PASSED; (3a) provideCodeActions — QuickFix titled exactly Generate alt text offered only when languageId is html or markdown AND llm.codeAction.altText.enabled (getConfiguration, default true) AND findImageRef(lineAt(range.start.line)) hit AND isPlaceholderAlt(ref.alt); action carries isAltText=true + actionRange=Range(line, altStart, line, altEnd); (3b) resolveCodeAction branches on isAltText marker → resolveAltText: re-derives findImageRef (returns action unchanged if no ref); isRemote regex http(s)/data: skips attachment; attachment gated on llm.chat.vision.enabled (default true); Uri.joinPath(doc.uri, ref.src) inside try/catch → dataUrl=undefined on error (degrades text-only, no crash); buildAltTextPrompt(ref.src, context, imageIncluded) with ±5 lines clamped to doc bounds; one-shot chatStream pattern identical to fix/refactor (thinking off, AbortController + onCancellationRequested bridge, MAX_EDIT_CHARS cap, catch → return action without edit, finally dispose); image passed as images:[dataUrl] on user message when attached; parseAltText → edit.replace(doc.uri, altSlotRange, altText) only when non-empty, else returns action without edit; (3c) diff purely additive (176 added, ZERO removed lines in provider) — existing refactor/quickfix actions byte-identical; (4) package.json valid JSON + llm.codeAction.altText.enabled = {type: boolean, default: true}; (5) scope clean. **Next: 1.100-29 S-003.**
 
 **1.100-29 S-001** (2026-10-23) — **PASS**. Pure alt-text helpers in `src/codeaction.ts` (commit d01fc92). Build exit 0; smoke 780/780 (no new smoke assertions this slice). Scope clean: `git show --stat d01fc92` touches only `src/codeaction.ts` (+178) + `.github/agents/coder/PROGRESS.md` (+9/-4); `ninfer` submodule NOT committed. Verified: (a) no `vscode` import in `src/codeaction.ts` (only comments mention it); (b) runtime probe on compiled `out/codeaction.js`, 9/9 assertions: findImageRef html img → src a.png, alt empty, input.slice(altStart,altEnd)===""; findImageRef markdown → src img/pic.jpg, alt x; findImageRef no image → null; isPlaceholderAlt("") → true; isPlaceholderAlt("TODO") → true; isPlaceholderAlt("a cat") → false; parseAltText fenced → "A cat"; buildAltTextPrompt without image contains a.png + some context + not-attached note; buildAltTextPrompt with image contains a.png + some context, no not-attached note. **Next: 1.100-29 S-002.**
 
