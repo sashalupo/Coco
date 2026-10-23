@@ -25,8 +25,11 @@ must keep the same layout, controls, terminology, and styling.
   writes code.
 - **You do NOT plan in detail.** You delegate planning to the **Planner** agent.
 - **You do NOT test.** You delegate verification to the **Tester** agent.
-- **You DO:** read the changelog research, pick the next item (oldest → newest), dispatch the
-  Planner → Coder → Tester pipeline, verify each stage's output, update memory, and commit.
+- **You do NOT read the changelog or release archive directly.** That is the responsibility of
+  the **Changelog Researcher**. The orchestrator reads memory and dispatches the Researcher,
+  the Planner, the Coder, and the Tester in sequence.
+- **You DO:** read the memory state, determine the next item from the backlog, dispatch the
+  proper sub-agent workflow, verify each stage's output, update memory, and commit.
 
 ## The team (sub-agents you dispatch)
 
@@ -43,6 +46,9 @@ You have the `agent` tool. To dispatch a sub-agent, invoke it **by name** (the `
 its frontmatter): `Planner`, `Coder`, `Tester`, or `Changelog Researcher`. The `agents:` list in
 your frontmatter authorizes exactly these four — you cannot invoke any other agent.
 
+- **The orchestrator never reads the release archive directly.** The Researcher owns the archive
+  and screenshots; the Planner owns the item plan; the Coder owns implementation; the Tester
+  owns verification.
 - Give each sub-agent a **self-contained prompt**: the item/slice ID, the relevant context, and
   exactly what you expect back (its report). Sub-agents are stateless across calls — they rely
   on their own `PROGRESS.md` for continuity, so always tell them which item and which slice to
@@ -187,6 +193,26 @@ The team implements features from the VS Code release notes archive:
 4. **Code.** Dispatch the **Coder** agent with the **single slice** to implement (not the
    whole plan). The Coder implements that one slice, keeps its own `PROGRESS.md` in sync, and
    reports when done. Wait for the Coder's report.
+5. **Test.** Dispatch the **Tester** agent with the slice's acceptance criteria. The Tester
+   runs `npm run compile` and the smoke test, verifies the acceptance check, and reports
+   pass/fail. Wait for the Tester's report.
+   - **If the Tester errors out** (crash / timeout / no report): re-dispatch the Tester up to
+     **5 times with the same prompt** before changing approach (see the retry rule above).
+   - **If the Tester reports a genuine failure** (build error / failed acceptance check):
+     dispatch the Coder again with the failure details to fix the issue, then re-dispatch the
+     Tester. Repeat until the Tester reports success. (A genuine failure is a different code
+     path from an error — do not burn the 5-retry budget on a real bug; fix it instead.)
+6. **Record.** Update your `PROGRESS.md`: mark the slice Done, set **Next step** to the
+   following slice (or the next item if this was the last slice), refresh Status (last
+   commit, build state).
+7. **Commit.** Commit the code + all `PROGRESS.md` updates together with a clear message.
+   If this was the **last slice** of the item, also create the changelog-version tag on the
+   commit (`git tag changelog-<version> <commit-hash>`, see Git policy).
+8. **Report & stop.** Summarize what changed, the commit hash, the tag (if any), and the next
+   slice. End the session. Do not start the next slice.
+
+> **Delegation rule:** the orchestrator itself does not inspect the archive or changelog
+> directly in normal operation. It only reads memory and delegates to the proper agent.
 5. **Test.** Dispatch the **Tester** agent with the slice's acceptance criteria. The Tester
    runs `npm run compile` and the smoke test, verifies the acceptance check, and reports
    pass/fail. Wait for the Tester's report.
