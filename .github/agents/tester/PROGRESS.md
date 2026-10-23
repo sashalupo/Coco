@@ -11,14 +11,16 @@ correctly. The tester does NOT write code — it runs the build, the smoke test,
 acceptance checks, and reports a clear pass/fail.
 
 ## Status
-- **Current item:** 1.100-30 — COMPLETE (S-001, S-002, S-003 verified PASS)
-- **Next step:** 1.100-31 — Notebook tools for agent mode
-- **Last updated:** 2026-10-23
-- **Last commit:** aa35cbb (1.100-30 S-003, verified PASS)
-- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-23)
+- **Current item:** 1.100-31 — Notebook tools for agent mode (S-001 verified PASS)
+- **Next step:** 1.100-31 S-002
+- **Last updated:** 2026-10-24
+- **Last commit:** 504abbf (1.100-31 S-001, verified PASS)
+- **Build state:** compiles clean; smoke 791/791 PASS (verified 2026-10-24)
 ## Verified (recap)
 
 Slice detail pruned (see `git log` for full history). All slices verified PASS (build exit 0 + full smoke + scope check via `git show --stat`; `ninfer` submodule never committed).
+
+- **1.100-31 S-001** (504abbf) — PASS. `src/notebook.ts` only: two new exported pure helpers `extractVariableNames(source)` (regex over `import x`/`import x as y`/`from m import a`/`from m import a as b`/top-level `x = ...`/`def x`/`class X`; deduped, order-preserving, top-level only) and `formatKernelState(path, executed, variables)` (per-cell executed summary + variable list; "no cells executed yet" when empty). Verified: compile exit 0; smoke 791/791; scope via `git show --stat 504abbf` (only `src/notebook.ts` + coder PROGRESS.md; `ninfer` not committed); no `vscode` import in `src/notebook.ts` (grep: only comments); runtime probe on `out/notebook.js` — `extractVariableNames` returned exactly `["np","path","x","foo","Bar"]` (no `z`); `formatKernelState` empty → "no cells executed yet"; non-empty → per-cell "executed" lines + "variables: np, x".
 
 - **1.100-30 S-003** (aa35cbb) — PASS. `scripts/smoke-test.js` only: 4 new assertions `drop-s1`…`drop-s4` (drag-and-drop controller on `viewContainerId: "llm"`; `notebook.cellOutput` + `e.modifiers.alt` Alt rule; `extractNotebookCellOutput` in `src/notebook.ts`; `llm.chat.cellOutputDrop.enabled` boolean default true in `package.json`); hard gate 787→791. Verified: compile exit 0; smoke 791/791; scope via `git show --stat aa35cbb` (only `scripts/smoke-test.js` + coder PROGRESS.md; `ninfer` not committed); grep confirmed all 4 assertions + gate 791. Item 1.100-30 complete.
 - **1.100-30 S-002** (26efb84) — PASS. `registerDragAndDropController` in `src/extension.ts` targeting `viewContainerId: "llm"`, `dropMimeTypes: ["notebook.cellOutput"]`; Alt rule (`e.modifiers.alt` for text-only), vision gate, `cell_output_inject` post; `llm.chat.cellOutputDrop.enabled` (boolean, default true) in `package.json`. Scope: only `src/extension.ts`, `package.json`, coder PROGRESS.md; `webview.ts` untouched; `ninfer` not committed. Compile exit 0; smoke 787/787.
