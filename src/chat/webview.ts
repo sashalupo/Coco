@@ -9,6 +9,18 @@
 
 import { CONTEXT_LEVELS, THINKING_LEVELS } from "../presets";
 
+/**
+ * Local mirror of `ContextPill` from `src/context.ts` (1.100-8.S1). The
+ * webview is a self-contained HTML bundle (no module imports inside the
+ * inline script), so the shape is mirrored here rather than imported.
+ */
+interface ContextPill {
+  id: string;
+  kind: "file" | "folder" | "selection" | "diagnostics" | "image";
+  label: string;
+  path?: string;
+}
+
 /** Initial toolbar state passed into the webview (all optional). */
 export interface WebviewInit {
   /** Model IDs from `GET /v1/models`. */
@@ -785,6 +797,40 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		cursor: pointer;
 	}
 	.attach-remove:hover { background: rgba(0, 0, 0, 0.85); }
+	.pill-strip {
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		padding: 6px 8px 0 8px;
+	}
+	.pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		background: var(--input-bg);
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		padding: 2px 4px 2px 8px;
+		font-size: 12px;
+		max-width: 240px;
+	}
+	.pill-label {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pill-remove {
+		background: transparent;
+		color: var(--muted);
+		border: none;
+		border-radius: 8px;
+		font-size: 12px;
+		line-height: 1;
+		padding: 2px 4px;
+		cursor: pointer;
+	}
+	.pill-remove:hover { color: var(--fg); background: var(--think-bg); }
 	.msg-images {
 		display: flex;
 		gap: 6px;
@@ -1155,6 +1201,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<div id="cf-file-list" class="cf-file-list"></div>
 		</div>
 
+		<div id="pill-strip" class="pill-strip" hidden></div>
 		<div id="attach-strip" class="attach-strip" hidden></div>
 		<div id="vision-warning" class="vision-warning" hidden></div>
 		<div class="input-row">
@@ -1621,6 +1668,39 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			});
 			strip.hidden = pendingImages.length === 0;
 		}
+
+		// --- Context pills (1.100-8.S2): removable chips above the input ---
+		// Pills are owned by the host (S3); the webview only renders them and
+		// posts remove_pill back. Shape mirrors ContextPill in src/context.ts.
+		var contextPills = [];
+		var PILL_ICONS = { file: '📄', folder: '📁', selection: '✂️', diagnostics: '⚠️', image: '🖼️' };
+		function renderPillStrip(pills) {
+			var strip = document.getElementById('pill-strip');
+			strip.innerHTML = '';
+			(pills || []).forEach(function (pill) {
+				var el = document.createElement('span');
+				el.className = 'pill';
+				el.title = pill.path || pill.label;
+				var icon = document.createElement('span');
+				icon.className = 'pill-icon';
+				icon.textContent = PILL_ICONS[pill.kind] || '•';
+				var label = document.createElement('span');
+				label.className = 'pill-label';
+				label.textContent = pill.label;
+				var rm = document.createElement('button');
+				rm.className = 'pill-remove';
+				rm.textContent = '×';
+				rm.title = 'Remove ' + pill.label;
+				rm.addEventListener('click', function () {
+					if (vscode) { vscode.postMessage({ type: 'remove_pill', id: pill.id }); }
+				});
+				el.appendChild(icon);
+				el.appendChild(label);
+				el.appendChild(rm);
+				strip.appendChild(el);
+			});
+			strip.hidden = (pills || []).length === 0;
+		}
 		var attachBtn = document.getElementById('attach');
 		var attachFile = document.getElementById('attach-file');
 		attachBtn.addEventListener('click', function () {
@@ -1995,6 +2075,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				}
 				case 'clear':
 					messagesEl.innerHTML = '';
+					contextPills = [];
+					renderPillStrip(contextPills);
 					contextIndicator.hidden = true;
 					instructionsIndicator.hidden = true;
 					stepIndicator.hidden = true;
@@ -2434,6 +2516,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				case 'change_footer_hide':
 					// All files kept/undone — hide the footer bar (Phase 14).
 					hideChangeFooter();
+					break;
+				case 'context_pills':
+					// Context pills (1.100-8.S2): host pushes the current pill list.
+					contextPills = Array.isArray(msg.pills) ? msg.pills : [];
+					renderPillStrip(contextPills);
 					break;
 				default:
 					break;
