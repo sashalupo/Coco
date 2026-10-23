@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-19** — Create and launch tasks in agent mode — **DONE** (3 slices S-001–S-003 all verified PASS; 1.100-18 skipped: no preview webview)
-- **Current slice:** 1.100-19 S-003 DONE (verified PASS; code 7b4b7cc)
+- **Current item:** **1.100-29** — Generate alt text in HTML or Markdown (AI code action) — **IN PROGRESS** (3 slices S-001–S-003; S-001 done)
+- **Current slice:** 1.100-29 S-001 DONE (verified PASS; code d01fc92)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** 1.100-29 — Generate alt text in HTML or Markdown (Planner dispatch first) (user goal: continue until version 1.107)
+- **Next step:** 1.100-29 S-002 — provider branch + `llm.codeAction.altText.enabled` setting (Coder dispatch) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-23
-- **Last commit:** d54ea8c (tester verified 1.100-19 S-003; code 7b4b7cc)
+- **Last commit:** d2e33ba (tester verified 1.100-29 S-001; code d01fc92)
 - **Build state:** compiles clean; smoke 780/780 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
