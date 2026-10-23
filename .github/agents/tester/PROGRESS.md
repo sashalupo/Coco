@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S3 verified PASS)
-- **Next step:** dispatch Coder for 1.100-7.S4 (package.json schema + final smoke, +3 → 675)
+- **Current item:** 1.100-7 — Fetch tool improvements (entire page, Markdown, context-window trimming) — **DONE** (4 slices S1–S4, all verified PASS)
+- **Next step:** dispatch Planner for the next changelog item (1.100-7 complete)
 - **Last updated:** 2026-10-23
-- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1–S3 uncommitted in working tree
-- **Build state:** compiles clean; smoke 672/672 PASS (verified 2026-10-23)
+- **Last commit:** 347395f (1.100-3.S1); 1.100-7.S1–S4 uncommitted in working tree
+- **Build state:** compiles clean; smoke 675/675 PASS (verified 2026-10-23)
+
+### 1.100-7.S4 — FINAL: package.json schema + final smoke (+3 → 675) (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 675/675 PASS (672 baseline + 3 new `fetchmd-s4:`), 0 FAIL (grep -c '^PASS:' → 676 = 675 assertions + 1 total-count check line; '^FAIL:' → 0).
+- All 7 acceptance criteria met: (1) compile exit 0; (2) smoke 675 assertions + total-count check `PASS: total assertion count is 675`; (3) package.json valid JSON; `llm.chat.fetch.maxTokens` = `type: "number"`, `default: 5000`, description mentions Markdown + token budget + "Set to 0 to disable the budget (plain character truncation)"; positioned immediately after `llm.chat.fetch.enabled` (key order verified via JSON parse); (4) `llm.chat.fetch.enabled` description mentions **Markdown** + the `llm.chat.fetch.maxTokens` budget; (5) section `// 79) fetch.maxTokens schema (1.100-7.S4)` at smoke-test.js:5313 with exactly 3 `fetchmd-s4:` assertions (L5320 number/5000, L5327 Markdown+budget, L5333 enabled Markdown) — 1:1 with plan list; (6) overall item acceptance: `fetchmd-s1:` 10 + `fetchmd-s2:` 5 + `fetchmd-s3:` 3 + legacy `fetch-s1:`/`fetch-s2:` 11 all PASS — default 5000 → Markdown + budget trim with marker (S1/S2), 0 → old plain-text path (S3), cache re-trim at read time (S2); (7) no regression: 0 FAIL overall.
+- **Verdict: PASS. ITEM 1.100-7 COMPLETE** (S1–S4 all PASS, 2026-10-23).
 
 ### 1.100-7.S3 — Setting plumbing `llm.chat.fetch.maxTokens` (+3 smoke) (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 672/672 PASS (669 baseline + 3 new `fetchmd-s3:`), 0 FAIL (grep -c '^PASS:' → 673 = 672 assertions + 1 total-count check line; '^FAIL:' → 0).

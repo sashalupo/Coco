@@ -5310,11 +5310,33 @@ function assert(cond, label) {
     fetchmdS3ExecSrc.includes("chat.fetch.maxTokens"),
     "fetchmd-s3: ToolExecutor reads the chat.fetch.maxTokens setting",
   );
-  if (assertCount !== 672) {
-    console.error(`FAIL: total assertion count is 672 (got ${assertCount})`);
+  // 79) fetch.maxTokens schema (1.100-7.S4)
+  const fetchmdS4Props = pkgJson.contributes.configuration.properties;
+  const fetchmdS4Max = fetchmdS4Props["llm.chat.fetch.maxTokens"];
+  assert(
+    fetchmdS4Max &&
+      fetchmdS4Max.type === "number" &&
+      fetchmdS4Max.default === 5000,
+    "fetchmd-s4: llm.chat.fetch.maxTokens is a number with default 5000",
+  );
+  assert(
+    typeof fetchmdS4Max.description === "string" &&
+      fetchmdS4Max.description.includes("Markdown") &&
+      (fetchmdS4Max.description.includes("maxTokens") ||
+        fetchmdS4Max.description.includes("budget")),
+    "fetchmd-s4: llm.chat.fetch.maxTokens description mentions Markdown and the token budget",
+  );
+  const fetchmdS4Enabled = fetchmdS4Props["llm.chat.fetch.enabled"];
+  assert(
+    typeof fetchmdS4Enabled.description === "string" &&
+      fetchmdS4Enabled.description.includes("Markdown"),
+    "fetchmd-s4: llm.chat.fetch.enabled description mentions Markdown",
+  );
+  if (assertCount !== 675) {
+    console.error(`FAIL: total assertion count is 675 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 672");
+  console.log("PASS: total assertion count is 675");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

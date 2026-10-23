@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-7 (Fetch tool improvements — entire page, Markdown, context-window trimming) — **IN PROGRESS** (4 slices S1–S4; S1–S3 done)
-- **Next step:** dispatch Coder for 1.100-7.S4 (`package.json` schema `llm.chat.fetch.maxTokens` + final smoke) — FINAL slice
+- **Current item:** 1.100-7 (Fetch tool improvements — entire page, Markdown, context-window trimming) — **DONE** (4 slices S1–S4)
+- **Next step:** dispatch Tester for item 1.100-7 (overall acceptance: `#fetch` → Markdown + budget trim; 0 → old path; smoke 675)
 - **Last updated:** 2026-10-23
 - **Last commit:** (1.100-2.S6 commit — `package.json` schema: `llm.runPrompt` command, Play button menu, language IDs)
-- **Build state:** compiles clean; smoke 672 PASS (1.100-7.S1–S3 not yet committed — orchestrator commits after Tester)
+- **Build state:** compiles clean; smoke 675 PASS (1.100-7.S1–S4 not yet committed — orchestrator commits after Tester)
 
 ## Plan pointer
 
@@ -24,6 +24,11 @@ The current plan lives in `.github/agents/planner/PROGRESS.md`. The Coder implem
 by step, one step per session.
 
 ## Done
+- **1.100-7.S4 (FINAL)** (2026-10-23) — `package.json` schema `llm.chat.fetch.maxTokens` + final smoke (+3 smoke). **Item 1.100-7 COMPLETE (all 4 slices).** Files: `package.json`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
+  - `package.json`: (a) `contributes.configuration.properties` — new `llm.chat.fetch.maxTokens` (`type: "number"`, `default: 5000`, description: token budget chars/3.5 for `#fetch`/`fetch_url`, Markdown conversion, low-relevance-section drop order, 0 disables → plain char truncation) inserted immediately after `llm.chat.fetch.enabled`; (b) `llm.chat.fetch.enabled` description updated: "…converted to **Markdown** (cached for 10 minutes) and trimmed to the `llm.chat.fetch.maxTokens` budget." JSON validity verified (`node -e "JSON.parse(...)"` → `json ok`).
+  - `scripts/smoke-test.js`: new section `// 79) fetch.maxTokens schema (1.100-7.S4)` after section 78, before the total-count check; reuses the file-scoped `pkgJson` (parsed at line ~1733, same IIFE scope); 3 `fetchmd-s4:` assertions: (1) `properties["llm.chat.fetch.maxTokens"]` is `type === "number"` with `default === 5000`; (2) its description mentions `Markdown` and `maxTokens`/`budget`; (3) `properties["llm.chat.fetch.enabled"].description` mentions `Markdown`. Total-count check updated 672 → 675.
+  - Verified: `npm run compile` exit 0, zero errors; `node scripts/smoke-test.js` exit 0, `ALL SMOKE TESTS PASSED`, **675 PASS** (672 + 3) + total-count check line (raw `grep -c '^PASS:'` = 676), 0 FAIL; `node -e "JSON.parse(...)"` → `json ok`.
+  - Not committed (per task instruction — orchestrator commits after Tester verifies).
 - **1.100-7.S3** (2026-10-23) — Setting plumbing `llm.chat.fetch.maxTokens` (+3 smoke). Files: `src/presets.ts`, `src/config.ts`, `src/tools/ToolExecutor.ts`, `scripts/smoke-test.js`, `.github/agents/coder/PROGRESS.md` only.
   - `src/presets.ts`: `LlmSettings` gains `fetchMaxTokens: number;` (doc: token budget for `#fetch`/`fetch_url`; 0 disables) immediately after `fetchEnabled: boolean;`.
   - `src/config.ts`: `readSettings` gains `fetchMaxTokens: c.get<number>("chat.fetch.maxTokens", 5000),` immediately after the `fetchEnabled` line.

@@ -318,7 +318,12 @@
         "llm.chat.fetch.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Allow the `#fetch <url>` tag to include webpage content in chat context. The page is fetched over plain HTTP and converted to plain text (cached for 10 minutes)."
+          "description": "Allow the `#fetch <url>` tag to include webpage content in chat context. The page is fetched over plain HTTP, converted to **Markdown** (cached for 10 minutes) and trimmed to the `llm.chat.fetch.maxTokens` budget."
+        },
+        "llm.chat.fetch.maxTokens": {
+          "type": "number",
+          "default": 5000,
+          "description": "Token budget (estimated as chars/3.5) for #fetch / fetch_url page content. Pages are converted to Markdown and trimmed to fit by dropping low-relevance sections (navigation, footer, boilerplate) first. Set to 0 to disable the budget (plain character truncation)."
         },
         "llm.chat.usages.enabled": {
           "type": "boolean",
