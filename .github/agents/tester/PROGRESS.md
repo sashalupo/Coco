@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-12 (complete) — S1–S5 verified PASS
-- **Next step:** item 1.100-12 done; await next changelog item from Planner
+- **Current item:** 1.100-13 (in progress) — S1 verified PASS
+- **Next step:** verify 1.100-13.S2 (package.json llm.mcp.servers description)
 - **Last updated:** 2026-10-23
-- **Last commit:** ec9a244 (1.100-12.S5 smoke guards, verified PASS)
+- **Last commit:** 61f7b85 (1.100-13.S1 HTTP transport, verified PASS)
 - **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -38,6 +38,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 
 
+
+**1.100-13.S1** (2026-10-23) — **PASS**. HTTP transport client + config shape in `src/mcp.ts` (commit 61f7b85). Build exit 0; smoke 736/736. Scope clean: commit touches only `src/mcp.ts` (+210/-11) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `McpServerConfig` single interface with optional `command` + `url?: string` (lines 15-21); (b) `parseMcpServers` accepts exactly one of non-empty string `command`/`url` — `hasCommand === hasUrl` → drop (neither or both); runtime probe: {url} kept, {command+url} dropped, {} dropped, {command} kept; (c) `parseSseMessages` exported + pure — keeps `data:` lines, strips prefix, JSON.parse each, skips malformed; probe: event line ignored + malformed skipped → 1 msg, empty → [], two data lines → 2 msgs; (d) `McpHttpClient` exported, mirrors `McpClient` surface (`tools`, `start()`, `callTool(name,args)`, `close()`): 10 s timeout via Promise.race + unref, POSTs initialize (protocolVersion "2025-03-26", same clientInfo), captures `mcp-session-id` header into private field and echoes on subsequent POSTs, POSTs notifications/initialized (expects 202, ignores body), POSTs tools/list and stores tools with same `Array.isArray(result?.tools)` mapping as stdio client; (e) private `post()`: fetch POST with Content-Type application/json + Accept application/json, text/event-stream (+ Mcp-Session-Id when present), body read as text, SSE → parseSseMessages + first message with matching id, else JSON.parse; non-2xx (except 202 for notifications) rejects with status + body tail (slice(-512)); JSON-RPC error objects surfaced; (f) `close()` idempotent flag, further post/callTool reject with /closed/ (probe confirmed); (g) no `vscode` import in file (only child_process + ./tools). **Next: 1.100-13.S2 (package.json description).**
 
 **1.100-12.S5** (2026-10-23) — **PASS**. Smoke-test regression guards in `scripts/smoke-test.js` (commit ec9a244). Build exit 0; smoke 736/736 (714 + 22 new `summarize-s5` assertions). Scope clean: commit touches only `scripts/smoke-test.js` (+157) + coder memory; no `src/` or `package.json` changes; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Guards verified genuine: (a) `out/request.js` exports `summarizeSplit`/`buildTranscript` + `SUMMARY_MARKER === "[Summarized conversation history]"`; (b) pure-function tests of compiled `summarizeSplit` — under threshold → null; windowTokens=0 → null; threshold=0 → null; 5 msgs → null; 10 plain msgs over threshold → split 6; tool group at naive split → null; summarized msg at split → null; all-tool tail → null; (c) `buildTranscript` `User:/Assistant:/System:/Tool:` lines + empty-content case; (d) `package.json` schema for both settings (boolean default true / number default 0.7); (e) `config.ts` reads + `presets.ts` fields; (f) `ChatViewProvider.ts` references (`chatSummarizeEnabled`, `summarizeSplit`, `SUMMARY_MARKER`, `maybeSummarizeHistory`, "summarized conversation history"); (g) `webview.ts` `m.summarized === true` branch + `case 'summarize_result'` + "Summarized conversation history" label. Pure-function assertions independently verified against `src/request.ts` `summarizeSplit` (lines ~253–290): keepCount fixed at 4, naive split `length - 4`, forward walk past `tool`/`tool_calls`/`summarized`, `null` if `length - i < 4` — so the tool-group and summarized-at-split cases correctly return null (walk reaches index 7/8, leaving <4 to keep). Count gate raised 714 → 736, matches actual count. **Item 1.100-12 complete (S1–S5 all PASS).**
 
