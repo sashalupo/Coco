@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-2 — Prompt files improvements — S1+S2+S3 PASS (2026-10-23)
-- **Next step:** 1.100-2.S4 (next slice of Prompt files improvements, if any)
+- **Current item:** 1.100-2 — Prompt files improvements — S1+S2+S3+S4 PASS (2026-10-23)
+- **Next step:** 1.100-2.S5 (next slice of Prompt files improvements, if any)
 - **Last updated:** 2026-10-23
-- **Last commit:** 4daff77 (1.100-2.S3)
-- **Build state:** compiles clean; smoke 627/627 PASS
+- **Last commit:** b0a1772 (1.100-2.S4)
+- **Build state:** compiles clean; smoke 629/629 PASS
+
+### 1.100-2.S4 — `prompt_run` host→webview handler in `src/chat/webview.ts` (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 629/629 PASS (627 baseline + 2 new `prompt2-s4:`), 0 FAIL.
+- All 5 acceptance criteria met: (1) compile exit 0; (2) smoke total 629 (grep -c '^PASS:' → 629, 0 FAIL); (3) section `// 71) prompt_run webview (1.100-2.S4)` at smoke-test.js:4849 with exactly 2 `prompt2-s4:` assertions (L4854 webview source contains `prompt_run`, L4864 case region reaches `doSend()`); (4) `src/chat/webview.ts`: `case 'prompt_run':` (L2022) with (a) empty-text guard `if (!text) break;` + inputEl-null guard (L2023–2024), (b) `modeSelect.value = msg.mode` only when `msg.mode === 'ask' | 'agent' | 'edit'` (L2025–2027), (c) `inputEl.value = text` then `doSend()` (L2028–2029) — `doSend` is the same function the Send button calls (`sendBtn.addEventListener('click', doSend)` L1669); (5) `git show --stat b0a1772` → exactly `src/chat/webview.ts` (+11), `scripts/smoke-test.js` (+20), `.github/agents/coder/PROGRESS.md` (+12/−4) — no out-of-scope files.
+- Last commit: `b0a1772`.
+
 
 ### 1.100-2.S3 — `ChatViewProvider.runPrompt` + `pendingPromptTools` wiring (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 627/627 PASS (623 baseline + 4 new `prompt2-s3:`), 0 FAIL.
