@@ -9,13 +9,26 @@
 
 import {
   McpClient,
+  McpHttpClient,
   McpServerConfig,
   McpTool,
+  McpToolResult,
   mcpResultToText,
   mcpToolsToOpenAITools,
   parseMcpToolName,
 } from "./mcp";
 import type { Tool } from "./tools";
+
+/**
+ * Transport-agnostic MCP client surface. Both `McpClient` (stdio) and
+ * `McpHttpClient` (Streamable HTTP / SSE) satisfy it structurally.
+ */
+export interface McpClientLike {
+  tools: McpTool[];
+  start(): Promise<void>;
+  callTool(name: string, args: Record<string, unknown>): Promise<McpToolResult>;
+  close(): void;
+}
 
 /** Per-server status surfaced to the UI / status bar. */
 export interface McpServerStatus {
@@ -34,9 +47,9 @@ export interface McpServerStatus {
  */
 export class McpManager {
   private servers: Record<string, McpServerConfig> = {};
-  private clients = new Map<string, McpClient>();
+  private clients = new Map<string, McpClientLike>();
   private statuses = new Map<string, McpServerStatus>();
-  private starting = new Map<string, Promise<McpClient>>();
+  private starting = new Map<string, Promise<McpClientLike>>();
   private notify: (msg: string) => void;
 
   constructor(notify?: (msg: string) => void) {
@@ -63,7 +76,7 @@ export class McpManager {
    * for the same server share one in-flight start. Rejects (after closing
    * the client and recording an `error` status) if the start fails.
    */
-  ensureStarted(name: string): Promise<McpClient> {
+  ensureStarted(name: string): Promise<McpClientLike> {
     const existing = this.clients.get(name);
     if (existing && this.statuses.get(name)?.status === "running") {
       return Promise.resolve(existing);
@@ -77,7 +90,9 @@ export class McpManager {
       return Promise.reject(new Error(`unknown MCP server: ${name}`));
     }
     const p = (async () => {
-      const client = new McpClient(cfg);
+      const client: McpClientLike = cfg.url
+        ? new McpHttpClient(cfg)
+        : new McpClient(cfg);
       try {
         await client.start();
         this.clients.set(name, client);
@@ -177,7 +192,7 @@ export class McpManager {
       if (!(server in this.servers)) {
         return { content: `Error: unknown MCP server: ${server}` };
       }
-      let client: McpClient;
+      let client: McpClientLike;
       try {
         client = await this.ensureStarted(server);
       } catch (e) {
