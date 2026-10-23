@@ -12,13 +12,15 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-14 — in progress (S1, S2, S3 verified PASS)
-- **Next step:** 1.100-14.S4 (next slice of MCP image content blocks)
+- **Current item:** 1.100-14 — in progress (S1, S2, S3, S4 verified PASS)
+- **Next step:** 1.100-14.S5 (smoke-test regression guards in scripts/smoke-test.js)
 - **Last updated:** 2026-10-23
-- **Last commit:** 814fbea (1.100-14.S3, verified PASS)
+- **Last commit:** 7535819 (1.100-14.S4, verified PASS)
 - **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 
 ## Verified (recap)
+
+**1.100-14.S4** (2026-10-23) — **PASS**. Render images in the tool-result card in `src/chat/webview.ts` (commit 7535819). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 7535819` touches only `src/chat/webview.ts` (+43/-3) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `tool_result` case found-card branch — after the `pre.tool-output` append, an `Array.isArray(msg.images) && msg.images.length` gate builds a `div.tool-images` via `createElement`; each entry is guarded (`typeof img !== 'string'` skip + `/^data:image\/(jpeg|png|gif|webp|bmp);base64,/` test, non-matching URIs skipped) and rendered as `img.tool-img` with `im.src = img` (property assignment, no innerHTML); the container is appended only `if (imgsEl.childNodes.length)`; (b) fallback branch (no running card found) — identical block (`tcImgsEl`/`tcIm`) with the same guards, appended to `tcDetails` only when it has children; (c) CSS `.tool-images` (display:flex, gap:6px, flex-wrap:wrap, margin-top:6px, padding, border-top) and `.tool-img` (max-width:240px, max-height:240px, border-radius:4px, cursor:zoom-in) present directly after the existing `.tool-output` rule (lines 457-470); (d) no innerHTML with untrusted data anywhere in the image path — all DOM built via createElement/textContent/property assignment. **Next: 1.100-14.S5 (smoke-test guards).**
 
 **1.100-14.S3** (2026-10-23) — **PASS**. `tool_result` post carries MCP tool images in `src/chat/ChatViewProvider.ts` (commit 814fbea). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 814fbea` touches only `src/chat/ChatViewProvider.ts` (+3) + coder memory; `ninfer` submodule NOT committed. Verified: (a) `let mcpImages: string[] | undefined;` declared alongside `result` before the MCP branch (line ~1771); (b) success path `mcpImages = mcpRes.images;` immediately after `mcpManager.execute` (line ~1792); (c) `tool_result` postMessage includes `...(mcpImages && mcpImages.length ? { images: mcpImages } : {})` (line ~1810) — conditional spread, key omitted when empty/undefined; (d) non-MCP path (ToolExecutor) and MCP error path (invalid JSON args) leave `mcpImages` undefined → no `images` key; diff shows exactly 3 added lines, no other changes. **Next: 1.100-14.S4.**
 
