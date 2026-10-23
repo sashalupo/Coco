@@ -6594,11 +6594,70 @@ function assert(cond, label) {
     "nbtools-s6: request.ts contains the notebook-execution tool gate (notebookToolsEnabled + run_notebook_cell)",
   );
 
-  if (assertCount !== 798) {
-    console.error(`FAIL: total assertion count is 798 (got ${assertCount})`);
+  // 1.100-38 S-005: MCP tool annotations (mcp-ann-s1..s5)
+  const mcpAnn = require(path.join(__dirname, "..", "out", "mcp.js"));
+  assert(
+    mcpAnn.mcpToolDisplayName({ name: "read" }) === "read",
+    "mcp-ann-s1: mcpToolDisplayName falls back to name when no annotations",
+  );
+  assert(
+    mcpAnn.mcpToolDisplayName({
+      name: "read",
+      annotations: { title: "Read File" },
+    }) === "Read File",
+    "mcp-ann-s1b: mcpToolDisplayName uses annotations.title when present",
+  );
+  assert(
+    mcpAnn.mcpToolDisplayName({
+      name: "read",
+      annotations: { title: "" },
+    }) === "read",
+    "mcp-ann-s1c: mcpToolDisplayName falls back to name on empty-string title",
+  );
+  const annTools = mcpToolsToOpenAITools("fs", [
+    {
+      name: "read",
+      description: "read a file",
+      annotations: { title: "X", readOnlyHint: true },
+    },
+  ]);
+  assert(
+    annTools.length === 1 &&
+      annTools[0].type === "function" &&
+      annTools[0].function.name === "mcp__fs__read" &&
+      annTools[0].function.parameters.type === "object",
+    "mcp-ann-s2: McpTool with annotations passes through mcpToolsToOpenAITools into OpenAI tool shape",
+  );
+  const annMgr = new McpManager();
+  assert(
+    annMgr.getToolAnnotations("read_file") === null &&
+      annMgr.getToolAnnotations("mcp__nosuch__tool") === null,
+    "mcp-ann-s3: McpManager.getToolAnnotations returns null for non-MCP names and unknown server/tool",
+  );
+  const chatViewAnn = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    chatViewAnn.includes("getToolAnnotations") &&
+      chatViewAnn.includes("readOnlyHint") &&
+      chatViewAnn.includes("displayName"),
+    "mcp-ann-s4: ChatViewProvider.ts references getToolAnnotations, readOnlyHint, displayName",
+  );
+  const webviewAnn = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    webviewAnn.includes("msg.displayName"),
+    "mcp-ann-s5: webview.ts renders msg.displayName in tool cards",
+  );
+
+  if (assertCount !== 805) {
+    console.error(`FAIL: total assertion count is 805 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 798");
+  console.log("PASS: total assertion count is 805");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
