@@ -360,6 +360,11 @@
           "default": "",
           "description": "Model ID used for inline code completions. Empty = use the main chat model (llm.model). Change it via the 'LLM: Change Completions Model' command."
         },
+        "llm.agent.autoFix": {
+          "type": "boolean",
+          "default": true,
+          "description": "In agent mode, automatically detect new errors introduced by the agent's own file edits and propose a follow-up fix (up to 2 follow-up rounds per run). Disable to turn off auto-fixing."
+        },
         "llm.statusBar.enabled": {
           "type": "boolean",
           "default": true,
