@@ -12,11 +12,17 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-2 — Prompt files improvements — S1+S2+S3+S4+S5 PASS (2026-10-23); S6 (final slice) pending verification
-- **Next step:** verify 1.100-2.S6 (package.json schema: `llm.runPrompt` command, Play button menu, language IDs; smoke 637); then item complete, next changelog item
+- **Current item:** 1.100-2 — Prompt files improvements — **COMPLETE** (S1–S6 all PASS, 2026-10-23); next changelog item
+- **Next step:** item 1.100-2 complete — pick up the next changelog item (oldest unverified)
 - **Last updated:** 2026-10-23
-- **Last commit:** 25bc0c0 (1.100-2.S5)
-- **Build state:** compiles clean; smoke 633/633 PASS
+- **Last commit:** f95ce52 (1.100-2.S6)
+- **Build state:** compiles clean; smoke 637/637 PASS
+
+### 1.100-2.S6 — FINAL: package.json schema — `llm.runPrompt` command, Play button menu, language IDs (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 637/637 PASS (633 baseline + 4 new `prompt2-s6:`), 0 FAIL.
+- All 7 acceptance criteria met: (1) compile exit 0; (2) smoke total 637 (grep -c '^PASS:' → 637, 0 FAIL); (3) section `// 73) runPrompt schema (1.100-2.S6)` at smoke-test.js:4890 with exactly 4 `prompt2-s6:` assertions (L4895 command title+icon, L4902 editor/title menu when clause, L4908 llm.prompt language, L4913 llm.instructions language); (4) package.json (parsed as JSON): `contributes.commands` has `llm.runPrompt` (title "LLM: Run Prompt", icon `$(play)`) and NO `llm.usePrompt` entry; `activationEvents` includes `onCommand:llm.runPrompt`; `contributes.menus["editor/title"]` = `[{command: "llm.runPrompt", when: "resourceFilename =~ /.*\.prompt\.md$"}]`; `contributes.languages` contains `llm.prompt` (extensions `[".prompt.md"]`) and `llm.instructions` (extensions `[".instructions.md"]`); (5) `git show --stat f95ce52` → exactly `package.json` (+27/−3), `scripts/smoke-test.js` (+38/−6), `.github/agents/coder/PROGRESS.md` (+12/−4), `.github/agents/planner/PROGRESS.md` (+4/−2), `.github/agents/tester/PROGRESS.md` (+6/−3) — no out-of-scope source files; (6) KNOWN DEVIATIONS verified sensible: (a) the `when`-clause smoke assertion (L4901) checks `when.includes("prompt") && when.includes("md")` rather than the literal `.prompt.md` (JSON-escaped backslashes) — the actual `when` clause in package.json is `resourceFilename =~ /.*\.prompt\.md$` (verified via node JSON parse), so the assertion is a sound weaker check; (b) two stale section-40 `rp-s5:` assertions updated in place from `llm.usePrompt` to `llm.runPrompt` (smoke-test.js:3762 command title, L3766 activation event) — 1-for-1, count unchanged, both sensible (they now assert the renamed command + activation event, labeled "(1.100-2.S6)").
+- Last commit: `f95ce52`.
+- **ITEM 1.100-2 COMPLETE** (S1–S6 all PASS, 2026-10-23).
 
 ### 1.100-2.S5 — `llm.runPrompt` command rename + run-immediately semantics (2026-10-23) — **PASS**
 - Build: `npm run compile` exit 0, zero errors. Smoke: 633/633 PASS (629 baseline + 4 new `prompt2-s5:`), 0 FAIL.
