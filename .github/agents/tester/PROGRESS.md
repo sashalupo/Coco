@@ -12,13 +12,15 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-14 — in progress (S1, S2 verified PASS)
-- **Next step:** 1.100-14.S3 (next slice of MCP image content blocks)
+- **Current item:** 1.100-14 — in progress (S1, S2, S3 verified PASS)
+- **Next step:** 1.100-14.S4 (next slice of MCP image content blocks)
 - **Last updated:** 2026-10-23
-- **Last commit:** 215b394 (1.100-14.S2, verified PASS)
+- **Last commit:** 814fbea (1.100-14.S3, verified PASS)
 - **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 
 ## Verified (recap)
+
+**1.100-14.S3** (2026-10-23) — **PASS**. `tool_result` post carries MCP tool images in `src/chat/ChatViewProvider.ts` (commit 814fbea). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 814fbea` touches only `src/chat/ChatViewProvider.ts` (+3) + coder memory; `ninfer` submodule NOT committed. Verified: (a) `let mcpImages: string[] | undefined;` declared alongside `result` before the MCP branch (line ~1771); (b) success path `mcpImages = mcpRes.images;` immediately after `mcpManager.execute` (line ~1792); (c) `tool_result` postMessage includes `...(mcpImages && mcpImages.length ? { images: mcpImages } : {})` (line ~1810) — conditional spread, key omitted when empty/undefined; (d) non-MCP path (ToolExecutor) and MCP error path (invalid JSON args) leave `mcpImages` undefined → no `images` key; diff shows exactly 3 added lines, no other changes. **Next: 1.100-14.S4.**
 
 **1.100-14.S2** (2026-10-23) — **PASS**. `McpManager.execute` surfaces MCP tool images in `src/mcpManager.ts` (commit 215b394). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 215b394` touches only `src/mcpManager.ts` (+12/-3) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `mcpResultToImages` imported from `./mcp` (import block, alongside `mcpResultToText`); (b) `execute` return type widened to `Promise<{ content: string; images?: string[] }>`; (c) success path computes `const images = mcpResultToImages(result)` and returns `{ content: mcpResultToText(result), ...(images.length ? { images } : {}) }` — `images` key omitted when empty; (d) all error paths unchanged (bad name / unknown server / start failure / catch) — each returns only `{ content: "Error: ..." }`, no `images`; no other method altered (diff shows only import + `execute` doc comment + return type + success return). Runtime probe on compiled `out/mcpManager.js` (vscode stubbed via `Module._load`, fake client injected into private `clients`/`statuses` maps), 9/9 assertions: image block → `images[0] === "data:image/png;base64,QUJD"` + content "hi"; text-only → no `images` key; bad-name error → no `images` + "Error:"; `callTool` throw → no `images` + "boom". **Next: 1.100-14.S3.**
 
