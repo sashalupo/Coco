@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-12 (in progress) — S1 verified PASS
-- **Next step:** verify 1.100-12.S2 (settings: `llm.chat.summarize.enabled` / `llm.chat.summarize.threshold`)
+- **Current item:** 1.100-12 (in progress) — S1, S2 verified PASS
+- **Next step:** verify 1.100-12.S3 (automatic summarization pass in `src/chat/ChatViewProvider.ts`)
 - **Last updated:** 2026-10-23
-- **Last commit:** 372d4b0 (1.100-12.S1 helpers, verified PASS)
+- **Last commit:** 40f762c (1.100-12.S2 settings, verified PASS)
 - **Build state:** compiles clean; smoke 714/714 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -37,6 +37,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 **1.100-8.S5** (2026-10-23) — PASS. Smoke-test regression guards in `scripts/smoke-test.js` (commit 08f2625): 15 new `pill-s5` assertions — no Done button in input row / no `#done` element; Enter (no Shift) → `doSend()`; New Chat only via `#new-chat`/`#quick-new-chat` (input row has no other session-reset control); pure-function tests of `parsePillRefs`/`dedupePills` against compiled `out/context.js` (parse + within-message dedupe; existing-order merge + id drop); pill pipeline present (`context_pills`/`remove_pill`/`renderPillStrip` in webview, `postContextPills` + `remove_pill` case in ChatViewProvider, `llm.addContext` registered + contributed). Assertions are genuine (string/behavior checks that fail if the feature is removed). Scope clean: commit touches only `scripts/smoke-test.js` + coder memory. Build exit 0; smoke 690/690. **Item 1.100-8 complete (S1–S5 all PASS).**
 
 
+
+**1.100-12.S2** (2026-10-23) — **PASS**. Summarization settings (commit 40f762c). Build exit 0; smoke 714/714. Scope clean: commit touches only `package.json` (+12), `src/presets.ts` (+4), `src/config.ts` (+2) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: `package.json` contributes `llm.chat.summarize.enabled` (boolean, default true, description) and `llm.chat.summarize.threshold` (number, default 0.7, minimum 0, maximum 1, description); `src/presets.ts` `LlmSettings` has `chatSummarizeEnabled: boolean;` (line 126) + `chatSummarizeThreshold: number;` (line 128), both with doc comments; `src/config.ts` `readSettings()` reads `c.get<boolean>("chat.summarize.enabled", true)` (line 89) and `c.get<number>("chat.summarize.threshold", 0.7)` (line 90). No context-window size setting added (window comes from toolbar context preset via `CONTEXT_TO_TOKENS`, per plan).
 
 **1.100-12.S1** (2026-10-23) — **PASS**. Pure summarization helpers in `src/request.ts` (commit 372d4b0). Build exit 0; smoke 714/714. Scope clean: commit touches only `src/request.ts` (+78) + coder memory; no other src files or `scripts/smoke-test.js` changed. Verified: `ChatMessage` has optional `summarized?: boolean` (with doc comment); `export const SUMMARY_MARKER = "[Summarized conversation history]"`; `export function summarizeSplit(messages, threshold, windowTokens): number | null` — `null` when `windowTokens <= 0` or `threshold <= 0`; `null` when `estimateMessagesTokens(messages) < threshold * windowTokens` (reuses existing estimator); `null` when `messages.length < 6`; naive split `length - 4` (keepCount 4, same as `handleCompact`); forward walk past `role === "tool"`, non-empty `tool_calls`, and `summarized === true` messages; `null` if walking leaves fewer than 4 to keep. `export function buildTranscript(messages): string` — `User:/Assistant:/System:/Tool:` lines (other roles → `Tool:`) joined by `\n\n`. No `vscode` import in file (only `./presets` + `./tools`); helpers are pure (no I/O). Runtime probe on `out/request.js` (vscode stubbed via `Module._load`), 12/12 assertions: under threshold → `null`; `windowTokens=0` → `null`; `threshold=0` → `null`; 5 msgs → `null`; 10 plain msgs over threshold → split 6; tool group (assistant `tool_calls` @8 + `tool` @9) in 14-msg history → split 10 (walked past group, keeps 4); `summarized` msg at split point → walked forward; 10 msgs with 6..9 all `tool` → walk leaves 0 to keep → `null`; `buildTranscript` produces `User: hi` / `\n\nAssistant: hello\n\n` / `System: sys` / `Tool: out`; `SUMMARY_MARKER` exact string.
 
