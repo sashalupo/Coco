@@ -6,6 +6,7 @@ import { LlmClient } from "./client";
 import { readSettings } from "./config";
 import { ChatViewProvider } from "./chat/ChatViewProvider";
 import { McpManager } from "./mcpManager";
+import { detectSecretEnvName, McpInput } from "./mcp";
 import { InlineCompletionProvider } from "./inline/InlineCompletionProvider";
 import { CodeActionProvider } from "./codeaction/CodeActionProvider";
 import {
@@ -391,7 +392,16 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       const cfg = vscode.workspace.getConfiguration("llm.mcp");
       const servers = cfg.get<
-        Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string }>
+        Record<
+          string,
+          {
+            command?: string;
+            args?: string[];
+            env?: Record<string, string>;
+            inputs?: Record<string, McpInput>;
+            url?: string;
+          }
+        >
       >("servers", {});
       if (transport.value === "http") {
         const url = await vscode.window.showInputBox({
@@ -435,14 +445,71 @@ export function activate(context: vscode.ExtensionContext): void {
         placeHolder: "e.g. -y @modelcontextprotocol/server-filesystem /tmp",
       });
       const args = argsRaw ? argsRaw.trim().split(/\s+/) : [];
-      servers[name.trim()] = { command: command.trim(), ...(args.length ? { args } : {}) };
+      const envRaw = await vscode.window.showInputBox({
+        prompt: "Environment variables (KEY=VALUE, comma-separated, optional)",
+        placeHolder: "e.g. API_KEY=sk-..., PORT=8080",
+      });
+      const env: Record<string, string> = {};
+      const inputs: Record<string, McpInput> = {};
+      if (envRaw) {
+        for (const token of envRaw.split(",")) {
+          const eq = token.indexOf("=");
+          if (eq <= 0) {
+            continue; // no '=' or empty key
+          }
+          const key = token.slice(0, eq).trim();
+          const value = token.slice(eq + 1).trim();
+          if (!key) {
+            continue;
+          }
+          if (detectSecretEnvName(key)) {
+            env[key] = `$\{input:${key}}`;
+            inputs[key] = {
+              description: `Value for ${key}`,
+              type: "string",
+              password: true,
+              required: true,
+            };
+          } else {
+            env[key] = value;
+          }
+        }
+      }
+      const serverName = name.trim();
+      servers[serverName] = {
+        command: command.trim(),
+        ...(args.length ? { args } : {}),
+        ...(Object.keys(env).length ? { env } : {}),
+        ...(Object.keys(inputs).length ? { inputs } : {}),
+      };
       await cfg.update(
         "servers",
         servers,
         vscode.ConfigurationTarget.Workspace,
       );
+      if (Object.keys(inputs).length > 0) {
+        const values: Record<string, string> = {};
+        for (const key of Object.keys(inputs)) {
+          const value = await vscode.window.showInputBox({
+            prompt: `Enter value for ${key} (stored in memory for this session)`,
+            password: true,
+          });
+          if (value !== undefined) {
+            values[key] = value;
+          }
+        }
+        if (Object.keys(values).length > 0) {
+          if (mcpManager) {
+            mcpManager.setInputs(serverName, values);
+          } else {
+            vscode.window.showWarningMessage(
+              "MCP manager not yet active — values must be re-entered after reload.",
+            );
+          }
+        }
+      }
       vscode.window.showInformationMessage(
-        `MCP server '${name.trim()}' added to llm.mcp.servers (workspace) via stdio. Reload or start a chat turn to connect.`,
+        `MCP server '${serverName}' added to llm.mcp.servers (workspace) via stdio. Reload or start a chat turn to connect.`,
       );
     }),
     vscode.commands.registerCommand("llm.mcp.listServers", async () => {

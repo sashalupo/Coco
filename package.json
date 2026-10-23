@@ -390,7 +390,7 @@
         "llm.mcp.servers": {
           "type": "object",
           "default": {},
-          "description": "MCP servers to connect to. Each entry: { command, args?, env? } (stdio) or { url } (Streamable HTTP / SSE)."
+          "description": "MCP servers to connect to. Each entry: { command, args?, env?, inputs? } (stdio) or { url } (Streamable HTTP / SSE). env values may reference inputs as ${input:name}; secret values are prompted at connect time."
         }
       }
     }
