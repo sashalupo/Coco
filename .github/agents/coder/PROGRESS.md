@@ -12,12 +12,12 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-11 (in progress) — 1.100-10 complete
-- **Current slice:** 1.100-11.S3 DONE (agent-loop manual-edit hook)
-- **Next step:** 1.100-11.S4 — smoke-test guards in `scripts/smoke-test.js` (`externallyChanged` exports + pure-function tests, `llm.agent.trackManualEdits` schema/config/presets, `ChatViewProvider.ts` references, raise total-count gate 701 → new total)
+- **Current item:** 1.100-11 COMPLETE — 1.100-10 complete
+- **Current slice:** 1.100-11.S4 DONE (smoke-test regression guards)
+- **Next step:** item 1.100-12 (awaiting planner plan)
 - **Last updated:** 2026-10-23
-- **Last commit:** feat(llm): manual-edit detection hook in agent loop (1.100-11.S3)
-- **Build state:** compiles clean; smoke 701 PASS
+- **Last commit:** test(llm): smoke guards for manual-edit detection (1.100-11.S4)
+- **Build state:** compiles clean; smoke 714 PASS
 
 ## Plan pointer
 
@@ -38,6 +38,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 - [x] 1.100-11.S1 — pure exported `FileSnapshot` interface + `externallyChanged(snapshots, current)` in `src/tools/ToolExecutor.ts` (next to `newDiagnostics`, ~line 1575): returns paths in `current` whose `mtimeMs` or `size` differs from the stored snapshot (iteration order = `current` order); paths only in `snapshots` (deleted externally) ignored; no vscode import, no I/O
 - [x] 1.100-11.S2 — `llm.agent.trackManualEdits` setting (default true): `presets.ts` `LlmSettings.agentTrackManualEdits` (after `agentAutoFix`, ~line 124), `config.ts` read `agent.trackManualEdits` default true (after `agentAutoFix`, ~line 88), `package.json` schema entry next to `llm.agent.autoFix`
+- [x] 1.100-11.S4 — smoke-test regression guards in `scripts/smoke-test.js` (13 new assertions, 701 → 714): `manual-edit-s4:` `ToolExecutor.ts` exports `externallyChanged` + `FileSnapshot`; `package.json` `llm.agent.trackManualEdits` boolean default true; `config.ts` reads `agent.trackManualEdits` default true; `presets.ts` `agentTrackManualEdits: boolean`; `ChatViewProvider.ts` references `settings.agentTrackManualEdits`, `externallyChanged`, `touchedFiles`, and the "The user manually modified … Re-read it with read_file before editing it." system note; pure-function tests of compiled `out/tools/ToolExecutor.js` `externallyChanged` (mtime change → listed; size change → listed; identical maps → `[]`; path only in snapshots (deleted) → not listed; `current` iteration order preserved) via the existing `Module._load` vscode stub. **Item 1.100-11 COMPLETE** (S1–S4; smoke 714).
 - [x] 1.100-11.S3 — agent-loop manual-edit hook in `src/chat/ChatViewProvider.ts`: import `externallyChanged` + `FileSnapshot` from `../tools/ToolExecutor`; private `touchedFiles: Map<string, FileSnapshot>` (workspace-relative path → snapshot) cleared at run start next to `clearChangeSummary()`; `snapshotTouchedFiles(relPaths)` (fs.statSync, skip on error / outside workspace) + `statTouchedFiles()` (fresh map of tracked paths, stat errors omitted) + `resolveWorkspacePath(rel)` helpers at file bottom; after each tool batch (right after the autofix block) `snapshotTouchedFiles(editedPaths)` so the agent's own writes become the baseline; at the top of the loop (before `streamOneTurn`), if `settings.agentTrackManualEdits` and `touchedFiles.size > 0`, stat all tracked paths, `externallyChanged(touchedFiles, current)`, per changed path push system message ("The user manually modified <path> while the agent was running. Re-read it with read_file before editing it.") + `[manual edit detected: <path>]` delta note, then re-snapshot changed paths so the note fires at most once per external change. Compile clean; smoke 701 PASS.
 - [x] 1.100-8.S2 — pill strip UI in `src/chat/webview.ts`
 - [x] 1.100-8.S3 — host consumes `send.pills` into `ctxInput` + `postContextPills()` in `src/chat/ChatViewProvider.ts`

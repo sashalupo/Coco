@@ -5552,11 +5552,122 @@ function assert(cond, label) {
     newDiagnostics(autofixS4Before, autofixS4Before).length === 0,
     "autofix-s4: newDiagnostics returns [] for identical lists",
   );
-  if (assertCount !== 701) {
-    console.error(`FAIL: total assertion count is 701 (got ${assertCount})`);
+  // 82) manual-edit detection regression guards (1.100-11.S4)
+  assert(
+    autofixS4ExecSrc.includes("export function externallyChanged") &&
+      autofixS4ExecSrc.includes("export interface FileSnapshot"),
+    "manual-edit-s4: ToolExecutor exports externallyChanged and FileSnapshot",
+  );
+  const manualEditS4Schema = pkgJson.contributes.configuration.properties[
+    "llm.agent.trackManualEdits"
+  ];
+  assert(
+    manualEditS4Schema &&
+      manualEditS4Schema.type === "boolean" &&
+      manualEditS4Schema.default === true,
+    "manual-edit-s4: llm.agent.trackManualEdits is a boolean with default true",
+  );
+  assert(
+    autofixS4CfgSrc.includes('c.get<boolean>("agent.trackManualEdits", true)'),
+    "manual-edit-s4: config reads agent.trackManualEdits with default true",
+  );
+  assert(
+    autofixS4PresetsSrc.includes("agentTrackManualEdits: boolean;"),
+    "manual-edit-s4: presets LlmSettings has agentTrackManualEdits: boolean",
+  );
+  assert(
+    autofixS4HostSrc.includes("settings.agentTrackManualEdits"),
+    "manual-edit-s4: ChatViewProvider gates detection on settings.agentTrackManualEdits",
+  );
+  assert(
+    autofixS4HostSrc.includes("externallyChanged"),
+    "manual-edit-s4: ChatViewProvider calls externallyChanged",
+  );
+  assert(
+    autofixS4HostSrc.includes("touchedFiles"),
+    "manual-edit-s4: ChatViewProvider keeps a touchedFiles snapshot map",
+  );
+  assert(
+    autofixS4HostSrc.includes("The user manually modified") &&
+      autofixS4HostSrc.includes("Re-read it with read_file before editing it."),
+    "manual-edit-s4: ChatViewProvider injects the manually-modified system note",
+  );
+  // Pure-function tests of the compiled externallyChanged helper (vscode
+  // stubbed via the existing Module._load pattern).
+  const originalLoadManualEdit = Module._load;
+  Module._load = function (request, parent, isMain) {
+    if (request === "vscode") {
+      return {
+        workspace: {
+          workspaceFolders: [{ uri: { fsPath: process.cwd() } }],
+          getConfiguration: () => ({ get: (_k, d) => d }),
+        },
+      };
+    }
+    return originalLoadManualEdit.apply(this, arguments);
+  };
+  delete require.cache[
+    require.resolve(path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"))
+  ];
+  const { externallyChanged } = require(
+    path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+  );
+  Module._load = originalLoadManualEdit;
+  const meS4Snap = new Map([
+    ["a.ts", { mtimeMs: 100, size: 10 }],
+    ["b.ts", { mtimeMs: 200, size: 20 }],
+    ["gone.ts", { mtimeMs: 300, size: 30 }],
+  ]);
+  const meS4CurrentMtime = new Map([
+    ["a.ts", { mtimeMs: 150, size: 10 }],
+    ["b.ts", { mtimeMs: 200, size: 20 }],
+  ]);
+  assert(
+    JSON.stringify(externallyChanged(meS4Snap, meS4CurrentMtime)) ===
+      JSON.stringify(["a.ts"]),
+    "manual-edit-s4: externallyChanged lists a path whose mtime changed",
+  );
+  const meS4CurrentSize = new Map([
+    ["a.ts", { mtimeMs: 100, size: 10 }],
+    ["b.ts", { mtimeMs: 200, size: 99 }],
+  ]);
+  assert(
+    JSON.stringify(externallyChanged(meS4Snap, meS4CurrentSize)) ===
+      JSON.stringify(["b.ts"]),
+    "manual-edit-s4: externallyChanged lists a path whose size changed",
+  );
+  assert(
+    externallyChanged(meS4Snap, meS4Snap).length === 0,
+    "manual-edit-s4: externallyChanged returns [] for identical maps",
+  );
+  const meS4CurrentDeleted = new Map([
+    ["a.ts", { mtimeMs: 100, size: 10 }],
+    ["b.ts", { mtimeMs: 200, size: 20 }],
+  ]);
+  assert(
+    externallyChanged(meS4Snap, meS4CurrentDeleted).length === 0,
+    "manual-edit-s4: externallyChanged ignores paths deleted from current",
+  );
+  const meS4SnapOrder = new Map([
+    ["z.ts", { mtimeMs: 1, size: 1 }],
+    ["m.ts", { mtimeMs: 1, size: 1 }],
+    ["a.ts", { mtimeMs: 1, size: 1 }],
+  ]);
+  const meS4CurrentOrder = new Map([
+    ["a.ts", { mtimeMs: 2, size: 1 }],
+    ["z.ts", { mtimeMs: 2, size: 1 }],
+    ["m.ts", { mtimeMs: 2, size: 1 }],
+  ]);
+  assert(
+    JSON.stringify(externallyChanged(meS4SnapOrder, meS4CurrentOrder)) ===
+      JSON.stringify(["a.ts", "z.ts", "m.ts"]),
+    "manual-edit-s4: externallyChanged preserves current iteration order",
+  );
+  if (assertCount !== 714) {
+    console.error(`FAIL: total assertion count is 714 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 701");
+  console.log("PASS: total assertion count is 714");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
