@@ -379,6 +379,49 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!name) {
         return; // cancelled
       }
+      const transport = await vscode.window.showQuickPick(
+        [
+          { label: "stdio (command)", value: "stdio" },
+          { label: "Streamable HTTP (url)", value: "http" },
+        ],
+        { placeHolder: "MCP server transport" },
+      );
+      if (!transport) {
+        return; // cancelled
+      }
+      const cfg = vscode.workspace.getConfiguration("llm.mcp");
+      const servers = cfg.get<
+        Record<string, { command?: string; args?: string[]; env?: Record<string, string>; url?: string }>
+      >("servers", {});
+      if (transport.value === "http") {
+        const url = await vscode.window.showInputBox({
+          prompt: "Streamable HTTP endpoint URL",
+          placeHolder: "e.g. http://localhost:8080/mcp",
+          validateInput: (v) => {
+            const t = v.trim();
+            if (!t) {
+              return "URL must not be empty.";
+            }
+            if (!/^https?:\/\//.test(t)) {
+              return "URL must start with http:// or https://.";
+            }
+            return undefined;
+          },
+        });
+        if (!url) {
+          return; // cancelled
+        }
+        servers[name.trim()] = { url: url.trim() };
+        await cfg.update(
+          "servers",
+          servers,
+          vscode.ConfigurationTarget.Workspace,
+        );
+        vscode.window.showInformationMessage(
+          `MCP server '${name.trim()}' added to llm.mcp.servers (workspace) via Streamable HTTP. Reload or start a chat turn to connect.`,
+        );
+        return;
+      }
       const command = await vscode.window.showInputBox({
         prompt: "Command to start the server",
         placeHolder: "e.g. npx",
@@ -392,10 +435,6 @@ export function activate(context: vscode.ExtensionContext): void {
         placeHolder: "e.g. -y @modelcontextprotocol/server-filesystem /tmp",
       });
       const args = argsRaw ? argsRaw.trim().split(/\s+/) : [];
-      const cfg = vscode.workspace.getConfiguration("llm.mcp");
-      const servers = cfg.get<
-        Record<string, { command: string; args?: string[]; env?: Record<string, string> }>
-      >("servers", {});
       servers[name.trim()] = { command: command.trim(), ...(args.length ? { args } : {}) };
       await cfg.update(
         "servers",
@@ -403,7 +442,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.ConfigurationTarget.Workspace,
       );
       vscode.window.showInformationMessage(
-        `MCP server '${name.trim()}' added to llm.mcp.servers (workspace). Reload or start a chat turn to connect.`,
+        `MCP server '${name.trim()}' added to llm.mcp.servers (workspace) via stdio. Reload or start a chat turn to connect.`,
       );
     }),
     vscode.commands.registerCommand("llm.mcp.listServers", async () => {
