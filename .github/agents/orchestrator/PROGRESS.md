@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-2** — Prompt files improvements (front matter `mode`/`tools`, play button, run semantics) — **IN PROGRESS** (6 slices S1–S6; S1–S5 done)
-- **Current slice:** 1.100-2.S5 DONE
+- **Current item:** **1.100-2** — Prompt files improvements (front matter `mode`/`tools`, play button, run semantics) — **DONE** (6 slices S1–S6)
+- **Current slice:** 1.100-2.S6 DONE (item complete)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch Coder for 1.100-2.S6 (package.json: command rename, Play button menu, language IDs) — FINAL slice
+- **Next step:** dispatch Planner for item 1.100-3 (Faster agent mode edits — apply-patch / replace-string edit formats)
 - **Last updated:** 2026-10-23
-- **Last commit:** 25bc0c0 (1.100-2.S5); tester memory 8ccf77d
-- **Build state:** compiles clean; smoke 633/633 PASS (verified 2026-10-23)
+- **Last commit:** f95ce52 (1.100-2.S6, item complete); tester memory 8fdf5ca
+- **Build state:** compiles clean; smoke 637/637 PASS (verified 2026-10-23)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
   researcher PROGRESS.md: 15 pending keep-items (1.99-2 … 1.99-29), 10 skipped, 2
@@ -43,6 +43,7 @@ pending item** (the oldest).
 
 ## Done
 - **1.100-2 plan** (2026-10-23) — Planner produced 6-slice plan: prompt front-matter parser in `src/prompts.ts` (S1) + `RequestConfig.promptTools` filter in `src/request.ts` (S2) + `ChatViewProvider.runPrompt` + `pendingPromptTools` wiring (S3) + webview `prompt_run` handler (S4) + `llm.runPrompt` command rename w/ deprecated `llm.usePrompt` alias (S5) + package.json (Play button `editor/title` menu, language IDs `llm.prompt`/`llm.instructions`) (S6). Deviations: D1 old command kept as alias, D5 slash-command `/prompt-name` deferred to follow-up. Smoke 610 → 637. Plan commit 7783a12.
+- **1.100-2.S6 (FINAL)** (2026-10-23) — `package.json`: `llm.runPrompt` command (title "LLM: Run Prompt", icon `$(play)`) replacing `llm.usePrompt`; `onCommand:llm.runPrompt` activation; `menus["editor/title"]` Play button (`resourceFilename =~ /.*\.prompt\.md$/`); `languages` `llm.prompt` + `llm.instructions`; 4 `prompt2-s6:` smoke assertions. Deviations: `when`-clause assertion checks `prompt`+`md` substrings (JSON-escaped backslashes); 2 stale section-40 `rp-s5:` assertions updated 1-for-1 to `llm.runPrompt`. Tester PASS (637 assertions). **Item 1.100-2 complete — no tag (changelog-1.100 already exists from 1.100-1).** Commits: 5e5f603 (S1), ba9228a (S2), 4daff77 (S3), b0a1772 (S4), 25bc0c0 (S5), f95ce52 (S6).
 - **1.100-2.S5** (2026-10-23) — `src/extension.ts`: `llm.usePrompt` → `llm.runPrompt` (title "LLM: Run Prompt"); on pick → `provider.runPrompt(content, uri.fsPath)` (prompt_inject path removed); deprecated alias `llm.usePrompt` → `executeCommand("llm.runPrompt")`; "New Prompt File…" unchanged; 4 `prompt2-s5:` smoke assertions. Deviation: stale section-38 assertion (`rp-s3: extension.ts posts prompt_inject`) inverted in place to "no longer posts" (1-for-1, count unchanged). Tester PASS (633 assertions). Commit 25bc0c0.
 - **1.100-2.S4** (2026-10-23) — `src/chat/webview.ts`: `case 'prompt_run':` in `handleHostMessage` (empty-text guard, `modeSelect.value` set for ask/agent/edit, `inputEl.value = text; doSend()` — same send path as the Send button); 2 `prompt2-s4:` smoke assertions. Tester PASS (629 assertions). Commit b0a1772.
 - **1.100-2.S3** (2026-10-23) — `src/chat/ChatViewProvider.ts`: `public async runPrompt(content, filePath)` (abort guard, front-matter parse, empty-body guard, `setMode(normalizeChatMode(meta.mode))`, `pendingPromptTools` from `meta.tools`, history push + `runStream`); `runStream` consumes/clears `pendingPromptTools` and passes `promptTools` into both `buildRequestBody` call sites; 4 `prompt2-s3:` smoke assertions. Deviation: `promptTools ?? undefined` coercion (RequestConfig type). Tester PASS (627 assertions). Commit 4daff77.
