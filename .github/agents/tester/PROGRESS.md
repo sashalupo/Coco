@@ -12,11 +12,16 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-2 — Prompt files improvements — S1 PASS (2026-10-23)
-- **Next step:** 1.100-2.S2 (next slice of Prompt files improvements)
+- **Current item:** 1.100-2 — Prompt files improvements — S1+S2 PASS (2026-10-23)
+- **Next step:** 1.100-2.S3 (next slice of Prompt files improvements)
 - **Last updated:** 2026-10-23
-- **Last commit:** 5e5f603 (1.100-2.S1)
-- **Build state:** compiles clean; smoke 620/620 PASS
+- **Last commit:** ba9228a (1.100-2.S2)
+- **Build state:** compiles clean; smoke 623/623 PASS
+
+### 1.100-2.S2 — `RequestConfig.promptTools` tool-name filter in `buildRequestBody` (2026-10-23) — **PASS**
+- Build: `npm run compile` exit 0, zero errors. Smoke: 623/623 PASS (620 baseline + 3 new `prompt2-s2:`), 0 FAIL.
+- All 5 acceptance criteria met: (1) compile exit 0; (2) smoke total 623 (grep -c '^PASS:' → 623); (3) section `// 69) promptTools filter (1.100-2.S2)` at smoke-test.js:4791 with exactly 3 `prompt2-s2:` assertions (L4798 filtered to 1 entry named read_file, L4807 empty list → full CODE_TOOLS count, L4820 ask mode → no `tools` field); (4) `src/request.ts`: `promptTools?: string[]` in `RequestConfig` (L113); `buildRequestBody` filters candidate list (CODE_TOOLS + MCP) via `new Set(cfg.promptTools)` on `t.function?.name` only when non-empty (L337–348), empty/absent → unchanged, ask mode → `tool_choice: "none"` and no `tools` field (filter sits inside the non-ask branch); (5) `git show --stat ba9228a` → exactly `src/request.ts` (+15/−1), `scripts/smoke-test.js` (+34), `.github/agents/coder/PROGRESS.md` (+12/−4) — no out-of-scope files.
+- Last commit: `ba9228a`.
 
 ### 1.100-2.S1 — Prompt front-matter parsing in `src/prompts.ts` (+10 smoke) (2026-10-23) — **PASS**
 - Build: exit 0, zero errors. Smoke: 620/620 PASS (610 + 10 `prompt2-s1:`), 0 FAIL.
