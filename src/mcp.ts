@@ -363,13 +363,10 @@ export class McpClient {
     if (!config.command) {
       throw new Error("McpClient requires a stdio `command` config");
     }
-    // With `inputs`, `${input:name}` env references are resolved first
-    // (throws `missing required input: <name>` when one is absent);
-    // without them the spawn env is byte-identical to the plain path.
-    const env =
-      inputs && Object.keys(inputs).length > 0
-        ? resolveMcpInputs(config, inputs)
-        : (config.env ?? {});
+    // `${input:name}` env references are always resolved at construction
+    // (throws `missing required input: <name>` when one is absent); with no
+    // references the env map is byte-identical to the plain path.
+    const env = resolveMcpInputs(config, inputs ?? {});
     this.child = spawn(config.command, config.args ?? [], {
       env: { ...process.env, ...env },
       stdio: ["pipe", "pipe", "pipe"],
