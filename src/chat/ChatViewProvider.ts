@@ -54,7 +54,9 @@ import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import {
   ToolExecutor,
   newDiagnostics,
+  externallyChanged,
   type DiagnosticLike,
+  type FileSnapshot,
 } from "../tools/ToolExecutor";
 import { isMcpToolName } from "../mcp";
 import type { McpManager } from "../mcpManager";
@@ -156,6 +158,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * change footer to revert the conversation to its pre-run state.
    */
   private preRunHistory: ChatMessage[] | null = null;
+
+  /**
+   * 1.100-11.S3: mtime/size snapshots of the files the agent has written
+   * during the current run (workspace-relative path → snapshot). Cleared at
+   * run start; re-snapshotted after each tool batch so the agent's own
+   * writes become the baseline and only external (manual) edits trigger the
+   * "manually modified" note.
+   */
+  private touchedFiles: Map<string, FileSnapshot> = new Map();
 
   /**
    * 1.100-8.S3: the current context-pill list owned by the host. Pills are
@@ -1452,6 +1463,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     // fresh budget of follow-up fix turns.
     let autoFixRounds = 0;
 
+    // 1.100-11.S3: reset the per-run manual-edit tracking so only files
+    // touched during this run are watched for external changes.
+    this.touchedFiles = new Map();
+
     // Create an AbortController so the user can cancel mid-stream.
     this.abortController = new AbortController();
     const signal = this.abortController.signal;
@@ -1468,6 +1483,27 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       for (;;) {
         if (signal.aborted) {
           break;
+        }
+        // 1.100-11.S3: detect manual edits of agent-touched files since the
+        // last turn. For each externally changed file, inject a system note
+        // (re-read before editing) + a delta note, then re-snapshot the path
+        // so the note fires at most once per external change.
+        if (settings.agentTrackManualEdits && this.touchedFiles.size > 0) {
+          const current = this.statTouchedFiles();
+          const changed = externallyChanged(this.touchedFiles, current);
+          for (const rel of changed) {
+            this.history.push({
+              role: "system",
+              content: `The user manually modified ${rel} while the agent was running. Re-read it with read_file before editing it.`,
+            });
+            this.postMessage({
+              type: "delta",
+              content: `\n\n[manual edit detected: ${rel}]`,
+            });
+          }
+          if (changed.length > 0) {
+            this.snapshotTouchedFiles(changed);
+          }
         }
         // Show the step/iteration budget (Phase 9.2) so the user can see how
         // far the agentic loop has progressed and stop it (the Stop button
@@ -1690,6 +1726,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               });
             }
           }
+        }
+
+        // 1.100-11.S3: re-snapshot the files this batch wrote so the agent's
+        // own edits become the baseline and never trigger the manual-edit
+        // note on the next turn.
+        if (editedPaths.length > 0) {
+          this.snapshotTouchedFiles(editedPaths);
         }
 
         // Rebuild the request body with the updated history (system +
@@ -2273,6 +2316,68 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       }
     }
     return out;
+  }
+
+  /**
+   * 1.100-11.S3: stat the given workspace-relative file paths and store
+   * `{ mtimeMs, size }` in `touchedFiles` (the manual-edit baseline). Paths
+   * that cannot be resolved inside the workspace or fail `fs.stat` are
+   * skipped.
+   */
+  private snapshotTouchedFiles(relPaths: string[]): void {
+    for (const rel of relPaths) {
+      const abs = this.resolveWorkspacePath(rel);
+      if (abs === null) {
+        continue;
+      }
+      try {
+        const st = fs.statSync(abs);
+        this.touchedFiles.set(rel, { mtimeMs: st.mtimeMs, size: st.size });
+      } catch {
+        // File missing or unreadable — nothing to track.
+      }
+    }
+  }
+
+  /**
+   * 1.100-11.S3: stat every currently tracked path into a fresh map (for
+   * `externallyChanged`). Paths that fail `fs.stat` (e.g. deleted
+   * externally) are omitted, so deleted files are not reported.
+   */
+  private statTouchedFiles(): Map<string, FileSnapshot> {
+    const current = new Map<string, FileSnapshot>();
+    for (const rel of this.touchedFiles.keys()) {
+      const abs = this.resolveWorkspacePath(rel);
+      if (abs === null) {
+        continue;
+      }
+      try {
+        const st = fs.statSync(abs);
+        current.set(rel, { mtimeMs: st.mtimeMs, size: st.size });
+      } catch {
+        // Skip — externally deleted or unreadable.
+      }
+    }
+    return current;
+  }
+
+  /**
+   * 1.100-11.S3: resolve a workspace-relative path against the first
+   * workspace folder; returns null when the path escapes the workspace or
+   * no workspace folder is open.
+   */
+  private resolveWorkspacePath(rel: string): string | null {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return null;
+    }
+    const root = folders[0].uri.fsPath;
+    const abs = path.resolve(root, rel);
+    const back = path.relative(root, abs);
+    if (back.startsWith("..") || path.isAbsolute(back)) {
+      return null;
+    }
+    return abs;
   }
 
   /**
