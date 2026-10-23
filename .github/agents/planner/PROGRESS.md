@@ -10,54 +10,65 @@ Turn each changelog feature (from the Changelog Researcher's backlog) into a con
 step-by-step implementation plan for the `llm` VS Code extension. The planner does NOT write
 code — only the Coder writes code.
 
-## Active plan — 1.100-10 · Autofix diagnostics from agent mode edits
+## Active plan — 1.100-11 · Handling of undo and manual edits in agent mode
 
 - **Status:** Planned (2026-10-23)
-- **Changelog:** VS Code 1.100 (Apr 2025) — if a file edit in agent mode introduces new
-  errors, agent mode detects them and automatically proposes a follow-up edit (no manual
-  follow-up prompt needed); disable via setting (local reframe: `llm.agent.autoFix`,
-  default on).
-- **Files to touch:** `src/config.ts`, `src/presets.ts`, `package.json`,
-  `src/tools/ToolExecutor.ts`, `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`.
+- **Changelog:** VS Code 1.100 (Apr 2025) — manual edits during an agent session no
+  longer confuse the model: the agent is prompted about the user's changes and
+  re-reads files when necessary before editing files that may have changed.
+  Local reframe: track file mtime/size of agent-touched files between turns; on
+  external change, inject a system note ("user manually modified X — re-read it
+  before editing") behind `llm.agent.trackManualEdits` (default on).
+- **Files to touch:** `src/tools/ToolExecutor.ts`, `src/config.ts`, `src/presets.ts`,
+  `package.json`, `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`.
 - **Slices (in order):**
-  - `1.100-10.S1` — `llm.agent.autoFix` setting (default `true`): `config.ts`
-    `readSettings()` read + `presets.ts` `LlmSettings.agentAutoFix: boolean` field +
-    `package.json` `llm.agent.autoFix` schema entry (boolean, default true, description
-    mentions auto-fixing new errors after agent edits).
-  - `1.100-10.S2` — pure exported helper `newDiagnostics(before, after)` in
-    `src/tools/ToolExecutor.ts`: key = `severity|startLine|startChar|message`; returns
-    the `after` entries whose key is absent from `before` (order preserved). No vscode
-    import needed for the helper itself (accepts plain diagnostic-shaped tuples).
-  - `1.100-10.S3` — agent-loop hook in `src/chat/ChatViewProvider.ts`: before executing
-    each tool-call batch, snapshot `vscode.languages.getDiagnostics()` for the files the
-    batch will edit (write_file/edit_file/apply_patch/notebook_edit paths from args);
-    after the batch, wait ~500 ms (language-server settle), re-collect, diff via
-    `newDiagnostics`; if new errors and `settings.agentAutoFix` and autoFixRounds < 2,
-    push a system message ("New problems appeared in <file>: <diagnostics text>. Fix
-    them.") + a short `delta` note, increment the round counter, and continue the loop.
-    Reset `autoFixRounds` at run start (next to `clearChangeSummary()`). Cap: **2
-    follow-up rounds per run** — after the cap, new errors are reported in a final
-    `delta` note and the loop proceeds normally.
-  - `1.100-10.S4` — smoke-test regression guards in `scripts/smoke-test.js`:
-    `llm.agent.autoFix` schema (boolean, default true); `config.ts` reads it with
-    default true; `presets.ts` has the field; `ToolExecutor.ts` exports
-    `newDiagnostics`; `ChatViewProvider.ts` references `agentAutoFix` and the round cap
-    (2); update the total assertion count (690 → new total).
-- **First slice:** `1.100-10.S1`.
-- **Acceptance:** compile + smoke pass; setting exists, defaults on, and off disables the
-  loop; new errors after an edit trigger at most 2 auto follow-up turns; no behavior
-  change when no new errors appear; loop always terminates.
-- **Open questions:** (1) diff on all severities or errors-only — plan: all severities,
-  message says "new problems"; (2) post a `delta` note for webview visibility — plan:
-  yes, one short line per injected round.
+  - `1.100-11.S1` — pure exported helper in `src/tools/ToolExecutor.ts` (next to
+    `newDiagnostics`): `interface FileSnapshot { mtimeMs: number; size: number }`
+    + `externallyChanged(snapshots, current): string[]` — paths in `current` whose
+    `mtimeMs` or `size` differs from the stored snapshot (order = `current` order);
+    deleted paths ignored. No vscode import.
+  - `1.100-11.S2` — `llm.agent.trackManualEdits` setting (default `true`):
+    `config.ts` `readSettings()` read + `presets.ts`
+    `LlmSettings.agentTrackManualEdits: boolean` + `package.json` schema entry
+    (boolean, default true).
+  - `1.100-11.S3` — agent-loop hook in `src/chat/ChatViewProvider.ts`: private
+    `touchedFiles: Map<string, FileSnapshot>` cleared at run start (next to
+    `clearChangeSummary()`); `snapshotTouchedFiles(paths)` via `fs.stat` (skip on
+    error); after each tool batch snapshot `autofixEditedPaths(toolCalls)` (agent's
+    own writes become the baseline); at the top of the loop (before
+    `streamOneTurn`), if `settings.agentTrackManualEdits` and `touchedFiles`
+    non-empty, stat all tracked paths, call `externallyChanged`, and for each
+    changed path push a system message ("The user manually modified <path> while
+    the agent was running. Re-read it with read_file before editing it.") + a
+    `delta` note (`[manual edit detected: <path>]`), then re-snapshot those paths
+    so the note fires at most once per external change.
+  - `1.100-11.S4` — smoke-test guards in `scripts/smoke-test.js`:
+    `ToolExecutor.ts` exports `externallyChanged` + `FileSnapshot`; pure-function
+    tests of compiled `externallyChanged` (mtime change → listed; size change →
+    listed; identical → `[]`; order preserved); `llm.agent.trackManualEdits`
+    schema (boolean, default true); `config.ts` reads it with default true;
+    `presets.ts` has the field; `ChatViewProvider.ts` references
+    `agentTrackManualEdits`, `externallyChanged`, and the "manually modified"
+    note; raise the hard total-count gate (701 → new total).
+- **First slice:** `1.100-11.S1`.
+- **Acceptance:** compile + smoke pass; external modification of an
+  agent-touched file is detected before the next turn and a system note + delta
+  note are injected; note fires at most once per external change; the agent's own
+  writes never trigger the note; setting off disables detection; no behavior
+  change when no external edits occur.
+- **Open questions:** (1) mtimeMs + size is sufficient (no content hashing);
+  (2) files not yet touched by the agent have no baseline and are not tracked —
+  acceptable, the note covers the confusion case (files the agent already
+  touched); (3) externally deleted files are skipped (`fs.stat` error), not
+  reported.
 
 
 ## Status
 
-- **Current item:** 1.100-10 (planned) — 1.100-8 complete
-- **Next step:** dispatch `1.100-10.S1` (setting) to the Coder
+- **Current item:** 1.100-11 (planned) — 1.100-10 complete
+- **Next step:** dispatch `1.100-11.S1` (pure helper) to the Coder
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-10 plan)
+- **Last commit:** (planner commit for the 1.100-11 plan)
 - **Build state:** n/a (planner does not build)
 
 ## Plans delivered (recap)
