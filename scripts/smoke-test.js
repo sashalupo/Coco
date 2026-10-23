@@ -476,10 +476,10 @@ function assert(cond, label) {
   );
 
   // 5) tools: CODE_TOOLS shape
-  assert(CODE_TOOLS.length === 16, "tools: CODE_TOOLS has 16 tools");
+  assert(CODE_TOOLS.length === 20, "tools: CODE_TOOLS has 20 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,apply_patch,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages",
+      "read_file,write_file,edit_file,apply_patch,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages,run_notebook_cell,get_kernel_state,list_packages,install_package",
     "tools: tool names in order",
   );
   assert(
@@ -600,7 +600,7 @@ function assert(cond, label) {
     { role: "user", content: "read a.ts" },
   ]).body;
   assert(
-    Array.isArray(toolBody.tools) && toolBody.tools.length === 16,
+    Array.isArray(toolBody.tools) && toolBody.tools.length === 20,
     "tools: request body carries tools when enabled",
   );
   assert(
@@ -2913,12 +2913,12 @@ function assert(cond, label) {
     (t) => t.function.name === "think",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 16 &&
+    toolsS1.CODE_TOOLS.length === 20 &&
       thinkTool !== undefined &&
       JSON.stringify(thinkTool.function.parameters.required) ===
         JSON.stringify(["thought"]) &&
       thinkTool.function.parameters.properties.thought.type === "string",
-    "think-s1: CODE_TOOLS has 16 tools and think requires [thought] (string)",
+    "think-s1: CODE_TOOLS has 20 tools and think requires [thought] (string)",
   );
   assert(
     toolsS1.isMutatingTool("think") === false &&
@@ -2974,10 +2974,10 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(thinkBodyOn.tools) &&
-      thinkBodyOn.tools.length === 16 &&
+      thinkBodyOn.tools.length === 20 &&
       thinkBodyOn.tools.some((t) => t.function.name === "think") &&
       thinkBodyOn.tool_choice === "auto",
-    "think-s3: toolsEnabled=true → body.tools has 16 tools incl. think, tool_choice auto",
+    "think-s3: toolsEnabled=true → body.tools has 20 tools incl. think, tool_choice auto",
   );
   const thinkBodyOff = buildRequestBody(
     { settings: { ...settings, toolsEnabled: false }, toolbar },
@@ -3081,13 +3081,13 @@ function assert(cond, label) {
     (t) => t.function.name === "fetch_url",
   );
   assert(
-    toolsS1.CODE_TOOLS.length === 16 &&
+    toolsS1.CODE_TOOLS.length === 20 &&
       fetchToolEntry !== undefined &&
       JSON.stringify(fetchToolEntry.function.parameters.required) ===
         JSON.stringify(["url"]) &&
       fetchToolEntry.function.parameters.properties.url.type === "string" &&
       toolsS1.isMutatingTool("fetch_url") === false,
-    "fetch-s2: CODE_TOOLS has 16 tools; fetch_url requires [url] (string) and is not mutating",
+    "fetch-s2: CODE_TOOLS has 20 tools; fetch_url requires [url] (string) and is not mutating",
   );
   const { ToolExecutor: FetchExecutor } = require(
     path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
@@ -3115,9 +3115,9 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(fetchBody.tools) &&
-      fetchBody.tools.length === 16 &&
+      fetchBody.tools.length === 20 &&
       fetchBody.tools.some((t) => t.function.name === "fetch_url"),
-    "fetch-s2: toolsEnabled=true → body.tools has 16 tools incl. fetch_url",
+    "fetch-s2: toolsEnabled=true → body.tools has 20 tools incl. fetch_url",
   );
 
   // 20c) Fetch tag context (1.99-4.S3)
@@ -3280,9 +3280,9 @@ function assert(cond, label) {
   ).body;
   assert(
     Array.isArray(usagesBody.tools) &&
-      usagesBody.tools.length === 16 &&
+      usagesBody.tools.length === 20 &&
       usagesBody.tools.some((t) => t.function.name === "find_usages"),
-    "usages-s2: toolsEnabled=true → body.tools has 16 tools incl. find_usages",
+    "usages-s2: toolsEnabled=true → body.tools has 20 tools incl. find_usages",
   );
   const usagesResNone = await usagesExecutor.execute({
     id: "u3",
@@ -4312,10 +4312,10 @@ function assert(cond, label) {
   );
 
   // 54) new_notebook tool (1.99-28.S2)
-  assert(CODE_TOOLS.length === 16, "nbnew-s2: CODE_TOOLS has 16 tools");
+  assert(CODE_TOOLS.length === 20, "nbnew-s2: CODE_TOOLS has 20 tools");
   assert(
     CODE_TOOLS.map((t) => t.function.name).join(",") ===
-      "read_file,write_file,edit_file,apply_patch,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages",
+      "read_file,write_file,edit_file,apply_patch,list_dir,search_files,run_command,get_diagnostics,git_status,git_diff,manage_todos,notebook_edit,new_notebook,think,fetch_url,find_usages,run_notebook_cell,get_kernel_state,list_packages,install_package",
     "nbnew-s2: tool names in order",
   );
   assert(

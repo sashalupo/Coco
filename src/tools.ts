@@ -499,6 +499,86 @@ export const CODE_TOOLS: Tool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "run_notebook_cell",
+      description:
+        "Run a single notebook cell in the kernel and return its output " +
+        "(stdout/stderr). The agent can react to the result before deciding " +
+        "the next step. Mutates kernel state.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Workspace-relative path to a .ipynb file.",
+          },
+          cell_index: {
+            type: "number",
+            description:
+              "0-based index of the code cell to execute.",
+          },
+        },
+        required: ["path", "cell_index"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_kernel_state",
+      description:
+        "Report which cells of the notebook have been executed so far and " +
+        "the variables currently in the kernel state. Read-only: does not " +
+        "change the workspace or the kernel.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "Workspace-relative path to a .ipynb file.",
+          },
+        },
+        required: ["path"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_packages",
+      description:
+        "List installed Python packages (pip list). Read-only: does not " +
+        "change the environment.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "install_package",
+      description:
+        "Install a Python package via pip. Mutates the environment.",
+      parameters: {
+        type: "object",
+        properties: {
+          package: {
+            type: "string",
+            description: "The package name to install.",
+          },
+          version: {
+            type: "string",
+            description: "Optional version specifier (e.g. 1.2.3, >=1.0).",
+          },
+        },
+        required: ["package"],
+      },
+    },
+  },
 ];
 
 /**
@@ -529,6 +609,8 @@ export function isMutatingTool(name: string): boolean {
     name === "apply_patch" ||
     name === "run_command" ||
     name === "notebook_edit" ||
-    name === "new_notebook"
+    name === "new_notebook" ||
+    name === "run_notebook_cell" ||
+    name === "install_package"
   );
 }

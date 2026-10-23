@@ -13,11 +13,11 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-31 · Notebook tools for agent mode
-- **Current slice:** 1.100-31.S-001 DONE (`extractVariableNames` + `formatKernelState` in `src/notebook.ts`, pure, no vscode import)
-- **Next step:** 1.100-31.S-002 — `src/tools.ts`: add 4 schemas to `CODE_TOOLS` (`run_notebook_cell`, `get_kernel_state`, `list_packages`, `install_package`) + `isMutatingTool` entries for `run_notebook_cell`/`install_package`
+- **Current slice:** 1.100-31.S-002 DONE (`src/tools.ts`: 4 new `CODE_TOOLS` schemas — `run_notebook_cell`, `get_kernel_state`, `list_packages`, `install_package` — + `isMutatingTool` entries for `run_notebook_cell`/`install_package`; read-only tools not added). Smoke fix: `scripts/smoke-test.js` tool-count assertions 16→20 (8 sites: lines ~479, ~603, ~2916, ~2977, ~3084, ~3118, ~3283, ~4315) + 4 new names appended to the two ordered name-list assertions (~482, ~4318); hard gate stays 791 (bump to 798 lands in S-005)
+- **Next step:** 1.100-31.S-003
 - **Last updated:** 2026-10-24
-- **Last commit:** feat(llm): add kernel-state helpers (1.100-31 S-001)
-- **Build state:** compiles clean (tsc exit 0); smoke 791/791 (smoke bump lands in S-005)
+- **Last commit:** 504abbf (1.100-31 S-001, verified PASS)
+- **Build state:** compiles clean (tsc exit 0, verified 2026-10-24); smoke 791/791 (smoke bump lands in S-005)
 
 ## Plan pointer
 
@@ -37,7 +37,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 ## Todo
 
 Slice detail pruned (see `git log` for full history). Recent items:
-- 1.100-31 in progress: S-001 `extractVariableNames(source)` (regex over `import x`/`import x as y`/`from m import a`/`from m import a as b`/top-level `x = ...`/`def x`/`class X`; dotted names bind first segment; deduped, order-preserving) + `formatKernelState(path, executed, variables)` (one line per executed cell + variable list line, or "no cells executed yet") in `src/notebook.ts` — pure module, no vscode import, unit-tested against `out/notebook.js`.
+- 1.100-31 in progress: S-002 `src/tools.ts` — 4 new `CODE_TOOLS` schemas (`run_notebook_cell` {path, cell_index}, `get_kernel_state` {path}, `list_packages` {}, `install_package` {package, version?}) appended after `find_usages`; `isMutatingTool` extended with `run_notebook_cell` + `install_package` only (kernel/env mutation); `get_kernel_state`/`list_packages` stay read-only. Verified: tsc exit 0; all 4 names in `CODE_TOOLS`; mutating flags true/true/false/false (checked against `out/tools.js`). Smoke fix applied: `scripts/smoke-test.js` count assertions 16→20 + 4 names added to both ordered name lists; smoke 791/791 PASS (gate unchanged, bump to 798 in S-005). S-001 `extractVariableNames(source)` (regex over `import x`/`import x as y`/`from m import a`/`from m import a as b`/top-level `x = ...`/`def x`/`class X`; dotted names bind first segment; deduped, order-preserving) + `formatKernelState(path, executed, variables)` (one line per executed cell + variable list line, or "no cells executed yet") in `src/notebook.ts` — pure module, no vscode import, unit-tested against `out/notebook.js`.
 - 1.100-30 complete (smoke 791): drag and drop cell outputs to chat — S-001 `extractNotebookCellOutput` + `NotebookCellOutputLike` in `src/notebook.ts` (pure, no vscode import; affc774); S-002 `registerDragAndDropController` (viewContainerId `llm`, mime `notebook.cellOutput`) in `src/extension.ts` — Alt rule for text-only drops, vision gate, per-item try/catch, reuses `cell_output_inject`; `llm.chat.cellOutputDrop.enabled` setting; local `declare module "vscode"` shim (pinned @types/vscode 1.140.0 predates the API; 26efb84); S-003 smoke guards `drop-s1..s4` in `scripts/smoke-test.js` (controller + viewContainerId, mime + Alt rule, `extractNotebookCellOutput`, setting boolean default true), gate 787→791.
 - 1.100-29 complete (smoke 787): alt-text code action (S-001 `src/codeaction.ts`, S-002 `CodeActionProvider.ts`+`package.json`, S-003 smoke).
 - 1.100-19 complete (smoke 780): workspace tasks.json scaffold.
