@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-13 (in progress) — S1, S2 verified PASS
-- **Next step:** verify 1.100-13.S3 (manager transport selection in src/mcpManager.ts)
+- **Current item:** 1.100-13 (in progress) — S1, S2, S3 verified PASS
+- **Next step:** verify 1.100-13.S4 (llm.mcp.addServer transport quick-pick in src/extension.ts)
 - **Last updated:** 2026-10-23
-- **Last commit:** e542ced (1.100-13.S2 package.json description, verified PASS)
+- **Last commit:** 3f8a4fa (1.100-13.S3 manager transport selection, verified PASS)
 - **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -38,6 +38,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 
 
+
+**1.100-13.S3** (2026-10-23) — **PASS**. Manager transport selection in `src/mcpManager.ts` (commit 3f8a4fa). Build exit 0; smoke 736/736. Scope clean: commit touches only `src/mcpManager.ts` (+25/-5) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `McpHttpClient` + `McpToolResult` imported from `./mcp` (import block lines 9-18); (b) `export interface McpClientLike` (lines 22-27) with `tools: McpTool[]`, `start(): Promise<void>`, `callTool(name, args): Promise<McpToolResult>`, `close(): void` — the added `start()` is correct and necessary: `ensureStarted` awaits `client.start()` (line ~95) and both `McpClient` (src/mcp.ts line 278) and `McpHttpClient` (line 364) have `async start(): Promise<void>`; (c) `clients = new Map<string, McpClientLike>()` (line 44) and `starting = new Map<string, Promise<McpClientLike>>()` (line 46); (d) `ensureStarted` picks transport `cfg.url ? new McpHttpClient(cfg) : new McpClient(cfg)` (lines 93-95); (e) `refresh`/`getTools`/`getServerTools`/`execute`/`dispose` use only the `McpClientLike` surface (`.tools`, `.callTool`, `.close`, `.start`) — no behavior change for stdio servers; (f) `git show --stat 3f8a4fa` confirms only `src/mcpManager.ts` + coder memory changed. **Next: 1.100-13.S4 (llm.mcp.addServer transport quick-pick in src/extension.ts).**
 
 **1.100-13.S2** (2026-10-23) — **PASS**. `package.json` `llm.mcp.servers` description (commit e542ced). Build exit 0; smoke 736/736. Scope clean: commit touches only `package.json` (+1/-1, description line only) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `package.json` is valid JSON (parsed via `node -e require`); (b) `llm.mcp.servers` description is exactly `"MCP servers to connect to. Each entry: { command, args?, env? } (stdio) or { url } (Streamable HTTP / SSE)."` — mentions both stdio `{ command, args?, env? }` and `{ url }` Streamable HTTP / SSE; (c) no schema shape change — still `"type": "object"` with `"default": {}` (free-form object); (d) `git show --stat e542ced` confirms only `package.json` + coder memory changed, diff is a single description-line replacement. **Next: 1.100-13.S3 (manager transport selection in src/mcpManager.ts).**
 
