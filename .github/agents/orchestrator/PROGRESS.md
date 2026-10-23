@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.99-28** — AI notebook editing improvements — new notebook tool — **DONE** (5 slices S1–S5)
-- **Current slice:** 1.99-28.S5 DONE (item complete)
+- **Current item:** **1.99-29** — Cell output to chat (text/image) — `llm.addCellOutput` — in progress (planned, 4 slices S1–S4)
+- **Current slice:** 1.99-29.S1 next (extractCellOutputs pure)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** start next backlog item **1.99-29** (Cell output to chat — text/image): read researcher entry, dispatch Planner
+- **Next step:** dispatch Coder for 1.99-29.S1 (`extractCellOutputs` in src/notebook.ts + smoke section 58, 8 assertions → 576)
 - **Last updated:** 2026-10-22
-- **Last commit:** b619b69 (feat(llm): /newNotebook chat command (1.99-28.S4)); S5 commit pending
+- **Last commit:** 3067c2f (feat(llm): llm.chat.newNotebook.enabled package.json schema + item complete (1.99-28.S5, item complete))
 - **Build state:** compiles clean; smoke test passes (568 assertions)
 - **Note (2026-10-22):** v1.99 changelog researched **inline** (researcher sub-agent failed
   with `context_length_exceeded` — deterministic, do not retry). Backlog recorded in the
