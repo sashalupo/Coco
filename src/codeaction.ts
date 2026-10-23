@@ -106,3 +106,181 @@ export function parseCodeAction(text: string): string {
 
   return t.trim();
 }
+
+// ---------------------------------------------------------------------------
+// Alt-text generation (AI code action) — pure helpers.
+//
+// Find an image reference (HTML <img> or Markdown ![alt](src)) on a line,
+// detect placeholder alt text, build the prompt asking the model for a
+// concise accessibility description, and parse the model's reply.
+// No `vscode` import — independently testable.
+
+/** An image reference found on a line (HTML <img> or Markdown ![alt](src)). */
+export interface ImageRef {
+  /** The image source (src attribute or Markdown URL). */
+  src: string;
+  /** The current alt text (may be empty or a placeholder). */
+  alt: string;
+  /** Offset within the line text where the alt-text slot starts. */
+  altStart: number;
+  /** Offset within the line text where the alt-text slot ends. */
+  altEnd: number;
+}
+
+/**
+ * Find an image reference on a single line of text.
+ *
+ * Matches:
+ * - HTML `<img ... src="..." ...>` — the `alt` attribute may appear before or
+ *   after `src`, with single or double quotes (a missing `alt` attribute is
+ *   treated as an empty alt slot at the end of the tag).
+ * - Markdown `![alt](src)`.
+ *
+ * `altStart`/`altEnd` are offsets within the line text pointing at the
+ * alt-text slot (between `alt="` and `"`, or between `![` and `]`), so
+ * `line.slice(altStart, altEnd) === alt`. Returns `null` when the line has no
+ * image reference.
+ */
+export function findImageRef(line: string): ImageRef | null {
+  // Markdown: ![alt](src)
+  const md = line.match(/!\[([^\]]*)\]\(([^)\s]+)\)/);
+  if (md) {
+    const altStart = md.index! + 2; // after "!" + "["
+    return {
+      src: md[2],
+      alt: md[1],
+      altStart,
+      altEnd: altStart + md[1].length,
+    };
+  }
+
+  // HTML: <img ...>
+  const tag = line.match(/<img\b[^>]*>/i);
+  if (!tag) {
+    return null;
+  }
+  const tagStart = tag.index!;
+  const tagText = tag[0];
+
+  const srcMatch = tagText.match(
+    /src\s*=\s*(?:"([^"]*)"|'([^']*)')/i,
+  );
+  if (!srcMatch) {
+    return null;
+  }
+  const src = srcMatch[1] !== undefined ? srcMatch[1] : srcMatch[2];
+
+  const altMatch = tagText.match(
+    /alt\s*=\s*(?:"([^"]*)"|'([^']*)')/i,
+  );
+  if (altMatch) {
+    const alt = altMatch[1] !== undefined ? altMatch[1] : altMatch[2];
+    // Offset of the first character of the alt value within the line:
+    // right after the opening quote of the attribute value.
+    const quoteOffset = altMatch[0].search(/["']/);
+    const altStart = tagStart + altMatch.index! + quoteOffset + 1;
+    return { src, alt, altStart, altEnd: altStart + alt.length };
+  }
+
+  // No alt attribute: empty slot at the end of the tag (before ">").
+  return {
+    src,
+    alt: "",
+    altStart: tagStart + tagText.length - 1,
+    altEnd: tagStart + tagText.length - 1,
+  };
+}
+
+/**
+ * True when the alt text is empty or a known placeholder (tbd, todo, fixme,
+ * image, img, placeholder, "description here").
+ */
+export function isPlaceholderAlt(alt: string): boolean {
+  const t = alt.trim();
+  if (t === "") {
+    return true;
+  }
+  return /^(tbd|todo|fixme|image|img|placeholder|description here)$/i.test(t);
+}
+
+/**
+ * Build the prompt asking the model for a concise accessibility alt text for
+ * the image at `src`. Includes the surrounding context block and, when the
+ * image itself could not be attached (`imageIncluded === false`), a note that
+ * the model must describe the image from the source path and context alone.
+ */
+export function buildAltTextPrompt(
+  src: string,
+  context: string,
+  imageIncluded: boolean,
+): string {
+  const parts: string[] = [];
+
+  parts.push(
+    "Write a concise accessibility alt text for the image: " + src,
+  );
+  parts.push(
+    "Rules: at most 100 characters; no quotation marks; no code fences; " +
+      "no explanation — return ONLY the alt text.",
+  );
+
+  if (context) {
+    parts.push("Surrounding context:\n```\n" + context + "\n```");
+  }
+
+  if (!imageIncluded) {
+    parts.push(
+      "Note: the image itself could not be attached. Describe it from the " +
+        "source path and the surrounding context alone.",
+    );
+  }
+
+  return parts.join("\n\n");
+}
+
+/**
+ * Parse the model's reply into a usable alt text.
+ *
+ * Trims, strips a surrounding markdown code fence, strips surrounding quotes,
+ * collapses internal whitespace to single spaces, and caps the result at 200
+ * characters. Returns `""` when nothing usable remains.
+ */
+export function parseAltText(text: string): string {
+  if (!text) {
+    return "";
+  }
+  let t = text.trim();
+
+  // Strip a surrounding markdown code fence (```lang … ```). Multi-line
+  // fences have the content on its own lines; inline fences (```A cat```)
+  // have no newline, so the first three and last three characters are the
+  // fence itself.
+  if (t.startsWith("```") && t.endsWith("```") && t.length >= 6) {
+    if (t.includes("\n")) {
+      const fenceMatch = t.match(/^```[^\n]*\n([\s\S]*?)\n?```$/);
+      if (fenceMatch) {
+        t = fenceMatch[1];
+      }
+    } else {
+      t = t.slice(3, -3);
+    }
+  }
+  t = t.trim();
+
+  // Strip one pair of surrounding quotes (single or double).
+  if (
+    t.length >= 2 &&
+    ((t.startsWith('"') && t.endsWith('"')) ||
+      (t.startsWith("'") && t.endsWith("'")))
+  ) {
+    t = t.slice(1, -1).trim();
+  }
+
+  // Collapse internal whitespace to single spaces.
+  t = t.replace(/\s+/g, " ").trim();
+
+  if (t.length === 0) {
+    return "";
+  }
+  return t.length > 200 ? t.slice(0, 200) : t;
+}

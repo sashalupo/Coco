@@ -12,11 +12,11 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-19 · Create and launch tasks in agent mode (workspace creation follow-up) — **COMPLETE** (S-001, S-002, S-003)
-- **Current slice:** 1.100-19.S-003 DONE (smoke-test regression guards in `scripts/smoke-test.js`)
-- **Next step:** 1.100-29 · Generate alt text in HTML or Markdown (AI code action) — awaiting planner plan
+- **Current item:** 1.100-29 · Generate alt text in HTML or Markdown (AI code action) — in progress
+- **Current slice:** 1.100-29.S-001 DONE (pure alt-text helpers in `src/codeaction.ts`)
+- **Next step:** 1.100-29.S-002 (per planner plan)
 - **Last updated:** 2026-10-23
-- **Last commit:** test(llm): smoke guards for workspace scaffold tasks.json (1.100-19 S-003)
+- **Last commit:** feat(llm): add pure alt-text helpers for code action (1.100-29 S-001)
 - **Build state:** compiles clean; smoke 780/780
 
 ## Plan pointer
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-29.S-001 — `src/codeaction.ts` only (stays pure, no vscode import): (a) `export interface ImageRef { src; alt; altStart; altEnd }` — offsets within the line text of the alt slot; (b) `findImageRef(line)` — Markdown `![alt](src)` (slot between `![` and `]`) and HTML `<img ...>` (src required; alt attr before or after src, single/double quotes; missing alt → empty slot at end of tag before `>`); value offset computed via `altMatch[0].search(/["']/) + 1` (avoids `indexOf("")` === 0 bug); `null` when no image ref; (c) `isPlaceholderAlt(alt)` — trimmed empty or `/^(tbd|todo|fixme|image|img|placeholder|description here)$/i`; (d) `buildAltTextPrompt(src, context, imageIncluded)` — ≤100 chars, no quotes/fences/explanation, includes src + context block + "could not be attached" note when `imageIncluded === false`; (e) `parseAltText(text)` — trim, strip code fence (multi-line regex `^```[^\n]*\n([\s\S]*?)\n?```$` OR inline `slice(3,-3)` when no newline), strip one pair of surrounding quotes, collapse whitespace, cap 200, `""` when empty. Acceptance verified via node probe on `out/codeaction.js`: `findImageRef('<img src="a.png" alt="">')` → src `a.png`, alt `""`, `line.slice(altStart,altEnd) === ""`; `findImageRef('![x](img/pic.jpg)')` → src `img/pic.jpg`, alt `x`; `findImageRef('no image here')` → null; `isPlaceholderAlt("")`/`("TODO")` true, `("a cat")` false; `parseAltText('```A cat```')` → `"A cat"`. Compile clean.
 - [x] 1.100-19.S-003 — `scripts/smoke-test.js` only: new `ws-s5` block after the `ws-s1` block requiring `buildTasksJson` from `out/workspaceScaffold.js` (plain `require`, no vscode import), 6 new assertions (774 → 780): (a) `buildTasksJson("extension")` parses to version `2.0.0`, exactly one task, `label === "Compile"`, `command === "npm run compile"`, `type === "shell"`, `problemMatcher` empty array; (b) `buildTasksJson("generic") === ""`; (c) `buildTasksJson("nope") === ""`; (d) `mcp-server` → `Start`/`npm start`, `dev-env` → `Dev`/`npm run dev`; (e) `buildScaffoldPrompt("extension","x")` contains `.vscode/tasks.json` + `run_command` + `"label": "Compile"`; (f) `buildScaffoldPrompt("generic","x")` does NOT contain `tasks.json`. Hard gate raised 774 → 780. **Item 1.100-19 COMPLETE** (S-001–S-003; smoke 780).
 - [x] 1.100-19.S-002 — `src/workspaceScaffold.ts` `buildScaffoldPrompt`: when template has `launchTask`, prompt now includes (a) a step to write `.vscode/tasks.json` via `write_file` with the `buildTasksJson` output in a fenced `json` block, (b) a final step to ask the user whether to run the launch task and if yes run it via `run_command`; steps renumbered dynamically; `generic` template prompt unchanged (no tasks.json steps). Acceptance: `buildScaffoldPrompt("extension","x")` contains `.vscode/tasks.json` + `run_command`; `buildScaffoldPrompt("generic","x")` does NOT contain `tasks.json`. Compile clean.
 - [x] 1.100-19.S-001 — `src/workspaceScaffold.ts`: (a) `launchTask?: { label: string; command: string }` added to `WorkspaceTemplate` interface; (b) set on `extension` (`Compile` / `npm run compile`), `mcp-server` (`Start` / `npm start`), `dev-env` (`Dev` / `npm run dev`); `generic` has none; (c) pure exported `buildTasksJson(type: string): string` — looks up template by type, returns `JSON.stringify(obj, null, 2)` with version `2.0.0` + one shell task (label/command/problemMatcher: []) when `launchTask` present, `""` for unknown type or no `launchTask`. Compile clean.
