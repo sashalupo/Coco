@@ -12,10 +12,10 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-13 (in progress) — S1 verified PASS
-- **Next step:** verify 1.100-13.S2 (package.json llm.mcp.servers description)
+- **Current item:** 1.100-13 (in progress) — S1, S2 verified PASS
+- **Next step:** verify 1.100-13.S3 (manager transport selection in src/mcpManager.ts)
 - **Last updated:** 2026-10-23
-- **Last commit:** 61f7b85 (1.100-13.S1 HTTP transport, verified PASS)
+- **Last commit:** e542ced (1.100-13.S2 package.json description, verified PASS)
 - **Build state:** compiles clean; smoke 736/736 PASS (verified 2026-10-23)
 
 ## Verified (recap)
@@ -38,6 +38,8 @@ All slices PASS (build exit 0 + full smoke, scope check via `git status`). Detai
 
 
 
+
+**1.100-13.S2** (2026-10-23) — **PASS**. `package.json` `llm.mcp.servers` description (commit e542ced). Build exit 0; smoke 736/736. Scope clean: commit touches only `package.json` (+1/-1, description line only) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `package.json` is valid JSON (parsed via `node -e require`); (b) `llm.mcp.servers` description is exactly `"MCP servers to connect to. Each entry: { command, args?, env? } (stdio) or { url } (Streamable HTTP / SSE)."` — mentions both stdio `{ command, args?, env? }` and `{ url }` Streamable HTTP / SSE; (c) no schema shape change — still `"type": "object"` with `"default": {}` (free-form object); (d) `git show --stat e542ced` confirms only `package.json` + coder memory changed, diff is a single description-line replacement. **Next: 1.100-13.S3 (manager transport selection in src/mcpManager.ts).**
 
 **1.100-13.S1** (2026-10-23) — **PASS**. HTTP transport client + config shape in `src/mcp.ts` (commit 61f7b85). Build exit 0; smoke 736/736. Scope clean: commit touches only `src/mcp.ts` (+210/-11) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `McpServerConfig` single interface with optional `command` + `url?: string` (lines 15-21); (b) `parseMcpServers` accepts exactly one of non-empty string `command`/`url` — `hasCommand === hasUrl` → drop (neither or both); runtime probe: {url} kept, {command+url} dropped, {} dropped, {command} kept; (c) `parseSseMessages` exported + pure — keeps `data:` lines, strips prefix, JSON.parse each, skips malformed; probe: event line ignored + malformed skipped → 1 msg, empty → [], two data lines → 2 msgs; (d) `McpHttpClient` exported, mirrors `McpClient` surface (`tools`, `start()`, `callTool(name,args)`, `close()`): 10 s timeout via Promise.race + unref, POSTs initialize (protocolVersion "2025-03-26", same clientInfo), captures `mcp-session-id` header into private field and echoes on subsequent POSTs, POSTs notifications/initialized (expects 202, ignores body), POSTs tools/list and stores tools with same `Array.isArray(result?.tools)` mapping as stdio client; (e) private `post()`: fetch POST with Content-Type application/json + Accept application/json, text/event-stream (+ Mcp-Session-Id when present), body read as text, SSE → parseSseMessages + first message with matching id, else JSON.parse; non-2xx (except 202 for notifications) rejects with status + body tail (slice(-512)); JSON-RPC error objects surfaced; (f) `close()` idempotent flag, further post/callTool reject with /closed/ (probe confirmed); (g) no `vscode` import in file (only child_process + ./tools). **Next: 1.100-13.S2 (package.json description).**
 
