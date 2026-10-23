@@ -8,15 +8,21 @@
 // lives here; the prompt building + parsing are pure and testable in
 // `codeaction.ts`.
 
+import * as fs from "fs";
 import * as vscode from "vscode";
 import { LlmClient } from "../client";
 import { readSettings, ToolbarStateStore } from "../config";
 import { buildRequestBody } from "../request";
 import {
+  buildAltTextPrompt,
   buildCodeActionPrompt,
+  findImageRef,
+  isPlaceholderAlt,
+  parseAltText,
   parseCodeAction,
   type CodeActionContext,
   type CodeActionDiagnostic,
+  type ImageRef,
 } from "../codeaction";
 
 /** Cap on the length of the model's suggested replacement. */
@@ -31,6 +37,8 @@ const MAX_EDIT_CHARS = 20000;
 interface RangeCodeAction extends vscode.CodeAction {
   /** The range the model's suggested code should replace. */
   actionRange?: vscode.Range;
+  /** Marker: this action generates alt text for an image on the line. */
+  isAltText?: boolean;
 }
 
 export class CodeActionProvider implements vscode.CodeActionProvider {
@@ -84,6 +92,34 @@ export class CodeActionProvider implements vscode.CodeActionProvider {
       actions.push(fix);
     }
 
+    // Offer "Generate alt text" on HTML/Markdown image lines whose alt text
+    // is empty or a placeholder (gated by `llm.codeAction.altText.enabled`).
+    if (
+      (document.languageId === "html" || document.languageId === "markdown") &&
+      vscode.workspace
+        .getConfiguration("llm.codeAction")
+        .get<boolean>("altText.enabled", true)
+    ) {
+      const lineText = document.lineAt(range.start.line).text;
+      const ref = findImageRef(lineText);
+      if (ref && isPlaceholderAlt(ref.alt)) {
+        const alt: RangeCodeAction = new vscode.CodeAction(
+          "Generate alt text",
+          vscode.CodeActionKind.QuickFix,
+        );
+        alt.isAltText = true;
+        // The alt-text slot on the line (may be an empty range for a missing
+        // alt attribute; the resolver inserts the text there).
+        alt.actionRange = new vscode.Range(
+          range.start.line,
+          ref.altStart,
+          range.start.line,
+          ref.altEnd,
+        );
+        actions.push(alt);
+      }
+    }
+
     return actions;
   }
 
@@ -105,6 +141,12 @@ export class CodeActionProvider implements vscode.CodeActionProvider {
     const doc = vscode.window.activeTextEditor?.document;
     if (!doc) {
       return action;
+    }
+
+    // Alt-text action: generate a concise accessibility description for the
+    // image on the line and replace the alt-text slot with it.
+    if ((action as RangeCodeAction).isAltText) {
+      return this.resolveAltText(action, doc, range, token);
     }
 
     // Gather the file context.
@@ -168,6 +210,117 @@ export class CodeActionProvider implements vscode.CodeActionProvider {
     return action;
   }
 
+  /**
+   * Resolve a "Generate alt text" action: re-derive the image reference from
+   * the line, optionally attach the image as a data URL (when local and
+   * `llm.chat.vision.enabled`), ask the model for a concise alt text, and
+   * replace the alt-text slot with it. A failed or empty result leaves the
+   * action without an edit (no crash).
+   */
+  private async resolveAltText(
+    action: vscode.CodeAction,
+    doc: vscode.TextDocument,
+    altSlotRange: vscode.Range,
+    token: vscode.CancellationToken,
+  ): Promise<vscode.CodeAction> {
+    const lineText = doc.lineAt(altSlotRange.start.line).text;
+    const ref = findImageRef(lineText);
+    if (!ref) {
+      return action;
+    }
+
+    // Attach the image only when it is local (not http(s)/data) and vision is
+    // enabled; any read/encode error degrades to text-only.
+    const isRemote =
+      /^https?:\/\//i.test(ref.src) || ref.src.startsWith("data:");
+    const visionEnabled = vscode.workspace
+      .getConfiguration("llm.chat")
+      .get<boolean>("vision.enabled", true);
+    let dataUrl: string | undefined;
+    if (!isRemote && visionEnabled) {
+      try {
+        const imageUri = vscode.Uri.joinPath(doc.uri, ref.src);
+        dataUrl = await this.imageDataUrl(imageUri);
+      } catch {
+        dataUrl = undefined;
+      }
+    }
+    const imageIncluded = dataUrl !== undefined;
+
+    // Context: ±5 lines around the image line.
+    const start = Math.max(0, altSlotRange.start.line - 5);
+    const end = Math.min(doc.lineCount - 1, altSlotRange.start.line + 5);
+    const context = doc
+      .getText(new vscode.Range(start, 0, end, 0))
+      .split("\n")
+      .join("\n");
+
+    const prompt = buildAltTextPrompt(ref.src, context, imageIncluded);
+
+    // Same one-shot pattern as the fix/refactor action: chat settings +
+    // toolbar with thinking forced off.
+    const settings = readSettings();
+    const toolbar = { ...this.toolbarStore.get(), thinking: "off" as const };
+    const { body } = buildRequestBody({ settings, toolbar }, [
+      {
+        role: "user",
+        content: prompt,
+        ...(imageIncluded ? { images: [dataUrl!] } : {}),
+      },
+    ]);
+
+    // Bridge the vscode CancellationToken to a fetch AbortSignal.
+    const controller = new AbortController();
+    const cancelSub = token.onCancellationRequested(() => controller.abort());
+
+    let content = "";
+    try {
+      for await (const chunk of this.client.chatStream(
+        body,
+        controller.signal,
+      )) {
+        if (chunk.done) {
+          break;
+        }
+        if (chunk.content) {
+          content += chunk.content;
+          if (content.length > MAX_EDIT_CHARS) {
+            break;
+          }
+        }
+      }
+    } catch {
+      // A failed request is non-fatal: return the action without an edit.
+      return action;
+    } finally {
+      cancelSub.dispose();
+    }
+
+    const altText = parseAltText(content);
+    if (!altText) {
+      return action;
+    }
+
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(doc.uri, altSlotRange, altText);
+    action.edit = edit;
+    return action;
+  }
+
+  /**
+   * Read an image file and encode it as a `data:image/<mime>;base64,...`
+   * URL. Returns `undefined` when the extension is not a known image type or
+   * the file cannot be read.
+   */
+  private async imageDataUrl(uri: vscode.Uri): Promise<string | undefined> {
+    const mime = imageMime(uri.path);
+    if (!mime) {
+      return undefined;
+    }
+    const buf = await fs.promises.readFile(uri.fsPath);
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  }
+
   /** Diagnostics (as plain objects) whose range intersects the given range. */
   private diagnosticsInRange(
     document: vscode.TextDocument,
@@ -204,5 +357,27 @@ export class CodeActionProvider implements vscode.CodeActionProvider {
     return folder
       ? vscode.workspace.asRelativePath(document.uri)
       : document.uri.fsPath;
+  }
+}
+
+/** Map a file extension to an image MIME type (or `undefined`). */
+function imageMime(path: string): string | undefined {
+  const ext = path.toLowerCase().split(".").pop() ?? "";
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "bmp":
+      return "image/bmp";
+    case "avif":
+      return "image/avif";
+    default:
+      return undefined;
   }
 }
