@@ -5663,11 +5663,162 @@ function assert(cond, label) {
       JSON.stringify(["a.ts", "z.ts", "m.ts"]),
     "manual-edit-s4: externallyChanged preserves current iteration order",
   );
-  if (assertCount !== 714) {
-    console.error(`FAIL: total assertion count is 714 (got ${assertCount})`);
+  // 83) conversation summarization regression guards (1.100-12.S5)
+  const {
+    summarizeSplit,
+    buildTranscript,
+    SUMMARY_MARKER,
+  } = require(path.join(__dirname, "..", "out", "request.js"));
+  assert(
+    typeof summarizeSplit === "function" &&
+      typeof buildTranscript === "function",
+    "summarize-s5: out/request.js exports summarizeSplit and buildTranscript",
+  );
+  assert(
+    SUMMARY_MARKER === "[Summarized conversation history]",
+    "summarize-s5: SUMMARY_MARKER is the expected literal",
+  );
+  const sumS5Plain = (n) =>
+    Array.from({ length: n }, (_, k) => ({
+      role: k % 2 === 0 ? "user" : "assistant",
+      content: `message ${k} ` + "x".repeat(200),
+    }));
+  assert(
+    summarizeSplit(sumS5Plain(10), 0.9, 100000) === null,
+    "summarize-s5: under threshold returns null",
+  );
+  assert(
+    summarizeSplit(sumS5Plain(10), 0.5, 0) === null,
+    "summarize-s5: windowTokens = 0 returns null",
+  );
+  assert(
+    summarizeSplit(sumS5Plain(10), 0, 500) === null,
+    "summarize-s5: threshold = 0 returns null",
+  );
+  assert(
+    summarizeSplit(sumS5Plain(5), 0.1, 100) === null,
+    "summarize-s5: fewer than 6 messages returns null",
+  );
+  const sumS5Split = summarizeSplit(sumS5Plain(10), 0.5, 500);
+  assert(
+    sumS5Split === 6,
+    "summarize-s5: 10 plain messages over threshold split at length - 4",
+  );
+  const sumS5Tool = sumS5Plain(10);
+  sumS5Tool[4] = {
+    role: "assistant",
+    content: "",
+    tool_calls: [{ id: "c1", type: "function", function: { name: "t", arguments: "{}" } }],
+  };
+  sumS5Tool[5] = { role: "tool", content: "result 1" };
+  sumS5Tool[6] = { role: "tool", content: "result 2" };
+  // A tool group at the naive split point (index 6) forces the walk forward,
+  // which leaves fewer than 4 messages to keep, so summarization is skipped.
+  assert(
+    summarizeSplit(sumS5Tool, 0.5, 400) === null,
+    "summarize-s5: tool group at the naive split returns null (never splits a group)",
+  );
+  const sumS5Summ = sumS5Plain(10);
+  sumS5Summ[6] = { ...sumS5Summ[6], summarized: true };
+  assert(
+    summarizeSplit(sumS5Summ, 0.5, 400) === null,
+    "summarize-s5: a summarized message at the split is skipped (returns null)",
+  );
+  const sumS5AllTool = sumS5Plain(10);
+  for (let k = 6; k < 10; k++) sumS5AllTool[k] = { role: "tool", content: "r" };
+  assert(
+    summarizeSplit(sumS5AllTool, 0.5, 400) === null,
+    "summarize-s5: walking past tool groups leaving < 4 to keep returns null",
+  );
+  const sumS5Transcript = buildTranscript([
+    { role: "user", content: "a" },
+    { role: "assistant", content: "b" },
+    { role: "system", content: "c" },
+    { role: "tool", content: "d" },
+  ]);
+  assert(
+    sumS5Transcript === "User: a\n\nAssistant: b\n\nSystem: c\n\nTool: d",
+    "summarize-s5: buildTranscript emits Role: content lines joined by blank lines",
+  );
+  assert(
+    buildTranscript([{ role: "user", content: "" }]) === "User: ",
+    "summarize-s5: buildTranscript treats empty content as an empty string",
+  );
+  const sumS5Enabled = pkgJson.contributes.configuration.properties[
+    "llm.chat.summarize.enabled"
+  ];
+  assert(
+    sumS5Enabled &&
+      sumS5Enabled.type === "boolean" &&
+      sumS5Enabled.default === true,
+    "summarize-s5: llm.chat.summarize.enabled is a boolean with default true",
+  );
+  const sumS5Threshold = pkgJson.contributes.configuration.properties[
+    "llm.chat.summarize.threshold"
+  ];
+  assert(
+    sumS5Threshold &&
+      sumS5Threshold.type === "number" &&
+      sumS5Threshold.default === 0.7,
+    "summarize-s5: llm.chat.summarize.threshold is a number with default 0.7",
+  );
+  const sumS5CfgSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  assert(
+    sumS5CfgSrc.includes('c.get<boolean>("chat.summarize.enabled", true)'),
+    "summarize-s5: config reads chat.summarize.enabled with default true",
+  );
+  assert(
+    sumS5CfgSrc.includes('c.get<number>("chat.summarize.threshold", 0.7)'),
+    "summarize-s5: config reads chat.summarize.threshold with default 0.7",
+  );
+  const sumS5PresetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    sumS5PresetsSrc.includes("chatSummarizeEnabled: boolean;"),
+    "summarize-s5: presets LlmSettings has chatSummarizeEnabled: boolean",
+  );
+  assert(
+    sumS5PresetsSrc.includes("chatSummarizeThreshold: number;"),
+    "summarize-s5: presets LlmSettings has chatSummarizeThreshold: number",
+  );
+  const sumS5HostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  assert(
+    sumS5HostSrc.includes("chatSummarizeEnabled") &&
+      sumS5HostSrc.includes("summarizeSplit") &&
+      sumS5HostSrc.includes("SUMMARY_MARKER") &&
+      sumS5HostSrc.includes("maybeSummarizeHistory"),
+    "summarize-s5: ChatViewProvider wires the summarization pass",
+  );
+  assert(
+    sumS5HostSrc.includes("summarized conversation history"),
+    "summarize-s5: ChatViewProvider posts the summarized-history delta note",
+  );
+  const sumS5WebviewSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  assert(
+    sumS5WebviewSrc.includes("m.summarized === true") &&
+      sumS5WebviewSrc.includes("case 'summarize_result'"),
+    "summarize-s5: webview renders the summarized marker and handles summarize_result",
+  );
+  assert(
+    sumS5WebviewSrc.includes("Summarized conversation history"),
+    "summarize-s5: webview shows the Summarized conversation history label",
+  );
+  if (assertCount !== 736) {
+    console.error(`FAIL: total assertion count is 736 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 714");
+  console.log("PASS: total assertion count is 736");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
