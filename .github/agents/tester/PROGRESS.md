@@ -12,13 +12,15 @@ acceptance checks, and reports a clear pass/fail.
 
 ## Status
 
-- **Current item:** 1.100-14 — in progress (S1 verified PASS)
-- **Next step:** 1.100-14.S2 (next slice of MCP image content blocks)
+- **Current item:** 1.100-14 — in progress (S1, S2 verified PASS)
+- **Next step:** 1.100-14.S3 (next slice of MCP image content blocks)
 - **Last updated:** 2026-10-23
-- **Last commit:** 486f58e (1.100-14.S1, verified PASS)
+- **Last commit:** 215b394 (1.100-14.S2, verified PASS)
 - **Build state:** compiles clean; smoke 750/750 PASS (verified 2026-10-23)
 
 ## Verified (recap)
+
+**1.100-14.S2** (2026-10-23) — **PASS**. `McpManager.execute` surfaces MCP tool images in `src/mcpManager.ts` (commit 215b394). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 215b394` touches only `src/mcpManager.ts` (+12/-3) + coder memory; `ninfer` submodule NOT committed (only ` m ninfer` in working tree). Verified: (a) `mcpResultToImages` imported from `./mcp` (import block, alongside `mcpResultToText`); (b) `execute` return type widened to `Promise<{ content: string; images?: string[] }>`; (c) success path computes `const images = mcpResultToImages(result)` and returns `{ content: mcpResultToText(result), ...(images.length ? { images } : {}) }` — `images` key omitted when empty; (d) all error paths unchanged (bad name / unknown server / start failure / catch) — each returns only `{ content: "Error: ..." }`, no `images`; no other method altered (diff shows only import + `execute` doc comment + return type + success return). Runtime probe on compiled `out/mcpManager.js` (vscode stubbed via `Module._load`, fake client injected into private `clients`/`statuses` maps), 9/9 assertions: image block → `images[0] === "data:image/png;base64,QUJD"` + content "hi"; text-only → no `images` key; bad-name error → no `images` + "Error:"; `callTool` throw → no `images` + "boom". **Next: 1.100-14.S3.**
 
 **1.100-14.S1** (2026-10-23) — **PASS**. Image content-block type + pure extractor in `src/mcp.ts` (commit 486f58e). Build exit 0; smoke 750/750 (no new guards this slice — smoke slice is S5). Scope clean: `git show --stat 486f58e` touches only `src/mcp.ts` (+26/-1) + coder memory; `ninfer` submodule NOT committed. Verified: (a) `McpToolResult.content` widened to `{ type: string; text?: string; data?: string; mimeType?: string }[]` (backward-compatible superset of the old `{ type; text? }` shape); (b) `export function mcpResultToImages(result: McpToolResult): string[]` — pure (no I/O, no vscode import in file), filters parts with `type === "image"` + non-empty string `data` + non-empty string `mimeType`, maps to `data:<mimeType>;base64,<data>`; (c) runtime probe on compiled `out/mcp.js`, 10/10 assertions: valid image → data URL; missing `data` → skipped; empty `data` → skipped; empty `mimeType` → skipped; missing `mimeType` → skipped; non-string `data` → skipped; non-image type → skipped; no content → `[]`; mixed text+2 images+malformed → 2 data URLs in order; (d) no transport change — `McpClient.callTool` (line ~318) still `rpc.request("tools/call", …).then(r => r as McpToolResult)`, `McpHttpClient.callTool` (line ~399) still `post("tools/call", …).then(r => r as McpToolResult)`, `mcpResultToText` unchanged (diff shows it only as context). **Next: 1.100-14.S2.**
 
