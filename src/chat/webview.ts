@@ -1649,13 +1649,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			addImageFiles(e.dataTransfer.files);
 			var items = e.dataTransfer.items;
 			if (!items) { return; }
-			var urlRe = /^https?:\/\/\S+\.(jpe?g|png|gif|webp|bmp)(\?.*)?$/i;
+			var urlRe = /^https?:\\/\\/\\S+\\.(jpe?g|png|gif|webp|bmp)(\\?.*)?$/i;
 			for (var i = 0; i < items.length; i++) {
 				var it = items[i];
 				if (it.kind !== 'string') { continue; }
 				if (it.type !== 'text/uri-list' && it.type !== '') { continue; }
 				it.getAsString(function (text) {
-					text.split('\n').forEach(function (line) {
+					text.split('\\n').forEach(function (line) {
 						var u = line.trim();
 						if (urlRe.test(u)) { addImageUrl(u); }
 					});
@@ -2015,7 +2015,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					if (!text) break;
 					if (!inputEl) break;
 					const existing = inputEl.value;
-					inputEl.value = existing ? text + '\n\n' + existing : text;
+					inputEl.value = existing ? text + '\\n\\n' + existing : text;
 					inputEl.focus();
 					break;
 				}
@@ -2024,7 +2024,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					if (!text) break;
 					if (!inputEl) break;
 					const existing = inputEl.value;
-					inputEl.value = existing ? text + '\n\n' + existing : text;
+					inputEl.value = existing ? text + '\\n\\n' + existing : text;
 					inputEl.focus();
 					break;
 				}
@@ -2033,13 +2033,13 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					const t = String(msg.text ?? '');
 					if (t) {
 						const existing = inputEl.value;
-						inputEl.value = existing ? t + '\n\n' + existing : t;
+						inputEl.value = existing ? t + '\\n\\n' + existing : t;
 					}
 					let addedImages = false;
 					if (Array.isArray(msg.images)) {
 						msg.images.forEach(function (img) {
 							if (typeof img !== 'string') { return; }
-							if (!/^data:image\/(jpeg|png|gif|webp|bmp);base64,/.test(img)) { return; }
+							if (!/^data:image\\/(jpeg|png|gif|webp|bmp);base64,/.test(img)) { return; }
 							if (img.length > 14 * 1024 * 1024) { return; }
 							if (pendingImages.length >= MAX_IMAGES) { return; }
 							pendingImages.push({ name: 'cell-output-' + (pendingImages.length + 1), dataUrl: img });
