@@ -10,65 +10,127 @@ Turn each changelog feature (from the Changelog Researcher's backlog) into a con
 step-by-step implementation plan for the `llm` VS Code extension. The planner does NOT write
 code — only the Coder writes code.
 
-## Active plan — 1.100-11 · Handling of undo and manual edits in agent mode
+## Active plan — 1.100-12 · Conversation summary (context-window management)
 
 - **Status:** Planned (2026-10-23)
-- **Changelog:** VS Code 1.100 (Apr 2025) — manual edits during an agent session no
-  longer confuse the model: the agent is prompted about the user's changes and
-  re-reads files when necessary before editing files that may have changed.
-  Local reframe: track file mtime/size of agent-touched files between turns; on
-  external change, inject a system note ("user manually modified X — re-read it
-  before editing") behind `llm.agent.trackManualEdits` (default on).
-- **Files to touch:** `src/tools/ToolExecutor.ts`, `src/config.ts`, `src/presets.ts`,
-  `package.json`, `src/chat/ChatViewProvider.ts`, `scripts/smoke-test.js`.
+- **Changelog:** VS Code 1.100 (Apr 2025) — long conversations are compressed into a
+  **"Summarized conversation history"** message instead of keeping the whole FIFO,
+  keeping the prompt prefix stable and responses fast. Local reframe: local engines
+  have hard, small context windows; when the estimated conversation tokens cross a
+  threshold (default 70% of the selected context budget), run a summarization pass
+  over the older turns and replace them with a single summary message. (Prompt-caching
+  half is cloud-specific and dropped.)
+- **Grounding notes:** `src/request.ts` already has `estimateTokens` (chars/3.5),
+  `estimateMessagesTokens`, and `trimHistory` (hard FIFO drop — summarization is the
+  soft alternative). `CONTEXT_TO_TOKENS` in `src/presets.ts` maps the toolbar context
+  preset to a token budget (0 = auto/unbounded) — that is the "model context window"
+  source. `handleCompact()` in `ChatViewProvider.ts` (~line 577) is the existing
+  *manual* compaction (keep last 4, summarize rest, replace with a
+  `[Context summary of earlier conversation]` user message, post `compact_result`) —
+  the new feature is the *automatic* version, reusing the same summarization prompt
+  shape. The agent loop `for(;;)` is at ~line 1452; the 1.100-11 manual-edit hook sits
+  at loop top before `streamOneTurn` — the summarization check goes right after it.
+  The webview `restore` handler renders only `user`/`assistant` roles, so the marker
+  needs a small render branch. Smoke hard gate is 714.
+- **Files to touch:** `src/request.ts`, `src/presets.ts`, `src/config.ts`,
+  `package.json`, `src/chat/ChatViewProvider.ts`, `src/chat/webview.ts`,
+  `scripts/smoke-test.js`.
 - **Slices (in order):**
-  - `1.100-11.S1` — pure exported helper in `src/tools/ToolExecutor.ts` (next to
-    `newDiagnostics`): `interface FileSnapshot { mtimeMs: number; size: number }`
-    + `externallyChanged(snapshots, current): string[]` — paths in `current` whose
-    `mtimeMs` or `size` differs from the stored snapshot (order = `current` order);
-    deleted paths ignored. No vscode import.
-  - `1.100-11.S2` — `llm.agent.trackManualEdits` setting (default `true`):
-    `config.ts` `readSettings()` read + `presets.ts`
-    `LlmSettings.agentTrackManualEdits: boolean` + `package.json` schema entry
-    (boolean, default true).
-  - `1.100-11.S3` — agent-loop hook in `src/chat/ChatViewProvider.ts`: private
-    `touchedFiles: Map<string, FileSnapshot>` cleared at run start (next to
-    `clearChangeSummary()`); `snapshotTouchedFiles(paths)` via `fs.stat` (skip on
-    error); after each tool batch snapshot `autofixEditedPaths(toolCalls)` (agent's
-    own writes become the baseline); at the top of the loop (before
-    `streamOneTurn`), if `settings.agentTrackManualEdits` and `touchedFiles`
-    non-empty, stat all tracked paths, call `externallyChanged`, and for each
-    changed path push a system message ("The user manually modified <path> while
-    the agent was running. Re-read it with read_file before editing it.") + a
-    `delta` note (`[manual edit detected: <path>]`), then re-snapshot those paths
-    so the note fires at most once per external change.
-  - `1.100-11.S4` — smoke-test guards in `scripts/smoke-test.js`:
-    `ToolExecutor.ts` exports `externallyChanged` + `FileSnapshot`; pure-function
-    tests of compiled `externallyChanged` (mtime change → listed; size change →
-    listed; identical → `[]`; order preserved); `llm.agent.trackManualEdits`
-    schema (boolean, default true); `config.ts` reads it with default true;
-    `presets.ts` has the field; `ChatViewProvider.ts` references
-    `agentTrackManualEdits`, `externallyChanged`, and the "manually modified"
-    note; raise the hard total-count gate (701 → new total).
-- **First slice:** `1.100-11.S1`.
-- **Acceptance:** compile + smoke pass; external modification of an
-  agent-touched file is detected before the next turn and a system note + delta
-  note are injected; note fires at most once per external change; the agent's own
-  writes never trigger the note; setting off disables detection; no behavior
-  change when no external edits occur.
-- **Open questions:** (1) mtimeMs + size is sufficient (no content hashing);
-  (2) files not yet touched by the agent have no baseline and are not tracked —
-  acceptable, the note covers the confusion case (files the agent already
-  touched); (3) externally deleted files are skipped (`fs.stat` error), not
-  reported.
+  - `1.100-12.S1` — pure helpers in `src/request.ts` (no vscode import):
+    (a) add optional `summarized?: boolean` flag to the `ChatMessage` interface;
+    (b) `export const SUMMARY_MARKER = "[Summarized conversation history]"`;
+    (c) `export function summarizeSplit(messages: ChatMessage[], threshold: number,
+    windowTokens: number): number | null` — returns the index `i` such that
+    `messages[0..i)` is summarized and `messages[i..]` is kept, or `null` when no
+    summarization is due. Rules: `null` when `windowTokens <= 0` (auto/unbounded),
+    `threshold <= 0`, or `estimateMessagesTokens(messages) < threshold * windowTokens`;
+    `null` when fewer than 6 messages; keep the last 4 messages (same keep-count as
+    `handleCompact`); the split point must not break a tool-call group — if
+    `messages[i].role === "tool"` or `messages[i].tool_calls` is non-empty, walk `i`
+    forward until the group is intact; the split point must not land on a
+    `summarized` message (walk forward past it); `null` if walking leaves fewer than
+    4 messages to keep; (d) `export function buildTranscript(messages: ChatMessage[]):
+    string` — `"User: …" / "Assistant: …" / "System: …" / "Tool: …"` lines joined by
+    blank lines (same shape as the transcript in `handleCompact`).
+  - `1.100-12.S2` — settings: `llm.chat.summarize.enabled` (boolean, default `true`)
+    and `llm.chat.summarize.threshold` (number, default `0.7`, minimum 0, maximum 1)
+    in `package.json` schema; `LlmSettings.chatSummarizeEnabled: boolean` +
+    `LlmSettings.chatSummarizeThreshold: number` in `src/presets.ts`; reads in
+    `src/config.ts` `readSettings()` with the same defaults. No context-window size
+    setting — the window is the toolbar context preset via `CONTEXT_TO_TOKENS`
+    (auto = disabled, which matches "local engines vary; user picks the preset").
+  - `1.100-12.S3` — automatic summarization pass in `src/chat/ChatViewProvider.ts`:
+    private `summarizing = false` re-entrancy guard; private
+    `async maybeSummarizeHistory(settings, toolbar): Promise<void>` — compute
+    `windowTokens = CONTEXT_TO_TOKENS[toolbar.context]`; call `summarizeSplit(this.history,
+    settings.chatSummarizeThreshold, windowTokens)`; on `null` return; set
+    `summarizing = true`; build the transcript via `buildTranscript(toSummarize)`;
+    call `this.client.chatStream` non-streaming with the same summarization system
+    prompt as `handleCompact` ("Summarize the following conversation concisely.
+    Preserve key decisions, file paths, code changes, and task context. Keep it under
+    500 words. Format as a brief narrative." + a line asking to end with the current
+    task state); collect the summary; on empty summary or error, post a `delta` note
+    (`[summarization failed — keeping full history]`) and return; otherwise replace:
+    `this.history = [{ role: "user", content: SUMMARY_MARKER + "\n" + summary,
+    summarized: true }, ...toKeep]`; `this.saveCurrentConversation()`; post a `delta`
+    note (`[summarized conversation history: N messages → 1 summary]`) and a
+    `summarize_result` message (token before/after, same shape as `compact_result`);
+    post `restore` with the new history so the webview re-renders; finally
+    `summarizing = false`. Hook: at the top of the agent loop, immediately after the
+    1.100-11 manual-edit block and before the `step` post, `if
+    (settings.chatSummarizeEnabled && !this.summarizing) { await
+    this.maybeSummarizeHistory(settings, toolbar); }`.
+  - `1.100-12.S4` — webview marker rendering in `src/chat/webview.ts`: in the
+    `restore` handler's message loop, add a branch for messages with
+    `m.summarized === true` (any role): render a muted system-style note — a
+    `.message.summarized` div with a `.role` label "Summarized conversation history"
+    and the content (minus the `SUMMARY_MARKER` prefix) rendered via `renderMarkdown`,
+    styled like the existing muted system notice (1.99-28.S4 pattern: small, muted,
+    centered-ish, with a subtle top border); add a `case 'summarize_result':` that
+    renders the result line like `compact_result` (reuse the `revert-result` class);
+    add the `.message.summarized` CSS rules.
+  - `1.100-12.S5` — smoke-test guards in `scripts/smoke-test.js`:
+    (a) `request.js` exports `summarizeSplit`, `buildTranscript`, `SUMMARY_MARKER`;
+    (b) pure-function tests of compiled `summarizeSplit`: under threshold → `null`;
+    `windowTokens = 0` → `null`; `threshold = 0` → `null`; fewer than 6 messages →
+    `null`; over threshold with 10 plain user/assistant messages → split index 6
+    (keep last 4); tool-group guard: a `tool` message at the naive split point moves
+    the split forward past the group; a `summarized` message at the split point is
+    skipped; (c) `buildTranscript` produces `User: …`/`Assistant: …` lines;
+    (d) `package.json` schema: `llm.chat.summarize.enabled` boolean default true,
+    `llm.chat.summarize.threshold` number default 0.7; (e) `config.ts` reads both
+    with defaults; `presets.ts` has both fields; (f) `ChatViewProvider.ts` references
+    `chatSummarizeEnabled`, `summarizeSplit`, `SUMMARY_MARKER`, `maybeSummarizeHistory`,
+    and the "summarized conversation history" delta note; (g) `webview.ts` contains
+    the `summarized` render branch, `summarize_result` case, and
+    "Summarized conversation history" label; (h) raise the hard total-count gate
+    (714 → new total).
+- **First slice:** `1.100-12.S1`.
+- **Acceptance:** compile + smoke pass; in a long agent session with a context preset
+  selected (e.g. 32k), when estimated history tokens cross 70% of the budget the
+  agent loop automatically compresses the older turns into a single
+  "Summarized conversation history" message before the next turn; recent turns (last
+  4) are preserved; the marker is visible in the Chat view; a `delta` note announces
+  the compression; the summary message is never re-summarized; tool-call groups are
+  never split; with the `auto` context preset or the setting disabled, no automatic
+  summarization occurs (existing `trimHistory` behavior unchanged); manual Compact
+  button still works.
+- **Open questions:** (1) threshold is relative to the *toolbar context preset*
+  budget, not a per-model window (no model metadata available from the engine) —
+  acceptable, the user picks the preset to match their local model; (2) the summary
+  message is a `user`-role message (same as `handleCompact`) so it survives
+  `trimHistory`'s "keep the latest user turn" rule and renders in the webview; the
+  `summarized` flag distinguishes it; (3) summarization runs at most once per loop
+  iteration and is guarded by `summarizing` so a failed pass doesn't retry every
+  turn within the same run (it may retry on the next run — acceptable).
 
 
 ## Status
 
-- **Current item:** 1.100-11 (planned) — 1.100-10 complete
-- **Next step:** dispatch `1.100-11.S1` (pure helper) to the Coder
+- **Current item:** 1.100-12 (planned) — 1.100-11 complete
+- **Next step:** dispatch `1.100-12.S1` (pure helpers in `src/request.ts`) to the Coder
 - **Last updated:** 2026-10-23
-- **Last commit:** (planner commit for the 1.100-11 plan)
+- **Last commit:** (planner commit for the 1.100-12 plan)
 - **Build state:** n/a (planner does not build)
 
 ## Plans delivered (recap)
