@@ -13,11 +13,11 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.100-15 · Enhanced MCP input/output/progress UI — in progress
-- **Current slice:** 1.100-15.S3 DONE + FIXED (manager threading in `src/mcpManager.ts`; concrete `callTool` in `src/mcp.ts` now wires/clears `onProgress` around the `tools/call` request)
-- **Next step:** 1.100-15.S4 (per plan in `.github/agents/planner/PROGRESS.md`)
+- **Current slice:** 1.100-15.S4 DONE (chat `tool_progress` post in `src/chat/ChatViewProvider.ts`)
+- **Next step:** 1.100-15.S5 (webview `prettyJson` + `tool_progress` rendering in `src/chat/webview.ts`)
 - **Last updated:** 2026-10-23
-- **Last commit:** fix(llm): wire onProgress through concrete MCP callTool (1.100-15.S3)
-- **Build state:** compiles clean; smoke 758 PASS (smoke slice is S5)
+- **Last commit:** feat(llm): post tool_progress from MCP calls (1.100-15.S4)
+- **Build state:** compiles clean; smoke 758 PASS (smoke slice is S6)
 
 ## Plan pointer
 
@@ -36,6 +36,7 @@ Recap per version (slice detail pruned; see `git log`). Each slice compiled and 
 
 ## Todo
 
+- [x] 1.100-15.S4 — `src/chat/ChatViewProvider.ts`: in the MCP branch of the agent tool loop, `this.mcpManager.execute(call.function.name, mcpArgs, …)` now passes a 3rd-arg progress callback that posts `{ type: "tool_progress", id: call.id, tool: call.function.name, progress: p.progress, ...(typeof p.total === "number" ? { total: p.total } : {}), ...(typeof p.message === "string" ? { message: p.message } : {}) }` per notification. Non-MCP tool path unchanged; no other message posting altered. Compile clean.
 - [x] 1.100-15.S3-fix — `src/mcp.ts`: Tester-found defect in S3 commit `ca9294e` — the manager passed `onProgress` to `client.callTool(tool, args, onProgress)`, but both concrete `callTool(name, args)` signatures had only two params, so the callback was silently dropped (TS structural typing: fewer params is assignable). Fix: (a) `McpClient.callTool(name, args, onProgress?)` — when `onProgress` is provided, `this.setProgressCallback(onProgress)` before the `tools/call` request and `this.setProgressCallback(undefined)` in `.finally` (clears on both success and failure); `onProgress === undefined` → byte-identical to before (no set/clear calls); (b) `McpHttpClient.callTool(name, args, onProgress?)` — same pattern around `this.post("tools/call", …)`; (c) one-line comment on both documenting that a concurrent `callTool` on the same client overwrites the first's callback (acceptable for this slice). `src/mcpManager.ts` verified correct as-is (already threads `onProgress` through `McpClientLike.callTool` + `execute`) — no change. Compile clean.
 - [x] 1.100-15.S3 — `src/mcpManager.ts`: (a) import `McpProgressCallback` from `./mcp`; (b) `McpClientLike.callTool` widened to `callTool(name: string, args: Record<string, unknown>, onProgress?: McpProgressCallback): Promise<McpToolResult>` (optional 3rd param — both concrete classes satisfy it structurally, no `src/mcp.ts` change needed); (c) `McpManager.execute(name, args, onProgress?)` — new optional param passed through to `client.callTool(tool, args, onProgress)`. Return type and all error paths unchanged. Compile clean.
 - [x] 1.100-15.S2 — `src/mcp.ts` `McpHttpClient`: (a) new private field `progressCb: McpProgressCallback | undefined` (after `tools`); (b) `setProgressCallback(cb: McpProgressCallback | undefined): void` — stores the callback (passing `undefined` clears it), documented as the SSE-side mirror of `McpClient.setProgressCallback`; (c) in `post`, in the SSE branch (`contentType.includes("text/event-stream")`), after `parseSseMessages(body)` a `for (const m of messages)` loop invokes `this.progressCb(m.params as McpProgressNotification)` for every plain-object message with `m.method === "notifications/progress"` and plain-object `params` (same guard shape as the stdio side: `params !== null && typeof params === "object" && !Array.isArray(params)`), then the existing `messages.find(m => isPlainObject(m) && m.id === msg.id)` resolution runs unchanged. JSON-body responses, session-id handling, and all error paths untouched. Compile clean.

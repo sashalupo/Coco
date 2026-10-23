@@ -1788,6 +1788,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               const mcpRes = await this.mcpManager.execute(
                 call.function.name,
                 mcpArgs,
+                (p) =>
+                  this.postMessage({
+                    type: "tool_progress",
+                    id: call.id,
+                    tool: call.function.name,
+                    progress: p.progress,
+                    ...(typeof p.total === "number" ? { total: p.total } : {}),
+                    ...(typeof p.message === "string" ? { message: p.message } : {}),
+                  }),
               );
               mcpImages = mcpRes.images;
               result = { tool_call_id: call.id, content: mcpRes.content };
