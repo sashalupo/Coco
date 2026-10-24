@@ -24,8 +24,8 @@ code — only the Coder writes code.
   - **S-005** — `src/chat/webview.ts` (1 file): "Tools" `<select>` in toolbar; `toolsets` host message; `postToolbar()` includes `toolset`; `#toolset:` pills.
   - **S-006** — `package.json` (1 file): `llm.toolsets.enabled` + command `llm.toolsets.createFile`.
   - **S-007** — `src/extension.ts` (1 file): register `llm.toolsets.createFile`.
-  - **S-008** — `scripts/smoke-test.js` (1 file): assertions; gate **805 → 812**.
-- **Acceptance criteria (whole item):** compile passes; smoke 812/812; `#toolset:<name>` and toolbar picker restrict `body.tools` via `promptTools`; tag > picker > prompt-file; unknown/empty set → error; `llm.toolsets.createFile` scaffolds; `llm.toolsets.enabled: false` disables; no new deps.
+  - **S-008** — `scripts/smoke-test.js` (1 file): assertions; gate **806 → 813** (gate moved 805→806 by the S-005 webview script-parse check).
+- **Acceptance criteria (whole item):** compile passes; smoke 813/813; `#toolset:<name>` and toolbar picker restrict `body.tools` via `promptTools`; tag > picker > prompt-file; unknown/empty set → error; `llm.toolsets.createFile` scaffolds; `llm.toolsets.enabled: false` disables; no new deps.
 - **Risks:** Empty `tools` array → error; no file watcher (re-read per send); MCP tool names filterable via sets.
 - **Next item:** (none recorded).
 
