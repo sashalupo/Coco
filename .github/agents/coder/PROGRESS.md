@@ -12,9 +12,9 @@ after each compiling step.
 
 ## Status
 
-- **Current item:** 1.100-38 · MCP Tool Annotations (human-readable names, `readOnlyHint` auto-approve) — COMPLETE (all slices S-001..S-005 done)
-- **Current slice:** 1.100-38.S-005 DONE (1 file: `scripts/smoke-test.js` — added `mcp-ann-s1..s5` assertions: `mcpToolDisplayName` name-fallback / title / empty-title (3 asserts), `McpTool.annotations` through `mcpToolsToOpenAITools` OpenAI shape, `McpManager.getToolAnnotations` null paths (non-MCP + unknown server/tool), static refs in `ChatViewProvider.ts` (getToolAnnotations/readOnlyHint/displayName) and `webview.ts` (msg.displayName); count gate 798→805. Verified: tsc exit 0; smoke 805/805 PASS). Not committed — orchestrator commits.
-- **Next step:** Tester verification of item 1.100-38
+- **Current item:** 1.101-1 · Chat tool sets (VS Code 1.101) — IN PROGRESS (plan: 8 slices)
+- **Current slice:** 1.101-1.S-001 DONE (1 file, NEW: `src/toolsets.ts` — pure module, no `vscode` import: `Toolset`/`ToolsetsFile` interfaces, `parseToolsetsJson(text) → { toolsets, errors }` tolerant parser (line-based `//` strip that preserves `//` inside string literals; JSON parse failure → `{ toolsets: [], errors: [msg] }`, never throws; per-entry shape validation with valid entries kept), `resolveToolset(toolsets, name) → string[] | null` case-insensitive, `buildToolsetsExample()` scaffold with `//`-commented `gh-news` set, parseable by `parseToolsetsJson`). Verified: tsc exit 0; smoke 805/805 PASS; acceptance checks (valid/malformed/wrong-shape parse, case-insensitive resolve, unknown → null, `//`-in-string preserved) all pass. Not committed — orchestrator commits.
+- **Next step:** 1.101-1 S-002 — `src/context.ts`: `extractToolsetTag(text)`, `ContextPill.kind += "toolset"`, `parsePillRefs` recognizes `#toolset:`
 - **Last updated:** 2026-10-24
 - **Last commit:** 504abbf (1.100-31 S-001, verified PASS)
 - **Build state:** compiles clean (tsc exit 0, verified 2026-10-24, 1.100-38 S-005); smoke 805/805 (verified 2026-10-24, 1.100-38 S-005)
