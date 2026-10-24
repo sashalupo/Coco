@@ -15,7 +15,7 @@ researcher does NOT write code — it builds and maintains the backlog.
 
 - **Archive (source of truth):** `https://code.visualstudio.com/updates/archive`
 - **Release notes:** `https://code.visualstudio.com/updates/v1_<N>` (GitHub Copilot sections)
-- Window: 1.131 → 1.143 is the requested range; versions studied so far: 1.98–1.100. Backlog is **oldest first**.
+- Window: **1.98 → 1.143** (extended from the original 1.131 → 1.143 so already-studied versions stay in scope); pointer in Status below. Backlog is **oldest first**; research walks upward from the pointer.
 
 ## Status
 

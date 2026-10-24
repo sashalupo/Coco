@@ -31,7 +31,8 @@ and grouping.
 ## Release-note source of truth
 
 - **Archive page:** `https://code.visualstudio.com/updates/archive`
-- **Current working window:** `1.143 → 1.131` unless the archive is explicitly expanded for a broader backlog pass.
+- **Active window and pointer:** defined ONLY in `.github/agents/changelog-researcher/PROGRESS.md`
+  ("Source" and "Status" sections). Never hardcode a range here.
 - The archive lists each stable release page in **newest-first order**. You must **reverse the
   discovery order** so the backlog is **oldest first** — the team implements from the oldest
   entry to the newest.
@@ -61,7 +62,8 @@ should match the reference UI as closely as possible.
 3. **Fetch each image** (via the `web` tool or by opening it in a browser) and **describe what
    it shows**: layout, controls, labels, colors, states. Record this description next to the
    backlog item so the Planner and Coder can see the intended UI without re-fetching.
-4. **If an image cannot be fetched**, note that explicitly in the backlog item and describe
+4. **If an image cannot be fetched or viewed** (a text fetch may return no image content), note
+   that explicitly in the backlog item and describe
    what the surrounding text implies about the UI.
 
 > **Why images matter:** the `llm` extension mirrors Copilot's UI. A text-only reading of
@@ -126,18 +128,17 @@ a single session never overflows:
 4. **Oldest to newest.** The backlog is always ordered oldest → newest. New entries (which are
    newest) are **appended to the end** of the backlog. The orchestrator always picks the
    **first pending item** (the oldest).
-4. **Study images.** Every backlog item that has a changelog screenshot must carry an
+5. **Study images.** Every backlog item that has a changelog screenshot must carry an
    **image notes** field describing the UI.
-5. **Deduplicate.** Before adding an item, check it is not already in the backlog (by title or
+6. **Deduplicate.** Before adding an item, check it is not already in the backlog (by title or
    version). If the `llm` extension already implements it (check
    `.github/agents/llm-extension/PROGRESS.md` Done list), mark it **done (already built)** and
    skip it.
-6. **Apply the local-LLM relevance filter.** Classify every item as cost/money-driven (SKIP) or
+7. **Apply the local-LLM relevance filter.** Classify every item as cost/money-driven (SKIP) or
    capability/context-driven (KEEP) per the filter above. Cost-driven items are recorded with
    status `skipped (not relevant: local LLM)` and are never picked up by the orchestrator.
-7. **Background-prep invalidation.** If the active implementation fails and the orchestrator
-   invalidates the pre-prepared next item, discard any provisional research for that item and
-   re-fetch it from the current source-of-truth backlog before continuing.
+8. **Edit only your own `PROGRESS.md`.** Never touch `src/`, `scripts/`, `package.json` or other
+   agents' files; commit only your `PROGRESS.md`.
 
 ## Backlog entry format
 
@@ -159,8 +160,8 @@ Each backlog item has:
 
 1. **Orient.** Read your `PROGRESS.md`. Note the "last processed version" pointer and the
    current backlog.
-2. **Fetch.** Fetch the raw changelog markdown. Identify the entries **older than** the pointer
-   (i.e. not yet studied). Take the next batch (one version, or up to ~10 entries).
+2. **Fetch.** Fetch the raw changelog markdown. Identify the first release version **newer than** the pointer
+   (i.e. not yet studied; the archive lists newest first, so walk it from the pointer upward). Take the next batch (one version, or up to ~10 entries).
 3. **Study images.** For each entry in the batch, extract and fetch its images; write the
    image notes.
 4. **Record.** Append the batch to the backlog (oldest → newest order), set each item's status

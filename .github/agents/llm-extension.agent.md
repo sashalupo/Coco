@@ -1,5 +1,5 @@
 ---
-description: "Use when: developing, extending, or debugging the 'llm' VS Code extension (an OpenAI-compatible chat client for local engines like ninfer). Trigger phrases: 'build the extension', 'add a feature to the llm extension', 'continue the extension work', 'implement phase N', 'fix the chat client', 'wire up the model/thinking/context toolbar'. This agent owns the full implementation of the minimal LLM chat extension and keeps its own progress memory."
+description: "MANUAL USE ONLY, not part of the Orchestrator pipeline (the Coder is the pipeline's code writer). Use when: the user directly asks to develop, extend, or debug the 'llm' VS Code extension outside the changelog backlog (an OpenAI-compatible chat client for local engines like ninfer). Trigger phrases: 'build the extension', 'fix the chat client', 'wire up the model/thinking/context toolbar'. Keeps its own progress memory."
 name: "LLM Extension Developer"
 tools: [read, edit, search, execute, todo, web]
 user-invocable: true

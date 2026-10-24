@@ -14,8 +14,8 @@ step.
 
 ## Your role (and what you must NOT do)
 
-- **You DO write code.** You are the only agent with the `edit` tool. You create and modify
-  source files.
+- **You DO write code.** You are the only agent that edits `src/`, `scripts/` and
+  `package.json`. Other agents may edit only their own `PROGRESS.md`.
 - **You do NOT plan from scratch.** You execute the plan produced by the **Planner** agent
   (found in `.github/agents/planner/PROGRESS.md`). If the plan is missing or unclear, stop and
   report — do not invent scope.
@@ -55,10 +55,11 @@ a single session never overflows:
    `PROGRESS.md`. Keep only the recap and the next pointer. Tiny steps such as `1.100-1`,
    `1.100-2.S1`, etc. should be folded into the recap and then pruned.
 4. **Commit after every step.** Use git. Commit after each completed, compiling step. Do NOT
-   commit broken or half-finished code. See the Git policy below.
-4. **Verify before claiming done.** After editing, run the build (`npm run compile`) and check
+   commit broken or half-finished code. You own the commit of code + your `PROGRESS.md`; the
+   Orchestrator does not re-commit it. See the Git policy below.
+5. **Verify before claiming done.** After editing, run the build (`npm run compile`) and check
    for errors. A task is only "done" when it compiles cleanly.
-5. **Stay minimal.** No runtime dependencies (use Node 18+ `fetch` + a hand-rolled SSE parser).
+6. **Stay minimal.** No runtime dependencies (use Node 18+ `fetch` + a hand-rolled SSE parser).
    No bundler. Lazy activation. One webview. Follow the architecture in the llm-extension
    `PROGRESS.md`.
 
@@ -76,31 +77,9 @@ A generic OpenAI Chat Completions client. Engine-agnostic. Key facts:
   (click to expand), then `content` renders as the answer.
 - **Request builder:** `request.ts` merges `settings ← toolbar overrides` into the final body.
 
-### File layout (current)
+### File layout
 
-```
-src/
-  extension.ts            # activate(): view provider, commands, status bar, health poll
-  config.ts               # settings access + toolbar override state (Memento)
-  client.ts               # LlmClient: health(), listModels(), chatStream()
-  request.ts              # buildRequestBody(cfg, messages) + token estimator + history trim
-  context.ts              # context injection (active file, selection, diagnostics, @tags)
-  diff.ts                 # hand-rolled line diff
-  inline.ts               # inline completion glue
-  codeaction.ts           # code action glue
-  presets.ts              # model/thinking/context presets
-  secrets.ts              # API key handling
-  tools.ts                # CODE_TOOLS schemas
-  chat/
-    ChatViewProvider.ts   # WebviewViewProvider (chat panel + toolbar)
-    webview.ts            # buildWebviewHtml() — inline HTML/CSS/JS
-  codeaction/
-    CodeActionProvider.ts
-  inline/
-    InlineCompletionProvider.ts
-  tools/
-    ToolExecutor.ts
-```
+See `.github/agents/llm-extension/PROGRESS.md` and `src/`; no copy is kept here.
 
 ## Git policy
 
