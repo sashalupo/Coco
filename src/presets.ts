@@ -94,6 +94,10 @@ export interface LlmSettings {
   instructionFiles: string[];
   /** Glob patterns (workspace-relative) for reusable prompt files. */
   promptFiles: string[];
+  /** Enable custom chat modes defined by *.chatprompt.md files. */
+  customModesEnabled: boolean;
+  /** Glob patterns (workspace-relative) for custom chat mode files (*.chatprompt.md). */
+  customModeLocations: string[];
   /** Enable `.instructions.md` discovery + `applyTo` auto-attach. */
   instructionsFilesEnabled: boolean;
   /** Glob patterns (workspace-relative) for `.instructions.md` files. */
@@ -147,6 +151,8 @@ export interface ToolbarState {
   context: ContextLevel;
   contextFlags: ContextFlags;
   mode: ChatMode;
+  /** Selected custom chat mode (filename stem of a *.chatprompt.md file). Absent/empty = no custom mode. */
+  customMode?: string;
 }
 
 /** One entry in the "Change Completions Model" quick pick. */

@@ -72,6 +72,8 @@ export function readSettings(): LlmSettings {
     instructionsEnabled: c.get<boolean>("instructions.enabled", true),
     instructionFiles: c.get<string[]>("instructions.files", []),
     promptFiles: c.get<string[]>("promptFiles.locations", [".prompts/**/*.prompt.md", ".github/copilot-instructions.md"]),
+    customModesEnabled: c.get<boolean>("customModes.enabled", true),
+    customModeLocations: c.get<string[]>("customModes.locations", ["**/*.chatprompt.md"]),
     instructionsFilesEnabled: c.get<boolean>("instructionsFiles.enabled", true),
     instructionsFilesLocations: c.get<string[]>("instructionsFiles.locations", ["**/*.instructions.md"]),
     codebaseSearchEnabled: c.get<boolean>("chat.codebaseSearch.enabled", true),
@@ -141,11 +143,17 @@ export class ToolbarStateStore {
     const state = this.memento.get<ToolbarState>(TOOLBAR_KEY, DEFAULT_TOOLBAR);
     // Backfill `contextFlags` for state saved before S15 introduced it.
     // Backfill `mode` for state saved before 1.99-10 introduced it.
-    return {
+    const out: ToolbarState = {
       ...state,
       contextFlags: { ...DEFAULT_CONTEXT_FLAGS, ...state.contextFlags },
       mode: normalizeChatMode(state.mode),
     };
+    // Backfill `customMode` for state saved before 1.101-8 introduced it:
+    // kept only when a non-empty string.
+    if (typeof out.customMode !== "string" || out.customMode === "") {
+      delete out.customMode;
+    }
+    return out;
   }
 
   /** Override the model. Pass `null` to clear the override. */
