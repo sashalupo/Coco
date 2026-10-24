@@ -7,6 +7,7 @@
 // returned as `{ content: "Error: ..." }` (same shape the chat loop consumes
 // from `ToolExecutor.execute` results).
 
+import * as fs from "fs";
 import {
   McpClient,
   McpHttpClient,
@@ -23,11 +24,13 @@ import {
   McpTool,
   McpToolAnnotations,
   McpToolResult,
+  mcpDebugArgs,
   mcpPromptToText,
   mcpResourceReadToText,
   mcpResultToImages,
   mcpResultToText,
   mcpToolsToOpenAITools,
+  mcpWatchTarget,
   parseMcpToolName,
 } from "./mcp";
 import type { Tool } from "./tools";
@@ -96,6 +99,15 @@ export class McpManager {
   private samplingCb:
     | ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>)
     | undefined;
+  /**
+   * Per-server `dev.watch` watchers (1.101-5). One directory-level
+   * `fs.watch` per stdio server with a `dev.watch` glob; a matching change
+   * (500 ms debounce) triggers `refresh(name)`.
+   */
+  private devWatchers = new Map<
+    string,
+    { watcher: fs.FSWatcher; timer: NodeJS.Timeout | undefined }
+  >();
   private notify: (msg: string) => void;
 
   constructor(notify?: (msg: string) => void) {
@@ -113,6 +125,7 @@ export class McpManager {
         this.clients.get(name)?.close();
         this.clients.delete(name);
         this.statuses.delete(name);
+        this.stopDevWatch(name);
       }
     }
     for (const name of [...this.inputs.keys()]) {
@@ -158,9 +171,17 @@ export class McpManager {
         // `McpClient` resolves `${input:...}` env refs at construction
         // (throws `missing required input: <name>` when one is absent);
         // the HTTP transport ignores inputs entirely.
-        client = cfg.url
-          ? new McpHttpClient(cfg)
-          : new McpClient(cfg, this.inputs.get(name));
+        if (cfg.url) {
+          client = new McpHttpClient(cfg);
+        } else {
+          // `dev.debug` (1.101-5): rewrite the spawn args for the debugger
+          // (node → `--inspect`, python → `-m debugpy --listen 5678`) via a
+          // shallow-copied config — `McpClient` itself is untouched.
+          const spawnArgs = cfg.dev?.debug
+            ? mcpDebugArgs(cfg.command ?? "", cfg.args ?? [], true)
+            : cfg.args;
+          client = new McpClient({ ...cfg, args: spawnArgs }, this.inputs.get(name));
+        }
       } catch (e) {
         // No client exists yet — surface via the existing error path.
         const message = e instanceof Error ? e.message : String(e);
@@ -184,6 +205,11 @@ export class McpManager {
           toolCount: client.tools.length,
         });
         this.notify(`MCP server '${name}' started (${client.tools.length} tools)`);
+        // `dev.watch` (1.101-5): stdio-only — start a directory-level
+        // watcher that restarts the server on a matching file change.
+        if (!cfg.url && typeof cfg.dev?.watch === "string" && cfg.dev.watch.length > 0) {
+          this.startDevWatch(name, cfg.dev.watch);
+        }
         return client;
       } catch (e) {
         client.close();
@@ -557,6 +583,80 @@ export class McpManager {
     }
   }
 
+  /**
+   * Start a `dev.watch` watcher for a stdio server (1.101-5). Resolves the
+   * glob to a directory via `mcpWatchTarget`, `fs.watch`es it
+   * (`persistent: false`), and on each event (500 ms debounce, `unref`'d)
+   * restarts the server when the changed path matches the glob. Failures
+   * (bad glob, missing dir) are surfaced via `notify` and swallowed — a
+   * broken watch never breaks the server itself. Idempotent: an existing
+   * watcher for the server is stopped first.
+   */
+  private startDevWatch(name: string, glob: string): void {
+    this.stopDevWatch(name);
+    let target: { dir: string; match: RegExp };
+    try {
+      target = mcpWatchTarget(glob);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.notify(`MCP server '${name}' dev.watch: ${message}`);
+      return;
+    }
+    let watcher: fs.FSWatcher;
+    try {
+      watcher = fs.watch(target.dir, { persistent: false });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.notify(`MCP server '${name}' dev.watch: cannot watch '${target.dir}': ${message}`);
+      return;
+    }
+    let timer: NodeJS.Timeout | undefined;
+    watcher.on("change", (_eventType, filename) => {
+      // Debounce: coalesce bursts of events into one restart. The timer is
+      // `unref`'d so a pending debounce never keeps the process alive.
+      if (timer) {
+        clearTimeout(timer);
+      }
+      timer = setTimeout(() => {
+        timer = undefined;
+        const entry = this.devWatchers.get(name);
+        if (!entry) {
+          return; // stopped while the debounce was pending
+        }
+        const changed = typeof filename === "string" ? filename : "";
+        if (changed.length > 0 && target.match.test(changed)) {
+          void this.refresh(name);
+        }
+      }, 500);
+      timer.unref?.();
+    });
+    watcher.on("error", (err) => {
+      this.notify(`MCP server '${name}' dev.watch error: ${err.message}`);
+      this.stopDevWatch(name);
+    });
+    this.devWatchers.set(name, { watcher, timer });
+  }
+
+  /**
+   * Stop and drop the `dev.watch` watcher for a server (1.101-5).
+   * Idempotent: safe to call when no watcher is active.
+   */
+  private stopDevWatch(name: string): void {
+    const entry = this.devWatchers.get(name);
+    if (!entry) {
+      return;
+    }
+    if (entry.timer) {
+      clearTimeout(entry.timer);
+    }
+    try {
+      entry.watcher.close();
+    } catch {
+      // already closed — nothing to do
+    }
+    this.devWatchers.delete(name);
+  }
+
   /** Close all clients and clear all state. Idempotent. */
   dispose(): void {
     for (const client of this.clients.values()) {
@@ -569,6 +669,9 @@ export class McpManager {
     this.samplingAllowed.clear();
     this.samplingLog = [];
     this.samplingCb = undefined;
+    for (const name of [...this.devWatchers.keys()]) {
+      this.stopDevWatch(name);
+    }
   }
 
   private statusFor(name: string): McpServerStatus {
