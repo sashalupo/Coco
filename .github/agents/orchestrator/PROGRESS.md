@@ -14,12 +14,12 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.101-8 IN PROGRESS** (Custom chat modes Preview: `*.chatprompt.md` files, mode dropdown, per-mode instructions + tool set)
-- **Slices:** S-001 `src/chatmodes.ts` [DONE b787865] · S-002 presets+config [DONE e115048] · S-003 webview [DONE d7f0189] · S-004 ChatViewProvider · S-005 package.json · S-006 smoke 892→904
-- **Current slice:** S-004
-- **Retry state:** clear
-- **Next step:** dispatch the **Coder** for 1.101-8 S-004 (user goal: complete versions 1.101 → 1.107)
+- **Slices:** S-001 `src/chatmodes.ts` [DONE b787865] · S-002 presets+config [DONE e115048] · S-003 webview [DONE d7f0189] · S-004 ChatViewProvider [DONE 55a3238] · S-005 package.json · S-006 smoke 892→904
+- **Current slice:** S-005
+- **Retry state:** clear (S-004 needed 2 no-response retries before landing)
+- **Next step:** dispatch the **Coder** for 1.101-8 S-005 (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** d7f0189 (1.101-8 S-003)
+- **Last commit:** 55a3238 (1.101-8 S-004)
 - **Build state:** compiles clean; smoke 892/892 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
