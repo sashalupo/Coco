@@ -16,6 +16,9 @@ import {
   McpResource,
   McpResourceReadResult,
   McpResourceTemplate,
+  McpSamplingLogEntry,
+  McpSamplingParams,
+  McpSamplingResult,
   McpServerConfig,
   McpTool,
   McpToolAnnotations,
@@ -49,6 +52,11 @@ export interface McpClientLike {
     args?: Record<string, unknown>,
   ): Promise<McpPromptResult>;
   readResource(uri: string): Promise<McpResourceReadResult>;
+  setSamplingHandler(
+    cb:
+      | ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>)
+      | undefined,
+  ): void;
   close(): void;
 }
 
@@ -77,6 +85,17 @@ export class McpManager {
    * design — no SecretStorage; values must be re-entered after a reload.
    */
   private inputs = new Map<string, Record<string, string>>();
+  /**
+   * Per-server sampling allow/deny map (1.101-4). Absent/`undefined` =
+   * allow; only an explicit `false` denies.
+   */
+  private samplingAllowed = new Map<string, boolean>();
+  /** In-memory sampling request log, capped at 100 (oldest dropped). */
+  private samplingLog: McpSamplingLogEntry[] = [];
+  /** Host-provided sampling callback (confirmation + model round-trip). */
+  private samplingCb:
+    | ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>)
+    | undefined;
   private notify: (msg: string) => void;
 
   constructor(notify?: (msg: string) => void) {
@@ -158,6 +177,7 @@ export class McpManager {
       try {
         await client.start();
         this.clients.set(name, client);
+        this.wireSamplingHandler(name, client);
         this.statuses.set(name, {
           name,
           status: "running",
@@ -415,6 +435,128 @@ export class McpManager {
     }
   }
 
+  /**
+   * Set the per-server sampling allow/deny flag. `undefined` clears the
+   * entry (back to the default: allow). Only an explicit `false` denies.
+   */
+  setSamplingAllowed(name: string, allowed: boolean | undefined): void {
+    if (allowed === undefined) {
+      this.samplingAllowed.delete(name);
+      return;
+    }
+    this.samplingAllowed.set(name, allowed);
+  }
+
+  /** Whether a server may sample the model (default `true`). */
+  isSamplingAllowed(name: string): boolean {
+    return this.samplingAllowed.get(name) !== false;
+  }
+
+  /**
+   * Register (or clear) the host sampling callback and (re)wire the
+   * per-client handler on every currently running client. Clients started
+   * later are wired by `ensureStarted`.
+   */
+  setSamplingHandler(
+    cb:
+      | ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>)
+      | undefined,
+  ): void {
+    this.samplingCb = cb;
+    for (const [name, client] of this.clients) {
+      if (this.statuses.get(name)?.status === "running") {
+        this.wireSamplingHandler(name, client);
+      }
+    }
+  }
+
+  /**
+   * Copy of the in-memory sampling request log (newest last). Pass a
+   * server name to filter to that server.
+   */
+  getSamplingLog(server?: string): McpSamplingLogEntry[] {
+    const entries = server
+      ? this.samplingLog.filter((e) => e.server === server)
+      : this.samplingLog;
+    return [...entries];
+  }
+
+  /**
+   * Install the manager's sampling handler on one client. The closure
+   * enforces the allow/deny policy, records every request (allowed or
+   * denied) in the log, and delegates to the host callback when allowed.
+   */
+  private wireSamplingHandler(name: string, client: McpClientLike): void {
+    // The clients pass `""` as the server name to the callback (they don't
+    // know their own configured name) — the closure-captured `name` is the
+    // authoritative server identity for policy + logging.
+    client.setSamplingHandler(async (_server, params) => {
+      const messageCount = Array.isArray(params.messages)
+        ? params.messages.length
+        : 0;
+      if (!this.isSamplingAllowed(name)) {
+        this.pushSamplingLog({
+          server: name,
+          model: params.model,
+          maxTokens: params.maxTokens,
+          messageCount,
+          allowed: false,
+          ok: false,
+          error: `sampling denied for server '${name}'`,
+          at: Date.now(),
+        });
+        throw new Error(`sampling denied for server '${name}'`);
+      }
+      if (!this.samplingCb) {
+        this.pushSamplingLog({
+          server: name,
+          model: params.model,
+          maxTokens: params.maxTokens,
+          messageCount,
+          allowed: true,
+          ok: false,
+          error: "sampling not configured",
+          at: Date.now(),
+        });
+        throw new Error("sampling not configured");
+      }
+      try {
+        const result = await this.samplingCb(name, params);
+        this.pushSamplingLog({
+          server: name,
+          model: params.model,
+          maxTokens: params.maxTokens,
+          messageCount,
+          allowed: true,
+          ok: true,
+          at: Date.now(),
+        });
+        return result;
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        this.pushSamplingLog({
+          server: name,
+          model: params.model,
+          maxTokens: params.maxTokens,
+          messageCount,
+          allowed: true,
+          ok: false,
+          error: message,
+          at: Date.now(),
+        });
+        throw e;
+      }
+    });
+  }
+
+  /** Append a sampling log entry, dropping the oldest past 100. */
+  private pushSamplingLog(entry: McpSamplingLogEntry): void {
+    this.samplingLog.push(entry);
+    if (this.samplingLog.length > 100) {
+      this.samplingLog.splice(0, this.samplingLog.length - 100);
+    }
+  }
+
   /** Close all clients and clear all state. Idempotent. */
   dispose(): void {
     for (const client of this.clients.values()) {
@@ -424,6 +566,9 @@ export class McpManager {
     this.statuses.clear();
     this.starting.clear();
     this.servers = {};
+    this.samplingAllowed.clear();
+    this.samplingLog = [];
+    this.samplingCb = undefined;
   }
 
   private statusFor(name: string): McpServerStatus {
