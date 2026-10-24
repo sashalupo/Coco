@@ -125,6 +125,14 @@ export class McpManager {
         this.clients.get(name)?.close();
         this.clients.delete(name);
         this.statuses.delete(name);
+      }
+    }
+    // Stop the `dev.watch` watcher for every removed server (1.101-5).
+    // Iterated independently of the client map: a watch-triggered `refresh`
+    // may have already closed + deleted the client before this runs, so a
+    // client-based loop would miss the watcher.
+    for (const name of [...this.devWatchers.keys()]) {
+      if (!(name in servers)) {
         this.stopDevWatch(name);
       }
     }
@@ -207,6 +215,8 @@ export class McpManager {
         this.notify(`MCP server '${name}' started (${client.tools.length} tools)`);
         // `dev.watch` (1.101-5): stdio-only — start a directory-level
         // watcher that restarts the server on a matching file change.
+        // `refresh` refuses to restart removed servers, so a removed server
+        // never reaches this point.
         if (!cfg.url && typeof cfg.dev?.watch === "string" && cfg.dev.watch.length > 0) {
           this.startDevWatch(name, cfg.dev.watch);
         }
@@ -253,6 +263,13 @@ export class McpManager {
     if (client && this.statuses.get(name)?.status === "running") {
       client.close();
       this.clients.delete(name);
+    }
+    // A watch-triggered refresh may resolve after the server was removed via
+    // `setServers` — never restart (or re-watch) a server that no longer
+    // exists in the config.
+    if (!(name in this.servers)) {
+      this.statuses.delete(name);
+      return this.statusFor(name);
     }
     try {
       await this.ensureStarted(name);

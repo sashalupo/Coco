@@ -7449,11 +7449,275 @@ function assert(cond, label) {
     "mcp-sampling-s15: config.ts reads mcpSamplingConfirm and mcpSamplingAllowed",
   );
 
-  if (assertCount !== 858) {
-    console.error(`FAIL: total assertion count is 858 (got ${assertCount})`);
+  // 1.101-5 S-003: MCP development mode (mcp-dev-s1..s12)
+  const mcpDevMod = require(path.join(__dirname, "..", "out", "mcp.js"));
+  const mcpDevFs = require("fs");
+  const mcpDevOs = require("os");
+  // s1: parseMcpServers — valid dev { watch, debug } preserved.
+  {
+    const parsed = mcpDevMod.parseMcpServers({
+      a: { command: "node", args: ["x.js"], dev: { watch: "./src/**/*.py", debug: true } },
+    });
+    assert(
+      parsed.a !== undefined &&
+        parsed.a.dev !== undefined &&
+        parsed.a.dev.watch === "./src/**/*.py" &&
+        parsed.a.dev.debug === true,
+      "mcp-dev-s1: parseMcpServers preserves a valid dev { watch, debug } object",
+    );
+  }
+  // s2: parseMcpServers — invalid dev shapes dropped/coerced.
+  {
+    const p1 = mcpDevMod.parseMcpServers({ a: { command: "node", dev: "x" } });
+    const p2 = mcpDevMod.parseMcpServers({ a: { command: "node", dev: { watch: 42 } } });
+    const p3 = mcpDevMod.parseMcpServers({ a: { command: "node", dev: { debug: "yes" } } });
+    const p4 = mcpDevMod.parseMcpServers({ a: { command: "node", dev: { watch: "", debug: 1 } } });
+    const p5 = mcpDevMod.parseMcpServers({ a: { command: "node", dev: { watch: "g", debug: false } } });
+    assert(
+      p1.a.dev === undefined &&
+        p2.a.dev === undefined &&
+        p3.a.dev === undefined &&
+        p4.a.dev === undefined &&
+        p5.a.dev !== undefined &&
+        p5.a.dev.watch === "g" &&
+        p5.a.dev.debug === false,
+      "mcp-dev-s2: parseMcpServers drops non-object dev, non-string watch, non-boolean debug; all-invalid dev → undefined",
+    );
+  }
+  // s3: mcpDebugArgs — node command → --inspect inserted first.
+  {
+    const r = mcpDevMod.mcpDebugArgs("node", ["x.js", "--flag"], true);
+    assert(
+      JSON.stringify(r) === JSON.stringify(["--inspect", "x.js", "--flag"]),
+      "mcp-dev-s3: mcpDebugArgs inserts --inspect as the first arg for a node command",
+    );
+  }
+  // s4: mcpDebugArgs — python command → debugpy rewrite prepended.
+  {
+    const r = mcpDevMod.mcpDebugArgs("python3", ["server.py"], true);
+    assert(
+      JSON.stringify(r) === JSON.stringify(["-m", "debugpy", "--listen", "5678", "server.py"]),
+      "mcp-dev-s4: mcpDebugArgs prepends -m debugpy --listen 5678 for a python command",
+    );
+  }
+  // s5: mcpDebugArgs — unknown command unchanged; debug:false unchanged; input not mutated.
+  {
+    const orig = ["a", "b"];
+    const r1 = mcpDevMod.mcpDebugArgs("rusty", orig, true);
+    const r2 = mcpDevMod.mcpDebugArgs("node", orig, false);
+    assert(
+      JSON.stringify(r1) === JSON.stringify(["a", "b"]) &&
+        JSON.stringify(r2) === JSON.stringify(["a", "b"]) &&
+        JSON.stringify(orig) === JSON.stringify(["a", "b"]) &&
+        JSON.stringify(mcpDevMod.mcpDebugArgs("node", [], true)) === JSON.stringify(["--inspect"]),
+      "mcp-dev-s5: mcpDebugArgs leaves unknown commands and debug:false unchanged and never mutates the input array",
+    );
+  }
+  // s6: mcpWatchTarget — literal dir extraction + anchored regex behavior.
+  {
+    const t1 = mcpDevMod.mcpWatchTarget("./src/**/*.py");
+    const t2 = mcpDevMod.mcpWatchTarget("**/*.js");
+    const t3 = mcpDevMod.mcpWatchTarget("**/*.py");
+    const t4 = mcpDevMod.mcpWatchTarget("*.js");
+    assert(
+      t1.dir === path.resolve(process.cwd(), "src") &&
+        t2.dir === "." &&
+        t3.match.test("a/b/c.py") &&
+        t3.match.test("c.py") &&
+        !t3.match.test("c.ts") &&
+        t4.match.test("b.js") &&
+        !t4.match.test("a/b.js"),
+      "mcp-dev-s6: mcpWatchTarget extracts the literal dir prefix and builds an anchored regex (** crosses /, * does not)",
+    );
+  }
+  // s7: mcpWatchTarget — empty/whitespace glob throws.
+  {
+    let threw = false;
+    try {
+      mcpDevMod.mcpWatchTarget("   ");
+    } catch {
+      threw = true;
+    }
+    assert(
+      threw,
+      "mcp-dev-s7: mcpWatchTarget throws on an empty/whitespace glob",
+    );
+  }
+  // s8: McpManager dev.debug — a stdio server with dev.debug:true spawns with --inspect.
+  {
+    const devDir = mcpDevFs.mkdtempSync(path.join(mcpDevOs.tmpdir(), "llm-mcp-dev-"));
+    const devServerPath = path.join(devDir, "fake-server.js");
+    mcpDevFs.writeFileSync(
+      devServerPath,
+      [
+        "process.stderr.write('ARGV:' + JSON.stringify(process.argv) + '\\n');",
+        "let buf = '';",
+        "process.stdin.on('data', (c) => {",
+        "  buf += c.toString();",
+        "  let i;",
+        "  while ((i = buf.indexOf('\\n')) !== -1) {",
+        "    const line = buf.slice(0, i);",
+        "    buf = buf.slice(i + 1);",
+        "    if (!line.trim()) continue;",
+        "    const m = JSON.parse(line);",
+        "    if (m.method === 'initialize') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: {}, serverInfo: { name: 'fake', version: '0.0.1' } } }) + '\\n');",
+        "    } else if (m.method === 'tools/list') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { tools: [] } }) + '\\n');",
+        "    }",
+        "  }",
+        "});",
+      ].join("\n"),
+      "utf8",
+    );
+    const m = new McpManager();
+    m.setServers({
+      devdbg: {
+        command: process.execPath,
+        args: [devServerPath],
+        dev: { debug: true },
+      },
+    });
+    const client = await m.ensureStarted("devdbg");
+    await new Promise((r) => setTimeout(r, 300));
+    // `--inspect` is consumed by the node runtime (it never reaches the child's
+    // `process.argv`), so the definitive proof it was passed is the inspector
+    // banner node prints to stderr when it binds the debug port.
+    const stderrTail = client["stderrTail"] || "";
+    assert(
+      m.statuses.get("devdbg")?.status === "running" &&
+        stderrTail.includes("Debugger listening on ws://127.0.0.1:9229"),
+      "mcp-dev-s8: McpManager spawns a dev.debug stdio server with --inspect (inspector banner on stderr)",
+    );
+    m.dispose();
+    mcpDevFs.rmSync(devDir, { recursive: true, force: true });
+  }
+  // s9: McpManager dev.watch — a matching file change triggers a refresh (restart)
+  // and setServers removal stops the watcher.
+  {
+    const devDir = mcpDevFs.mkdtempSync(path.join(mcpDevOs.tmpdir(), "llm-mcp-devwatch-"));
+    const devServerPath = path.join(devDir, "fake-server.js");
+    mcpDevFs.writeFileSync(
+      devServerPath,
+      [
+        "let buf = '';",
+        "process.stdin.on('data', (c) => {",
+        "  buf += c.toString();",
+        "  let i;",
+        "  while ((i = buf.indexOf('\\n')) !== -1) {",
+        "    const line = buf.slice(0, i);",
+        "    buf = buf.slice(i + 1);",
+        "    if (!line.trim()) continue;",
+        "    const m = JSON.parse(line);",
+        "    if (m.method === 'initialize') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: {}, serverInfo: { name: 'fake', version: '0.0.1' } } }) + '\\n');",
+        "    } else if (m.method === 'tools/list') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { tools: [] } }) + '\\n');",
+        "    }",
+        "  }",
+        "});",
+      ].join("\n"),
+      "utf8",
+    );
+    const m = new McpManager();
+    m.setServers({
+      devwatch: {
+        command: process.execPath,
+        args: [devServerPath],
+        dev: { watch: devDir + "/*.js" },
+      },
+    });
+    await m.ensureStarted("devwatch");
+    const watchersBefore = m["devWatchers"].size;
+    mcpDevFs.writeFileSync(path.join(devDir, "trigger.js"), "x\n", "utf8");
+    await new Promise((r) => setTimeout(r, 1500));
+    const statusAfter = m.statuses.get("devwatch")?.status;
+    m.setServers({});
+    const watchersAfter = m["devWatchers"].size;
+    assert(
+      watchersBefore === 1 &&
+        statusAfter === "running" &&
+        watchersAfter === 0,
+      "mcp-dev-s9: McpManager dev.watch restarts the server on a matching change and stops the watcher on setServers removal",
+    );
+    m.dispose();
+    mcpDevFs.rmSync(devDir, { recursive: true, force: true });
+  }
+  // s10: McpManager dispose — all dev watchers closed.
+  {
+    const devDir = mcpDevFs.mkdtempSync(path.join(mcpDevOs.tmpdir(), "llm-mcp-devdisp-"));
+    const devServerPath = path.join(devDir, "fake-server.js");
+    mcpDevFs.writeFileSync(
+      devServerPath,
+      [
+        "let buf = '';",
+        "process.stdin.on('data', (c) => {",
+        "  buf += c.toString();",
+        "  let i;",
+        "  while ((i = buf.indexOf('\\n')) !== -1) {",
+        "    const line = buf.slice(0, i);",
+        "    buf = buf.slice(i + 1);",
+        "    if (!line.trim()) continue;",
+        "    const m = JSON.parse(line);",
+        "    if (m.method === 'initialize') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: {}, serverInfo: { name: 'fake', version: '0.0.1' } } }) + '\\n');",
+        "    } else if (m.method === 'tools/list') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { tools: [] } }) + '\\n');",
+        "    }",
+        "  }",
+        "});",
+      ].join("\n"),
+      "utf8",
+    );
+    const m = new McpManager();
+    m.setServers({
+      devdisp: {
+        command: process.execPath,
+        args: [devServerPath],
+        dev: { watch: devDir + "/*.js" },
+      },
+    });
+    await m.ensureStarted("devdisp");
+    const before = m["devWatchers"].size;
+    m.dispose();
+    const after = m["devWatchers"].size;
+    assert(
+      before === 1 && after === 0,
+      "mcp-dev-s10: McpManager.dispose closes all dev.watch watchers",
+    );
+    mcpDevFs.rmSync(devDir, { recursive: true, force: true });
+  }
+  // s11: static — mcpManager.ts contains the dev-mode wiring.
+  {
+    const mcpMgrSrc = fs.readFileSync(
+      path.join(__dirname, "..", "src", "mcpManager.ts"),
+      "utf8",
+    );
+    assert(
+      mcpMgrSrc.includes("devWatchers") &&
+        mcpMgrSrc.includes("startDevWatch") &&
+        mcpMgrSrc.includes("stopDevWatch") &&
+        mcpMgrSrc.includes("mcpDebugArgs"),
+      "mcp-dev-s11: mcpManager.ts contains devWatchers, startDevWatch, stopDevWatch and mcpDebugArgs usage",
+    );
+  }
+  // s12: static — mcp.ts exports McpDevConfig.
+  {
+    const mcpSrc = fs.readFileSync(
+      path.join(__dirname, "..", "src", "mcp.ts"),
+      "utf8",
+    );
+    assert(
+      mcpSrc.includes("McpDevConfig"),
+      "mcp-dev-s12: mcp.ts exports the McpDevConfig interface",
+    );
+  }
+
+  if (assertCount !== 870) {
+    console.error(`FAIL: total assertion count is 870 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 858");
+  console.log("PASS: total assertion count is 870");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
