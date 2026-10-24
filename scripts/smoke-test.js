@@ -7713,11 +7713,93 @@ function assert(cond, label) {
     );
   }
 
-  if (assertCount !== 870) {
-    console.error(`FAIL: total assertion count is 870 (got ${assertCount})`);
+  // 1.101-6 S-003: chat UX improvements (chat-ux-s1..s10)
+  const chatUxWebviewSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  const chatUxHostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  // s1: static — webview.ts has the .msg-undo CSS and posts undo_request.
+  assert(
+    chatUxWebviewSrc.includes(".msg-undo") &&
+      chatUxWebviewSrc.includes("undo_request"),
+    "chat-ux-s1: webview.ts contains the .msg-undo CSS and posts undo_request",
+  );
+  // s2: static — addUserMessage takes an idx param and stamps data-idx.
+  assert(
+    /window\.addUserMessage\s*=\s*function\s*\(\s*text\s*,\s*images\s*,\s*idx\s*\)/.test(
+      chatUxWebviewSrc,
+    ) && chatUxWebviewSrc.includes("dataset.idx"),
+    "chat-ux-s2: addUserMessage(text, images, idx) sets data-idx on the message element",
+  );
+  // s3: static — host handles undo_request and truncates via history.slice(0, index).
+  assert(
+    chatUxHostSrc.includes('case "undo_request"') &&
+      chatUxHostSrc.includes("this.history.slice(0, index)"),
+    "chat-ux-s3: ChatViewProvider.ts handles undo_request and truncates via this.history.slice(0, index)",
+  );
+  // s4: static — host streaming guard: abortController checked before truncation.
+  {
+    const undoCase = chatUxHostSrc.slice(
+      chatUxHostSrc.indexOf('case "undo_request"'),
+    );
+    const guardPos = undoCase.indexOf("this.abortController");
+    const slicePos = undoCase.indexOf("this.history.slice(0, index)");
+    assert(
+      guardPos !== -1 && slicePos !== -1 && guardPos < slicePos,
+      "chat-ux-s4: undo_request checks abortController (streaming guard) before truncating",
+    );
+  }
+  // s5: static — ⌘/Ctrl+Backspace handler (Backspace + metaKey/ctrlKey + preventDefault).
+  assert(
+    /e\.key\s*!==\s*'Backspace'\s*\|\|\s*!\(e\.metaKey\s*\|\|\s*e\.ctrlKey\)/.test(
+      chatUxWebviewSrc,
+    ) &&
+      chatUxWebviewSrc.includes("e.preventDefault()"),
+    "chat-ux-s5: webview.ts has the ⌘/Ctrl+Backspace undo-last handler with preventDefault",
+  );
+  // s6: static — #attach-strip CSS is horizontally scrollable.
+  assert(
+    /\.attach-strip\s*\{[^}]*overflow-x:\s*auto/.test(chatUxWebviewSrc),
+    "chat-ux-s6: .attach-strip CSS has overflow-x: auto (scrollable attachment strip)",
+  );
+  // s7: static — .attach-count and .attach-badge present.
+  assert(
+    chatUxWebviewSrc.includes(".attach-count") &&
+      chatUxWebviewSrc.includes(".attach-badge"),
+    "chat-ux-s7: webview.ts contains .attach-count and .attach-badge",
+  );
+  // s8: static — openLightbox/closeLightbox defined and wired to pending thumbnails and .msg-img.
+  assert(
+    chatUxWebviewSrc.includes("function openLightbox") &&
+      chatUxWebviewSrc.includes("function closeLightbox") &&
+      chatUxWebviewSrc.includes("openLightbox(img.dataUrl)") &&
+      chatUxWebviewSrc.includes("openLightbox(dataUrl)"),
+    "chat-ux-s8: openLightbox/closeLightbox defined and wired to pending thumbnails and .msg-img",
+  );
+  // s9: static — restore render loop passes the message index to addUserMessage.
+  assert(
+    /addUserMessage\(\s*m\.content\s*,\s*m\.images\s*,\s*i\s*\)/.test(
+      chatUxWebviewSrc,
+    ),
+    "chat-ux-s9: restore render loop passes the message index to addUserMessage",
+  );
+  // s10: static — out-of-range undo is a no-op (bounds guard index < history.length).
+  assert(
+    /index\s*<\s*0\s*\|\|\s*index\s*>=\s*this\.history\.length/.test(
+      chatUxHostSrc,
+    ),
+    "chat-ux-s10: undo_request with an out-of-range index is a no-op (bounds guard)",
+  );
+
+  if (assertCount !== 880) {
+    console.error(`FAIL: total assertion count is 880 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 870");
+  console.log("PASS: total assertion count is 880");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
