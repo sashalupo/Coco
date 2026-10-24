@@ -445,6 +445,11 @@
           "default": true,
           "description": "After the agent runs a task (run_command), automatically collect new problem-matcher diagnostics and inject them into the agent context."
         },
+        "llm.agent.trackTerminalCwd": {
+          "type": "boolean",
+          "default": true,
+          "description": "After the agent runs a terminal command (run_command), capture the working directory and include it in the agent context for subsequent commands."
+        },
         "llm.chat.summarize.enabled": {
           "type": "boolean",
           "default": true,
