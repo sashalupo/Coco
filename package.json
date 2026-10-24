@@ -415,6 +415,16 @@
           "default": {},
           "description": "MCP servers to connect to. Each entry: { command, args?, env?, inputs? } (stdio) or { url } (Streamable HTTP / SSE). env values may reference inputs as ${input:name}; secret values are prompted at connect time."
         },
+        "llm.mcp.sampling.confirm": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask for confirmation before an MCP server's sampling request (sampling/createMessage) is answered by the LLM. Once approved, a server is remembered for the session."
+        },
+        "llm.mcp.sampling.allowed": {
+          "type": "object",
+          "default": {},
+          "description": "Per-server allow/deny overrides for MCP sampling (Experimental). Each entry: { \"<server name>\": true | false }. Servers not listed follow the default policy (allowed, with a first-use confirmation when llm.mcp.sampling.confirm is on)."
+        },
         "llm.toolsets.enabled": {
           "type": "boolean",
           "default": true,
