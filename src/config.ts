@@ -176,6 +176,21 @@ export class ToolbarStateStore {
     return this.memento.update(TOOLBAR_KEY, { ...this.get(), mode });
   }
 
+  /**
+   * Override the selected custom chat mode (1.101-8). Pass `null` to clear
+   * the selection. Persisted like `mode`; `get()` normalizes it back to
+   * absent when empty.
+   */
+  setCustomMode(name: string | null): Thenable<void> {
+    const state = this.get();
+    if (name === null || name === "") {
+      delete state.customMode;
+    } else {
+      state.customMode = name;
+    }
+    return this.memento.update(TOOLBAR_KEY, state);
+  }
+
   /** Override which editor-context sections to inject. */
   setContextFlags(flags: ContextFlags): Thenable<void> {
     return this.memento.update(TOOLBAR_KEY, {

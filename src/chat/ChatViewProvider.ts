@@ -52,6 +52,10 @@ import { buildScaffoldPrompt } from "../workspaceScaffold";
 import { notebookNameFromQuery } from "../notebook";
 import { parseToolsetsJson, resolveToolset } from "../toolsets";
 import {
+  parseChatModeFile,
+  type CustomModeFile,
+} from "../chatmodes";
+import {
   parsePromptFrontMatter,
   stripPromptComments,
   MAX_PROMPT_CHARS,
@@ -149,6 +153,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * `promptTools`.
    */
   private pendingToolset: string | null = null;
+
+  /**
+   * 1.101-8.S-004: discovered custom chat modes (`*.chatprompt.md` files).
+   * Re-scanned on panel open and at the top of every `runStream` so edits to
+   * mode files take effect each turn.
+   */
+  private customModes: CustomModeFile[] = [];
 
   /**
    * 1.100-12.S3: re-entrancy guard for the automatic summarization pass —
@@ -285,6 +296,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // 1.101-2.S-004: seed the slash-command dropdown with the running
         // servers' MCP prompts.
         void this.postMcpPrompts();
+        // 1.101-8.S-004: populate the "Custom modes" optgroup.
+        void this.loadCustomModes();
         break;
       case "send":
         // 1.100-8.S3: parse `@`/`#folder:` refs from the pending input into
@@ -307,6 +320,20 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "toolbar":
         this.applyToolbarMessage(msg);
         break;
+      case "custom_mode": {
+        // 1.101-8.S-004: the webview's mode dropdown selected a custom mode
+        // (built-in ask/agent/edit keep the `toolbar` path). Validate against
+        // the loaded modes — unknown names are ignored — and persist the
+        // selection in the toolbar memento like `mode`.
+        const name = String(msg.mode ?? "");
+        if (
+          name.length > 0 &&
+          this.customModes.some((m) => m.name === name)
+        ) {
+          void this.toolbarStore.setCustomMode(name);
+        }
+        break;
+      }
       case "newChat":
         this.startNewConversation();
         break;
@@ -1167,6 +1194,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       context: t.context,
       contextFlags: t.contextFlags,
       mode: t.mode,
+      // 1.101-8.S-004: custom-mode selection (absent → null). The webview
+      // applies it only when the option already exists (the host may echo
+      // state before the `custom_modes` list arrives).
+      customMode: t.customMode ?? null,
     });
   }
 
@@ -1283,6 +1314,62 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       // Engine unreachable — the dropdown simply stays as-is; the manual
       // entry still works. Failures are intentionally silent.
     }
+  }
+
+  /**
+   * 1.101-8.S-004: discover custom chat mode files (`*.chatprompt.md`) via
+   * `llm.customModes.locations` globs (same `findFiles` pattern as
+   * `llm.runPrompt`), parse each with `parseChatModeFile` (null → skip),
+   * store the list, and post it to the webview for the mode dropdown.
+   * Called on panel open and at the top of every `runStream` so edits to
+   * mode files take effect each turn. Never throws.
+   */
+  private async loadCustomModes(): Promise<void> {
+    const settings = readSettings();
+    if (!settings.customModesEnabled) {
+      this.customModes = [];
+      this.postMessage({ type: "custom_modes", modes: [] });
+      return;
+    }
+    const globs = (settings.customModeLocations ?? []).filter(
+      (g) => typeof g === "string" && g.length > 0,
+    );
+    const found: vscode.Uri[] = [];
+    const seen = new Set<string>();
+    for (const glob of globs) {
+      const uris = await vscode.workspace.findFiles(
+        glob,
+        "**/node_modules/**",
+        50,
+      );
+      for (const uri of uris) {
+        if (!seen.has(uri.fsPath)) {
+          seen.add(uri.fsPath);
+          found.push(uri);
+        }
+      }
+    }
+    const modes: CustomModeFile[] = [];
+    for (const uri of found) {
+      let raw: string;
+      try {
+        raw = await fs.promises.readFile(uri.fsPath, "utf8");
+      } catch {
+        continue;
+      }
+      const parsed = parseChatModeFile(
+        raw.slice(0, MAX_PROMPT_CHARS),
+        uri.fsPath,
+      );
+      if (parsed) {
+        modes.push(parsed);
+      }
+    }
+    this.customModes = modes;
+    this.postMessage({
+      type: "custom_modes",
+      modes: modes.map((m) => ({ name: m.name, description: m.description })),
+    });
   }
 
   /**
@@ -1555,6 +1642,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     toolbar: ToolbarState,
     skipUser: boolean,
   ): Promise<void> {
+    // 1.101-8.S-004: re-scan custom mode files each turn so edits take
+    // effect (bounded findFiles, same cost profile as `llm.runPrompt`).
+    // Awaited so the mode lookup below uses the fresh list.
+    await this.loadCustomModes();
     // 1.100-2.S3: consume the pending prompt-file tool filter (set by
     // `runPrompt`); null for regular sends/regenerations.
     let promptTools = this.pendingPromptTools;
@@ -1580,6 +1671,30 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         } else if (resolved.error) {
           this.postMessage({ type: "error", message: resolved.error });
         }
+      }
+    }
+    // 1.101-8.S-004: custom chat mode. Precedence: custom mode `tools`
+    // front matter > `#toolset:` tag > toolbar picker > prompt-file
+    // `pendingPromptTools`. A mode without `tools` applies no filter. A
+    // selected mode whose file was deleted posts a one-time error and
+    // clears the selection.
+    let modeInstructions = "";
+    if (toolbar.customMode && settings.customModesEnabled) {
+      const mode = this.customModes.find(
+        (m) => m.name === toolbar.customMode,
+      );
+      if (mode) {
+        if (mode.tools && mode.tools.length > 0) {
+          promptTools = mode.tools;
+        }
+        modeInstructions =
+          "## Mode: " + mode.name + "\n\n" + mode.instructions;
+      } else {
+        this.postMessage({
+          type: "error",
+          message: `Custom mode '${toolbar.customMode}' no longer exists — using no mode filter.`,
+        });
+        void this.toolbarStore.setCustomMode(null);
       }
     }
     // Build the request body. This is wrapped in its own try/catch (separate
@@ -1878,6 +1993,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         instructionsBlock,
         finalContextBlock,
         modeAddendum(toolbar.mode),
+        modeInstructions,
       );
       this.postMessage({
         type: "instructions",
@@ -2578,19 +2694,26 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Combine the configured system prompt, the loaded custom-instructions
-   * block, the gathered context block, and the chat-mode addendum. Any of
-   * the four may be empty; the result is empty only when all are empty.
-   * Order: system prompt, then instructions, then context, then mode.
+   * block, the gathered context block, the chat-mode addendum, and (1.101-8)
+   * the custom-mode instructions block. Any of the five may be empty; the
+   * result is empty only when all are empty.
+   * Order: system prompt, then instructions, then context, then mode,
+   * then custom mode.
    */
   private composeSystemPrompt(
     systemPrompt: string,
     instructionsBlock: string,
     contextBlock: string,
     modeAddendum: string,
+    modeInstructions: string = "",
   ): string {
-    const parts = [systemPrompt, instructionsBlock, contextBlock, modeAddendum].filter(
-      (p) => p && p.trim().length > 0,
-    );
+    const parts = [
+      systemPrompt,
+      instructionsBlock,
+      contextBlock,
+      modeAddendum,
+      modeInstructions,
+    ].filter((p) => p && p.trim().length > 0);
     return parts.join("\n\n");
   }
 
