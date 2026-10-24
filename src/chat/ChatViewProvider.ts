@@ -326,6 +326,30 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       case "stop":
         this.abortController?.abort();
         break;
+      case "undo_request":
+        // 1.101-6.S-002: the webview's hover × (or ⌘/Ctrl+Backspace) asked to
+        // undo a user turn — truncate the history to before that turn (the
+        // turn and everything after it are dropped) and re-render via the
+        // existing restore path.
+        {
+          const index = Number(msg.index);
+          if (!Number.isInteger(index) || index < 0 || index >= this.history.length) {
+            break; // out of range — ignore
+          }
+          if (this.abortController) {
+            this.postMessage({
+              type: "error",
+              message: "Stop the running request first.",
+            });
+            break;
+          }
+          this.history = this.history.slice(0, index);
+          this.preRunHistory = null; // stale checkpoint after truncation
+          this.saveCurrentConversation(); // persist the truncated history
+          this.pushHistory();
+          this.postMessage({ type: "undo_done" });
+        }
+        break;
       case "toolApproval":
         this.pendingApproval?.(
           msg.approved === true,
