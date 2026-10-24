@@ -13,14 +13,14 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.100-38 COMPLETE** — next item 1.101-1 (Chat tool sets)
-- **Current slice:** none (1.100-38 complete, verified PASS)
+- **Current item:** **1.101-1 COMPLETE** (verified PASS) — next item 1.101-2 (MCP support for prompts)
+- **Current slice:** none (1.101-1 complete, verified PASS)
 - **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
   is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Planner** for 1.101-1 (Chat tool sets) (user goal: continue until version 1.107)
+- **Next step:** dispatch the **Planner** for 1.101-2 (MCP support for prompts) (user goal: complete versions 1.100, 1.101, 1.102)
 - **Last updated:** 2026-10-24
-- **Last commit:** 52438e8 (1.100-38 S-005 smoke guards; item verified PASS)
-- **Build state:** compiles clean; smoke 806/806 PASS (verified 2026-10-24)
+- **Last commit:** 92df096 (1.101-1 S-008 smoke guards; item verified PASS)
+- **Build state:** compiles clean; smoke 813/813 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -53,6 +53,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.101-1 (DONE, S-001–S-008, tag `changelog-1.101`):** `src/toolsets.ts` pure module `parseToolsetsJson`/`resolveToolset`/`buildToolsetsExample` (S-001, e26766d); `extractToolsetTag` + `#toolset:` pill in `src/context.ts` (S-002, bf93a03); `toolsetsEnabled` default true in presets/config (S-003, 10d1c20); tag + toolbar picker → `promptTools` with tag > picker > prompt-file precedence + unknown/empty-set errors in `src/chat/ChatViewProvider.ts` (S-004, 6bb3424); Tools `<select>` + `toolsets` host message + `#toolset:` pills in `src/chat/webview.ts` (S-005, 52438e8 + gap fix 8221e8d); `llm.toolsets.enabled` + `llm.toolsets.createFile` in `package.json` (S-006, bb866e9); command registration scaffolding `.vscode/toolsets.json` (no overwrite) in `src/extension.ts` (S-007, 33f01d0); smoke guards `toolsets-s1..s7`, gate 806→813 (S-008, 92df096). Tester PASS 2026-10-24 (all 7 acceptance criteria).
 
 **1.100-38 (DONE, S-001–S-005):** `McpToolAnnotations` + `annotations?` on `McpTool` + `mcpToolDisplayName()` in `src/mcp.ts` (S-001, b565dec); `McpManager.getToolAnnotations()` (S-002, de743b4); approval-gate bypass for `readOnlyHint: true` + `displayName` in `tool_start`/`tool_result` in `src/chat/ChatViewProvider.ts` (S-003, 2fb8325); `msg.displayName` rendering in `src/chat/webview.ts` (S-004, 3719bdc); smoke guards `mcp-ann-s1..s5`, gate 798→805 (S-005, 7f98964). No new tag — `changelog-1.100` already exists.
 
@@ -91,6 +93,7 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
 | 1.99-2 | 1.99 | `changelog-1.99` | 1adefb6 | 2026-10-22 |
 | 1.100-1 | 1.100 | `changelog-1.100` | e63ed62 | 2026-10-23 |
 | 1.100-8 | 1.100 | `changelog-1.100` (already exists — left in place) | 08f2625 | 2026-10-23 |
+| 1.101-1 | 1.101 | `changelog-1.101` | 92df096 | 2026-10-24 |
 
 ## Todo
 
