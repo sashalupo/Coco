@@ -86,6 +86,10 @@
         "command": "llm.newInstructionsFile",
         "title": "LLM: New Instructions File",
         "icon": "$(new-file)"
+      },
+      {
+        "command": "llm.toolsets.createFile",
+        "title": "LLM: Create Tool Sets File"
       }
     ],
     "viewsContainers": {
@@ -406,6 +410,11 @@
           "type": "object",
           "default": {},
           "description": "MCP servers to connect to. Each entry: { command, args?, env?, inputs? } (stdio) or { url } (Streamable HTTP / SSE). env values may reference inputs as ${input:name}; secret values are prompted at connect time."
+        },
+        "llm.toolsets.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable tool sets (.vscode/toolsets.json) and the #toolset:<name> tag / Tools picker in chat."
         }
       }
     }
