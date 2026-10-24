@@ -202,6 +202,16 @@ function assert(cond, label) {
 
 (async () => {
   await new Promise((r) => server.listen(PORT, r));
+  {
+    // Template-literal escapes can silently break the emitted webview script.
+    const html = require("../out/chat/webview.js").buildWebviewHtml();
+    const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+    let parsed = scripts.length > 0;
+    for (const m of scripts) {
+      try { new (require("vm").Script)(m[1]); } catch (e) { parsed = false; console.error(e.message); }
+    }
+    assert(parsed, "webview inline scripts parse without syntax errors");
+  }
   const settings = {
     baseUrl: `http://localhost:${PORT}`,
     apiKey: "",
@@ -6653,11 +6663,11 @@ function assert(cond, label) {
     "mcp-ann-s5: webview.ts renders msg.displayName in tool cards",
   );
 
-  if (assertCount !== 805) {
-    console.error(`FAIL: total assertion count is 805 (got ${assertCount})`);
+  if (assertCount !== 806) {
+    console.error(`FAIL: total assertion count is 806 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 805");
+  console.log("PASS: total assertion count is 806");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();

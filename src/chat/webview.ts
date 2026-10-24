@@ -1215,6 +1215,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<label>Context
 				<select id="context-select">${contextOptions}</select>
 			</label>
+			<label>Tools
+				<select id="toolset-select"><option value="">All tools</option></select>
+			</label>
 			<span class="ctx-toggles" title="Editor context injected into the request">
 				<label><input type="checkbox" id="ctx-file" checked>file</label>
 				<label><input type="checkbox" id="ctx-selection" checked>sel</label>
@@ -1272,6 +1275,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		var manualInput = document.getElementById('model-manual');
 		var thinkingSelect = document.getElementById('thinking-select');
 		var contextSelect = document.getElementById('context-select');
+		var toolsetSelect = document.getElementById('toolset-select');
 		var messagesEl = document.getElementById('messages');
 		var inputEl = document.getElementById('input');
 		var sendBtn = document.getElementById('send');
@@ -1402,6 +1406,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		manualInput.addEventListener('change', postToolbar);
 		thinkingSelect.addEventListener('change', postToolbar);
 		contextSelect.addEventListener('change', postToolbar);
+		toolsetSelect.addEventListener('change', postToolbar);
 		ctxFile.addEventListener('change', postToolbar);
 		ctxSelection.addEventListener('change', postToolbar);
 		ctxDiagnostics.addEventListener('change', postToolbar);
@@ -1562,7 +1567,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				model: state.model,
 				thinking: state.thinking,
 				context: state.context,
-				contextFlags: state.contextFlags
+				contextFlags: state.contextFlags,
+				toolset: state.toolset
 			});
 		}
 
@@ -1737,7 +1743,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		// Pills are owned by the host (S3); the webview only renders them and
 		// posts remove_pill back. Shape mirrors ContextPill in src/context.ts.
 		var contextPills = [];
-		var PILL_ICONS = { file: '📄', folder: '📁', selection: '✂️', diagnostics: '⚠️', image: '🖼️' };
+		var PILL_ICONS = { file: '📄', folder: '📁', selection: '✂️', diagnostics: '⚠️', image: '🖼️', toolset: '🧰' };
 		function renderPillStrip(pills) {
 			var strip = document.getElementById('pill-strip');
 			strip.innerHTML = '';
@@ -2015,7 +2021,8 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					includeFile: ctxFile.checked,
 					includeSelection: ctxSelection.checked,
 					includeDiagnostics: ctxDiagnostics.checked
-				}
+				},
+				toolset: toolsetSelect.value || null
 			};
 		};
 		window.setToolbar = function (state) {
@@ -2037,7 +2044,45 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				ctxSelection.checked = state.contextFlags.includeSelection !== false;
 				ctxDiagnostics.checked = state.contextFlags.includeDiagnostics !== false;
 			}
+			if (state.toolset !== undefined) {
+				// Restore the toolset select only if the option exists (the
+				// host may echo state before the toolsets list has arrived).
+				// null means "All tools" (empty value).
+				var ts = state.toolset == null ? '' : String(state.toolset);
+				for (var i = 0; i < toolsetSelect.options.length; i++) {
+					if (toolsetSelect.options[i].value === ts) {
+						toolsetSelect.value = ts;
+						break;
+					}
+				}
+			}
 		};
+
+		// Rebuild the Tools (tool set) dropdown from a fresh list pushed by the
+		// host via the toolsets message. Keeps the "All tools" entry and
+		// preserves the current selection when it still exists.
+		function setToolsetOptions(sets) {
+			var current = toolsetSelect.value;
+			var opts = ['<option value="">All tools</option>'];
+			(sets || []).forEach(function (s) {
+				var name = String(s && s.name != null ? s.name : '');
+				if (!name) { return; }
+				var safe = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+				var desc = String((s && s.description) || '');
+				var title = desc ? ' title="' + desc.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"' : '';
+				opts.push('<option value="' + safe + '"' + title + '>' + safe + '</option>');
+			});
+			toolsetSelect.innerHTML = opts.join('');
+			// Restore the previous selection if it still exists.
+			if (current) {
+				for (var i = 0; i < toolsetSelect.options.length; i++) {
+					if (toolsetSelect.options[i].value === current) {
+						toolsetSelect.value = current;
+						break;
+					}
+				}
+			}
+		}
 
 		// Rebuild the model dropdown from a fresh list (keeps the manual entry).
 		function setModelOptions(ids) {
@@ -2122,8 +2167,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						model: msg.model,
 						thinking: msg.thinking,
 						context: msg.context,
-						contextFlags: msg.contextFlags
+						contextFlags: msg.contextFlags,
+						toolset: msg.toolset
 					});
+					break;
+				case 'toolsets':
+					setToolsetOptions(msg.toolsets);
 					break;
 				case 'instructions': {
 					const files = (msg.files || []);
@@ -2235,7 +2284,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							var smText = String(m.content || '');
 							if (smText.indexOf('[Summarized conversation history]') === 0) {
 								smText = smText.slice('[Summarized conversation history]'.length);
-								if (smText.charAt(0) === '\n') { smText = smText.slice(1); }
+								if (smText.charAt(0) === '\\n') { smText = smText.slice(1); }
 							}
 							smContent.innerHTML = renderMarkdown(smText);
 							smEl.appendChild(smContent);
