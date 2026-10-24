@@ -476,6 +476,19 @@
           "type": "boolean",
           "default": true,
           "description": "Enable tool sets (.vscode/toolsets.json) and the #toolset:<name> tag / Tools picker in chat."
+        },
+        "llm.customModes.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable custom chat modes defined by *.chatprompt.md files."
+        },
+        "llm.customModes.locations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["**/*.chatprompt.md"],
+          "description": "Glob patterns (workspace-relative) for custom chat mode files (*.chatprompt.md). Front matter: description, tools. The file body is the mode's instructions."
         }
       }
     }
