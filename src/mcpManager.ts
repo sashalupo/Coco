@@ -13,11 +13,15 @@ import {
   McpProgressCallback,
   McpPrompt,
   McpPromptResult,
+  McpResource,
+  McpResourceReadResult,
+  McpResourceTemplate,
   McpServerConfig,
   McpTool,
   McpToolAnnotations,
   McpToolResult,
   mcpPromptToText,
+  mcpResourceReadToText,
   mcpResultToImages,
   mcpResultToText,
   mcpToolsToOpenAITools,
@@ -32,6 +36,8 @@ import type { Tool } from "./tools";
 export interface McpClientLike {
   tools: McpTool[];
   prompts: McpPrompt[];
+  resources: McpResource[];
+  resourceTemplates: McpResourceTemplate[];
   start(): Promise<void>;
   callTool(
     name: string,
@@ -42,6 +48,7 @@ export interface McpClientLike {
     name: string,
     args?: Record<string, unknown>,
   ): Promise<McpPromptResult>;
+  readResource(uri: string): Promise<McpResourceReadResult>;
   close(): void;
 }
 
@@ -248,6 +255,31 @@ export class McpManager {
   }
 
   /**
+   * Read-only accessor: the resources of a single server's live client (empty
+   * array if the server is not running). Mirrors `getServerPrompts`.
+   */
+  getServerResources(name: string): McpResource[] {
+    const client = this.clients.get(name);
+    if (client && this.statuses.get(name)?.status === "running") {
+      return client.resources;
+    }
+    return [];
+  }
+
+  /**
+   * Read-only accessor: the resource templates of a single server's live
+   * client (empty array if the server is not running). Mirrors
+   * `getServerResources`.
+   */
+  getServerResourceTemplates(name: string): McpResourceTemplate[] {
+    const client = this.clients.get(name);
+    if (client && this.statuses.get(name)?.status === "running") {
+      return client.resourceTemplates;
+    }
+    return [];
+  }
+
+  /**
    * Resolve an MCP prompt to text. Never throws: every failure path
    * (unknown server, start failure, prompt not found, JSON-RPC error)
    * resolves with `{ content: "Error: ..." }` (same convention as
@@ -285,6 +317,43 @@ export class McpManager {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       return { content: `Error: MCP prompt resolution failed: ${message}` };
+    }
+  }
+
+  /**
+   * Read an MCP resource by URI. Never throws: every failure path
+   * (unknown server, start failure, JSON-RPC error) resolves with
+   * `{ content: "Error: ..." }` (same convention as `getPrompt`).
+   * Maps the result via `mcpResourceReadToText`.
+   */
+  async readResource(
+    server: string,
+    uri: string,
+  ): Promise<{ content: string }> {
+    try {
+      if (!(server in this.servers)) {
+        return { content: `Error: unknown MCP server: ${server}` };
+      }
+      let client: McpClientLike;
+      try {
+        client = await this.ensureStarted(server);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return {
+          content: `Error: MCP server '${server}' failed to start: ${message}`,
+        };
+      }
+      const result = await client.readResource(uri);
+      const text = mcpResourceReadToText(result);
+      if (text === "") {
+        return {
+          content: `Error: MCP resource has no text content: ${uri}`,
+        };
+      }
+      return { content: text };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return { content: `Error: MCP resource read failed: ${message}` };
     }
   }
 
