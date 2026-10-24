@@ -234,7 +234,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.currentConvId = this.generateId();
       this.history = [];
     }
-    this.toolExecutor = new ToolExecutor();
+    // 1.101-7.S-002: honor llm.agent.suppressAutoSave — the executor marks
+    // full-rewrite files so the host can surface the suppression.
+    this.toolExecutor = new ToolExecutor(readSettings().agentSuppressAutoSave);
     this.mcpManager = mcpManager;
     this.approvalStore = new ApprovalStore(context.workspaceState, context.globalState);
     // 1.101-4.S-005: host sampling callback — first-use confirmation via the
@@ -382,6 +384,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         // outcome as a revert_result message.
         void this.undoAllChanges();
         break;
+      case "triggerEditAction": {
+        // 1.101-7.S-002: programmatic keep/undo trigger (keybindings in S-003
+        // dispatch through triggerEditAction instead of duplicating this logic).
+        const action = String(msg.action ?? "");
+        if (action === "keepChanges") {
+          void this.handleKeepAll();
+        } else if (action === "undoChanges") {
+          void this.undoAllChanges();
+        } else if (action === "revertLast") {
+          void this.revertLastChange();
+        }
+        break;
+      }
       case "openFile":
         // Open a file from the change footer and highlight the lines the
         // agent changed/created (Phase 12.5).
@@ -423,6 +438,24 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * Revert the last file mutation (write_file / edit_file). Posts the
    * result as a `revert_result` message so the user sees what happened.
    */
+  /**
+   * 1.101-7.S-002: programmatic keep/undo trigger. Dispatches to the same
+   * methods the webview message switch calls (keepChanges/undoChanges/
+   * revertLast) so keybindings (S-003) behave identically to the footer
+   * buttons. No new logic.
+   */
+  public triggerEditAction(
+    action: "keepChanges" | "undoChanges" | "revertLast",
+  ): void {
+    if (action === "keepChanges") {
+      void this.handleKeepAll();
+    } else if (action === "undoChanges") {
+      void this.undoAllChanges();
+    } else if (action === "revertLast") {
+      void this.revertLastChange();
+    }
+  }
+
   private async revertLastChange(): Promise<void> {
     if (!this.toolExecutor.hasLastSnapshot) {
       this.postMessage({
@@ -2193,6 +2226,15 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
               });
             }
           }
+        }
+
+        // 1.101-7.S-002: surface full-rewrite suppression — the executor
+        // tracks files rewritten top-to-bottom (auto-save suppressed); post
+        // the affected paths so the webview can note it (informational only;
+        // the webview's default case safely ignores it until styled).
+        const suppressed = this.toolExecutor.getRewriteSuppressions();
+        if (suppressed.length > 0) {
+          this.postMessage({ type: "rewrite_suppressed", files: suppressed });
         }
 
         // 1.100-11.S3: re-snapshot the files this batch wrote so the agent's
