@@ -1081,3 +1081,65 @@ export function parseMcpResourceRef(
   }
   return out;
 }
+
+/** A single message in an MCP `sampling/createMessage` request. */
+export interface McpSamplingMessage {
+  role: "user" | "assistant" | "system";
+  content: { type: string; text?: string };
+}
+
+/** The params of an MCP `sampling/createMessage` request. */
+export interface McpSamplingParams {
+  messages: McpSamplingMessage[];
+  maxTokens: number;
+  model?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  stopSequences?: string[];
+}
+
+/** The result returned for an MCP `sampling/createMessage` request. */
+export interface McpSamplingResult {
+  role: "assistant";
+  content: { type: string; text: string };
+  model?: string;
+}
+
+/** One entry in the in-memory MCP sampling request log. */
+export interface McpSamplingLogEntry {
+  server: string;
+  model?: string;
+  maxTokens: number;
+  messageCount: number;
+  allowed: boolean;
+  ok: boolean;
+  error?: string;
+  at: number;
+}
+
+/**
+ * Map MCP sampling params to plain chat messages: each message's `content.text`
+ * becomes the string content; `systemPrompt` (when present) is prepended as a
+ * leading system message. Empty/invalid input → `[]`.
+ */
+export function mcpSamplingParamsToMessages(
+  params: McpSamplingParams,
+): { role: string; content: string }[] {
+  const out: { role: string; content: string }[] = [];
+  if (typeof params?.systemPrompt === "string" && params.systemPrompt.length > 0) {
+    out.push({ role: "system", content: params.systemPrompt });
+  }
+  for (const msg of params?.messages ?? []) {
+    if (msg && typeof msg.role === "string" && typeof msg.content?.text === "string") {
+      out.push({ role: msg.role, content: msg.content.text });
+    }
+  }
+  return out;
+}
+
+/**
+ * Extract the text from an MCP sampling result. Returns `""` when absent.
+ */
+export function mcpSamplingResultToText(result: McpSamplingResult): string {
+  return typeof result?.content?.text === "string" ? result.content.text : "";
+}
