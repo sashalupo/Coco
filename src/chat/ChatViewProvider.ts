@@ -1239,9 +1239,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     // /mcp.<server>.<prompt> [text] command (1.101-2.S-004): intercepted
-    // after /newNotebook — the prompt is resolved via prompts/get and the
-    // RAW command text is what stays visible in the panel. On error, post
-    // the error and return (no model round-trip).
+    // after /newNotebook — the prompt is resolved via prompts/get. The RAW
+    // command text stays visible in the panel (webview renders the user
+    // bubble from `lastSentText`); the RESOLVED prompt text is what the
+    // model receives (pushed to history). On error, post the error and
+    // return (no model round-trip).
     const mcpCmd = parseMcpPromptCommand(text);
     if (mcpCmd) {
       const res = await this.mcpManager.getPrompt(
@@ -1253,7 +1255,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.postMessage({ type: "error", message: res.content });
         return;
       }
-      this.history.push({ role: "user", content: text });
+      if (!res.content) {
+        this.postMessage({
+          type: "error",
+          message: "MCP prompt returned no content.",
+        });
+        return;
+      }
+      // The raw command stays visible in the panel (the webview renders the
+      // user bubble from `lastSentText`); the model receives the RESOLVED
+      // prompt text via history.
+      this.history.push({ role: "user", content: res.content });
       await this.runStream(settings, this.toolbarStore.get(), false);
       return;
     }
