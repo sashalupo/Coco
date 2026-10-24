@@ -31,6 +31,7 @@ import {
   extractProblemsTag,
   formatProblemsBlock,
   extractFolderTag,
+  extractToolsetTag,
   extractTaggedFiles,
   extractFetchTag,
   formatFetchBlock,
@@ -48,6 +49,7 @@ import {
 } from "../context";
 import { buildScaffoldPrompt } from "../workspaceScaffold";
 import { notebookNameFromQuery } from "../notebook";
+import { parseToolsetsJson, resolveToolset } from "../toolsets";
 import {
   parsePromptFrontMatter,
   stripPromptComments,
@@ -132,6 +134,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    * front matter; consumed (and cleared) by the next `runStream`.
    */
   private pendingPromptTools: string[] | null = null;
+
+  /**
+   * 1.101-1.S-004: tool-set name picked in the toolbar "Tools" select (null
+   * when unset). Persists across sends; a `#toolset:` tag in the message
+   * overrides it for that send. Consumed in `runStream` to restrict
+   * `promptTools`.
+   */
+  private pendingToolset: string | null = null;
 
   /**
    * 1.100-12.S3: re-entrancy guard for the automatic summarization pass —
@@ -1088,6 +1098,39 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  /**
+   * 1.101-1.S-004: read `.vscode/toolsets.json` and resolve a named tool set
+   * to its tool list. Returns the tools on success, or a user-facing error
+   * message (file missing, parse error, unknown set, empty set). Never
+   * throws.
+   */
+  private async resolveToolsetTools(
+    name: string,
+  ): Promise<{ tools: string[] | null; error: string | null }> {
+    const abs = await this.toolExecutor.resolveSafe(".vscode/toolsets.json");
+    if (!abs) {
+      return { tools: null, error: "toolsets.json not found" };
+    }
+    let text: string;
+    try {
+      text = await fs.promises.readFile(abs, "utf8");
+    } catch {
+      return { tools: null, error: "toolsets.json not found" };
+    }
+    const parsed = parseToolsetsJson(text);
+    if (parsed.errors.length > 0) {
+      return { tools: null, error: parsed.errors[0] };
+    }
+    const tools = resolveToolset(parsed.toolsets, name);
+    if (tools === null) {
+      return { tools: null, error: `Unknown tool set: ${name}` };
+    }
+    if (tools.length === 0) {
+      return { tools: null, error: `tool set '${name}' has no tools` };
+    }
+    return { tools, error: null };
+  }
+
   /** Persist a toolbar change posted by the webview. */
   private applyToolbarMessage(msg: WebviewToHostMessage): void {
     const rawModel = msg.model == null ? "" : String(msg.model);
@@ -1097,6 +1140,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     void this.toolbarStore.setThinking(thinking);
     void this.toolbarStore.setContext(context);
     void this.toolbarStore.setMode(normalizeChatMode(msg.mode));
+    // 1.101-1.S-004: toolbar "Tools" picker (webview side lands in S-005).
+    this.pendingToolset = msg.toolset == null ? null : String(msg.toolset);
     if (msg.contextFlags) {
       const f = msg.contextFlags as Partial<ContextFlags>;
       void this.toolbarStore.setContextFlags({
@@ -1265,8 +1310,31 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   ): Promise<void> {
     // 1.100-2.S3: consume the pending prompt-file tool filter (set by
     // `runPrompt`); null for regular sends/regenerations.
-    const promptTools = this.pendingPromptTools;
+    let promptTools = this.pendingPromptTools;
     this.pendingPromptTools = null;
+    // 1.101-1.S-004: tool-set resolution. Precedence: `#toolset:` tag in the
+    // last user message > toolbar picker (`pendingToolset`) > prompt-file
+    // `pendingPromptTools`. A resolved (non-empty) tool list wins over the
+    // lower-precedence sources; unknown/empty sets and file/parse errors post
+    // an error and continue with no filter. `pendingToolset` persists across
+    // sends (it is not cleared here).
+    if (settings.toolsetsEnabled) {
+      const lastUserTs = [...this.history]
+        .reverse()
+        .find((m) => m.role === "user");
+      const tagTs = lastUserTs ? extractToolsetTag(lastUserTs.content) : null;
+      // A bare `#toolset` tag (empty name) counts as absent.
+      const toolsetName =
+        tagTs !== null && tagTs.length > 0 ? tagTs : this.pendingToolset;
+      if (toolsetName !== null) {
+        const resolved = await this.resolveToolsetTools(toolsetName);
+        if (resolved.tools) {
+          promptTools = resolved.tools;
+        } else if (resolved.error) {
+          this.postMessage({ type: "error", message: resolved.error });
+        }
+      }
+    }
     // Build the request body. This is wrapped in its own try/catch (separate
     // from the streaming loop below) so a setup failure — context gathering or
     // request building — surfaces as an error in the panel instead of failing
