@@ -90,6 +90,10 @@
       {
         "command": "llm.toolsets.createFile",
         "title": "LLM: Create Tool Sets File"
+      },
+      {
+        "command": "llm.browseMcpResources",
+        "title": "MCP: Browse Resources"
       }
     ],
     "viewsContainers": {

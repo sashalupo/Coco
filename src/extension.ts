@@ -749,6 +749,26 @@ export function activate(context: vscode.ExtensionContext): void {
           description: `${diagEntries.reduce((n, [, ds]) => n + ds.length, 0)} diagnostic(s)`,
         });
       }
+      // 1.101-3.S-006: MCP Resources category — shown when any configured
+      // server is running and exposes at least one resource.
+      const mcpEntries: { server: string; name: string; uri: string }[] = [];
+      if (mcpManager) {
+        for (const s of mcpManager.listServers()) {
+          if (s.status !== "running") {
+            continue;
+          }
+          for (const r of mcpManager.getServerResources(s.name)) {
+            mcpEntries.push({ server: s.name, name: r.name, uri: r.uri });
+          }
+        }
+      }
+      if (mcpEntries.length > 0) {
+        categories.push({
+          id: "mcpResources",
+          label: "$(server-process) MCP Resources",
+          description: `${mcpEntries.length} resource(s) from running MCP server(s)`,
+        });
+      }
       if (categories.length === 0) {
         vscode.window.showInformationMessage(
           "No context to add — open a file or select some text first.",
@@ -801,6 +821,22 @@ export function activate(context: vscode.ExtensionContext): void {
         ref = `@${rel(selection.document.uri)}`;
       } else if (cat.id === "problems") {
         ref = "#problems";
+      } else if (cat.id === "mcpResources") {
+        const picked = await vscode.window.showQuickPick(
+          mcpEntries.map((e) => ({
+            label: `${e.server} · ${e.name}`,
+            description: e.uri,
+            server: e.server,
+            uri: e.uri,
+          })),
+          {
+            title: "LLM: Add Context to Chat",
+            placeHolder: "Select an MCP resource",
+          },
+        );
+        if (picked) {
+          ref = `#mcp:${picked.server}/${picked.uri}`;
+        }
       }
       if (!ref) {
         return; // cancelled
@@ -808,6 +844,80 @@ export function activate(context: vscode.ExtensionContext): void {
 
       provider.postMessage({ type: "context_inject", content: ref });
       await vscode.commands.executeCommand("workbench.view.llm");
+    }),
+    // 1.101-3.S-006: MCP: Browse Resources — two-step quick pick
+    // (server → resource) that reads the resource and opens its text in a
+    // read-only untitled document. Templates are listed with a "(template)"
+    // marker but disabled for reading (URI template expansion is out of
+    // scope).
+    vscode.commands.registerCommand("llm.browseMcpResources", async () => {
+      const manager = mcpManager;
+      if (!manager) {
+        vscode.window.showWarningMessage("LLM extension not activated.");
+        return;
+      }
+      const servers = manager.listServers();
+      if (servers.length === 0) {
+        vscode.window.showInformationMessage(
+          "No MCP servers configured (llm.mcp.servers is empty).",
+        );
+        return;
+      }
+      const serverPicked = await vscode.window.showQuickPick(
+        servers.map((s) => ({
+          label: s.name,
+          description: s.status,
+          detail: s.error ? `${s.toolCount} tools — ${s.error}` : `${s.toolCount} tools`,
+        })),
+        { placeHolder: "MCP servers (pick one to browse its resources)" },
+      );
+      if (!serverPicked) {
+        return; // cancelled
+      }
+      const name = serverPicked.label;
+      const resources = manager.getServerResources(name);
+      const templates = manager.getServerResourceTemplates(name);
+      if (resources.length === 0 && templates.length === 0) {
+        vscode.window.showInformationMessage(
+          `MCP server '${name}' exposes no resources.`,
+        );
+        return;
+      }
+      const resPicked = await vscode.window.showQuickPick(
+        [
+          ...resources.map((r) => ({
+            label: r.name,
+            description: r.uri,
+            detail: r.description,
+            uri: r.uri,
+            disabled: false,
+          })),
+          ...templates.map((t) => ({
+            label: `${t.name} (template)`,
+            description: t.uriTemplate,
+            detail: t.description,
+            uri: t.uriTemplate,
+            disabled: true,
+          })),
+        ],
+        { placeHolder: `Resources of MCP server '${name}'` },
+      );
+      if (!resPicked) {
+        return; // cancelled
+      }
+      const result = await manager.readResource(name, resPicked.uri);
+      if (result.content.startsWith("Error:")) {
+        vscode.window.showErrorMessage(result.content);
+        return;
+      }
+      const doc = await vscode.workspace.openTextDocument({
+        content: result.content,
+        language: "plaintext",
+      });
+      await vscode.window.showTextDocument(doc, {
+        viewColumn: vscode.ViewColumn.One,
+        preview: false,
+      });
     }),
     vscode.commands.registerCommand("llm.attachInstructions", async () => {
       const cfg = vscode.workspace.getConfiguration("llm");
