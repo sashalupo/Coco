@@ -63,7 +63,7 @@ import {
   type DiagnosticLike,
   type FileSnapshot,
 } from "../tools/ToolExecutor";
-import { isMcpToolName } from "../mcp";
+import { isMcpToolName, parseMcpPromptCommand } from "../mcp";
 import type { McpManager } from "../mcpManager";
 import { changedNewLines, unifiedDiff } from "../diff";
 import {
@@ -252,6 +252,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         void this.loadModels();
         // 1.101-1.S-005 gap fix: populate the toolbar "Tools" select.
         void this.pushToolsetsToWebview();
+        // 1.101-2.S-004: seed the slash-command dropdown with the running
+        // servers' MCP prompts.
+        void this.postMcpPrompts();
         break;
       case "send":
         // 1.100-8.S3: parse `@`/`#folder:` refs from the pending input into
@@ -1235,6 +1238,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       });
       return;
     }
+    // /mcp.<server>.<prompt> [text] command (1.101-2.S-004): intercepted
+    // after /newNotebook — the prompt is resolved via prompts/get and the
+    // RAW command text is what stays visible in the panel. On error, post
+    // the error and return (no model round-trip).
+    const mcpCmd = parseMcpPromptCommand(text);
+    if (mcpCmd) {
+      const res = await this.mcpManager.getPrompt(
+        mcpCmd.server,
+        mcpCmd.prompt,
+        mcpCmd.variableText
+      );
+      if (res.content.startsWith("Error:")) {
+        this.postMessage({ type: "error", message: res.content });
+        return;
+      }
+      this.history.push({ role: "user", content: text });
+      await this.runStream(settings, this.toolbarStore.get(), false);
+      return;
+    }
     // Vision gate: `llm.chat.vision.enabled` (schema entry lands in S5; the
     // default keeps this slice single-file). When disabled, drop all images
     // silently (no warning).
@@ -2014,6 +2036,32 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     // Persist the updated conversation so it survives a VS Code restart.
     // Runs on both success and error paths so the user's message is never lost.
     this.saveCurrentConversation();
+    // 1.101-2.S-004: refresh the slash-command dropdown — servers may have
+    // started/stopped during the run.
+    void this.postMcpPrompts();
+  }
+
+  /**
+   * 1.101-2.S-004: the MCP prompts of every running server, flattened for
+   * the webview's slash-command dropdown. Servers that are not running or
+   * expose no prompts contribute nothing.
+   */
+  private listMcpPrompts(): { server: string; name: string; description?: string }[] {
+    const out: { server: string; name: string; description?: string }[] = [];
+    for (const status of this.mcpManager.listServers()) {
+      for (const p of this.mcpManager.getServerPrompts(status.name)) {
+        out.push({ server: status.name, name: p.name, description: p.description });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 1.101-2.S-004: post the running servers' MCP prompts to the webview so
+   * the slash-command dropdown tracks server state.
+   */
+  private postMcpPrompts(): void {
+    this.postMessage({ type: "mcp_prompts", prompts: this.listMcpPrompts() });
   }
 
   /**
