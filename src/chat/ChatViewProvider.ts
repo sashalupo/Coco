@@ -248,7 +248,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
     // 1.101-7.S-002: honor llm.agent.suppressAutoSave — the executor marks
     // full-rewrite files so the host can surface the suppression.
-    this.toolExecutor = new ToolExecutor(readSettings().agentSuppressAutoSave);
+    this.toolExecutor = new ToolExecutor(readSettings().agentSuppressAutoSave, readSettings().agentTrackTerminalCwd);
     this.mcpManager = mcpManager;
     this.approvalStore = new ApprovalStore(context.workspaceState, context.globalState);
     // 1.101-4.S-005: host sampling callback — first-use confirmation via the
@@ -1989,12 +1989,19 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       // can show a small indicator.
       const { block: instructionsBlock, files: instructionFiles } =
         await this.loadInstructions(settings);
+      // 1.101-10: include the last probed terminal cwd (if any) so every
+      // subsequent turn starts with the working directory in context.
+      const lastCwd = this.toolExecutor.getLastCwd();
+      const terminalCwd = lastCwd
+        ? "Terminal cwd: " + lastCwd + " (the working directory for run_command)"
+        : "";
       systemPrompt = this.composeSystemPrompt(
         settings.systemPrompt,
         instructionsBlock,
         finalContextBlock,
         modeAddendum(toolbar.mode),
         modeInstructions,
+        terminalCwd,
       );
       this.postMessage({
         type: "instructions",
@@ -2758,11 +2765,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * Combine the configured system prompt, the loaded custom-instructions
-   * block, the gathered context block, the chat-mode addendum, and (1.101-8)
-   * the custom-mode instructions block. Any of the five may be empty; the
-   * result is empty only when all are empty.
+   * block, the gathered context block, the chat-mode addendum, (1.101-8)
+   * the custom-mode instructions block, and (1.101-10) the terminal cwd
+   * block. Any of the six may be empty; the result is empty only when all
+   * are empty.
    * Order: system prompt, then instructions, then context, then mode,
-   * then custom mode.
+   * then custom mode, then terminal cwd.
    */
   private composeSystemPrompt(
     systemPrompt: string,
@@ -2770,6 +2778,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     contextBlock: string,
     modeAddendum: string,
     modeInstructions: string = "",
+    terminalCwd: string = "",
   ): string {
     const parts = [
       systemPrompt,
@@ -2777,6 +2786,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       contextBlock,
       modeAddendum,
       modeInstructions,
+      terminalCwd,
     ].filter((p) => p && p.trim().length > 0);
     return parts.join("\n\n");
   }

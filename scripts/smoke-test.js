@@ -7884,9 +7884,11 @@ function assert(cond, label) {
     );
   }
   // s9: static — ChatViewProvider passes agentSuppressAutoSave to the ToolExecutor.
+  // (1.101-10 S-003: the constructor now also takes agentTrackTerminalCwd as a
+  // 2nd arg, so match the prefix rather than the full single-arg call.)
   assert(
     editEffHostSrc.includes(
-      "new ToolExecutor(readSettings().agentSuppressAutoSave)",
+      "new ToolExecutor(readSettings().agentSuppressAutoSave",
     ),
     "edit-eff-s8: ChatViewProvider passes agentSuppressAutoSave to the ToolExecutor constructor",
   );
