@@ -250,6 +250,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         this.pushHistory();
         this.postContextPills();
         void this.loadModels();
+        // 1.101-1.S-005 gap fix: populate the toolbar "Tools" select.
+        void this.pushToolsetsToWebview();
         break;
       case "send":
         // 1.100-8.S3: parse `@`/`#folder:` refs from the pending input into
@@ -1129,6 +1131,35 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       return { tools: null, error: `tool set '${name}' has no tools` };
     }
     return { tools, error: null };
+  }
+
+  /**
+   * 1.101-1.S-005 gap fix: push the list of tool sets from
+   * `.vscode/toolsets.json` to the webview so the toolbar "Tools" select is
+   * populated when the panel opens. The file is optional — when it is
+   * missing or unparseable an empty list is posted (no error).
+   */
+  private async pushToolsetsToWebview(): Promise<void> {
+    let toolsets: { name: string; description?: string }[] = [];
+    const abs = await this.toolExecutor.resolveSafe(".vscode/toolsets.json");
+    if (abs) {
+      let text: string;
+      try {
+        text = await fs.promises.readFile(abs, "utf8");
+      } catch {
+        text = "";
+      }
+      if (text) {
+        const parsed = parseToolsetsJson(text);
+        if (parsed.errors.length === 0) {
+          toolsets = parsed.toolsets.map((t) => ({
+            name: t.name,
+            description: t.description,
+          }));
+        }
+      }
+    }
+    this.postMessage({ type: "toolsets", toolsets });
   }
 
   /** Persist a toolbar change posted by the webview. */
