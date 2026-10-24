@@ -1924,6 +1924,38 @@ export function newDiagnostics(
 }
 
 /**
+ * Pure formatter (1.101-9.S1): renders new task diagnostics as a short block
+ * for the injected system message. Returns `""` when `diags` is empty;
+ * otherwise a header `New problems after running "<command>" (N):` followed
+ * by one line per diagnostic (first 10) formatted
+ * `  <Severity> <line:col> — <message>` (file-agnostic — the caller prefixes
+ * paths), + ` (+N more)` when capped. Same severity-name mapping as
+ * `formatNewDiagnostics` in the host.
+ */
+export function formatTaskDiagnostics(
+  command: string,
+  diags: readonly DiagnosticLike[],
+): string {
+  if (diags.length === 0) {
+    return "";
+  }
+  const sevName = (s: number): string =>
+    ["Error", "Warning", "Info", "Hint"][s] ?? `Severity ${s}`;
+  const lines: string[] = [
+    `New problems after running "${command}" (${diags.length}):`,
+  ];
+  for (const d of diags.slice(0, 10)) {
+    lines.push(
+      `  ${sevName(d.severity)} ${d.range.start.line + 1}:${d.range.start.character + 1} — ${d.message}`,
+    );
+  }
+  if (diags.length > 10) {
+    lines.push(`  (+${diags.length - 10} more)`);
+  }
+  return lines.join("\n");
+}
+
+/**
  * Lightweight file fingerprint (1.100-11.S1): mtime + size, taken via
  * `fs.stat`. No content hashing — sufficient to detect external edits of
  * agent-touched files between turns.
