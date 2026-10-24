@@ -440,6 +440,11 @@
           "default": true,
           "description": "Suppress auto-save and squiggles while the agent rewrites a file top-to-bottom."
         },
+        "llm.agent.taskDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "After the agent runs a task (run_command), automatically collect new problem-matcher diagnostics and inject them into the agent context."
+        },
         "llm.chat.summarize.enabled": {
           "type": "boolean",
           "default": true,

@@ -132,6 +132,8 @@ export interface LlmSettings {
   agentTrackManualEdits: boolean;
   /** Suppress auto-save and squiggles while the agent rewrites a file top-to-bottom. */
   agentSuppressAutoSave: boolean;
+  /** After the agent runs a task (run_command), collect new problem-matcher diagnostics into the agent context. */
+  agentTaskDiagnostics: boolean;
   /** Automatically summarize older conversation turns when the estimated history crosses the token threshold. */
   chatSummarizeEnabled: boolean;
   /** Fraction of the selected context budget at which the conversation is summarized (0 disables). */
