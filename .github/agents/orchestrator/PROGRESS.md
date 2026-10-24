@@ -13,12 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-10 PENDING** (Terminal cwd context — not yet planned)
-- **Current slice:** none (item boundary)
-- **Retry state:** clear
-- **Next step:** dispatch the **Planner** for 1.101-10 (Terminal cwd context) (user goal: complete versions 1.101 → 1.107)
+- **Current item:** **1.101-10 IN PROGRESS** (Terminal cwd context: `pwd` probe after each `run_command` → `[cwd: <path>]` in tool result + `Terminal cwd:` system-prompt block, gated by `llm.agent.trackTerminalCwd`)
+- **Slices:** S-001 ToolExecutor probe helpers [DONE 2fdd516] · S-002 config+package.json · S-003 ChatViewProvider · S-004 smoke 916→928
+- **Current slice:** S-002
+- **Retry state:** clear (S-001 first dispatch no-response; landed on retry)
+- **Next step:** dispatch the **Coder** for 1.101-10 S-002 (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** e5de5e6 (tester: verify 1.101-9 PASS)
+- **Last commit:** 2fdd516 (1.101-10 S-001)
 - **Build state:** compiles clean; smoke 916/916 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
