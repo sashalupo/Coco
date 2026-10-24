@@ -218,9 +218,29 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	}
 	.message.user .content {
 		background: var(--user-bg);
+		border-left: 2px solid var(--focus);
 		border-radius: 4px;
 		padding: 6px 8px;
 	}
+	.message.user .role {
+		color: var(--fg);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.msg-undo {
+		background: transparent;
+		border: none;
+		color: var(--muted);
+		cursor: pointer;
+		font-size: 11px;
+		padding: 1px 6px;
+		border-radius: 3px;
+		opacity: 0;
+		transition: opacity 0.12s ease;
+	}
+	.message.user:hover .msg-undo { opacity: 1; }
+	.msg-undo:hover { color: var(--fg); background: var(--think-bg); }
 	.message.assistant .content {
 		border-left: 2px solid var(--border);
 		padding-left: 8px;
@@ -814,9 +834,58 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 	#attach:hover { color: var(--fg); border-color: var(--focus); }
 	.attach-strip {
 		display: flex;
+		align-items: center;
 		gap: 6px;
-		flex-wrap: wrap;
+		overflow-x: auto;
+		max-width: 100%;
+		flex-wrap: nowrap;
 		padding: 6px 8px 0 8px;
+	}
+	.attach-strip::-webkit-scrollbar { height: 6px; }
+	.attach-strip::-webkit-scrollbar-thumb {
+		background: var(--border);
+		border-radius: 3px;
+	}
+	.attach-count {
+		font-size: 11px;
+		color: var(--muted);
+		white-space: nowrap;
+		flex: 0 0 auto;
+	}
+	.attach-thumb { flex: 0 0 auto; }
+	.attach-thumb img { cursor: zoom-in; }
+	#attach { position: relative; }
+	.attach-badge {
+		position: absolute;
+		top: -6px;
+		right: -6px;
+		background: var(--btn-bg);
+		color: var(--btn-fg);
+		font-size: 10px;
+		line-height: 1;
+		min-width: 14px;
+		height: 14px;
+		border-radius: 7px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 3px;
+		pointer-events: none;
+	}
+	#lightbox {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.7);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: zoom-out;
+		z-index: 1000;
+	}
+	#lightbox img {
+		max-width: 90vw;
+		max-height: 90vh;
+		border-radius: 4px;
 	}
 	.attach-thumb {
 		width: 48px;
@@ -1285,7 +1354,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		<div id="vision-warning" class="vision-warning" hidden></div>
 		<div class="input-row">
 			<textarea id="input" placeholder="Ask anything… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
-			<button id="attach" title="Attach image (paste / drag-drop file or image URL)">📎</button>
+			<button id="attach" title="Attach image (paste / drag-drop file or image URL)">📎<span id="attach-badge" class="attach-badge" hidden></span></button>
 			<button id="send">Send</button>
 			<button id="retry" title="Regenerate last response">Retry</button>
 			<button id="stop" title="Stop generating">Stop</button>
@@ -1731,12 +1800,19 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		function renderAttachStrip() {
 			var strip = document.getElementById('attach-strip');
 			strip.innerHTML = '';
+			if (pendingImages.length > 0) {
+				var count = document.createElement('span');
+				count.className = 'attach-count';
+				count.textContent = pendingImages.length + ' pending';
+				strip.appendChild(count);
+			}
 			pendingImages.forEach(function (img, idx) {
 				var thumb = document.createElement('div');
 				thumb.className = 'attach-thumb';
 				var im = document.createElement('img');
 				im.src = img.dataUrl;
 				im.title = img.name;
+				im.addEventListener('click', function () { openLightbox(img.dataUrl); });
 				var rm = document.createElement('button');
 				rm.className = 'attach-remove';
 				rm.textContent = '×';
@@ -1750,6 +1826,11 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				strip.appendChild(thumb);
 			});
 			strip.hidden = pendingImages.length === 0;
+			var badge = document.getElementById('attach-badge');
+			if (badge) {
+				badge.textContent = String(pendingImages.length);
+				badge.hidden = pendingImages.length === 0;
+			}
 		}
 
 		// --- JSON pretty-print (1.100-15.S5): pure helper for tool args/output ---
@@ -1991,12 +2072,56 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			return src;
 		}
 
+		// --- Lightbox (1.101-6 S-001): single shared full-size image preview ---
+		function openLightbox(dataUrl) {
+			var lb = document.getElementById('lightbox');
+			if (!lb) {
+				lb = document.createElement('div');
+				lb.id = 'lightbox';
+				lb.addEventListener('click', closeLightbox);
+				document.body.appendChild(lb);
+			}
+			lb.innerHTML = '';
+			var im = document.createElement('img');
+			im.src = dataUrl;
+			lb.appendChild(im);
+			lb.hidden = false;
+		}
+		function closeLightbox() {
+			var lb = document.getElementById('lightbox');
+			if (lb) { lb.hidden = true; }
+		}
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') { closeLightbox(); }
+		});
+		// ⌘Backspace / Ctrl+Backspace: undo the last request (1.101-6 S-001).
+		document.addEventListener('keydown', function (e) {
+			if (e.key !== 'Backspace' || !(e.metaKey || e.ctrlKey)) { return; }
+			e.preventDefault();
+			if (streaming) { return; }
+			var users = messagesEl.querySelectorAll('.message.user');
+			for (var i = users.length - 1; i >= 0; i--) {
+				var idx = Number(users[i].dataset.idx);
+				if (isFinite(idx)) {
+					if (vscode) { vscode.postMessage({ type: 'undo_request', index: idx }); }
+					return;
+				}
+			}
+		});
+
 		// --- DOM builders (used by S9/S11) ---
-		window.addUserMessage = function (text, images) {
+		window.addUserMessage = function (text, images, idx) {
 			var el = document.createElement('div');
 			el.className = 'message user';
-			el.innerHTML = '<div class="role">You</div><div class="content"></div>';
+			el.innerHTML = '<div class="role"><span>You</span><button class="msg-undo" title="Undo this request and everything after it">\u00d7</button></div><div class="content"></div>';
+			if (typeof idx === 'number' && isFinite(idx)) { el.dataset.idx = String(idx); }
 			el.querySelector('.content').textContent = text;
+			var undoBtn = el.querySelector('.msg-undo');
+			undoBtn.addEventListener('click', function () {
+				var i = Number(el.dataset.idx);
+				if (streaming || !isFinite(i)) { return; }
+				if (vscode) { vscode.postMessage({ type: 'undo_request', index: i }); }
+			});
 			if (images && images.length) {
 				var wrap = document.createElement('div');
 				wrap.className = 'msg-images';
@@ -2004,6 +2129,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					var im = document.createElement('img');
 					im.className = 'msg-img';
 					im.src = dataUrl;
+					im.addEventListener('click', function () { openLightbox(dataUrl); });
 					wrap.appendChild(im);
 				});
 				el.querySelector('.content').appendChild(wrap);
@@ -2368,7 +2494,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				}
 				case 'restore':
 					messagesEl.innerHTML = '';
-					(msg.messages || []).forEach(function (m) {
+					(msg.messages || []).forEach(function (m, i) {
 						if (m.summarized === true) {
 							// Summarized conversation history marker (1.100-12.S4):
 							// muted system-style note; strip the SUMMARY_MARKER prefix.
@@ -2389,7 +2515,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 							smEl.appendChild(smContent);
 							messagesEl.appendChild(smEl);
 						} else if (m.role === 'user') {
-							addUserMessage(m.content, m.images);
+							addUserMessage(m.content, m.images, i);
 						} else if (m.role === 'assistant') {
 							var a = addAssistantMessage();
 						a.rawContent = m.content;
