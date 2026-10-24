@@ -13,14 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-8 IN PROGRESS** (Custom chat modes Preview: `*.chatprompt.md` files, mode dropdown, per-mode instructions + tool set)
-- **Slices:** S-001 `src/chatmodes.ts` [DONE b787865] · S-002 presets+config [DONE e115048] · S-003 webview [DONE d7f0189] · S-004 ChatViewProvider [DONE 55a3238] · S-005 package.json [DONE 80914ff] · S-006 smoke 892→904 [DONE 0a6ef2c]
-- **Current slice:** none — all slices done, awaiting Tester
+- **Current item:** **1.101-9 PENDING** (Task diagnostic awareness — not yet planned)
+- **Current slice:** none (item boundary)
 - **Retry state:** clear
-- **Next step:** dispatch the **Tester** for 1.101-8 whole-item verification (user goal: complete versions 1.101 → 1.107)
+- **Next step:** dispatch the **Planner** for 1.101-9 (Task diagnostic awareness) (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** 0a6ef2c (1.101-8 S-006)
-- **Build state:** compiles clean; smoke 892/892 PASS (verified 2026-10-24)
+- **Last commit:** 1ef24b6 (tester: verify 1.101-8 PASS)
+- **Build state:** compiles clean; smoke 904/904 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -53,6 +52,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.101-8 (DONE, S-001–S-006, verified PASS 2026-10-24):** Custom chat modes — `src/chatmodes.ts` pure helpers `parseChatModeFile`/`chatModeName`/`CHATMODE_TEMPLATE` (S-001 b787865); `ToolbarState.customMode?` + `llm.customModes.enabled`/`locations` settings + memento round-trip in presets/config (S-002 e115048); "Custom modes" optgroup + `custom_modes`/`custom_mode` messages in `src/chat/webview.ts` (S-003 d7f0189); host `loadCustomModes` + `case "custom_mode"` + mode `tools` highest `promptTools` precedence + `## Mode:` system-prompt part in `src/chat/ChatViewProvider.ts` (S-004 55a3238); `package.json` settings (S-005 80914ff); smoke guards `custom-mode-s1..s12`, gate 892→904 (S-006 0a6ef2c). Tester PASS (commit 1ef24b6). Tag `changelog-1.101-8` on 0a6ef2c.
 
 **1.101-7 (DONE, S-001–S-004, verified PASS 2026-10-24):** Apply edits more efficiently — `isFullRewrite` + `suppressAutoSave`/`rewriteSuppressions`/`suppressRewriteEffects` + `getRewriteSuppressions()` in `src/tools/ToolExecutor.ts` + `agentSuppressAutoSave` in `src/config.ts`/`src/presets.ts` (S-001 26f359b); `rewrite_suppressed` post + `triggerEditAction` in `src/chat/ChatViewProvider.ts` (S-002 7d3fbe5); 4 keep/undo keybindings (⌘Y/⌘N/⇧⌘Y/⇧⌘N, `when: view == llm.chat`) + `llm.agent.suppressAutoSave` setting in `package.json` + `src/extension.ts` (S-003 66687cb); smoke guards `edit-eff-s1..s12`, gate 880→892 (S-004 3621001). Tester PASS (commit 768e327). Tag `changelog-1.101-7` on 3621001. Note: `isDirty` read-only in VS Code API — suppression is informational only.
 
@@ -112,6 +113,7 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
 | 1.101-5 | 1.101 | `changelog-1.101` (already exists — left in place) | 0ca8c81 | 2026-10-24 |
 | 1.101-6 | 1.101 | `changelog-1.101-6` | bacb8f2 | 2026-10-24 |
 | 1.101-7 | 1.101 | `changelog-1.101-7` | 3621001 | 2026-10-24 |
+| 1.101-8 | 1.101 | `changelog-1.101-8` | 0a6ef2c | 2026-10-24 |
 
 ## Todo
 
