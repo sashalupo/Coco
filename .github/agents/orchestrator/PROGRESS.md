@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-6 PENDING** (Chat UX improvements: distinct user messages, visible undo, navigable attachments — not yet planned)
+- **Current item:** **1.101-7 PENDING** (Apply edits more efficiently: conditional auto-save/squiggles, aligned keybindings — not yet planned)
 - **Current slice:** none (item boundary)
 - **Retry state:** clear
-- **Next step:** dispatch the **Planner** for 1.101-6 (Chat UX improvements) (user goal: complete versions 1.101 → 1.107)
+- **Next step:** dispatch the **Planner** for 1.101-7 (Apply edits more efficiently) (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** 0ca8c81 (tester: verify 1.101-5 PASS)
-- **Build state:** compiles clean; smoke 870/870 PASS (verified 2026-10-24)
+- **Last commit:** 106d24e (tester: verify 1.101-6 PASS)
+- **Build state:** compiles clean; smoke 880/880 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -52,6 +52,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.101-6 (DONE, S-001–S-003, verified PASS 2026-10-24):** Chat UX improvements — user-message accent styling + `data-idx` + hover × undo button + ⌘/Ctrl+Backspace undo-last + scrollable attachment strip with count badge + shared lightbox in `src/chat/webview.ts` (S-001 5a1f052); `undo_request` host case (bounds guard, streaming guard, `history.slice(0, index)` + persist + re-render + `undo_done`) in `src/chat/ChatViewProvider.ts` (S-002 9eed79d); smoke guards `chat-ux-s1..s10`, gate 870→880 (S-003 bacb8f2, succeeded on retry 1/5 after no-response). Tester PASS (commit 106d24e). Tag `changelog-1.101-6` on bacb8f2.
 
 **1.101-5 (DONE, S-001–S-003, verified PASS 2026-10-24):** MCP development mode — `McpDevConfig` + `dev` on `McpServerConfig` + `parseMcpServers` dev coercion + pure `mcpWatchTarget(watchGlob, cwd)` + `mcpDebugArgs(command, args)` in `src/mcp.ts` (S-001 b5290e2); `devWatchers` map + `mcpDebugArgs` spawn rewrite in `ensureStarted` (stdio-only) + `startDevWatch`/`stopDevWatch` 500 ms debounced `fs.watch` → `refresh` + watchers stopped on `setServers` removal + `dispose` in `src/mcpManager.ts` (S-002 0689df2); smoke guards `mcp-dev-s1..s12`, gate 858→870 (S-003 07e89ed, incl. in-slice fix: `refresh` bails on removed servers, `setServers` stops `devWatchers` independently). Tester PASS (commit 0ca8c81). No new tag — `changelog-1.101` already exists.
 
@@ -105,6 +107,7 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
 | 1.101-3 | 1.101 | `changelog-1.101` (already exists — left in place) | 4be0b9c | 2026-10-24 |
 | 1.101-4 | 1.101 | `changelog-1.101` (already exists — left in place) | d1a936c | 2026-10-24 |
 | 1.101-5 | 1.101 | `changelog-1.101` (already exists — left in place) | 0ca8c81 | 2026-10-24 |
+| 1.101-6 | 1.101 | `changelog-1.101-6` | bacb8f2 | 2026-10-24 |
 
 ## Todo
 
