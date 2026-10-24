@@ -6927,11 +6927,200 @@ function assert(cond, label) {
     "mcp-prompt-s15: webview.ts handles the mcp_prompts host message",
   );
 
-  if (assertCount !== 828) {
-    console.error(`FAIL: total assertion count is 828 (got ${assertCount})`);
+  // 1.101-3 S-008: MCP support for resources (mcp-resource-s1..s15)
+  const mcpResMod = require(path.join(__dirname, "..", "out", "mcp.js"));
+  const mcpResFs = require("fs");
+  const mcpResOs = require("os");
+  // s1: parseMcpResourceRef — valid ref.
+  const mcpResRef1 = mcpResMod.parseMcpResourceRef(
+    "see #mcp:fs/file.txt for details",
+  );
+  assert(
+    mcpResRef1.length === 1 &&
+      mcpResRef1[0].server === "fs" &&
+      mcpResRef1[0].uri === "file.txt",
+    "mcp-resource-s1: parseMcpResourceRef parses a valid #mcp:<server>/<uri> ref",
+  );
+  // s2: parseMcpResourceRef — no match → [].
+  assert(
+    mcpResMod.parseMcpResourceRef("no refs here").length === 0 &&
+      mcpResMod.parseMcpResourceRef("#mcp:").length === 0,
+    "mcp-resource-s2: parseMcpResourceRef returns [] when there is no match",
+  );
+  // s3: parseMcpResourceRef — empty parts → no match.
+  assert(
+    mcpResMod.parseMcpResourceRef("#mcp:/file.txt").length === 0 &&
+      mcpResMod.parseMcpResourceRef("#mcp:fs/").length === 0,
+    "mcp-resource-s3: parseMcpResourceRef returns [] for empty server/uri parts",
+  );
+  // s4: mcpResourceReadToText — text content.
+  assert(
+    mcpResMod.mcpResourceReadToText({
+      contents: [
+        { uri: "fs://a", text: "line1" },
+        { uri: "fs://b", text: "line2" },
+      ],
+    }) === "line1\nline2",
+    "mcp-resource-s4: mcpResourceReadToText joins text content entries with newlines",
+  );
+  // s5: mcpResourceReadToText — blob-only content skipped.
+  assert(
+    mcpResMod.mcpResourceReadToText({
+      contents: [
+        { uri: "fs://img", mimeType: "image/png", blob: "aGVsbG8=" },
+        { uri: "fs://txt", text: "text" },
+      ],
+    }) === "text",
+    "mcp-resource-s5: mcpResourceReadToText skips blob-only content entries",
+  );
+  // s6: mcpResourceReadToText — empty/missing content → "".
+  assert(
+    mcpResMod.mcpResourceReadToText({}) === "" &&
+      mcpResMod.mcpResourceReadToText({ contents: [] }) === "" &&
+      mcpResMod.mcpResourceReadToText({
+        contents: [{ uri: "fs://img", blob: "aGVsbG8=" }],
+      }) === "",
+    "mcp-resource-s6: mcpResourceReadToText returns '' for empty or missing content",
+  );
+  // s7: McpClient handshake — resources/list + resources/templates/list are
+  // best-effort (fake server answers only initialize + tools/list).
+  {
+    const fakeResDir = mcpResFs.mkdtempSync(
+      path.join(mcpResOs.tmpdir(), "llm-mcp-resource-"),
+    );
+    const fakeResPath = path.join(fakeResDir, "fake-server.js");
+    mcpResFs.writeFileSync(
+      fakeResPath,
+      [
+        "let buf = '';",
+        "process.stdin.on('data', (c) => {",
+        "  buf += c.toString();",
+        "  let i;",
+        "  while ((i = buf.indexOf('\\n')) !== -1) {",
+        "    const line = buf.slice(0, i);",
+        "    buf = buf.slice(i + 1);",
+        "    if (!line.trim()) continue;",
+        "    const m = JSON.parse(line);",
+        "    if (m.method === 'initialize') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: {}, serverInfo: { name: 'fake', version: '0.0.1' } } }) + '\\n');",
+        "    } else if (m.method === 'tools/list') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { tools: [] } }) + '\\n');",
+        "    }",
+        "    // prompts/list, resources/list, resources/templates/list are intentionally NOT answered.",
+        "  }",
+        "});",
+      ].join("\n"),
+      "utf8",
+    );
+    const fakeResClient = new mcpResMod.McpClient({
+      command: process.execPath,
+      args: [fakeResPath],
+    });
+    let fakeResStarted = false;
+    try {
+      await fakeResClient.start();
+      fakeResStarted = true;
+    } catch (e) {
+      fakeResStarted = false;
+    }
+    assert(
+      fakeResStarted &&
+        Array.isArray(fakeResClient.resources) &&
+        fakeResClient.resources.length === 0 &&
+        Array.isArray(fakeResClient.resourceTemplates) &&
+        fakeResClient.resourceTemplates.length === 0,
+      "mcp-resource-s7: McpClient.start() succeeds with resources=[]/resourceTemplates=[] when the server never answers resources/list",
+    );
+    fakeResClient.close();
+    mcpResFs.rmSync(fakeResDir, { recursive: true, force: true });
+  }
+  // s8: McpManager.getServerResources / getServerResourceTemplates — unknown
+  // server → [].
+  const mcpResMgr = new McpManager();
+  assert(
+    JSON.stringify(mcpResMgr.getServerResources("nosuch")) === "[]" &&
+      JSON.stringify(mcpResMgr.getServerResourceTemplates("nosuch")) === "[]",
+    "mcp-resource-s8: McpManager.getServerResources/getServerResourceTemplates return [] for an unknown server",
+  );
+  // s9: McpManager.readResource — unknown server → error (no throw).
+  const mcpResUnknown = await mcpResMgr.readResource("nosuch", "fs://x");
+  assert(
+    mcpResUnknown.content === "Error: unknown MCP server: nosuch",
+    "mcp-resource-s9: McpManager.readResource resolves with an unknown-server error (no throw)",
+  );
+  // s10: McpManager.readResource — valid server → content.
+  {
+    const fakeResMcpClient = {
+      tools: [],
+      prompts: [],
+      resources: [{ uri: "fs://x", name: "x" }],
+      resourceTemplates: [],
+      start: async () => undefined,
+      callTool: async () => ({ content: [] }),
+      getPrompt: async () => ({ messages: [] }),
+      readResource: async () => ({
+        contents: [{ uri: "fs://x", text: "resource body" }],
+      }),
+      close: () => undefined,
+    };
+    const m = new McpManager();
+    m["servers"] = { fake: { command: "true" } };
+    m["clients"].set("fake", fakeResMcpClient);
+    m["statuses"].set("fake", {
+      name: "fake",
+      status: "running",
+      toolCount: 0,
+    });
+    const mcpResOk = await m.readResource("fake", "fs://x");
+    assert(
+      mcpResOk.content === "resource body" &&
+        JSON.stringify(m.getServerResources("fake")) ===
+          JSON.stringify([{ uri: "fs://x", name: "x" }]),
+      "mcp-resource-s10: McpManager.readResource returns the resource text for a running server",
+    );
+  }
+  // s11: parsePillRefs — #mcp:<server>/<uri> → kind "mcp" pill.
+  const mcpResPills = require(
+    path.join(__dirname, "..", "out", "context.js"),
+  ).parsePillRefs("attach #mcp:fs/file.txt please");
+  assert(
+    mcpResPills.length === 1 &&
+      mcpResPills[0].kind === "mcp" &&
+      mcpResPills[0].path === "fs/file.txt" &&
+      mcpResPills[0].label === "file.txt",
+    "mcp-resource-s11: parsePillRefs emits a kind=mcp pill for #mcp:<server>/<uri>",
+  );
+  // s12: static — ChatViewProvider consumes mcp pills via readResource.
+  assert(
+    chatViewAnn.includes('kind === "mcp"') &&
+      chatViewAnn.includes("readResource"),
+    "mcp-resource-s12: ChatViewProvider.ts consumes mcp-kind pills via readResource",
+  );
+  // s13: static — webview.ts renders mcp pills (PILL_ICONS.mcp).
+  assert(
+    webviewAnn.includes("mcp: '🔌'"),
+    "mcp-resource-s13: webview.ts renders mcp pills (PILL_ICONS.mcp plug icon)",
+  );
+  // s14: static — extension.ts registers llm.browseMcpResources.
+  assert(
+    extensionTsSrc.includes("llm.browseMcpResources"),
+    "mcp-resource-s14: extension.ts registers the llm.browseMcpResources command",
+  );
+  // s15: static — package.json contributes the command.
+  const mcpResCmd = pkgJson.contributes.commands.find(
+    (c) => c.command === "llm.browseMcpResources",
+  );
+  assert(
+    mcpResCmd !== undefined &&
+      mcpResCmd.title === "MCP: Browse Resources",
+    "mcp-resource-s15: package.json contributes the llm.browseMcpResources command",
+  );
+
+  if (assertCount !== 843) {
+    console.error(`FAIL: total assertion count is 843 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 828");
+  console.log("PASS: total assertion count is 843");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
