@@ -88,7 +88,7 @@ export function extractTaggedFiles(text: string): string[] {
 export interface ContextPill {
   /** Stable identity: `kind + ':' + path` (path may be empty). */
   id: string;
-  kind: "file" | "folder" | "selection" | "diagnostics" | "image";
+  kind: "file" | "folder" | "selection" | "diagnostics" | "image" | "toolset";
   /** Human-readable label (basename for files, folder name for folders). */
   label: string;
   /** The referenced path (workspace-relative when possible). */
@@ -105,8 +105,9 @@ function pillLabel(path: string): string {
  * Extract context-reference pills from a user message.
  *
  * Recognizes `@path/to/file` references (same token rules as
- * {@link extractTaggedFiles}) and `#folder:name` references (same token
- * rules as {@link extractFolderTag}). Each reference becomes a pill with a
+ * {@link extractTaggedFiles}), `#folder:name` references (same token rules
+ * as {@link extractFolderTag}), and `#toolset:name` references (same token
+ * rules as {@link extractToolsetTag}). Each reference becomes a pill with a
  * stable `id` (`kind + ':' + path`), the `kind`, a human-readable `label`
  * (basename / folder name), and the `path`. Order of first appearance is
  * preserved; duplicates within the message are dropped. Pure and testable.
@@ -136,6 +137,12 @@ export function parsePillRefs(text: string): ContextPill[] {
   while ((m = folderRe.exec(text)) !== null) {
     const name = (m[1] ?? m[2] ?? "").trim();
     add("folder", name);
+  }
+
+  const toolsetRe = /#toolset(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/gi;
+  while ((m = toolsetRe.exec(text)) !== null) {
+    const name = (m[1] ?? m[2] ?? "").trim();
+    add("toolset", name);
   }
 
   return out;
@@ -383,6 +390,24 @@ export function formatProblemsBlock(
  */
 export function extractFolderTag(text: string): string | null {
   const m = /#folder(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i.exec(text);
+  if (!m) {
+    return null;
+  }
+  return (m[1] ?? m[2] ?? "").trim();
+}
+
+/**
+ * Extract the `#toolset` tag qualifier from a user message.
+ *
+ * Finds the FIRST case-insensitive, word-bounded `#toolset` occurrence.
+ * Both `#toolset:<name>` (colon) and `#toolset <name>` (space) are
+ * accepted; `#toolsetfoo` does NOT match (a colon or end/whitespace must
+ * follow `toolset`). Returns the trimmed toolset-name remainder (up to the
+ * next whitespace/newline — same-line semantics), `""` for the bare tag,
+ * and `null` when the tag is absent. Pure and testable.
+ */
+export function extractToolsetTag(text: string): string | null {
+  const m = /#toolset(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i.exec(text);
   if (!m) {
     return null;
   }

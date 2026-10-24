@@ -13,8 +13,8 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.101-1 · Chat tool sets (VS Code 1.101) — IN PROGRESS (plan: 8 slices)
-- **Current slice:** 1.101-1.S-001 DONE (1 file, NEW: `src/toolsets.ts` — pure module, no `vscode` import: `Toolset`/`ToolsetsFile` interfaces, `parseToolsetsJson(text) → { toolsets, errors }` tolerant parser (line-based `//` strip that preserves `//` inside string literals; JSON parse failure → `{ toolsets: [], errors: [msg] }`, never throws; per-entry shape validation with valid entries kept), `resolveToolset(toolsets, name) → string[] | null` case-insensitive, `buildToolsetsExample()` scaffold with `//`-commented `gh-news` set, parseable by `parseToolsetsJson`). Verified: tsc exit 0; smoke 805/805 PASS; acceptance checks (valid/malformed/wrong-shape parse, case-insensitive resolve, unknown → null, `//`-in-string preserved) all pass. Not committed — orchestrator commits.
-- **Next step:** 1.101-1 S-002 — `src/context.ts`: `extractToolsetTag(text)`, `ContextPill.kind += "toolset"`, `parsePillRefs` recognizes `#toolset:`
+- **Current slice:** 1.101-1.S-002 DONE (1 file: `src/context.ts` — `extractToolsetTag(text) → string | null` mirroring `extractFolderTag`'s regex `/#toolset(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i` (`#toolset:gh-news` → `"gh-news"`, `#toolset gh-news` → `"gh-news"`, `#toolsetfoo` → `null`, absent → `null`); `ContextPill.kind` += `"toolset"`; `parsePillRefs` recognizes `#toolset:` refs via the same `add("toolset", name)` pattern as folders). Verified: tsc exit 0; smoke 805/805 PASS (smoke untouched — S-008); acceptance checks (colon/space/bare/absent tag, `#toolsetfoo` → null, `parsePillRefs` emits `toolset` pill with id `toolset:gh-news`) all pass. Not committed — orchestrator commits.
+- **Next step:** 1.101-1 S-003 — `src/presets.ts` + `src/config.ts`: `toolsetsEnabled: boolean` in `LlmSettings` (default `true`); read `llm.toolsets.enabled`
 - **Last updated:** 2026-10-24
 - **Last commit:** 504abbf (1.100-31 S-001, verified PASS)
 - **Build state:** compiles clean (tsc exit 0, verified 2026-10-24, 1.100-38 S-005); smoke 805/805 (verified 2026-10-24, 1.100-38 S-005)
