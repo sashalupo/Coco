@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-2 IN PROGRESS** (MCP support for prompts; plan committed 79d49a6, 6 slices)
-- **Current slice:** S-001 DONE (2f9a8a1); S-002 pending
-- **Retry state:** **Coder on 1.101-2 S-002, 2/5 attempts used** (two "no response" errors with the identical prompt). Both attempts left a COMPLETE but SMOKE-BREAKING partial edit in `src/mcp.ts` (discarded via `git checkout -- src/mcp.ts` + recompile; smoke 813/813 restored). **Root cause found:** the partial edit ran `prompts/list` inside the same `Promise.all` as `tools/list` in the handshake — the smoke test's fake MCP server only answers `initialize`/`tools/list`, so the unanswered `prompts/list` request hit the 10 s handshake timeout. **S-002 must be re-implemented with `prompts/list` as a SEPARATE best-effort request with its own short timeout (e.g. 2 s) AFTER the tools/list handshake resolves — never inside the handshake Promise.all.**
-- **Next step:** re-dispatch the **Coder** for 1.101-2 S-002 with the corrected constraint above (attempt 3/5) (user goal: complete versions 1.100, 1.101, 1.102)
+- **Current item:** **1.101-3 PENDING** (MCP support for resources — not yet planned)
+- **Current slice:** none (item boundary)
+- **Retry state:** clear (1.101-2 S-002 succeeded on attempt 3/5 with the corrected constraint; S-003 had 1 no-response, succeeded on retry 2/5)
+- **Next step:** dispatch the **Planner** for 1.101-3 (MCP support for resources) (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** 8f8a30f (chore: record 1.101-2 S-001 done + S-002 retry state)
-- **Build state:** compiles clean; smoke 813/813 PASS (verified 2026-10-24 after discarding partial S-002 edits)
+- **Last commit:** 01b1977 (tester: verify 1.101-2 PASS)
+- **Build state:** compiles clean; smoke 828/828 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -52,6 +52,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.101-2 (DONE, S-001–S-006 + fix, verified PASS 2026-10-24):** MCP prompts — `McpPrompt`/`McpPromptResult`/`parseMcpPromptCommand`/`mcpPromptToText` + client `prompts`/`getPrompt` + best-effort `prompts/list` (own 2 s timeout, AFTER tools/list handshake) in `src/mcp.ts` (S-001 2f9a8a1, S-002 e7dc727); `McpClientLike` prompt surface + `getServerPrompts` + never-throwing `getPrompt(server, prompt, variableText?)` with first-arg mapping in `src/mcpManager.ts` (S-003 0779c4c); `/mcp.` intercept + `listMcpPrompts()` + `mcp_prompts` host message in `src/chat/ChatViewProvider.ts` (S-004 c4a765e); slash-command dropdown in `src/chat/webview.ts` (S-005 3808cac); smoke guards `mcp-prompt-s1..s15`, gate 813→828 (S-006 fe9743a); fix: send resolved `res.content` to model, raw command stays visible (882e7b8). Tester PASS (commit 01b1977). No new tag — `changelog-1.101` already exists.
 
 **1.101-1 (DONE, S-001–S-008, tag `changelog-1.101`):** `src/toolsets.ts` pure module `parseToolsetsJson`/`resolveToolset`/`buildToolsetsExample` (S-001, e26766d); `extractToolsetTag` + `#toolset:` pill in `src/context.ts` (S-002, bf93a03); `toolsetsEnabled` default true in presets/config (S-003, 10d1c20); tag + toolbar picker → `promptTools` with tag > picker > prompt-file precedence + unknown/empty-set errors in `src/chat/ChatViewProvider.ts` (S-004, 6bb3424); Tools `<select>` + `toolsets` host message + `#toolset:` pills in `src/chat/webview.ts` (S-005, 52438e8 + gap fix 8221e8d); `llm.toolsets.enabled` + `llm.toolsets.createFile` in `package.json` (S-006, bb866e9); command registration scaffolding `.vscode/toolsets.json` (no overwrite) in `src/extension.ts` (S-007, 33f01d0); smoke guards `toolsets-s1..s7`, gate 806→813 (S-008, 92df096). Tester PASS 2026-10-24 (all 7 acceptance criteria).
 
@@ -93,6 +95,7 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
 | 1.100-1 | 1.100 | `changelog-1.100` | e63ed62 | 2026-10-23 |
 | 1.100-8 | 1.100 | `changelog-1.100` (already exists — left in place) | 08f2625 | 2026-10-23 |
 | 1.101-1 | 1.101 | `changelog-1.101` | 92df096 | 2026-10-24 |
+| 1.101-2 | 1.101 | `changelog-1.101` (already exists — left in place) | 01b1977 | 2026-10-24 |
 
 ## Todo
 
