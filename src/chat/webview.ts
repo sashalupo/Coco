@@ -1771,7 +1771,9 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		// Pills are owned by the host (S3); the webview only renders them and
 		// posts remove_pill back. Shape mirrors ContextPill in src/context.ts.
 		var contextPills = [];
-		var PILL_ICONS = { file: '📄', folder: '📁', selection: '✂️', diagnostics: '⚠️', image: '🖼️', toolset: '🧰' };
+		// mcp pills (1.101-3 S-007): #mcp:<server>/<uri> resources — distinct icon,
+		// same .pill styling; removal reuses the existing remove_pill path.
+		var PILL_ICONS = { file: '📄', folder: '📁', selection: '✂️', diagnostics: '⚠️', image: '🖼️', toolset: '🧰', mcp: '🔌' };
 		function renderPillStrip(pills) {
 			var strip = document.getElementById('pill-strip');
 			strip.innerHTML = '';
