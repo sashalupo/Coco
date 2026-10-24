@@ -14,12 +14,12 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.101-9 IN PROGRESS** (Task diagnostic awareness: post-`run_command` diagnostics snapshot → diff → inject into agent context, gated by `llm.agent.taskDiagnostics`)
-- **Slices:** S-001 ToolExecutor `formatTaskDiagnostics` [DONE ddd3d77] · S-002 ChatViewProvider hook [DONE 6752ebd] · S-003 config+package.json [DONE d26786a] · S-004 smoke 904→916
-- **Current slice:** S-004 (final)
+- **Slices:** S-001 ToolExecutor `formatTaskDiagnostics` [DONE ddd3d77] · S-002 ChatViewProvider hook [DONE 6752ebd] · S-003 config+package.json [DONE d26786a] · S-004 smoke 904→916 [DONE fdf437c]
+- **Current slice:** none — all slices done, awaiting Tester
 - **Retry state:** clear
-- **Next step:** dispatch the **Coder** for 1.101-9 S-004 (user goal: complete versions 1.101 → 1.107)
+- **Next step:** dispatch the **Tester** for 1.101-9 whole-item verification (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** d26786a (1.101-9 S-003)
+- **Last commit:** fdf437c (1.101-9 S-004)
 - **Build state:** compiles clean; smoke 904/904 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
