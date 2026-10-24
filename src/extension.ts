@@ -29,6 +29,7 @@ import {
   INSTRUCTIONS_FILE_TEMPLATE,
   instructionsFileName,
 } from "./instructions";
+import { buildToolsetsExample } from "./toolsets";
 
 /**
  * 1.100-30.S-002: the pinned `@types/vscode` (1.140.0) predates the
@@ -914,6 +915,34 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.workspace.fs.writeFile(
         target,
         Buffer.from(INSTRUCTIONS_FILE_TEMPLATE, "utf8"),
+      );
+      const doc = await vscode.workspace.openTextDocument(target);
+      await vscode.window.showTextDocument(doc);
+    }),
+    vscode.commands.registerCommand("llm.toolsets.createFile", async () => {
+      const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (!root) {
+        vscode.window.showWarningMessage(
+          "Open a workspace to create a tool sets file.",
+        );
+        return;
+      }
+      const target = vscode.Uri.joinPath(root, ".vscode", "toolsets.json");
+      try {
+        await vscode.workspace.fs.stat(target);
+        vscode.window.showInformationMessage(
+          "Tool sets file already exists",
+        );
+        return;
+      } catch {
+        // does not exist — create it below.
+      }
+      await vscode.workspace.fs.createDirectory(
+        vscode.Uri.joinPath(root, ".vscode"),
+      );
+      await vscode.workspace.fs.writeFile(
+        target,
+        Buffer.from(buildToolsetsExample(), "utf8"),
       );
       const doc = await vscode.workspace.openTextDocument(target);
       await vscode.window.showTextDocument(doc);
