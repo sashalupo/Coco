@@ -7116,11 +7116,344 @@ function assert(cond, label) {
     "mcp-resource-s15: package.json contributes the llm.browseMcpResources command",
   );
 
-  if (assertCount !== 843) {
-    console.error(`FAIL: total assertion count is 843 (got ${assertCount})`);
+  // 1.101-4 S-008: MCP support for sampling (mcp-sampling-s1..s15)
+  const mcpSampMod = require(path.join(__dirname, "..", "out", "mcp.js"));
+  // s1: mcpSamplingParamsToMessages — valid params → messages array.
+  const mcpSampMsgs1 = mcpSampMod.mcpSamplingParamsToMessages({
+    messages: [
+      { role: "user", content: { type: "text", text: "hi" } },
+      { role: "assistant", content: { type: "text", text: "hello" } },
+    ],
+    maxTokens: 64,
+  });
+  assert(
+    mcpSampMsgs1.length === 2 &&
+      mcpSampMsgs1[0].role === "user" &&
+      mcpSampMsgs1[0].content === "hi" &&
+      mcpSampMsgs1[1].role === "assistant" &&
+      mcpSampMsgs1[1].content === "hello",
+    "mcp-sampling-s1: mcpSamplingParamsToMessages maps valid params to a messages array",
+  );
+  // s2: mcpSamplingParamsToMessages — systemPrompt prepended; empty/missing → [].
+  const mcpSampMsgs2 = mcpSampMod.mcpSamplingParamsToMessages({
+    messages: [{ role: "user", content: { type: "text", text: "q" } }],
+    maxTokens: 10,
+    systemPrompt: "be brief",
+  });
+  assert(
+    mcpSampMsgs2.length === 2 &&
+      mcpSampMsgs2[0].role === "system" &&
+      mcpSampMsgs2[0].content === "be brief" &&
+      mcpSampMod.mcpSamplingParamsToMessages({ messages: [], maxTokens: 1 })
+        .length === 0 &&
+      mcpSampMod.mcpSamplingParamsToMessages({
+        messages: [{ role: "user", content: { type: "text" } }],
+        maxTokens: 1,
+      }).length === 0,
+    "mcp-sampling-s2: mcpSamplingParamsToMessages prepends systemPrompt and returns [] for empty/invalid input",
+  );
+  // s3: mcpSamplingResultToText — valid result → text; empty/missing → "".
+  assert(
+    mcpSampMod.mcpSamplingResultToText({
+      role: "assistant",
+      content: { type: "text", text: "answer" },
+    }) === "answer" &&
+      mcpSampMod.mcpSamplingResultToText({
+        role: "assistant",
+        content: { type: "text" },
+      }) === "" &&
+      mcpSampMod.mcpSamplingResultToText({}) === "",
+    "mcp-sampling-s3: mcpSamplingResultToText extracts content.text and returns '' when absent",
+  );
+  // s4: McpJsonRpc.onRequest — server→client request invokes the handler and
+  // the response is written back with the matching id.
+  {
+    const serverIn = new PassThrough(); // client -> server
+    const serverOut = new PassThrough(); // server -> client
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    let seenMethod = "";
+    let seenParams = null;
+    rpc.onRequest = (method, params, respond) => {
+      seenMethod = method;
+      seenParams = params;
+      respond({ result: { ok: true } });
+    };
+    const responses = [];
+    serverIn.on("data", (chunk) => {
+      for (const line of chunk.toString().split("\n")) {
+        if (line.trim()) responses.push(JSON.parse(line));
+      }
+    });
+    serverOut.write(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 99,
+        method: "sampling/createMessage",
+        params: { messages: [], maxTokens: 5 },
+      }) + "\n",
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    assert(
+      seenMethod === "sampling/createMessage" &&
+        seenParams !== null &&
+        responses.length === 1 &&
+        responses[0].id === 99 &&
+        JSON.stringify(responses[0].result) === JSON.stringify({ ok: true }),
+      "mcp-sampling-s4: McpJsonRpc.onRequest invokes the handler and writes the response back with the matching id",
+    );
+    rpc.close();
+  }
+  // s5: McpJsonRpc.onRequest — error path: respond({ error }) writes a
+  // JSON-RPC error back with the matching id.
+  {
+    const serverIn = new PassThrough();
+    const serverOut = new PassThrough();
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    rpc.onRequest = (_method, _params, respond) => {
+      respond({ error: { code: -32000, message: "sampling denied" } });
+    };
+    const responses = [];
+    serverIn.on("data", (chunk) => {
+      for (const line of chunk.toString().split("\n")) {
+        if (line.trim()) responses.push(JSON.parse(line));
+      }
+    });
+    serverOut.write(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 55,
+        method: "sampling/createMessage",
+        params: { messages: [], maxTokens: 1 },
+      }) + "\n",
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    assert(
+      responses.length === 1 &&
+        responses[0].id === 55 &&
+        responses[0].error !== undefined &&
+        responses[0].error.code === -32000 &&
+        responses[0].error.message === "sampling denied",
+      "mcp-sampling-s5: McpJsonRpc.onRequest error path writes a JSON-RPC error back with the matching id",
+    );
+    rpc.close();
+  }
+  // s6: McpJsonRpc — with onRequest unset, a server→client request (numeric
+  // id + method) is dropped without crashing (pre-1.101-4 behavior).
+  {
+    const serverIn = new PassThrough();
+    const serverOut = new PassThrough();
+    const rpc = new McpJsonRpc(serverOut, serverIn);
+    let crashed = false;
+    const responses = [];
+    serverIn.on("data", (chunk) => {
+      for (const line of chunk.toString().split("\n")) {
+        if (line.trim()) responses.push(JSON.parse(line));
+      }
+    });
+    try {
+      serverOut.write(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: 77,
+          method: "sampling/createMessage",
+          params: { messages: [], maxTokens: 1 },
+        }) + "\n",
+      );
+      await new Promise((r) => setTimeout(r, 20));
+    } catch {
+      crashed = true;
+    }
+    assert(
+      !crashed &&
+        responses.length === 0 &&
+        typeof rpc.onRequest === "undefined",
+      "mcp-sampling-s6: with onRequest unset a server request is dropped silently (no response, no crash)",
+    );
+    rpc.close();
+  }
+  // s7: McpManager sampling policy — default allow; per-server deny → error.
+  {
+    const m = new McpManager();
+    assert(
+      m.isSamplingAllowed("alpha") === true &&
+        m.isSamplingAllowed("beta") === true,
+      "mcp-sampling-s7: McpManager sampling policy defaults to allow for unlisted servers",
+    );
+    m.setSamplingAllowed("beta", false);
+    const fakeDenyClient = {
+      tools: [],
+      prompts: [],
+      resources: [],
+      resourceTemplates: [],
+      start: async () => undefined,
+      callTool: async () => ({ content: [] }),
+      getPrompt: async () => ({ messages: [] }),
+      readResource: async () => ({ contents: [] }),
+      setSamplingHandler: (cb) => {
+        fakeDenyClient._cb = cb;
+      },
+      close: () => undefined,
+    };
+    m["servers"] = { beta: { command: "true" } };
+    m["clients"].set("beta", fakeDenyClient);
+    m["statuses"].set("beta", { name: "beta", status: "running", toolCount: 0 });
+    m.setSamplingHandler(async () => ({
+      role: "assistant",
+      content: { type: "text", text: "x" },
+    }));
+    let denyErr = "";
+    try {
+      await fakeDenyClient._cb("", { messages: [], maxTokens: 1 });
+    } catch (e) {
+      denyErr = e instanceof Error ? e.message : String(e);
+    }
+    assert(
+      denyErr === "sampling denied for server 'beta'" &&
+        m.isSamplingAllowed("beta") === false,
+      "mcp-sampling-s8: McpManager denies sampling for a per-server-denied server (error + policy)",
+    );
+  }
+  // s9: McpManager sampling log — capped at 100 (oldest dropped).
+  {
+    const m = new McpManager();
+    for (let i = 0; i < 105; i++) {
+      m["pushSamplingLog"]({
+        server: "s",
+        maxTokens: 1,
+        messageCount: 1,
+        allowed: true,
+        ok: true,
+        at: i,
+      });
+    }
+    const log = m.getSamplingLog();
+    assert(
+      log.length === 100 &&
+        log[0].at === 5 &&
+        log[log.length - 1].at === 104,
+      "mcp-sampling-s9: McpManager sampling log is capped at 100 entries (oldest dropped)",
+    );
+  }
+  // s10: McpManager.getSamplingLog(server) — filters by server.
+  {
+    const m = new McpManager();
+    m["pushSamplingLog"]({
+      server: "a",
+      maxTokens: 1,
+      messageCount: 1,
+      allowed: true,
+      ok: true,
+      at: 1,
+    });
+    m["pushSamplingLog"]({
+      server: "b",
+      maxTokens: 1,
+      messageCount: 1,
+      allowed: true,
+      ok: true,
+      at: 2,
+    });
+    m["pushSamplingLog"]({
+      server: "a",
+      maxTokens: 1,
+      messageCount: 1,
+      allowed: true,
+      ok: true,
+      at: 3,
+    });
+    const logA = m.getSamplingLog("a");
+    assert(
+      logA.length === 2 &&
+        logA.every((e) => e.server === "a") &&
+        m.getSamplingLog("b").length === 1,
+      "mcp-sampling-s10: McpManager.getSamplingLog(server) filters the log by server",
+    );
+  }
+  // s11: setSamplingHandler wiring — callback invoked with (server, params)
+  // and its result is returned.
+  {
+    const m = new McpManager();
+    const fakeWireClient = {
+      tools: [],
+      prompts: [],
+      resources: [],
+      resourceTemplates: [],
+      start: async () => undefined,
+      callTool: async () => ({ content: [] }),
+      getPrompt: async () => ({ messages: [] }),
+      readResource: async () => ({ contents: [] }),
+      setSamplingHandler: (cb) => {
+        fakeWireClient._cb = cb;
+      },
+      close: () => undefined,
+    };
+    m["servers"] = { gamma: { command: "true" } };
+    m["clients"].set("gamma", fakeWireClient);
+    m["statuses"].set("gamma", {
+      name: "gamma",
+      status: "running",
+      toolCount: 0,
+    });
+    const seen = [];
+    m.setSamplingHandler(async (server, params) => {
+      seen.push({ server, params });
+      return { role: "assistant", content: { type: "text", text: "wired" } };
+    });
+    const params = {
+      messages: [{ role: "user", content: { type: "text", text: "q" } }],
+      maxTokens: 7,
+      model: "m",
+    };
+    const result = await fakeWireClient._cb("", params);
+    assert(
+      result.content.text === "wired" &&
+        seen.length === 1 &&
+        seen[0].server === "gamma" &&
+        JSON.stringify(seen[0].params) === JSON.stringify(params) &&
+        m.getSamplingLog("gamma").length === 1 &&
+        m.getSamplingLog("gamma")[0].ok === true,
+      "mcp-sampling-s11: McpManager.setSamplingHandler invokes the callback with (server, params) and returns its result",
+    );
+  }
+  // s12: static — ChatViewProvider wires setSamplingHandler + handles
+  // sampling_approval + waitForSamplingApproval.
+  assert(
+    chatViewAnn.includes("setSamplingHandler") &&
+      chatViewAnn.includes("sampling_approval") &&
+      chatViewAnn.includes("waitForSamplingApproval"),
+    "mcp-sampling-s12: ChatViewProvider.ts wires setSamplingHandler and handles sampling_approval via waitForSamplingApproval",
+  );
+  // s13: static — webview.ts renders the sampling card + posts approval.
+  assert(
+    webviewAnn.includes("sampling_request") &&
+      webviewAnn.includes("sampling_approval"),
+    "mcp-sampling-s13: webview.ts renders the sampling_request card and posts sampling_approval",
+  );
+  // s14: static — package.json contributes both sampling settings.
+  const sampConfirmSetting =
+    pkgJson.contributes.configuration.properties["llm.mcp.sampling.confirm"];
+  const sampAllowedSetting =
+    pkgJson.contributes.configuration.properties["llm.mcp.sampling.allowed"];
+  assert(
+    sampConfirmSetting !== undefined &&
+      sampConfirmSetting.type === "boolean" &&
+      sampConfirmSetting.default === true &&
+      sampAllowedSetting !== undefined &&
+      sampAllowedSetting.type === "object",
+    "mcp-sampling-s14: package.json contributes llm.mcp.sampling.confirm (boolean, default true) and llm.mcp.sampling.allowed (object)",
+  );
+  // s15: static — config.ts reads both sampling settings.
+  assert(
+    configTsSrc.includes("mcpSamplingConfirm") &&
+      configTsSrc.includes("mcpSamplingAllowed"),
+    "mcp-sampling-s15: config.ts reads mcpSamplingConfirm and mcpSamplingAllowed",
+  );
+
+  if (assertCount !== 858) {
+    console.error(`FAIL: total assertion count is 858 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 843");
+  console.log("PASS: total assertion count is 858");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
