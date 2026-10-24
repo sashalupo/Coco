@@ -374,6 +374,30 @@ export class McpJsonRpc {
 }
 
 /**
+ * Race a promise against a timeout. Rejects with `timed out after <ms>ms`
+ * when the promise does not settle in time. Used for best-effort requests
+ * (e.g. `prompts/list`) that must never stall startup.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => {
+      reject(new Error(`timed out after ${ms}ms`));
+    }, ms);
+    t.unref?.();
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/**
  * Thin spawn wrapper around an MCP stdio server: performs the
  * initialize handshake, discovers tools, and exposes `callTool`.
  */
@@ -384,6 +408,8 @@ export class McpClient {
   private closed = false;
   /** Tools discovered during the `tools/list` handshake. */
   public tools: McpTool[] = [];
+  /** Prompts discovered via best-effort `prompts/list` after the handshake. */
+  public prompts: McpPrompt[] = [];
 
   constructor(config: McpServerConfig, inputs?: Record<string, string>) {
     if (!config.command) {
@@ -448,10 +474,40 @@ export class McpClient {
         })(),
         timeout,
       ]);
+      // Best-effort prompt discovery: issued AFTER the tools/list handshake
+      // has fully resolved, with its own short timeout, so a server that
+      // does not answer `prompts/list` can never stall or fail startup.
+      await this.loadPrompts();
     } catch (e) {
       this.close();
       throw e;
     }
+  }
+
+  /**
+   * Best-effort `prompts/list`: any failure (error, timeout, missing
+   * capability) leaves `prompts` as `[]` and never throws.
+   */
+  private async loadPrompts(): Promise<void> {
+    try {
+      const result = (await withTimeout(
+        this.rpc.request("prompts/list", {}),
+        2000,
+      )) as { prompts?: McpPrompt[] } | null;
+      this.prompts = Array.isArray(result?.prompts) ? result!.prompts : [];
+    } catch {
+      this.prompts = [];
+    }
+  }
+
+  /** Fetch a prompt by name via `prompts/get`. */
+  getPrompt(
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<McpPromptResult> {
+    return this.rpc
+      .request("prompts/get", { name, arguments: args })
+      .then((r) => r as McpPromptResult);
   }
 
   /**
@@ -527,6 +583,8 @@ export class McpHttpClient {
   private closed = false;
   /** Tools discovered during the `tools/list` handshake. */
   public tools: McpTool[] = [];
+  /** Prompts discovered via best-effort `prompts/list` after the handshake. */
+  public prompts: McpPrompt[] = [];
   /** Optional callback for `notifications/progress` SSE messages. */
   private progressCb: McpProgressCallback | undefined;
 
@@ -564,10 +622,40 @@ export class McpHttpClient {
         })(),
         timeout,
       ]);
+      // Best-effort prompt discovery: issued AFTER the tools/list handshake
+      // has fully resolved, with its own short timeout, so a server that
+      // does not answer `prompts/list` can never stall or fail startup.
+      await this.loadPrompts();
     } catch (e) {
       this.close();
       throw e;
     }
+  }
+
+  /**
+   * Best-effort `prompts/list`: any failure (error, timeout, missing
+   * capability) leaves `prompts` as `[]` and never throws.
+   */
+  private async loadPrompts(): Promise<void> {
+    try {
+      const result = (await withTimeout(
+        this.post("prompts/list", {}),
+        2000,
+      )) as { prompts?: McpPrompt[] } | null;
+      this.prompts = Array.isArray(result?.prompts) ? result!.prompts : [];
+    } catch {
+      this.prompts = [];
+    }
+  }
+
+  /** Fetch a prompt by name via `prompts/get`. */
+  getPrompt(
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<McpPromptResult> {
+    return this.post("prompts/get", { name, arguments: args }).then(
+      (r) => r as McpPromptResult,
+    );
   }
 
   /**
