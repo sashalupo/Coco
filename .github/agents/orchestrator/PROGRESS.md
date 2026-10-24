@@ -14,12 +14,12 @@ dispatches, verifies each stage, records, and commits.
 ## Status
 
 - **Current item:** **1.101-10 IN PROGRESS** (Terminal cwd context: `pwd` probe after each `run_command` → `[cwd: <path>]` in tool result + `Terminal cwd:` system-prompt block, gated by `llm.agent.trackTerminalCwd`)
-- **Slices:** S-001 ToolExecutor probe helpers [DONE 2fdd516] · S-002 config+package.json [DONE a02c136] · S-003 ChatViewProvider · S-004 smoke 916→928
-- **Current slice:** S-003
-- **Retry state:** clear
-- **Next step:** dispatch the **Coder** for 1.101-10 S-003 (user goal: complete versions 1.101 → 1.107)
+- **Slices:** S-001 ToolExecutor probe helpers [DONE 2fdd516] · S-002 config+package.json [DONE a02c136] · S-003 ChatViewProvider [DONE e3524fc] · S-004 smoke 916→928
+- **Current slice:** S-004 (final)
+- **Retry state:** clear (S-003 dispatch hit context_length_exceeded; work had landed at e3524fc, verified on retry)
+- **Next step:** dispatch the **Coder** for 1.101-10 S-004 (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** a02c136 (1.101-10 S-002)
+- **Last commit:** e3524fc (1.101-10 S-003)
 - **Build state:** compiles clean; smoke 916/916 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
