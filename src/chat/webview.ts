@@ -2646,6 +2646,44 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					cmdInput.focus();
 					cmdInput.select();
 					break;
+				case 'sampling_request':
+					// 1.101-4.S-006: MCP sampling confirmation card — an MCP
+					// server is asking to use the model. Reuses the approval
+					// card styling; reply shape matches the host's
+					// sampling_approval handler ({ approved: boolean }).
+					var spEl = document.createElement('div');
+					spEl.className = 'message approval';
+					spEl.innerHTML =
+						'<div class="role">MCP sampling request</div>' +
+						'<div class="args"></div>' +
+						'<div class="actions">' +
+						'<button class="approve">Approve</button>' +
+						'<button class="reject">Deny</button>' +
+						'</div>' +
+						'<div class="status" style="display:none"></div>';
+					spEl.querySelector('.args').textContent =
+						'server: ' + (msg.server || 'unknown') +
+						'\\nmodel: ' + (msg.model || 'default') +
+						'\\nmax tokens: ' + (msg.maxTokens ?? 0) +
+						'\\nmessages: ' + (msg.messageCount ?? 0);
+					var spApprove = spEl.querySelector('.approve');
+					var spReject = spEl.querySelector('.reject');
+					var spStatus = spEl.querySelector('.status');
+					var spDecided = false;
+					function decideSampling(approved) {
+						if (spDecided) { return; }
+						spDecided = true;
+						spApprove.disabled = true;
+						spReject.disabled = true;
+						spStatus.textContent = approved ? 'Approved' : 'Denied';
+						spStatus.style.display = 'inline';
+						vscode.postMessage({ type: 'sampling_approval', approved: approved });
+					}
+					spApprove.addEventListener('click', function () { decideSampling(true); });
+					spReject.addEventListener('click', function () { decideSampling(false); });
+					messagesEl.appendChild(spEl);
+					messagesEl.scrollTop = messagesEl.scrollHeight;
+					break;
 				case 'revert_result':
 					var rvEl = document.createElement('div');
 					rvEl.className = 'message revert-result';
