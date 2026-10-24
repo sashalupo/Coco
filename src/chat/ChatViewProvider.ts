@@ -64,6 +64,7 @@ import { toolResultMessage, isMutatingTool, type ToolCall } from "../tools";
 import {
   ToolExecutor,
   newDiagnostics,
+  formatTaskDiagnostics,
   externallyChanged,
   type DiagnosticLike,
   type FileSnapshot,
@@ -2138,6 +2139,25 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         const before =
           editedPaths.length > 0 ? this.autofixSnapshot(editedPaths) : [];
 
+        // 1.101-9.S-002: task diagnostic awareness — when this batch runs a
+        // task (run_command), take a workspace-wide pre-batch diagnostics
+        // snapshot so the post-batch diff catches problems the task itself
+        // surfaced (problem-matcher output). Informational context only —
+        // does NOT consume the autofix budget.
+        const hasTask = toolCalls.some(
+          (c) => c.function.name === "run_command",
+        );
+        // The `agentTaskDiagnostics` setting is added to the typed
+        // LlmSettings in S-003 (config/presets); read it defensively here
+        // (default true) so this slice compiles standalone.
+        const taskDiagEnabled =
+          (settings as { agentTaskDiagnostics?: boolean })
+            .agentTaskDiagnostics !== false;
+        const taskBefore =
+          taskDiagEnabled && hasTask
+            ? this.taskDiagnosticsSnapshot()
+            : null;
+
         // Execute each tool call and append the results to the history.
         // When requireApproval is on, mutating tools (write_file, edit_file)
         // are held: post an approval card and await the user's decision.
@@ -2341,6 +2361,50 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                 content: `\n\n[new problems remain in ${editedPaths.join(", ")}: ${text}]`,
               });
             }
+          }
+        }
+
+        // 1.101-9.S-002: task diagnostics hook — parallel to the autofix
+        // hook above, but workspace-wide and scoped to run_command batches.
+        // New problems are injected as a system message (the model decides
+        // whether to fix them) + an informational delta note. Does NOT
+        // touch the autofix budget (that budget is for edit-introduced
+        // problems).
+        if (taskBefore !== null) {
+          // Give the language server a moment to settle after the task.
+          await new Promise((r) => setTimeout(r, 500));
+          const taskAfter = this.taskDiagnosticsSnapshot();
+          const fresh = newDiagnostics(taskBefore, taskAfter);
+          if (fresh.length > 0) {
+            let taskCommand = "task";
+            for (const c of toolCalls) {
+              if (c.function.name !== "run_command") {
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(c.function.arguments) as Record<
+                  string,
+                  unknown
+                >;
+                if (typeof parsed.command === "string" && parsed.command !== "") {
+                  taskCommand = parsed.command;
+                  break;
+                }
+              } catch {
+                // Invalid JSON args — keep the "task" fallback.
+              }
+            }
+            const text = formatTaskDiagnostics(taskCommand, fresh);
+            this.history.push({
+              role: "system",
+              content:
+                `Task diagnostics: ${text} ` +
+                `Review these problems and fix them if they are caused by the task.`,
+            });
+            this.postMessage({
+              type: "delta",
+              content: `\n\n[task diagnostics: ${fresh.length} new problems]`,
+            });
           }
         }
 
@@ -2966,6 +3030,26 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         continue;
       }
       for (const d of vscode.languages.getDiagnostics(vscode.Uri.file(abs))) {
+        out.push({
+          severity: d.severity,
+          range: { start: { line: d.range.start.line, character: d.range.start.character } },
+          message: d.message,
+        });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 1.101-9.S-002: workspace-wide diagnostics snapshot (all-files
+   * `getDiagnostics()` overload) in the same vscode-independent
+   * `DiagnosticLike` shape as `autofixSnapshot`, for the task-diagnostics
+   * diff after a run_command batch.
+   */
+  private taskDiagnosticsSnapshot(): DiagnosticLike[] {
+    const out: DiagnosticLike[] = [];
+    for (const [, diags] of vscode.languages.getDiagnostics()) {
+      for (const d of diags) {
         out.push({
           severity: d.severity,
           range: { start: { line: d.range.start.line, character: d.range.start.character } },
