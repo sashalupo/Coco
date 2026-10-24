@@ -94,6 +94,48 @@
       {
         "command": "llm.browseMcpResources",
         "title": "MCP: Browse Resources"
+      },
+      {
+        "command": "llm.keepChanges",
+        "title": "LLM: Keep All Changes"
+      },
+      {
+        "command": "llm.undoChanges",
+        "title": "LLM: Undo All Changes"
+      },
+      {
+        "command": "llm.keepLastChange",
+        "title": "LLM: Keep Last Change"
+      },
+      {
+        "command": "llm.undoLastChange",
+        "title": "LLM: Undo Last Change"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "llm.keepLastChange",
+        "key": "ctrl+y",
+        "mac": "cmd+y",
+        "when": "view == llm.chat"
+      },
+      {
+        "command": "llm.undoLastChange",
+        "key": "ctrl+n",
+        "mac": "cmd+n",
+        "when": "view == llm.chat"
+      },
+      {
+        "command": "llm.keepChanges",
+        "key": "shift+ctrl+y",
+        "mac": "shift+cmd+y",
+        "when": "view == llm.chat"
+      },
+      {
+        "command": "llm.undoChanges",
+        "key": "shift+ctrl+n",
+        "mac": "shift+cmd+n",
+        "when": "view == llm.chat"
       }
     ],
     "viewsContainers": {
@@ -392,6 +434,11 @@
           "type": "boolean",
           "default": true,
           "description": "Prompt the agent about manual edits the user makes to files during an agent run (the agent is told to re-read manually modified files before editing them)."
+        },
+        "llm.agent.suppressAutoSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suppress auto-save and squiggles while the agent rewrites a file top-to-bottom."
         },
         "llm.chat.summarize.enabled": {
           "type": "boolean",

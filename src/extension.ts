@@ -248,6 +248,21 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("llm.commitChanges", () => {
       void provider.commitChanges();
     }),
+    vscode.commands.registerCommand("llm.keepChanges", () => {
+      provider.triggerEditAction("keepChanges");
+    }),
+    vscode.commands.registerCommand("llm.undoChanges", () => {
+      provider.triggerEditAction("undoChanges");
+    }),
+    vscode.commands.registerCommand("llm.keepLastChange", () => {
+      // Keep the last change: accept it (keepChanges — the host's keep path
+      // saves + clears snapshots; there is no per-change keep action).
+      provider.triggerEditAction("keepChanges");
+    }),
+    vscode.commands.registerCommand("llm.undoLastChange", () => {
+      // Undo the last change: revert the last file mutation.
+      provider.triggerEditAction("revertLast");
+    }),
     vscode.commands.registerCommand("llm.showStatusOverview", async () => {
       const result = await client.health();
       const settings = readSettings();
