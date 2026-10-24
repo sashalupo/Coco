@@ -1296,7 +1296,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<button id="sessions-toggle" title="Toggle sessions panel" aria-expanded="false">☰</button>
 			<button id="quick-new-chat" title="Start a new conversation">+ New</button>
 			<label>Mode
-				<select id="mode-select"><option value="ask">Ask</option><option value="agent" selected>Agent</option><option value="edit">Edit</option></select>
+				<select id="mode-select"><option value="ask">Ask</option><option value="agent" selected>Agent</option><option value="edit">Edit</option><optgroup label="Custom modes" id="custom-mode-group" hidden></optgroup></select>
 			</label>
 			<label>Model
 				<select id="model-select">${modelOptions}</select>
@@ -1498,7 +1498,14 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			syncManual();
 			postToolbar();
 		});
-		modeSelect.addEventListener('change', postToolbar);
+		// 1.101-8 S-003: custom chat modes. Built-in values (ask/agent/edit)
+		// keep the existing postToolbar path; a custom mode posts its own
+		// custom_mode message instead (the host stores it separately).
+		modeSelect.addEventListener('change', function () {
+			var v = modeSelect.value;
+			if (v === 'ask' || v === 'agent' || v === 'edit') { postToolbar(); return; }
+			if (vscode && v) { vscode.postMessage({ type: 'custom_mode', mode: v }); }
+		});
 		manualInput.addEventListener('change', postToolbar);
 		thinkingSelect.addEventListener('change', postToolbar);
 		contextSelect.addEventListener('change', postToolbar);
@@ -2247,6 +2254,16 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		window.setToolbar = function (state) {
 			if (!state) { return; }
 			if (state.mode === 'ask' || state.mode === 'agent' || state.mode === 'edit') { modeSelect.value = state.mode; }
+			// 1.101-8 S-003: restore a custom mode only when its option exists
+			// (the host may echo state before the custom_modes list has arrived).
+			if (state.customMode) {
+				for (var i = 0; i < modeSelect.options.length; i++) {
+					if (modeSelect.options[i].value === state.customMode) {
+						modeSelect.value = state.customMode;
+						break;
+					}
+				}
+			}
 			if (state.model != null) {
 				if (state.model === '__manual__') {
 					modelSelect.value = '__manual__';
@@ -2276,6 +2293,34 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 				}
 			}
 		};
+
+		// 1.101-8 S-003: rebuild the "Custom modes" optgroup in the Mode
+		// dropdown from the host's custom_modes list. One option per mode
+		// (label = name + " — description" when present). Keeps the current
+		// selection if it still exists, else falls back to agent.
+		function setCustomModeOptions(modes) {
+			var group = document.getElementById('custom-mode-group');
+			if (!group) { return; }
+			var current = modeSelect.value;
+			var opts = [];
+			(modes || []).forEach(function (m) {
+				var name = String(m && m.name != null ? m.name : '');
+				if (!name) { return; }
+				var safe = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+				var desc = String((m && m.description) || '');
+				var label = desc ? safe + ' — ' + desc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : safe;
+				opts.push('<option value="' + safe + '">' + label + '</option>');
+			});
+			group.innerHTML = opts.join('');
+			group.hidden = opts.length === 0;
+			// Restore the previous selection if it still exists, else fall back
+			// to agent (a deleted mode must not linger as the selection).
+			var found = false;
+			for (var i = 0; i < modeSelect.options.length; i++) {
+				if (modeSelect.options[i].value === current) { found = true; break; }
+			}
+			if (!found) { modeSelect.value = 'agent'; }
+		}
 
 		// Rebuild the Tools (tool set) dropdown from a fresh list pushed by the
 		// host via the toolsets message. Keeps the "All tools" entry and
@@ -2387,11 +2432,17 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 						thinking: msg.thinking,
 						context: msg.context,
 						contextFlags: msg.contextFlags,
-						toolset: msg.toolset
+						toolset: msg.toolset,
+						customMode: msg.customMode
 					});
 					break;
 				case 'toolsets':
 					setToolsetOptions(msg.toolsets);
+					break;
+				case 'custom_modes':
+					// 1.101-8 S-003: host pushes the discovered *.chatprompt.md
+					// modes; rebuild the "Custom modes" optgroup.
+					setCustomModeOptions(msg.modes);
 					break;
 				case 'mcp_prompts':
 					// MCP prompts (1.101-2 S-005): host pushes the current prompt
