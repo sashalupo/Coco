@@ -15,11 +15,11 @@ dispatches, verifies each stage, records, and commits.
 
 - **Current item:** **1.101-2 IN PROGRESS** (MCP support for prompts; plan committed 79d49a6, 6 slices)
 - **Current slice:** S-001 DONE (2f9a8a1); S-002 pending
-- **Retry state:** **Coder on 1.101-2 S-002, 2/5 attempts used** (two "no response" errors with the identical prompt) — next dispatch is attempt 3/5 with the SAME prompt; clear on success
-- **Next step:** re-dispatch the **Coder** for 1.101-2 S-002 (`src/mcp.ts`: `prompts` field + best-effort `prompts/list` + `getPrompt`) (user goal: complete versions 1.100, 1.101, 1.102)
+- **Retry state:** **Coder on 1.101-2 S-002, 2/5 attempts used** (two "no response" errors with the identical prompt). Both attempts left a COMPLETE but SMOKE-BREAKING partial edit in `src/mcp.ts` (discarded via `git checkout -- src/mcp.ts` + recompile; smoke 813/813 restored). **Root cause found:** the partial edit ran `prompts/list` inside the same `Promise.all` as `tools/list` in the handshake — the smoke test's fake MCP server only answers `initialize`/`tools/list`, so the unanswered `prompts/list` request hit the 10 s handshake timeout. **S-002 must be re-implemented with `prompts/list` as a SEPARATE best-effort request with its own short timeout (e.g. 2 s) AFTER the tools/list handshake resolves — never inside the handshake Promise.all.**
+- **Next step:** re-dispatch the **Coder** for 1.101-2 S-002 with the corrected constraint above (attempt 3/5) (user goal: complete versions 1.100, 1.101, 1.102)
 - **Last updated:** 2026-10-24
-- **Last commit:** 2f9a8a1 (1.101-2 S-001 MCP prompt types + pure helpers)
-- **Build state:** compiles clean; smoke 813/813 PASS (verified 2026-10-24)
+- **Last commit:** 8f8a30f (chore: record 1.101-2 S-001 done + S-002 retry state)
+- **Build state:** compiles clean; smoke 813/813 PASS (verified 2026-10-24 after discarding partial S-002 edits)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
