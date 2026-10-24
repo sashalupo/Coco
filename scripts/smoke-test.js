@@ -6663,11 +6663,78 @@ function assert(cond, label) {
     "mcp-ann-s5: webview.ts renders msg.displayName in tool cards",
   );
 
-  if (assertCount !== 806) {
-    console.error(`FAIL: total assertion count is 806 (got ${assertCount})`);
+  // 1.101-1 S-008: Chat tool sets (toolsets-s1..s7)
+  const toolsetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "toolsets.ts"),
+    "utf8",
+  );
+  const toolsetsMod = require(path.join(__dirname, "..", "out", "toolsets.js"));
+  assert(
+    typeof toolsetsMod.parseToolsetsJson === "function" &&
+      typeof toolsetsMod.resolveToolset === "function" &&
+      typeof toolsetsMod.buildToolsetsExample === "function" &&
+      !/from\s+["']vscode["']/.test(toolsetsSrc),
+    "toolsets-s1: toolsets.ts exports parseToolsetsJson/resolveToolset/buildToolsetsExample and has no vscode import",
+  );
+  const contextTsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "context.ts"),
+    "utf8",
+  );
+  assert(
+    contextTsSrc.includes("extractToolsetTag") &&
+      contextTsSrc.includes("#toolset:"),
+    "toolsets-s2: context.ts has extractToolsetTag and parsePillRefs recognizes #toolset:",
+  );
+  const configTsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const presetsTsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  assert(
+    configTsSrc.includes("toolsets.enabled") &&
+      presetsTsSrc.includes("toolsetsEnabled"),
+    "toolsets-s3: config.ts reads llm.toolsets.enabled and presets.ts has toolsetsEnabled",
+  );
+  assert(
+    chatViewAnn.includes("resolveToolset") &&
+      chatViewAnn.includes("pendingToolset"),
+    "toolsets-s4: ChatViewProvider.ts wires #toolset:/toolbar toolset into promptTools (resolveToolset + pendingToolset)",
+  );
+  assert(
+    webviewAnn.includes("toolset-select") &&
+      webviewAnn.includes("case 'toolsets'"),
+    "toolsets-s5: webview.ts has the Tools select (toolset-select) and handles the toolsets host message",
+  );
+  const toolsetsSetting =
+    pkgJson.contributes.configuration.properties["llm.toolsets.enabled"];
+  const toolsetsCmd = pkgJson.contributes.commands.find(
+    (c) => c.command === "llm.toolsets.createFile",
+  );
+  assert(
+    toolsetsSetting !== undefined &&
+      toolsetsSetting.type === "boolean" &&
+      toolsetsSetting.default === true &&
+      toolsetsCmd !== undefined,
+    "toolsets-s6: package.json contributes llm.toolsets.enabled (boolean, default true) and command llm.toolsets.createFile",
+  );
+  const extensionTsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  assert(
+    extensionTsSrc.includes("llm.toolsets.createFile") &&
+      extensionTsSrc.includes("buildToolsetsExample"),
+    "toolsets-s7: extension.ts registers llm.toolsets.createFile and uses buildToolsetsExample",
+  );
+
+  if (assertCount !== 813) {
+    console.error(`FAIL: total assertion count is 813 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 806");
+  console.log("PASS: total assertion count is 813");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
