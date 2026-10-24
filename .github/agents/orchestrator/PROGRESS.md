@@ -13,13 +13,12 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-1 COMPLETE** (verified PASS) — next item 1.101-2 (MCP support for prompts)
-- **Current slice:** none (1.101-1 complete, verified PASS)
-- **Retry state:** **none** (sub-agent, attempts used / 5) — set when a sub-agent errors and
-  is being retried with the same prompt; clear on success or when the budget is exhausted
-- **Next step:** dispatch the **Planner** for 1.101-2 (MCP support for prompts) (user goal: complete versions 1.100, 1.101, 1.102)
+- **Current item:** **1.101-2 IN PROGRESS** (MCP support for prompts; plan committed 79d49a6, 6 slices)
+- **Current slice:** S-001 DONE (2f9a8a1); S-002 pending
+- **Retry state:** **Coder on 1.101-2 S-002, 2/5 attempts used** (two "no response" errors with the identical prompt) — next dispatch is attempt 3/5 with the SAME prompt; clear on success
+- **Next step:** re-dispatch the **Coder** for 1.101-2 S-002 (`src/mcp.ts`: `prompts` field + best-effort `prompts/list` + `getPrompt`) (user goal: complete versions 1.100, 1.101, 1.102)
 - **Last updated:** 2026-10-24
-- **Last commit:** 92df096 (1.101-1 S-008 smoke guards; item verified PASS)
+- **Last commit:** 2f9a8a1 (1.101-2 S-001 MCP prompt types + pure helpers)
 - **Build state:** compiles clean; smoke 813/813 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
