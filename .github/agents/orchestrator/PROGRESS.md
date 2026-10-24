@@ -13,13 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-4 PENDING** (MCP support for sampling — not yet planned)
+- **Current item:** **1.101-5 PENDING** (MCP development mode — not yet planned)
 - **Current slice:** none (item boundary)
 - **Retry state:** clear
-- **Next step:** dispatch the **Planner** for 1.101-4 (MCP support for sampling) (user goal: complete versions 1.101 → 1.107)
+- **Next step:** dispatch the **Planner** for 1.101-5 (MCP development mode) (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** 4be0b9c (tester: verify 1.101-3 PASS)
-- **Build state:** compiles clean; smoke 843/843 PASS (verified 2026-10-24)
+- **Last commit:** d1a936c (tester: verify 1.101-4 PASS)
+- **Build state:** compiles clean; smoke 858/858 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -52,6 +52,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.101-4 (DONE, S-001–S-008, verified PASS 2026-10-24):** MCP sampling — `McpSamplingMessage`/`McpSamplingParams`/`McpSamplingResult`/`McpSamplingLogEntry` + `mcpSamplingParamsToMessages`/`mcpSamplingResultToText` in `src/mcp.ts` (S-001 fcad4cd); `McpJsonRpc.onRequest` hook + `setSamplingHandler` on both clients (S-002 c966c12); policy layer (per-server allow/deny, log capped 100, `getSamplingLog`, `setSamplingCallback`) in `src/mcpManager.ts` (S-003 e369283); `mcpSamplingConfirm`/`mcpSamplingAllowed` settings in `src/config.ts`+`src/presets.ts` (S-004 3bc09fb); host callback + first-use confirmation + `chatStream` round-trip in `src/chat/ChatViewProvider.ts` (S-005 10340a3); `sampling_request` card in `src/chat/webview.ts` (S-006 d3e07af); settings contributed in `package.json` (S-007 075690c); smoke guards `mcp-sampling-s1..s15`, gate 843→858 (S-008 876266a). Tester PASS (commit d1a936c). No new tag — `changelog-1.101` already exists.
 
 **1.101-3 (DONE, S-001–S-008, verified PASS 2026-10-24):** MCP resources — `McpResource`/`McpResourceTemplate`/`McpResourceReadResult` + `mcpResourceReadToText` + `parseMcpResourceRef` in `src/mcp.ts` (S-001 0890a42); client `resources`/`resourceTemplates` + best-effort `loadResources()` (own 2 s timeout, after handshake) + `readResource(uri)` (S-002 4df9029); `McpClientLike` resource surface + `getServerResources`/`getServerResourceTemplates`/never-throwing `readResource(server, uri)` in `src/mcpManager.ts` (S-003 b126091); `ContextPill.kind` += `"mcp"` + `#mcp:<server>/<uri>` pill parsing in `src/context.ts` (S-004 428aac4); mcp pills consumed at send → `ctxInput.taggedFiles` in `src/chat/ChatViewProvider.ts` (S-005 743e6bd); "MCP Resources" category in `llm.addContext` + `llm.browseMcpResources` command in `src/extension.ts` + `package.json` (S-006 6ded6ee); `kind === "mcp"` pills rendered with plug icon in `src/chat/webview.ts` (S-007 76e6569); smoke guards `mcp-resource-s1..s15`, gate 828→843 (S-008 7eee189). Tester PASS (commit 4be0b9c). No new tag — `changelog-1.101` already exists.
 
@@ -99,6 +101,7 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
 | 1.101-1 | 1.101 | `changelog-1.101` | 92df096 | 2026-10-24 |
 | 1.101-2 | 1.101 | `changelog-1.101` (already exists — left in place) | 01b1977 | 2026-10-24 |
 | 1.101-3 | 1.101 | `changelog-1.101` (already exists — left in place) | 4be0b9c | 2026-10-24 |
+| 1.101-4 | 1.101 | `changelog-1.101` (already exists — left in place) | d1a936c | 2026-10-24 |
 
 ## Todo
 
