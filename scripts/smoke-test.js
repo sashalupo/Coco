@@ -698,7 +698,7 @@ function assert(cond, label) {
     }
     return originalLoad.apply(this, arguments);
   };
-  const { ToolExecutor } = require(
+  const { ToolExecutor, isFullRewrite } = require(
     path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
   );
   const executor = new ToolExecutor();
@@ -7795,11 +7795,163 @@ function assert(cond, label) {
     "chat-ux-s10: undo_request with an out-of-range index is a no-op (bounds guard)",
   );
 
-  if (assertCount !== 880) {
-    console.error(`FAIL: total assertion count is 880 (got ${assertCount})`);
+  // 1.101-7 S-004: apply edits more efficiently (edit-eff-s1..s12)
+  const editEffToolSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  const editEffConfigSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const editEffHostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  const editEffPkg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  const editEffExtSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "extension.ts"),
+    "utf8",
+  );
+  // s1: static — isFullRewrite is exported from ToolExecutor.ts.
+  assert(
+    editEffToolSrc.includes("export function isFullRewrite"),
+    "edit-eff-s1: ToolExecutor.ts exports isFullRewrite",
+  );
+  // s2: behavior — isFullRewrite classifies rewrites vs targeted edits.
+  {
+    // Re-require: the module was already loaded (and cached) inside the
+    // Module._load vscode-stub section above, so this returns the cached
+    // exports without re-executing the top-level `require("vscode")`.
+    const { isFullRewrite } = require(
+      path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+    );
+    assert(
+      isFullRewrite("", "new file content") === false &&
+        isFullRewrite("old content", "") === false &&
+        isFullRewrite("", "") === false &&
+        isFullRewrite("first\nmiddle\nlast", "a\nb\nc") === true &&
+        isFullRewrite("first\nmiddle\nlast", "first\nmiddle2\nlast") === false &&
+        isFullRewrite("first\nmiddle\nlast", "a\nmiddle\nlast") === false,
+      "edit-eff-s2: isFullRewrite — false for new files/deletions/both-empty, true only when first AND last line vanish",
+    );
+  }
+  // s4: static — config.ts reads agent.suppressAutoSave.
+  assert(
+    editEffConfigSrc.includes('agent.suppressAutoSave') &&
+      editEffConfigSrc.includes("agentSuppressAutoSave"),
+    "edit-eff-s3: config.ts reads agent.suppressAutoSave into agentSuppressAutoSave",
+  );
+  // s5: static — ToolExecutor constructor accepts suppressAutoSave.
+  assert(
+    /constructor\s*\(\s*suppressAutoSave\s*:\s*boolean\s*=\s*true\s*\)/.test(
+      editEffToolSrc,
+    ),
+    "edit-eff-s4: ToolExecutor constructor accepts suppressAutoSave (default true)",
+  );
+  // s6: static — writeFile calls suppressRewriteEffects.
+  {
+    const writeFileBody = editEffToolSrc.slice(
+      editEffToolSrc.indexOf("private async writeFile"),
+      editEffToolSrc.indexOf("private async applyPatchTool"),
+    );
+    assert(
+      writeFileBody.includes("this.suppressRewriteEffects("),
+      "edit-eff-s5: writeFile calls suppressRewriteEffects after a successful write",
+    );
+  }
+  // s7: static — applyPatchTool calls suppressRewriteEffects.
+  {
+    const applyPatchBody = editEffToolSrc.slice(
+      editEffToolSrc.indexOf("private async applyPatchTool"),
+    );
+    assert(
+      applyPatchBody.includes("this.suppressRewriteEffects("),
+      "edit-eff-s6: applyPatchTool calls suppressRewriteEffects after a successful patch",
+    );
+  }
+  // s8: static — clearChangeSummary clears rewriteSuppressions.
+  {
+    const clearBody = editEffToolSrc.slice(
+      editEffToolSrc.indexOf("public clearChangeSummary"),
+      editEffToolSrc.indexOf("public getRewriteSuppressions"),
+    );
+    assert(
+      clearBody.includes("this.clearRewriteSuppressions()"),
+      "edit-eff-s7: clearChangeSummary clears rewriteSuppressions",
+    );
+  }
+  // s9: static — ChatViewProvider passes agentSuppressAutoSave to the ToolExecutor.
+  assert(
+    editEffHostSrc.includes(
+      "new ToolExecutor(readSettings().agentSuppressAutoSave)",
+    ),
+    "edit-eff-s8: ChatViewProvider passes agentSuppressAutoSave to the ToolExecutor constructor",
+  );
+  // s10: static — ChatViewProvider posts rewrite_suppressed.
+  assert(
+    editEffHostSrc.includes('type: "rewrite_suppressed"') &&
+      editEffHostSrc.includes("getRewriteSuppressions()"),
+    "edit-eff-s9: ChatViewProvider posts rewrite_suppressed with getRewriteSuppressions() files",
+  );
+  // s11: static — triggerEditAction dispatches to the keep/undo/revert methods.
+  {
+    const triggerBody = editEffHostSrc.slice(
+      editEffHostSrc.indexOf("public triggerEditAction"),
+    );
+    assert(
+      triggerBody.includes("this.handleKeepAll()") &&
+        triggerBody.includes("this.undoAllChanges()") &&
+        triggerBody.includes("this.revertLastChange()"),
+      "edit-eff-s10: triggerEditAction dispatches to handleKeepAll/undoAllChanges/revertLastChange",
+    );
+  }
+  // s12: static — package.json has the 4 keybindings + setting + 4 commands.
+  {
+    const kbs = editEffPkg.contributes.keybindings || [];
+    const kb = (cmd) => kbs.find((k) => k.command === cmd);
+    const expect = {
+      "llm.keepLastChange": ["ctrl+y", "cmd+y"],
+      "llm.undoLastChange": ["ctrl+n", "cmd+n"],
+      "llm.keepChanges": ["shift+ctrl+y", "shift+cmd+y"],
+      "llm.undoChanges": ["shift+ctrl+n", "shift+cmd+n"],
+    };
+    let kbsOk = Object.entries(expect).every(
+      ([cmd, [key, mac]]) =>
+        kb(cmd) &&
+        kb(cmd).key === key &&
+        kb(cmd).mac === mac &&
+        kb(cmd).when === "view == llm.chat",
+    );
+    const props = editEffPkg.contributes.configuration.properties;
+    const settingOk =
+      props["llm.agent.suppressAutoSave"] &&
+      props["llm.agent.suppressAutoSave"].type === "boolean" &&
+      props["llm.agent.suppressAutoSave"].default === true;
+    const cmds = editEffPkg.contributes.commands || [];
+    const cmdsOk = Object.keys(expect).every((cmd) =>
+      cmds.some((c) => c.command === cmd),
+    );
+    assert(
+      kbsOk,
+      "edit-eff-s11: package.json has the 4 keep/undo keybindings (ctrl+y/cmd+y, ctrl+n/cmd+n, shift+ctrl+y/shift+cmd+y, shift+ctrl+n/shift+cmd+n) with when: view == llm.chat",
+    );
+    assert(
+      settingOk && cmdsOk && editEffExtSrc.includes('registerCommand("llm.keepChanges"') &&
+        editEffExtSrc.includes('registerCommand("llm.undoChanges"') &&
+        editEffExtSrc.includes('registerCommand("llm.keepLastChange"') &&
+        editEffExtSrc.includes('registerCommand("llm.undoLastChange"'),
+      "edit-eff-s12: package.json has llm.agent.suppressAutoSave (boolean, default true) + the 4 commands; extension.ts registers all 4",
+    );
+  }
+
+  if (assertCount !== 892) {
+    console.error(`FAIL: total assertion count is 892 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 880");
+  console.log("PASS: total assertion count is 892");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
