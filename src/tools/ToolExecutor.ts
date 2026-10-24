@@ -83,6 +83,18 @@ export class ToolExecutor {
   private suppressAutoSave: boolean;
 
   /**
+   * Whether terminal cwd tracking is enabled (1.101-10,
+   * `llm.agent.trackTerminalCwd`).
+   */
+  private trackCwd: boolean;
+
+  /**
+   * Last probed working directory (1.101-10): `null` until a `pwd` probe
+   * succeeds (or when tracking is disabled).
+   */
+  private lastCwd: string | null = null;
+
+  /**
    * Active full-rewrite suppressions (1.101-7): workspace-relative paths
    * whose auto-save was suppressed during a top-to-bottom rewrite, with a
    * timer that clears the entry after a few seconds (squiggles reappear
@@ -90,8 +102,55 @@ export class ToolExecutor {
    */
   private rewriteSuppressions = new Map<string, { timer: NodeJS.Timeout }>();
 
-  constructor(suppressAutoSave: boolean = true) {
+  constructor(suppressAutoSave: boolean = true, trackCwd: boolean = true) {
     this.suppressAutoSave = suppressAutoSave;
+    this.trackCwd = trackCwd;
+  }
+
+  /** Last probed cwd (1.101-10), or `null` when no probe has succeeded. */
+  public getLastCwd(): string | null {
+    return this.lastCwd;
+  }
+
+  /**
+   * Probe the effective working directory (1.101-10): spawn a bare `pwd`
+   * in `cwd` with a 2 s timeout. Returns the trimmed stdout, or `null` on
+   * error/timeout/empty output. Never throws.
+   */
+  private async probeCwd(cwd: string): Promise<string | null> {
+    return new Promise<string | null>((resolve) => {
+      let settled = false;
+      const done = (v: string | null) => {
+        if (settled) return;
+        settled = true;
+        resolve(v);
+      };
+      let child;
+      try {
+        child = spawn("pwd", { cwd, shell: true, stdio: ["ignore", "pipe", "ignore"] });
+      } catch {
+        done(null);
+        return;
+      }
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        done(null);
+      }, 2000);
+      timer.unref?.();
+      let out = "";
+      child.stdout.on("data", (chunk: Buffer) => {
+        out += chunk.toString();
+      });
+      child.on("error", () => {
+        clearTimeout(timer);
+        done(null);
+      });
+      child.on("close", () => {
+        clearTimeout(timer);
+        const v = extractCwdFromProbe(out);
+        done(v === "" ? null : v);
+      });
+    });
   }
   /** Snapshot of the last mutation (for undo / revert). */
   private lastSnapshot: {
@@ -938,7 +997,7 @@ export class ToolExecutor {
         settle(`Command failed to start: ${err.message}`);
       });
 
-      child.on("close", (code, signal) => {
+      child.on("close", async (code, signal) => {
         const exitCode = code ?? (signal ? 1 : 0);
         const parts: string[] = [];
         parts.push(`$ ${command}`);
@@ -956,6 +1015,15 @@ export class ToolExecutor {
         }
         if (!stdout && !stderr) {
           parts.push("(no output)");
+        }
+        // 1.101-10.S-001: probe the effective cwd after the command closes
+        // (the shell's cwd is whatever the command left it at).
+        if (this.trackCwd) {
+          const probed = await this.probeCwd(cwd);
+          if (probed !== null) {
+            this.lastCwd = probed;
+            parts.push(formatCwdResultLine(probed));
+          }
         }
         settle(parts.join("\n"));
       });
@@ -1953,6 +2021,23 @@ export function formatTaskDiagnostics(
     lines.push(`  (+${diags.length - 10} more)`);
   }
   return lines.join("\n");
+}
+
+/**
+ * Pure formatter (1.101-10.S-001): the `[cwd: <path>]` line appended to a
+ * `run_command` tool result. Returns `""` for an empty/whitespace cwd.
+ */
+export function formatCwdResultLine(cwd: string): string {
+  const trimmed = cwd.trim();
+  return trimmed === "" ? "" : `[cwd: ${trimmed}]`;
+}
+
+/**
+ * Pure probe-output parser (1.101-10.S-001): the probe is a bare `pwd`, so
+ * the whole trimmed output IS the cwd. Returns `""` when empty.
+ */
+export function extractCwdFromProbe(output: string): string {
+  return output.trim();
 }
 
 /**

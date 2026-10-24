@@ -7846,7 +7846,7 @@ function assert(cond, label) {
   );
   // s5: static — ToolExecutor constructor accepts suppressAutoSave.
   assert(
-    /constructor\s*\(\s*suppressAutoSave\s*:\s*boolean\s*=\s*true\s*\)/.test(
+    /constructor\s*\(\s*suppressAutoSave\s*:\s*boolean\s*=\s*true\s*(?:,\s*trackCwd\s*:\s*boolean\s*=\s*true)?\s*\)/.test(
       editEffToolSrc,
     ),
     "edit-eff-s4: ToolExecutor constructor accepts suppressAutoSave (default true)",
