@@ -9,6 +9,7 @@
 //   - pure name mappers between MCP tools and OpenAI function-calling tools.
 
 import { spawn, ChildProcess } from "child_process";
+import * as path from "path";
 import type { Tool } from "./tools";
 
 /**
@@ -22,6 +23,18 @@ export interface McpServerConfig {
   env?: Record<string, string>;
   url?: string;
   inputs?: Record<string, McpInput>;
+  dev?: McpDevConfig;
+}
+
+/**
+ * Optional development-mode options for a stdio MCP server. `watch` is a
+ * file glob: when a matching file changes the server process is restarted.
+ * `debug` launches the server with a debugger attached (Node `--inspect`,
+ * Python `debugpy`). Ignored for `url` (HTTP) servers.
+ */
+export interface McpDevConfig {
+  watch?: string;
+  debug?: boolean;
 }
 
 /** A user-provided input value for an MCP server (e.g. a secret). */
@@ -180,6 +193,18 @@ export function parseMcpServers(
       }
       if (ok) {
         cfg.inputs = inputs;
+      }
+    }
+    if (isPlainObject(entry.dev)) {
+      const dev: McpDevConfig = {};
+      if (typeof entry.dev.watch === "string" && entry.dev.watch.length > 0) {
+        dev.watch = entry.dev.watch;
+      }
+      if (typeof entry.dev.debug === "boolean") {
+        dev.debug = entry.dev.debug;
+      }
+      if (dev.watch !== undefined || dev.debug !== undefined) {
+        cfg.dev = dev;
       }
     }
     out[name] = cfg;
@@ -1293,4 +1318,82 @@ export function mcpSamplingParamsToMessages(
  */
 export function mcpSamplingResultToText(result: McpSamplingResult): string {
   return typeof result?.content?.text === "string" ? result.content.text : "";
+}
+
+/**
+ * Resolve a `dev.watch` glob to a directory-level `fs.watch` target.
+ * `dir` is the longest literal prefix of the glob before the first wildcard
+ * (relative globs resolve against `process.cwd()`; an empty prefix → `.`).
+ * `match` is an anchored RegExp to test against the changed file's path
+ * relative to `dir` (double-star-slash → `.*`, `*` → `[^/]*`, `?` → `[^/]`,
+ * everything else escaped). Throws `invalid watch glob` on empty/whitespace
+ * input.
+ */
+export function mcpWatchTarget(glob: string): { dir: string; match: RegExp } {
+  if (typeof glob !== "string" || glob.trim().length === 0) {
+    throw new Error("invalid watch glob");
+  }
+  // Find the first wildcard position, treating `**/` as a wildcard but a
+  // bare `**` (not followed by `/`) as literal.
+  let cut = -1;
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*" || c === "?") {
+      if (c === "*" && glob[i + 1] === "*" && glob[i + 2] !== "/") {
+        continue; // literal `**` (e.g. `a**b`)
+      }
+      cut = i;
+      break;
+    }
+  }
+  const literal = cut === -1 ? glob : glob.slice(0, cut);
+  const rest = cut === -1 ? "" : glob.slice(cut);
+  const dir = literal.length > 0 ? path.resolve(process.cwd(), literal) : ".";
+  let re = "";
+  for (let i = 0; i < rest.length; i++) {
+    const c = rest[i];
+    if (c === "*") {
+      if (rest[i + 1] === "*") {
+        if (rest[i + 2] === "/") {
+          re += ".*";
+          i += 2;
+        } else {
+          re += ".*";
+          i += 1;
+        }
+      } else {
+        re += "[^/]*";
+      }
+    } else if (c === "?") {
+      re += "[^/]";
+    } else {
+      re += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+  }
+  return { dir, match: new RegExp("^" + re + "$") };
+}
+
+/**
+ * Rewrite spawn args for `dev.debug` (pure, returns a NEW array). When
+ * `debug` is false the args are returned unchanged. Node-like command
+ * (`node`/`nodejs` basename) → insert `--inspect` as the first arg; Python
+ * (`python`/`python2`/`python3` basename) → prepend `-m debugpy --listen
+ * 5678` before the existing args; unknown runtime → args unchanged.
+ */
+export function mcpDebugArgs(
+  command: string,
+  args: string[],
+  debug: boolean,
+): string[] {
+  if (!debug) {
+    return args;
+  }
+  const base = path.basename(command);
+  if (base === "node" || base === "nodejs") {
+    return ["--inspect", ...args];
+  }
+  if (base === "python" || base === "python2" || base === "python3") {
+    return ["-m", "debugpy", "--listen", "5678", ...args];
+  }
+  return args;
 }
