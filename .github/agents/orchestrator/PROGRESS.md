@@ -124,3 +124,8 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
   final slice is tagged — intermediate slices are not. Record the tag in the **Tags** table
   above. Never tag a commit that does not compile or has a failing test. If the tag already
   exists, leave it (do not force-recreate).
+
+## Incidents
+
+- **2026-10-24 — S-005 landed on side branch `fix/webview-script-syntax`.** The Coder's S-005 webview work (plus a webview script-escape fix + new "webview inline scripts parse" smoke check, gate 805→806) was committed on branch `fix/webview-script-syntax` instead of `master`. Verified the diff was exactly the S-005 scope (webview.ts + smoke-test.js + the host-push gap fix in ChatViewProvider.ts), then fast-forward merged into `master` (master was a direct ancestor). No history rewritten. **Smoke gate is now 806** — S-008 must bump 806 → 813 (not 805 → 812 as originally planned).
+
