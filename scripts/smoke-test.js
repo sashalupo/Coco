@@ -7947,11 +7947,149 @@ function assert(cond, label) {
     );
   }
 
-  if (assertCount !== 892) {
-    console.error(`FAIL: total assertion count is 892 (got ${assertCount})`);
+  // 1.101-8 S-006: custom chat modes (custom-mode-s1..s12)
+  const customModeSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chatmodes.ts"),
+    "utf8",
+  );
+  const customModePresetsSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "presets.ts"),
+    "utf8",
+  );
+  const customModeConfigSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const customModeWebviewSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "webview.ts"),
+    "utf8",
+  );
+  const customModeHostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  const customModePkg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  // s1: behavior — parseChatModeFile parses a valid file.
+  {
+    const { parseChatModeFile, chatModeName, CHATMODE_TEMPLATE } = require(
+      path.join(__dirname, "..", "out", "chatmodes.js"),
+    );
+    const parsed = parseChatModeFile(
+      "---\ndescription: Review code\ntools: read_file, edit_file\n---\n# Review\n\nBe strict.\n",
+      "review.chatprompt.md",
+    );
+    assert(
+      parsed !== null &&
+        parsed.name === "review" &&
+        parsed.description === "Review code" &&
+        Array.isArray(parsed.tools) &&
+        parsed.tools.length === 2 &&
+        parsed.tools[0] === "read_file" &&
+        parsed.tools[1] === "edit_file" &&
+        parsed.instructions === "# Review\nBe strict.",
+      "custom-mode-s1: parseChatModeFile parses a valid file (name from stem, description, tools list, stripped instructions)",
+    );
+    // s2: behavior — empty/comment-only body → null.
+    assert(
+      parseChatModeFile("---\ndescription: x\n---\n", "a.chatprompt.md") ===
+        null &&
+        parseChatModeFile(
+          "---\ndescription: x\n---\n<!-- only a comment -->\n",
+          "b.chatprompt.md",
+        ) === null,
+      "custom-mode-s2: parseChatModeFile returns null for an empty/comment-only body",
+    );
+    // s3: behavior — mode/title front matter ignored; empty tools dropped.
+    {
+      const p3 = parseChatModeFile(
+        "---\nmode: agent\ntitle: T\ntools: , ,\n---\nBody text.\n",
+        "c.chatprompt.md",
+      );
+      assert(
+        p3 !== null &&
+          p3.tools === undefined &&
+          p3.description === undefined &&
+          p3.instructions === "Body text.",
+        "custom-mode-s3: parseChatModeFile ignores mode/title front-matter keys and drops empty tools entries",
+      );
+    }
+    // s4: behavior — chatModeName stem behavior.
+    assert(
+      chatModeName("review.chatprompt.md") === "review" &&
+        chatModeName("a/b/x.chatprompt.md") === "x",
+      "custom-mode-s4: chatModeName stem behavior (review.chatprompt.md → review; a/b/x.chatprompt.md → x)",
+    );
+    // s5: static — CHATMODE_TEMPLATE has description:/tools: front matter.
+    assert(
+      CHATMODE_TEMPLATE.includes("description:") &&
+        CHATMODE_TEMPLATE.includes("tools:"),
+      "custom-mode-s5: CHATMODE_TEMPLATE contains description: and tools: front matter",
+    );
+  }
+  // s6: static — presets.ts ToolbarState has customMode.
+  assert(
+    customModePresetsSrc.includes("customMode?: string"),
+    "custom-mode-s6: presets.ts ToolbarState has customMode",
+  );
+  // s7: static — config.ts reads customModes.enabled + customModes.locations.
+  assert(
+    customModeConfigSrc.includes('"customModes.enabled"') &&
+      customModeConfigSrc.includes('"customModes.locations"') &&
+      customModeConfigSrc.includes("customModesEnabled") &&
+      customModeConfigSrc.includes("customModeLocations"),
+    "custom-mode-s7: config.ts reads customModes.enabled + customModes.locations",
+  );
+  // s8: static — webview.ts has the optgroup + custom_modes case + custom_mode postMessage.
+  assert(
+    customModeWebviewSrc.includes('id="custom-mode-group"') &&
+      customModeWebviewSrc.includes("case 'custom_modes':") &&
+      customModeWebviewSrc.includes("type: 'custom_mode'"),
+    "custom-mode-s8: webview.ts has the custom-mode-group optgroup + custom_modes case + custom_mode postMessage",
+  );
+  // s9: static — ChatViewProvider.ts has loadCustomModes + posts custom_modes.
+  assert(
+    customModeHostSrc.includes("private async loadCustomModes()") &&
+      customModeHostSrc.includes('type: "custom_modes"'),
+    "custom-mode-s9: ChatViewProvider.ts has loadCustomModes + posts custom_modes",
+  );
+  // s10: static — ChatViewProvider.ts handles case "custom_mode" with loaded-mode validation.
+  {
+    const customModeCase = customModeHostSrc.slice(
+      customModeHostSrc.indexOf('case "custom_mode"'),
+      customModeHostSrc.indexOf('case "newChat"'),
+    );
+    assert(
+      customModeCase.includes("this.customModes.some((m) => m.name === name)") &&
+        customModeCase.includes("setCustomMode(name)"),
+      "custom-mode-s10: ChatViewProvider.ts handles case \"custom_mode\" with a loaded-mode validation",
+    );
+  }
+  // s11: static — ChatViewProvider.ts applies the mode's tools + ## Mode: block.
+  assert(
+    customModeHostSrc.includes("promptTools = mode.tools") &&
+      customModeHostSrc.includes('"## Mode: " + mode.name'),
+    "custom-mode-s11: ChatViewProvider.ts applies the mode's tools to promptTools and appends the ## Mode: block to the system prompt",
+  );
+  // s12: static JSON — package.json has both llm.customModes.* settings.
+  {
+    const props = customModePkg.contributes.configuration.properties;
+    assert(
+      props["llm.customModes.enabled"] &&
+        props["llm.customModes.enabled"].type === "boolean" &&
+        props["llm.customModes.enabled"].default === true &&
+        props["llm.customModes.locations"] &&
+        props["llm.customModes.locations"].type === "array",
+      "custom-mode-s12: package.json has both llm.customModes.* settings",
+    );
+  }
+
+  if (assertCount !== 904) {
+    console.error(`FAIL: total assertion count is 904 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 892");
+  console.log("PASS: total assertion count is 904");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
