@@ -11,10 +11,13 @@ import {
   McpClient,
   McpHttpClient,
   McpProgressCallback,
+  McpPrompt,
+  McpPromptResult,
   McpServerConfig,
   McpTool,
   McpToolAnnotations,
   McpToolResult,
+  mcpPromptToText,
   mcpResultToImages,
   mcpResultToText,
   mcpToolsToOpenAITools,
@@ -28,12 +31,17 @@ import type { Tool } from "./tools";
  */
 export interface McpClientLike {
   tools: McpTool[];
+  prompts: McpPrompt[];
   start(): Promise<void>;
   callTool(
     name: string,
     args: Record<string, unknown>,
     onProgress?: McpProgressCallback,
   ): Promise<McpToolResult>;
+  getPrompt(
+    name: string,
+    args?: Record<string, unknown>,
+  ): Promise<McpPromptResult>;
   close(): void;
 }
 
@@ -225,6 +233,59 @@ export class McpManager {
       return client.tools;
     }
     return [];
+  }
+
+  /**
+   * Read-only accessor: the prompts of a single server's live client (empty
+   * array if the server is not running). Mirrors `getServerTools`.
+   */
+  getServerPrompts(name: string): McpPrompt[] {
+    const client = this.clients.get(name);
+    if (client && this.statuses.get(name)?.status === "running") {
+      return client.prompts;
+    }
+    return [];
+  }
+
+  /**
+   * Resolve an MCP prompt to text. Never throws: every failure path
+   * (unknown server, start failure, prompt not found, JSON-RPC error)
+   * resolves with `{ content: "Error: ..." }` (same convention as
+   * `execute`). `variableText` is mapped to the first declared argument of
+   * the matched prompt; when the prompt declares no arguments or
+   * `variableText` is empty, no arguments are passed.
+   */
+  async getPrompt(
+    server: string,
+    prompt: string,
+    variableText?: string,
+  ): Promise<{ content: string }> {
+    try {
+      if (!(server in this.servers)) {
+        return { content: `Error: unknown MCP server: ${server}` };
+      }
+      let client: McpClientLike;
+      try {
+        client = await this.ensureStarted(server);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return {
+          content: `Error: MCP server '${server}' failed to start: ${message}`,
+        };
+      }
+      const found = client.prompts.find((p) => p.name === prompt);
+      if (!found) {
+        return { content: `Error: unknown MCP prompt: ${prompt}` };
+      }
+      const firstArg = found.arguments?.[0];
+      const args =
+        firstArg && variableText ? { [firstArg.name]: variableText } : undefined;
+      const result = await client.getPrompt(prompt, args);
+      return { content: mcpPromptToText(result) };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return { content: `Error: MCP prompt resolution failed: ${message}` };
+    }
   }
 
   /**
