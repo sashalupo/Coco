@@ -8,6 +8,7 @@
 import { formatNotebookForContext } from "./notebook";
 import { USAGES_BLOCK_MAX_CHARS } from "./usages";
 import { listWorkspaceTypes } from "./workspaceScaffold";
+import { parseMcpResourceRef } from "./mcp";
 
 /** A single diagnostic (error/warning/info) on a file. */
 export interface ContextDiagnostic {
@@ -88,7 +89,7 @@ export function extractTaggedFiles(text: string): string[] {
 export interface ContextPill {
   /** Stable identity: `kind + ':' + path` (path may be empty). */
   id: string;
-  kind: "file" | "folder" | "selection" | "diagnostics" | "image" | "toolset";
+  kind: "file" | "folder" | "selection" | "diagnostics" | "image" | "toolset" | "mcp";
   /** Human-readable label (basename for files, folder name for folders). */
   label: string;
   /** The referenced path (workspace-relative when possible). */
@@ -143,6 +144,10 @@ export function parsePillRefs(text: string): ContextPill[] {
   while ((m = toolsetRe.exec(text)) !== null) {
     const name = (m[1] ?? m[2] ?? "").trim();
     add("toolset", name);
+  }
+
+  for (const ref of parseMcpResourceRef(text)) {
+    add("mcp", `${ref.server}/${ref.uri}`);
   }
 
   return out;
