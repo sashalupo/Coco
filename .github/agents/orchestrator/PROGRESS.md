@@ -13,14 +13,13 @@ dispatches, verifies each stage, records, and commits.
 
 ## Status
 
-- **Current item:** **1.101-9 IN PROGRESS** (Task diagnostic awareness: post-`run_command` diagnostics snapshot → diff → inject into agent context, gated by `llm.agent.taskDiagnostics`)
-- **Slices:** S-001 ToolExecutor `formatTaskDiagnostics` [DONE ddd3d77] · S-002 ChatViewProvider hook [DONE 6752ebd] · S-003 config+package.json [DONE d26786a] · S-004 smoke 904→916 [DONE fdf437c]
-- **Current slice:** none — all slices done, awaiting Tester
+- **Current item:** **1.101-10 PENDING** (Terminal cwd context — not yet planned)
+- **Current slice:** none (item boundary)
 - **Retry state:** clear
-- **Next step:** dispatch the **Tester** for 1.101-9 whole-item verification (user goal: complete versions 1.101 → 1.107)
+- **Next step:** dispatch the **Planner** for 1.101-10 (Terminal cwd context) (user goal: complete versions 1.101 → 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** fdf437c (1.101-9 S-004)
-- **Build state:** compiles clean; smoke 904/904 PASS (verified 2026-10-24)
+- **Last commit:** e5de5e6 (tester: verify 1.101-9 PASS)
+- **Build state:** compiles clean; smoke 916/916 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
   restore the committed 791-state before continuing.
@@ -53,6 +52,8 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 **1.99 (complete, tag `changelog-1.99`):** MCP client over stdio `src/mcp.ts` + `src/mcpManager.ts` (2); `think` tool (3); `fetch_url` + `#fetch` `src/fetchTool.ts` (4); `find_usages` + `#usages` `src/usages.ts` (5); `#newWorkspace` scaffolds `src/workspaceScaffold.ts` (6); tool approvals with session/workspace/global scope `ApprovalStore` (8); Ask/Agent/Edit mode picker (10); reusable prompt files `llm.usePrompt` `src/prompts.ts` (12); URL/bmp images (13); completions status + `llm.toggleCompletions` (16); `#searchResults` (19); explicit save on keep (23); nbformat 4.5 cell ids (27); `new_notebook` tool + `/newNotebook` (28); cell outputs to chat `llm.addCellOutput` (29). Already built: 1, 24. Smoke ends ~584.
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
+
+**1.101-9 (DONE, S-001–S-004, verified PASS 2026-10-24):** Task diagnostic awareness — pure `formatTaskDiagnostics(command, diags)` in `src/tools/ToolExecutor.ts` (S-001 ddd3d77); `taskDiagnosticsSnapshot()` + agentic-loop hook on `run_command` batches (pre/post snapshot, 500 ms settle, `newDiagnostics` diff → system message + delta note, no autofix-budget touch) in `src/chat/ChatViewProvider.ts` (S-002 6752ebd); `agentTaskDiagnostics` (default true) + `llm.agent.taskDiagnostics` in config/presets/package.json (S-003 d26786a); smoke guards `task-diag-s1..s12`, gate 904→916 (S-004 fdf437c). Tester PASS (commit e5de5e6). Tag `changelog-1.101-9` on fdf437c.
 
 **1.101-8 (DONE, S-001–S-006, verified PASS 2026-10-24):** Custom chat modes — `src/chatmodes.ts` pure helpers `parseChatModeFile`/`chatModeName`/`CHATMODE_TEMPLATE` (S-001 b787865); `ToolbarState.customMode?` + `llm.customModes.enabled`/`locations` settings + memento round-trip in presets/config (S-002 e115048); "Custom modes" optgroup + `custom_modes`/`custom_mode` messages in `src/chat/webview.ts` (S-003 d7f0189); host `loadCustomModes` + `case "custom_mode"` + mode `tools` highest `promptTools` precedence + `## Mode:` system-prompt part in `src/chat/ChatViewProvider.ts` (S-004 55a3238); `package.json` settings (S-005 80914ff); smoke guards `custom-mode-s1..s12`, gate 892→904 (S-006 0a6ef2c). Tester PASS (commit 1ef24b6). Tag `changelog-1.101-8` on 0a6ef2c.
 
@@ -115,6 +116,7 @@ Team flow used throughout: Planner (slices) → Coder (one slice) → Tester →
 | 1.101-6 | 1.101 | `changelog-1.101-6` | bacb8f2 | 2026-10-24 |
 | 1.101-7 | 1.101 | `changelog-1.101-7` | 3621001 | 2026-10-24 |
 | 1.101-8 | 1.101 | `changelog-1.101-8` | 0a6ef2c | 2026-10-24 |
+| 1.101-9 | 1.101 | `changelog-1.101-9` | fdf437c | 2026-10-24 |
 
 ## Todo
 
