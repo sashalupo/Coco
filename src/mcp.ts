@@ -60,6 +60,22 @@ export interface McpToolResult {
   isError?: boolean;
 }
 
+/** A prompt discovered from an MCP server via `prompts/list`. */
+export interface McpPrompt {
+  name: string;
+  description?: string;
+  arguments?: { name: string; description?: string; required?: boolean }[];
+}
+
+/** The result of an MCP `prompts/get`. */
+export interface McpPromptResult {
+  messages?: {
+    role: string;
+    content: { type: string; text?: string }[] | string;
+  }[];
+  description?: string;
+}
+
 /** Params of an MCP `notifications/progress` message. */
 export interface McpProgressNotification {
   progressToken?: unknown;
@@ -787,4 +803,51 @@ export function mcpResultToImages(result: McpToolResult): string[] {
         c.mimeType.length > 0,
     )
     .map((c) => `data:${c.mimeType};base64,${c.data}`);
+}
+
+/**
+ * Parse a `/mcp.<server>.<prompt> [variable text]` chat command. Returns
+ * `{ server, prompt, variableText }` on a match (case-sensitive), or null
+ * when the text is not MCP-command-shaped or the server/prompt part is
+ * empty. `variableText` is the trimmed trailing text, omitted when absent.
+ * (Server/prompt names containing `.` are unsupported.)
+ */
+export function parseMcpPromptCommand(
+  text: string,
+): { server: string; prompt: string; variableText?: string } | null {
+  const m = /^\/mcp\.([^.]+)\.([^\s]+)(?:[ \t]+([\s\S]+))?$/.exec(text);
+  if (!m) {
+    return null;
+  }
+  const server = m[1];
+  const prompt = m[2];
+  if (server === "" || prompt === "") {
+    return null;
+  }
+  const variableText = m[3] !== undefined ? m[3].trim() : undefined;
+  return variableText === undefined
+    ? { server, prompt }
+    : { server, prompt, variableText };
+}
+
+/**
+ * Flatten an MCP prompt result to text: join each message's text with
+ * newlines. Message content may be a plain string or an array of parts;
+ * only `type: "text"` parts with a `text` field contribute. Returns `""`
+ * when there are no messages.
+ */
+export function mcpPromptToText(result: McpPromptResult): string {
+  const lines: string[] = [];
+  for (const msg of result.messages ?? []) {
+    if (typeof msg.content === "string") {
+      lines.push(msg.content);
+    } else if (Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part.type === "text" && typeof part.text === "string") {
+          lines.push(part.text);
+        }
+      }
+    }
+  }
+  return lines.join("\n");
 }
