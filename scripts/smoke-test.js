@@ -6730,11 +6730,208 @@ function assert(cond, label) {
     "toolsets-s7: extension.ts registers llm.toolsets.createFile and uses buildToolsetsExample",
   );
 
-  if (assertCount !== 813) {
-    console.error(`FAIL: total assertion count is 813 (got ${assertCount})`);
+  // 1.101-2 S-006: MCP support for prompts (mcp-prompt-s1..s15)
+  const mcpPromptMod = require(path.join(__dirname, "..", "out", "mcp.js"));
+  const mcpPromptFs = require("fs");
+  const mcpPromptOs = require("os");
+  // s1: parseMcpPromptCommand — valid command.
+  const mcpCmd1 = mcpPromptMod.parseMcpPromptCommand("/mcp.fs.read");
+  assert(
+    mcpCmd1 !== null &&
+      mcpCmd1.server === "fs" &&
+      mcpCmd1.prompt === "read" &&
+      mcpCmd1.variableText === undefined,
+    "mcp-prompt-s1: parseMcpPromptCommand parses a valid /mcp.<server>.<prompt> command",
+  );
+  // s2: parseMcpPromptCommand — command with variable text.
+  const mcpCmd2 = mcpPromptMod.parseMcpPromptCommand(
+    "/mcp.fs.read /tmp/x.txt",
+  );
+  assert(
+    mcpCmd2 !== null &&
+      mcpCmd2.server === "fs" &&
+      mcpCmd2.prompt === "read" &&
+      mcpCmd2.variableText === "/tmp/x.txt",
+    "mcp-prompt-s2: parseMcpPromptCommand captures the trailing variable text",
+  );
+  // s3: parseMcpPromptCommand — plain text is not a command.
+  assert(
+    mcpPromptMod.parseMcpPromptCommand("hello world") === null &&
+      mcpPromptMod.parseMcpPromptCommand("/mcp/fs/read") === null,
+    "mcp-prompt-s3: parseMcpPromptCommand returns null for plain text",
+  );
+  // s4: parseMcpPromptCommand — empty server/prompt parts → null.
+  assert(
+    mcpPromptMod.parseMcpPromptCommand("/mcp..read") === null &&
+      mcpPromptMod.parseMcpPromptCommand("/mcp.fs.") === null,
+    "mcp-prompt-s4: parseMcpPromptCommand returns null for empty server/prompt parts",
+  );
+  // s5: mcpPromptToText — string content.
+  assert(
+    mcpPromptMod.mcpPromptToText({
+      messages: [
+        { role: "user", content: "hi" },
+        { role: "assistant", content: "there" },
+      ],
+    }) === "hi\nthere",
+    "mcp-prompt-s5: mcpPromptToText joins string message content with newlines",
+  );
+  // s6: mcp-prompt-s6 — array content.
+  assert(
+    mcpPromptMod.mcpPromptToText({
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "a" },
+            { type: "text", text: "b" },
+          ],
+        },
+      ],
+    }) === "a\nb",
+    "mcp-prompt-s6: mcpPromptToText joins text parts of array content",
+  );
+  // s7: mcpPromptToText — non-text parts skipped.
+  assert(
+    mcpPromptMod.mcpPromptToText({
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", data: "x" },
+            { type: "text", text: "only" },
+            { type: "text" },
+          ],
+        },
+      ],
+    }) === "only",
+    "mcp-prompt-s7: mcpPromptToText skips non-text parts and parts without text",
+  );
+  // s8: McpClient handshake issues prompts/list and tolerates its failure.
+  {
+    const fakeServerDir = mcpPromptFs.mkdtempSync(
+      path.join(mcpPromptOs.tmpdir(), "llm-mcp-prompt-"),
+    );
+    const fakeServerPath = path.join(fakeServerDir, "fake-server.js");
+    mcpPromptFs.writeFileSync(
+      fakeServerPath,
+      [
+        "let buf = '';",
+        "process.stdin.on('data', (c) => {",
+        "  buf += c.toString();",
+        "  let i;",
+        "  while ((i = buf.indexOf('\\n')) !== -1) {",
+        "    const line = buf.slice(0, i);",
+        "    buf = buf.slice(i + 1);",
+        "    if (!line.trim()) continue;",
+        "    const m = JSON.parse(line);",
+        "    if (m.method === 'initialize') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { protocolVersion: '2024-11-05', capabilities: {}, serverInfo: { name: 'fake', version: '0.0.1' } } }) + '\\n');",
+        "    } else if (m.method === 'tools/list') {",
+        "      process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: { tools: [] } }) + '\\n');",
+        "    }",
+        "    // prompts/list is intentionally NOT answered.",
+        "  }",
+        "});",
+      ].join("\n"),
+      "utf8",
+    );
+    const fakeClient = new mcpPromptMod.McpClient({
+      command: process.execPath,
+      args: [fakeServerPath],
+    });
+    let fakeStarted = false;
+    try {
+      await fakeClient.start();
+      fakeStarted = true;
+    } catch (e) {
+      fakeStarted = false;
+    }
+    assert(
+      fakeStarted &&
+        Array.isArray(fakeClient.prompts) &&
+        fakeClient.prompts.length === 0,
+      "mcp-prompt-s8: McpClient.start() succeeds with prompts=[] when the server never answers prompts/list",
+    );
+    fakeClient.close();
+    mcpPromptFs.rmSync(fakeServerDir, { recursive: true, force: true });
+  }
+  // s9: McpManager.getServerPrompts — unknown server → [].
+  const mcpPromptMgr = new McpManager();
+  assert(
+    JSON.stringify(mcpPromptMgr.getServerPrompts("nosuch")) === "[]",
+    "mcp-prompt-s9: McpManager.getServerPrompts returns [] for an unknown server",
+  );
+  // s10: McpManager.getPrompt — unknown server error.
+  const mcpPromptUnknown = await mcpPromptMgr.getPrompt("nosuch", "p");
+  assert(
+    mcpPromptUnknown.content === "Error: unknown MCP server: nosuch",
+    "mcp-prompt-s10: McpManager.getPrompt resolves with an unknown-server error (no throw)",
+  );
+  // s11: McpManager.getPrompt — variable mapped to the first declared argument.
+  {
+    const seenArgs = [];
+    const fakeMcpClient = {
+      tools: [],
+      prompts: [
+        {
+          name: "greet",
+          arguments: [
+            { name: "name", description: "who" },
+            { name: "extra" },
+          ],
+        },
+      ],
+      start: async () => undefined,
+      callTool: async () => ({ content: [] }),
+      getPrompt: async (name, args) => {
+        seenArgs.push(args);
+        return { messages: [{ role: "user", content: "hi" }] };
+      },
+      close: () => undefined,
+    };
+    const m = new McpManager();
+    m["servers"] = { fake: { command: "true" } };
+    m["clients"].set("fake", fakeMcpClient);
+    m["statuses"].set("fake", {
+      name: "fake",
+      status: "running",
+      toolCount: 0,
+    });
+    const mcpPromptRes = await m.getPrompt("fake", "greet", "Alice");
+    assert(
+      mcpPromptRes.content === "hi" &&
+        seenArgs.length === 1 &&
+        JSON.stringify(seenArgs[0]) === JSON.stringify({ name: "Alice" }),
+      "mcp-prompt-s11: McpManager.getPrompt maps variableText to the first declared prompt argument",
+    );
+  }
+  // s12: static — ChatViewProvider intercepts /mcp. via parseMcpPromptCommand.
+  assert(
+    chatViewAnn.includes("parseMcpPromptCommand"),
+    "mcp-prompt-s12: ChatViewProvider.ts intercepts /mcp. commands via parseMcpPromptCommand",
+  );
+  // s13: static — ChatViewProvider posts mcp_prompts.
+  assert(
+    chatViewAnn.includes("mcp_prompts"),
+    "mcp-prompt-s13: ChatViewProvider.ts posts the mcp_prompts host message",
+  );
+  // s14: static — webview.ts has the slash dropdown.
+  assert(
+    webviewAnn.includes("slash-dropdown"),
+    "mcp-prompt-s14: webview.ts contains the slash-command dropdown",
+  );
+  // s15: static — webview.ts handles mcp_prompts.
+  assert(
+    webviewAnn.includes("mcp_prompts"),
+    "mcp-prompt-s15: webview.ts handles the mcp_prompts host message",
+  );
+
+  if (assertCount !== 828) {
+    console.error(`FAIL: total assertion count is 828 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 813");
+  console.log("PASS: total assertion count is 828");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
