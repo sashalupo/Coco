@@ -8226,11 +8226,125 @@ function assert(cond, label) {
     );
   }
 
-  if (assertCount !== 916) {
-    console.error(`FAIL: total assertion count is 916 (got ${assertCount})`);
+  // 1.101-10 S-004: terminal cwd context (terminal-cwd-s1..s12)
+  const termCwdExecutorSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  const termCwdHostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  const termCwdConfigSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const termCwdPkg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  // s1: static — formatCwdResultLine is exported from ToolExecutor.ts.
+  assert(
+    termCwdExecutorSrc.includes("export function formatCwdResultLine("),
+    "terminal-cwd-s1: ToolExecutor.ts exports formatCwdResultLine",
+  );
+  // s2-s3: behavior — direct import of the compiled pure helpers.
+  {
+    const { formatCwdResultLine, extractCwdFromProbe } = require(
+      path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+    );
+    // s2: formatCwdResultLine — "" for empty input, [cwd: /x/y] for a path.
+    assert(
+      formatCwdResultLine("") === "" &&
+        formatCwdResultLine("   ") === "" &&
+        formatCwdResultLine("/x/y") === "[cwd: /x/y]",
+      "terminal-cwd-s2: formatCwdResultLine returns \"\" for empty input and [cwd: /x/y] for a path",
+    );
+    // s3: extractCwdFromProbe — trims output, "" for empty/whitespace.
+    assert(
+      extractCwdFromProbe("") === "" &&
+        extractCwdFromProbe("  \n") === "" &&
+        extractCwdFromProbe("  /a/b/c\n") === "/a/b/c",
+      "terminal-cwd-s3: extractCwdFromProbe trims output and returns \"\" for empty/whitespace",
+    );
+  }
+  // s4: static — ToolExecutor constructor accepts trackCwd.
+  assert(
+    termCwdExecutorSrc.includes(
+      "constructor(suppressAutoSave: boolean = true, trackCwd: boolean = true)",
+    ),
+    "terminal-cwd-s4: ToolExecutor constructor accepts trackCwd",
+  );
+  // s5: static — ToolExecutor has getLastCwd.
+  assert(
+    termCwdExecutorSrc.includes("public getLastCwd(): string | null"),
+    "terminal-cwd-s5: ToolExecutor has getLastCwd",
+  );
+  // s6: static — ToolExecutor has probeCwd spawning pwd.
+  {
+    const probe = termCwdExecutorSrc.slice(
+      termCwdExecutorSrc.indexOf("private async probeCwd("),
+      termCwdExecutorSrc.indexOf("private lastSnapshot:"),
+    );
+    assert(
+      probe.includes('spawn("pwd"') && probe.includes("shell: true"),
+      "terminal-cwd-s6: ToolExecutor probeCwd spawns pwd",
+    );
+  }
+  // s7: static — runCommand's close handler calls probeCwd and appends formatCwdResultLine.
+  assert(
+    termCwdExecutorSrc.includes("const probed = await this.probeCwd(cwd);") &&
+      termCwdExecutorSrc.includes("parts.push(formatCwdResultLine(probed));"),
+    "terminal-cwd-s7: runCommand's close handler calls probeCwd and appends formatCwdResultLine",
+  );
+  // s8: static — config.ts reads agent.trackTerminalCwd.
+  assert(
+    termCwdConfigSrc.includes('"agent.trackTerminalCwd"') &&
+      termCwdConfigSrc.includes("agentTrackTerminalCwd"),
+    "terminal-cwd-s8: config.ts reads agent.trackTerminalCwd",
+  );
+  // s9: static JSON — package.json has llm.agent.trackTerminalCwd.
+  {
+    const props = termCwdPkg.contributes.configuration.properties;
+    assert(
+      props["llm.agent.trackTerminalCwd"] &&
+        props["llm.agent.trackTerminalCwd"].type === "boolean" &&
+        props["llm.agent.trackTerminalCwd"].default === true,
+      "terminal-cwd-s9: package.json has llm.agent.trackTerminalCwd (boolean, default true)",
+    );
+  }
+  // s10: static — ChatViewProvider passes agentTrackTerminalCwd to the ToolExecutor constructor.
+  assert(
+    termCwdHostSrc.includes(
+      "new ToolExecutor(readSettings().agentSuppressAutoSave, readSettings().agentTrackTerminalCwd)",
+    ),
+    "terminal-cwd-s10: ChatViewProvider passes agentTrackTerminalCwd to the ToolExecutor constructor",
+  );
+  // s11: static — composeSystemPrompt has the terminalCwd part.
+  {
+    const compose = termCwdHostSrc.slice(
+      termCwdHostSrc.indexOf("private composeSystemPrompt("),
+      termCwdHostSrc.indexOf("private async exportConversation()"),
+    );
+    assert(
+      compose.includes("terminalCwd: string = \"\"") &&
+        compose.includes("terminalCwd,\n    ].filter"),
+      "terminal-cwd-s11: composeSystemPrompt has the terminalCwd part",
+    );
+  }
+  // s12: static — ChatViewProvider builds the Terminal cwd: block from getLastCwd().
+  assert(
+    termCwdHostSrc.includes("const lastCwd = this.toolExecutor.getLastCwd();") &&
+      termCwdHostSrc.includes(
+        '"Terminal cwd: " + lastCwd + " (the working directory for run_command)"',
+      ),
+    "terminal-cwd-s12: ChatViewProvider builds the Terminal cwd: block from getLastCwd()",
+  );
+
+  if (assertCount !== 928) {
+    console.error(`FAIL: total assertion count is 928 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 916");
+  console.log("PASS: total assertion count is 928");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
