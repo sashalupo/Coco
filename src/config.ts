@@ -84,6 +84,7 @@ export function readSettings(): LlmSettings {
     searchResultsEnabled: c.get<boolean>("chat.searchResults.enabled", true),
     newNotebookEnabled: c.get<boolean>("chat.newNotebook.enabled", true),
     notebookToolsEnabled: c.get<boolean>("chat.notebookTools.enabled", true),
+    toolsetsEnabled: c.get<boolean>("toolsets.enabled", true),
     completionsModel: c.get<string>("completions.model", ""),
     agentAutoFix: c.get<boolean>("agent.autoFix", true),
     agentTrackManualEdits: c.get<boolean>("agent.trackManualEdits", true),

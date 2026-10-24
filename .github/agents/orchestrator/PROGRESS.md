@@ -19,7 +19,7 @@ dispatches, verifies each stage, records, and commits.
   is being retried with the same prompt; clear on success or when the budget is exhausted
 - **Next step:** dispatch the **Planner** for 1.101-1 (Chat tool sets) (user goal: continue until version 1.107)
 - **Last updated:** 2026-10-24
-- **Last commit:** e26766d (1.100-38 S-005 smoke guards; item verified PASS)
+- **Last commit:** bf93a03 (1.100-38 S-005 smoke guards; item verified PASS)
 - **Build state:** compiles clean; smoke 805/805 PASS (verified 2026-10-24)
 - **Note (2026-10-24):** working tree contained stale uncommitted changes that would have
   reverted completed 1.100 items (smoke 675 state); discarded via `git checkout --` to
@@ -54,7 +54,7 @@ Recap per version (micro-steps pruned; one slice = one commit, see `git log`).
 
 **1.100 (in progress, tag `changelog-1.100`):** done so far: instructions files `.instructions.md` with `applyTo` auto-attach, `src/instructions.ts` (1); prompt-file front matter `mode`/`tools`, `llm.runPrompt` + Play button, languages `llm.prompt`/`llm.instructions` (2); `apply_patch` tool `src/patch.ts` (3); `#fetch` as Markdown with `llm.chat.fetch.maxTokens` token trim (7); 1.100-8.S1 `ContextPill` + `parsePillRefs`/`dedupePills` in `src/context.ts`; 1.100-8.S2 pill strip UI in `src/chat/webview.ts`; 1.100-8.S3 host pill consumption + `postContextPills` in `src/chat/ChatViewProvider.ts`; 1.100-8.S4 `llm.addContext` grouped quick-pick (files/folders/selection/problems) + `context_inject`; 1.100-8 complete (S5 smoke guards). Smoke 690.
 
-**1.100-38 (DONE, S-001–S-005):** `McpToolAnnotations` + `annotations?` on `McpTool` + `mcpToolDisplayName()` in `src/mcp.ts` (S-001, b565dec); `McpManager.getToolAnnotations()` (S-002, de743b4); approval-gate bypass for `readOnlyHint: true` + `displayName` in `tool_start`/`tool_result` in `src/chat/ChatViewProvider.ts` (S-003, 2fb8325); `msg.displayName` rendering in `src/chat/webview.ts` (S-004, 3719bdc); smoke guards `mcp-ann-s1..s5`, gate 798→805 (S-005, e26766d). No new tag — `changelog-1.100` already exists.
+**1.100-38 (DONE, S-001–S-005):** `McpToolAnnotations` + `annotations?` on `McpTool` + `mcpToolDisplayName()` in `src/mcp.ts` (S-001, b565dec); `McpManager.getToolAnnotations()` (S-002, de743b4); approval-gate bypass for `readOnlyHint: true` + `displayName` in `tool_start`/`tool_result` in `src/chat/ChatViewProvider.ts` (S-003, 2fb8325); `msg.displayName` rendering in `src/chat/webview.ts` (S-004, 3719bdc); smoke guards `mcp-ann-s1..s5`, gate 798→805 (S-005, bf93a03). No new tag — `changelog-1.100` already exists.
 
 **1.100-31 (DONE, S-001–S-005):** `extractVariableNames`/`formatKernelState` in `src/notebook.ts` (S-001, 504abbf); 4 tool schemas `run_notebook_cell`/`get_kernel_state`/`list_packages`/`install_package` + `isMutatingTool` in `src/tools.ts` (S-002, b616305); 4 `execute()` cases + `kernelState` Map + jupyter→python3→python fallback in `src/tools/ToolExecutor.ts` (S-003, c3939d5); `llm.chat.notebookTools.enabled` gate in config/presets/request/package.json (S-004, 2825f58); smoke guards `nbtools-s1..s6`, gate 791→798 (S-005, 341de11). No new tag — `changelog-1.100` already exists.
 

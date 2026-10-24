@@ -118,6 +118,8 @@ export interface LlmSettings {
   newNotebookEnabled: boolean;
   /** Enable the notebook execution tools (run_notebook_cell, get_kernel_state, list_packages, install_package) in agent mode. */
   notebookToolsEnabled: boolean;
+  /** Enable the `#toolset:` chat tag + toolbar tool-set picker (restricts agent-mode tools via a `.vscode/toolsets.json` set). */
+  toolsetsEnabled: boolean;
   /** Model for inline completions. Empty = use the main chat model. */
   completionsModel: string;
   /** Auto-fix new errors introduced by agent-mode file edits (up to 2 follow-up rounds per run). */

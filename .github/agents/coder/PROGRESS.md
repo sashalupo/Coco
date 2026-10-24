@@ -13,8 +13,8 @@ after each compiling step.
 ## Status
 
 - **Current item:** 1.101-1 · Chat tool sets (VS Code 1.101) — IN PROGRESS (plan: 8 slices)
-- **Current slice:** 1.101-1.S-002 DONE (1 file: `src/context.ts` — `extractToolsetTag(text) → string | null` mirroring `extractFolderTag`'s regex `/#toolset(?::(\S*)|[ \t]+(\S*)|(?=\n|$))/i` (`#toolset:gh-news` → `"gh-news"`, `#toolset gh-news` → `"gh-news"`, `#toolsetfoo` → `null`, absent → `null`); `ContextPill.kind` += `"toolset"`; `parsePillRefs` recognizes `#toolset:` refs via the same `add("toolset", name)` pattern as folders). Verified: tsc exit 0; smoke 805/805 PASS (smoke untouched — S-008); acceptance checks (colon/space/bare/absent tag, `#toolsetfoo` → null, `parsePillRefs` emits `toolset` pill with id `toolset:gh-news`) all pass. Not committed — orchestrator commits.
-- **Next step:** 1.101-1 S-003 — `src/presets.ts` + `src/config.ts`: `toolsetsEnabled: boolean` in `LlmSettings` (default `true`); read `llm.toolsets.enabled`
+- **Current slice:** 1.101-1.S-003 DONE (2 files: `src/presets.ts` — `toolsetsEnabled: boolean` added to `LlmSettings` after `notebookToolsEnabled` with doc comment "Enable the `#toolset:` chat tag + toolbar tool-set picker (restricts agent-mode tools via a `.vscode/toolsets.json` set)"; `src/config.ts` — `readSettings()` reads `toolsetsEnabled: c.get<boolean>("toolsets.enabled", true)` (same boolean pattern as `notebookToolsEnabled`/`folderContextEnabled` — defaults enabled, only `false` when explicitly off). Verified: tsc exit 0; smoke 805/805 PASS (smoke untouched — S-008); mocked-config check confirms `readSettings()` returns `toolsetsEnabled: true` by default and `false` when `llm.toolsets.enabled` is explicitly `false`. Not committed — orchestrator commits.
+- **Next step:** 1.101-1 S-004 — `src/chat/ChatViewProvider.ts`: `#toolset:` tag → `promptTools`; `pendingToolset` from toolbar; unknown/empty set → error
 - **Last updated:** 2026-10-24
 - **Last commit:** 504abbf (1.100-31 S-001, verified PASS)
 - **Build state:** compiles clean (tsc exit 0, verified 2026-10-24, 1.100-38 S-005); smoke 805/805 (verified 2026-10-24, 1.100-38 S-005)
