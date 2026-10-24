@@ -8085,11 +8085,150 @@ function assert(cond, label) {
     );
   }
 
-  if (assertCount !== 904) {
-    console.error(`FAIL: total assertion count is 904 (got ${assertCount})`);
+  // 1.101-9 S-004: task diagnostic awareness (task-diag-s1..s12)
+  const taskDiagExecutorSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "tools", "ToolExecutor.ts"),
+    "utf8",
+  );
+  const taskDiagHostSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "chat", "ChatViewProvider.ts"),
+    "utf8",
+  );
+  const taskDiagConfigSrc = fs.readFileSync(
+    path.join(__dirname, "..", "src", "config.ts"),
+    "utf8",
+  );
+  const taskDiagPkg = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8"),
+  );
+  // s1: static — formatTaskDiagnostics is exported from ToolExecutor.ts.
+  assert(
+    taskDiagExecutorSrc.includes(
+      "export function formatTaskDiagnostics(",
+    ),
+    "task-diag-s1: ToolExecutor.ts exports formatTaskDiagnostics",
+  );
+  // s2-s4: behavior — direct import of the compiled pure helper.
+  {
+    const { formatTaskDiagnostics } = require(
+      path.join(__dirname, "..", "out", "tools", "ToolExecutor.js"),
+    );
+    const mk = (i) => ({
+      severity: i % 4,
+      range: { start: { line: i, character: i } },
+      message: `msg${i}`,
+    });
+    // s2: empty list → "".
+    assert(
+      formatTaskDiagnostics("npm test", []) === "",
+      "task-diag-s2: formatTaskDiagnostics returns \"\" for an empty list",
+    );
+    // s3: 3-entry list — header + severity names.
+    {
+      const out = formatTaskDiagnostics("npm test", [mk(0), mk(1), mk(2)]);
+      assert(
+        out.startsWith('New problems after running "npm test" (3):') &&
+          out.includes("  Error 1:1 — msg0") &&
+          out.includes("  Warning 2:2 — msg1") &&
+          out.includes("  Info 3:3 — msg2") &&
+          !out.includes("more"),
+        "task-diag-s3: formatTaskDiagnostics formats a 3-entry list with the header and severity names",
+      );
+    }
+    // s4: 12 entries — capped at 10 lines + (+2 more).
+    {
+      const out = formatTaskDiagnostics(
+        "build",
+        Array.from({ length: 12 }, (_, i) => mk(i)),
+      );
+      assert(
+        out.startsWith('New problems after running "build" (12):') &&
+          out.includes("  Warning 10:10 — msg9") &&
+          !out.includes("msg10") &&
+          out.includes("  (+2 more)"),
+        "task-diag-s4: formatTaskDiagnostics caps at 10 entries and appends (+N more) for 12 entries",
+      );
+    }
+  }
+  // s5: static — taskDiagnosticsSnapshot uses the all-files getDiagnostics() overload.
+  {
+    const snap = taskDiagHostSrc.slice(
+      taskDiagHostSrc.indexOf("private taskDiagnosticsSnapshot()"),
+      taskDiagHostSrc.indexOf("private snapshotTouchedFiles("),
+    );
+    assert(
+      snap.includes("vscode.languages.getDiagnostics()"),
+      "task-diag-s5: ChatViewProvider.ts taskDiagnosticsSnapshot uses the all-files getDiagnostics() overload",
+    );
+  }
+  // s6: static — run_command detection in the batch.
+  assert(
+    taskDiagHostSrc.includes('const hasTask = toolCalls.some(') &&
+      taskDiagHostSrc.includes('c.function.name === "run_command"'),
+    "task-diag-s6: ChatViewProvider.ts detects run_command in the batch (hasTask)",
+  );
+  // s7: static — pre-batch snapshot gated on agentTaskDiagnostics.
+  assert(
+    taskDiagHostSrc.includes("agentTaskDiagnostics") &&
+      taskDiagHostSrc.includes(
+        "taskDiagEnabled && hasTask\n            ? this.taskDiagnosticsSnapshot()",
+      ),
+    "task-diag-s7: ChatViewProvider.ts takes the pre-batch snapshot gated on agentTaskDiagnostics",
+  );
+  // s8: static — diff via newDiagnostics after the 500 ms settle + system history message.
+  {
+    const block = taskDiagHostSrc.slice(
+      taskDiagHostSrc.indexOf("1.101-9.S-002: task diagnostics hook"),
+      taskDiagHostSrc.indexOf("1.101-7.S-002: surface full-rewrite suppression"),
+    );
+    assert(
+      block.includes("setTimeout(r, 500)") &&
+        block.includes("newDiagnostics(taskBefore, taskAfter)") &&
+        block.includes('role: "system"') &&
+        block.includes("this.history.push("),
+      "task-diag-s8: ChatViewProvider.ts diffs via newDiagnostics after the 500 ms settle and pushes a system history message",
+    );
+  }
+  // s9: static — the task diagnostics delta note is posted.
+  assert(
+    taskDiagHostSrc.includes(
+      "[task diagnostics: ${fresh.length} new problems]",
+    ),
+    "task-diag-s9: ChatViewProvider.ts posts the task diagnostics delta note",
+  );
+  // s10: static — the task block does NOT touch the autofix budget.
+  {
+    const block = taskDiagHostSrc.slice(
+      taskDiagHostSrc.indexOf("1.101-9.S-002: task diagnostics hook"),
+      taskDiagHostSrc.indexOf("1.101-7.S-002: surface full-rewrite suppression"),
+    );
+    assert(
+      !block.includes("autoFixRounds"),
+      "task-diag-s10: the task-diagnostics block does NOT reference autoFixRounds",
+    );
+  }
+  // s11: static — config.ts reads agent.taskDiagnostics.
+  assert(
+    taskDiagConfigSrc.includes('"agent.taskDiagnostics"') &&
+      taskDiagConfigSrc.includes("agentTaskDiagnostics"),
+    "task-diag-s11: config.ts reads agent.taskDiagnostics",
+  );
+  // s12: static JSON — package.json has llm.agent.taskDiagnostics.
+  {
+    const props = taskDiagPkg.contributes.configuration.properties;
+    assert(
+      props["llm.agent.taskDiagnostics"] &&
+        props["llm.agent.taskDiagnostics"].type === "boolean" &&
+        props["llm.agent.taskDiagnostics"].default === true,
+      "task-diag-s12: package.json has llm.agent.taskDiagnostics (boolean, default true)",
+    );
+  }
+
+  if (assertCount !== 916) {
+    console.error(`FAIL: total assertion count is 916 (got ${assertCount})`);
     process.exit(1);
   }
-  console.log("PASS: total assertion count is 904");
+  console.log("PASS: total assertion count is 916");
 
   console.log("\nALL SMOKE TESTS PASSED");
   server.close();
