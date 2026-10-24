@@ -1452,6 +1452,10 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       const folderPills = this.pendingPills.filter(
         (p) => p.kind === "folder" && p.path,
       );
+      // 1.101-3.S-005: `#mcp:<server>/<uri>` pills — path is `<server>/<uri>`.
+      const mcpPills = this.pendingPills.filter(
+        (p) => p.kind === "mcp" && p.path,
+      );
       this.pendingPills = [];
       this.postContextPills();
       if (filePills.length > 0) {
@@ -1472,6 +1476,40 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           ctxInput.taggedFiles = [
             ...(ctxInput.taggedFiles ?? []),
             ...pillFiles,
+          ];
+        }
+      }
+
+      // 1.101-3.S-005: consume `#mcp:<server>/<uri>` pills — read each
+      // resource via the MCP manager and fold its text into
+      // `ctxInput.taggedFiles` under a synthetic `mcp:<server>/<uri>` path.
+      // `readResource` never throws; a failure resolves with
+      // `{ content: "Error: ..." }` — post the error to the panel and skip
+      // that pill (the turn continues without the resource).
+      if (mcpPills.length > 0) {
+        const mcpFiles: ContextFile[] = [];
+        for (const pill of mcpPills) {
+          const slash = pill.path!.indexOf("/");
+          if (slash <= 0) {
+            this.postMessage({
+              type: "error",
+              message: `Malformed MCP resource reference: ${pill.path}`,
+            });
+            continue;
+          }
+          const server = pill.path!.slice(0, slash);
+          const uri = pill.path!.slice(slash + 1);
+          const res = await this.mcpManager.readResource(server, uri);
+          if (res.content.startsWith("Error:")) {
+            this.postMessage({ type: "error", message: res.content });
+            continue; // skip this resource — never abort the turn
+          }
+          mcpFiles.push({ path: `mcp:${pill.path}`, content: res.content });
+        }
+        if (mcpFiles.length > 0) {
+          ctxInput.taggedFiles = [
+            ...(ctxInput.taggedFiles ?? []),
+            ...mcpFiles,
           ];
         }
       }
