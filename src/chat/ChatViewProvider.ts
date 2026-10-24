@@ -24,6 +24,7 @@ import {
   SUMMARY_MARKER,
   type ChatCompletionRequest,
   type ChatMessage,
+  type RequestMessage,
 } from "../request";
 import {
   buildContextBlock,
@@ -63,7 +64,13 @@ import {
   type DiagnosticLike,
   type FileSnapshot,
 } from "../tools/ToolExecutor";
-import { isMcpToolName, parseMcpPromptCommand } from "../mcp";
+import {
+  isMcpToolName,
+  parseMcpPromptCommand,
+  mcpSamplingParamsToMessages,
+  type McpSamplingParams,
+  type McpSamplingResult,
+} from "../mcp";
 import type { McpManager } from "../mcpManager";
 import { changedNewLines, unifiedDiff } from "../diff";
 import {
@@ -196,6 +203,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    */
   private pendingPills: ContextPill[] = [];
 
+  /**
+   * 1.101-4.S-005: resolver for the pending MCP sampling confirmation (null
+   * when none is pending). Resolves with the user's Approve/Deny decision.
+   */
+  private pendingSamplingApproval: ((approved: boolean) => void) | null = null;
+
+  /**
+   * 1.101-4.S-005: MCP servers the user has already confirmed for sampling
+   * this session (first-use confirmation; re-asks after a reload).
+   */
+  private confirmedSamplingServers = new Set<string>();
+
+  /** 1.101-4.S-005: lazy output channel for sampling log lines. */
+  private samplingOutputChannel: vscode.OutputChannel | null = null;
+
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly client: LlmClient,
@@ -215,6 +237,12 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     this.toolExecutor = new ToolExecutor();
     this.mcpManager = mcpManager;
     this.approvalStore = new ApprovalStore(context.workspaceState, context.globalState);
+    // 1.101-4.S-005: host sampling callback — first-use confirmation via the
+    // webview, then a model round-trip via chatStream. Failures throw; the
+    // manager turns them into JSON-RPC errors so the server never hangs.
+    this.mcpManager.setSamplingHandler(async (server, params) => {
+      return this.handleMcpSampling(server, params);
+    });
   }
 
   /**
@@ -310,6 +338,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
           String(msg.command ?? ""),
           typeof msg.scope === "string" ? msg.scope : undefined,
         );
+        break;
+      case "sampling_approval":
+        // 1.101-4.S-005: the webview's Approve/Deny button on the sampling
+        // confirmation card resolved the pending promise.
+        this.pendingSamplingApproval?.(msg.approved === true);
         break;
       case "revertLast":
         void this.revertLastChange();
@@ -975,6 +1008,98 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     );
   }
 
+  /**
+   * 1.101-4.S-005: wait for the user's Approve/Deny decision on a pending
+   * MCP sampling confirmation. Resolves `false` after a 5-minute timeout so
+   * a server request is never left unanswered (an unanswered JSON-RPC
+   * request can hang the server).
+   */
+  private waitForSamplingApproval(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        if (this.pendingSamplingApproval === resolver) {
+          this.pendingSamplingApproval = null;
+          resolve(false);
+        }
+      }, 5 * 60 * 1000);
+      timer.unref?.();
+      const resolver = (approved: boolean) => {
+        clearTimeout(timer);
+        this.pendingSamplingApproval = null;
+        resolve(approved);
+      };
+      this.pendingSamplingApproval = resolver;
+    });
+  }
+
+  /** 1.101-4.S-005: the sampling log output channel (created lazily). */
+  private getSamplingOutputChannel(): vscode.OutputChannel {
+    if (!this.samplingOutputChannel) {
+      this.samplingOutputChannel = vscode.window.createOutputChannel("LLM MCP Sampling");
+    }
+    return this.samplingOutputChannel;
+  }
+
+  /**
+   * 1.101-4.S-005: the host sampling callback. First-use confirmation (when
+   * `mcpSamplingConfirm` is on and the server is not yet confirmed this
+   * session) posts a `sampling_request` card and awaits the webview's
+   * `sampling_approval` reply; deny → throw (the manager turns it into a
+   * JSON-RPC error). On allow, the request is converted to chat messages and
+   * sent through `chatStream` (no tools, no streaming UI); the accumulated
+   * text is returned as an `McpSamplingResult` and one line is written to
+   * the output channel.
+   */
+  private async handleMcpSampling(
+    server: string,
+    params: McpSamplingParams,
+  ): Promise<McpSamplingResult> {
+    const settings = readSettings();
+    if (settings.mcpSamplingConfirm && !this.confirmedSamplingServers.has(server)) {
+      this.postMessage({
+        type: "sampling_request",
+        server,
+        model: params.model ?? "",
+        maxTokens: params.maxTokens,
+        messageCount: params.messages?.length ?? 0,
+      });
+      const approved = await this.waitForSamplingApproval();
+      if (!approved) {
+        throw new Error("sampling denied by user");
+      }
+      this.confirmedSamplingServers.add(server);
+    }
+    const messages = mcpSamplingParamsToMessages(params) as RequestMessage[];
+    const model =
+      params.model || this.toolbarStore.get().model || settings.model || undefined;
+    const body: ChatCompletionRequest = {
+      messages,
+      max_completion_tokens: params.maxTokens,
+    };
+    if (model) {
+      body.model = model;
+    }
+    if (typeof params.temperature === "number") {
+      body.temperature = params.temperature;
+    }
+    if (Array.isArray(params.stopSequences) && params.stopSequences.length > 0) {
+      body.stop = params.stopSequences;
+    }
+    let text = "";
+    for await (const chunk of this.client.chatStream(body)) {
+      if (chunk.done) {
+        break;
+      }
+      if (chunk.content) {
+        text += chunk.content;
+      }
+    }
+    this.getSamplingOutputChannel().appendLine(
+      `[mcp-sampling] ${server} model=${model ?? "default"} maxTokens=${params.maxTokens} ok`,
+    );
+    return { role: "assistant", content: { type: "text", text } };
+  }
+
   /** Push the persisted toolbar state to the webview (model `null` → `''`). */
   private pushToolbarState(): void {
     const t = this.toolbarStore.get();
@@ -1410,6 +1535,11 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     // 1.99-2.S5: sync the configured MCP servers each turn so setting edits
     // take effect (removed servers are closed by the manager).
     this.mcpManager.setServers(settings.mcpServers);
+    // 1.101-4.S-005: sync the per-server sampling allow/deny map each turn
+    // so `llm.mcp.sampling.allowed` edits take effect.
+    for (const [name, allowed] of Object.entries(settings.mcpSamplingAllowed)) {
+      this.mcpManager.setSamplingAllowed(name, allowed);
+    }
     try {
       // Gather editor context (active file, selection, diagnostics) and fold
       // it into the system prompt so the model can see what the user is
