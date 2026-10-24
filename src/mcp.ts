@@ -939,3 +939,65 @@ export function mcpPromptToText(result: McpPromptResult): string {
   }
   return lines.join("\n");
 }
+
+/** A resource discovered from an MCP server via `resources/list`. */
+export interface McpResource {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/** A resource template discovered via `resources/templates/list`. */
+export interface McpResourceTemplate {
+  uriTemplate: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/** The result of an MCP `resources/read`. */
+export interface McpResourceReadResult {
+  contents?: { uri: string; mimeType?: string; text?: string; blob?: string }[];
+  description?: string;
+}
+
+/**
+ * Flatten an MCP `resources/read` result to text: join the `text` of each
+ * content entry with newlines. Blob-only entries (no `text`) are skipped.
+ * Returns `""` when there is no text content.
+ */
+export function mcpResourceReadToText(result: McpResourceReadResult): string {
+  const lines: string[] = [];
+  for (const c of result.contents ?? []) {
+    if (typeof c.text === "string") {
+      lines.push(c.text);
+    }
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Parse `#mcp:<server>/<uri>` resource refs out of chat text. The server is
+ * the first path segment (no whitespace, no `/`); the uri is the rest of the
+ * token (no whitespace). Returns unique `{ server, uri }` pairs in order of
+ * first appearance; `[]` when there are no matches.
+ */
+export function parseMcpResourceRef(
+  text: string,
+): { server: string; uri: string }[] {
+  const re = /#mcp:([^\s/]+)\/(\S+)/g;
+  const seen = new Set<string>();
+  const out: { server: string; uri: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const server = m[1];
+    const uri = m[2];
+    const key = `${server}/${uri}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push({ server, uri });
+    }
+  }
+  return out;
+}
