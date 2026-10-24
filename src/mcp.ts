@@ -270,6 +270,22 @@ export class McpJsonRpc {
   private closed = false;
   /** Invoked for incoming notifications (messages without a pending id). */
   public onNotification?: (method: string, params: unknown) => void;
+  /**
+   * Invoked for incoming server→client JSON-RPC *requests* (a message with
+   * a numeric `id` that is not one of our own pending requests AND a string
+   * `method`). The handler answers via `respond({ result })` or
+   * `respond({ error })`; the response is written back over the same
+   * transport. Purely additive — when unset, such messages are dropped
+   * exactly as before.
+   */
+  public onRequest?: (
+    method: string,
+    params: unknown,
+    respond: (r: {
+      result?: unknown;
+      error?: { code: number; message: string };
+    }) => void,
+  ) => void;
 
   constructor(
     input: NodeJS.ReadableStream,
@@ -307,7 +323,27 @@ export class McpJsonRpc {
     }
     // Only settle pending requests; ignore notifications and unknown ids.
     if (typeof msg.id !== "number" || !this.pending.has(msg.id)) {
-      if (typeof msg.method === "string" && this.onNotification) {
+      if (
+        typeof msg.id === "number" &&
+        typeof msg.method === "string" &&
+        this.onRequest
+      ) {
+        // Server→client request (numeric id not pending + method):
+        // answer via the respond closure.
+        const id = msg.id;
+        this.onRequest(msg.method, msg.params, (r) => {
+          if (this.closed) {
+            return;
+          }
+          const out: Record<string, unknown> = { jsonrpc: "2.0", id };
+          if (r.error !== undefined) {
+            out.error = r.error;
+          } else {
+            out.result = r.result;
+          }
+          this.output.write(JSON.stringify(out) + "\n");
+        });
+      } else if (typeof msg.method === "string" && this.onNotification) {
         this.onNotification(msg.method, msg.params);
       }
       return;
@@ -593,6 +629,37 @@ export class McpClient {
       : undefined;
   }
 
+  /**
+   * Wire (or clear) the handler for server→client `sampling/createMessage`
+   * requests. Any other server-initiated method is answered with a
+   * JSON-RPC `-32601 method not found` error so the server never hangs on
+   * an unanswered request.
+   */
+  setSamplingHandler(
+    cb: ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>) | undefined,
+  ): void {
+    this.rpc.onRequest = cb
+      ? (method, params, respond) => {
+          if (method !== "sampling/createMessage") {
+            respond({
+              error: { code: -32601, message: "method not found" },
+            });
+            return;
+          }
+          cb("", params as McpSamplingParams)
+            .then((result) => respond({ result }))
+            .catch((e: unknown) =>
+              respond({
+                error: {
+                  code: -32000,
+                  message: e instanceof Error ? e.message : String(e),
+                },
+              }),
+            );
+        }
+      : undefined;
+  }
+
   /** Close the RPC channel and kill the child. Idempotent. */
   close(): void {
     if (this.closed) {
@@ -631,6 +698,10 @@ export class McpHttpClient {
   public resourceTemplates: McpResourceTemplate[] = [];
   /** Optional callback for `notifications/progress` SSE messages. */
   private progressCb: McpProgressCallback | undefined;
+  /** Handler for server→client `sampling/createMessage` requests. */
+  private samplingCb:
+    | ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>)
+    | undefined;
 
   constructor(config: McpServerConfig) {
     if (!config.url) {
@@ -770,6 +841,73 @@ export class McpHttpClient {
   }
 
   /**
+   * Wire (or clear) the handler for server→client `sampling/createMessage`
+   * requests. Any other server-initiated method is answered with a
+   * JSON-RPC `-32601 method not found` error so the server never hangs on
+   * an unanswered request.
+   */
+  setSamplingHandler(
+    cb: ((server: string, params: McpSamplingParams) => Promise<McpSamplingResult>) | undefined,
+  ): void {
+    this.samplingCb = cb;
+  }
+
+  /**
+   * Answer a server-initiated JSON-RPC request (detected inside a response
+   * body) by POSTing the response back, echoing the session header. Never
+   * throws — failures are logged nowhere but must not break the client.
+   */
+  private async handleServerRequest(
+    id: number,
+    method: string,
+    params: unknown,
+  ): Promise<void> {
+    let response: { result?: unknown; error?: { code: number; message: string } };
+    if (method !== "sampling/createMessage" || !this.samplingCb) {
+      response = {
+        error: { code: -32601, message: "method not found" },
+      };
+    } else {
+      try {
+        const result = await this.samplingCb("", params as McpSamplingParams);
+        response = { result };
+      } catch (e: unknown) {
+        response = {
+          error: {
+            code: -32000,
+            message: e instanceof Error ? e.message : String(e),
+          },
+        };
+      }
+    }
+    if (this.closed) {
+      return;
+    }
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    };
+    if (this.sessionId) {
+      headers["Mcp-Session-Id"] = this.sessionId;
+    }
+    const out: Record<string, unknown> = { jsonrpc: "2.0", id };
+    if (response.error !== undefined) {
+      out.error = response.error;
+    } else {
+      out.result = response.result;
+    }
+    try {
+      await fetch(this.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(out),
+      });
+    } catch {
+      // Best-effort: a failed response POST must not break the client.
+    }
+  }
+
+  /**
    * POST a JSON-RPC message and resolve with the matching response's
    * `result`. Notifications (no `params` and no id) expect a 202 and
    * resolve with `undefined`.
@@ -833,6 +971,19 @@ export class McpHttpClient {
           !Array.isArray(m.params)
         ) {
           this.progressCb(m.params as McpProgressNotification);
+        }
+        // Server→client request: numeric id that is not our own pending
+        // request AND a string method. Answer it by POSTing back; the
+        // client's own response (if present) is still resolved below.
+        if (
+          isPlainObject(m) &&
+          typeof m.id === "number" &&
+          m.id !== msg.id &&
+          typeof m.method === "string"
+        ) {
+          void this.handleServerRequest(m.id, m.method, m.params).catch(() => {
+            // never break the client on a failed response POST
+          });
         }
       }
       response = messages.find(
