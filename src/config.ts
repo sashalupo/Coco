@@ -91,7 +91,25 @@ export function readSettings(): LlmSettings {
     chatSummarizeEnabled: c.get<boolean>("chat.summarize.enabled", true),
     chatSummarizeThreshold: c.get<number>("chat.summarize.threshold", 0.7),
     mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),
+    mcpSamplingConfirm: c.get<boolean>("mcp.sampling.confirm", true),
+    mcpSamplingAllowed: parseMcpSamplingAllowed(
+      c.get<unknown>("mcp.sampling.allowed", {}),
+    ),
   };
+}
+
+/** Coerce the `llm.mcp.sampling.allowed` setting to a per-server boolean map. */
+function parseMcpSamplingAllowed(raw: unknown): Record<string, boolean> {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return {};
+  }
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "boolean") {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 const DEFAULT_TOOLBAR: ToolbarState = {

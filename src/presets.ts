@@ -132,6 +132,10 @@ export interface LlmSettings {
   chatSummarizeThreshold: number;
   /** MCP server configurations (name → command/args/env). */
   mcpServers: Record<string, McpServerConfig>;
+  /** Ask for confirmation before an MCP server may sample the model (first use per session). */
+  mcpSamplingConfirm: boolean;
+  /** Per-server MCP sampling allow/deny map; absent or true = allow. */
+  mcpSamplingAllowed: Record<string, boolean>;
 }
 
 /** Toolbar override state. `model: null` means "use settings / first model". */
