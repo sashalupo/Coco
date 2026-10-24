@@ -880,6 +880,32 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		cursor: pointer;
 	}
 	.pill-remove:hover { color: var(--fg); background: var(--think-bg); }
+	/* Slash-command dropdown (1.101-2 S-005): above the input row */
+	.slash-dropdown {
+		display: flex;
+		flex-direction: column;
+		max-height: 180px;
+		overflow-y: auto;
+		padding: 4px 8px;
+		border-top: 1px solid var(--border);
+		background: var(--input-bg);
+	}
+	.slash-item {
+		display: block;
+		width: 100%;
+		text-align: left;
+		background: transparent;
+		color: var(--fg);
+		border: none;
+		border-radius: 4px;
+		padding: 4px 8px;
+		font-size: 13px;
+		cursor: pointer;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.slash-item:hover { background: var(--think-bg); }
 	.msg-images {
 		display: flex;
 		gap: 6px;
@@ -1253,6 +1279,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 			<div id="cf-file-list" class="cf-file-list"></div>
 		</div>
 
+		<div id="slash-dropdown" class="slash-dropdown" hidden></div>
 		<div id="pill-strip" class="pill-strip" hidden></div>
 		<div id="attach-strip" class="attach-strip" hidden></div>
 		<div id="vision-warning" class="vision-warning" hidden></div>
@@ -1651,6 +1678,7 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		function doSend() {
 			var text = inputEl.value.trim();
 			if (!text) { return; }
+			hideSlashDropdown();
 			if (streaming) {
 				showSendWhileStreaming(text);
 				return;
@@ -1827,8 +1855,71 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 		inputEl.addEventListener('keydown', function (e) {
 			if (e.key === 'Enter' && !e.shiftKey) {
 				e.preventDefault();
+				// Slash dropdown (1.101-2 S-005): Enter inserts the first
+				// matching command instead of sending while it is open.
+				if (!slashDropdown.hidden) {
+					var matches = slashMatches();
+					if (matches.length > 0) {
+						inputEl.value = matches[0].command + ' ';
+						hideSlashDropdown();
+						inputEl.focus();
+						return;
+					}
+				}
 				doSend();
 			}
+		});
+
+		// --- Slash-command dropdown (1.101-2 S-005) ---
+		// Shown while the input starts with '/' and has no newline. Entries =
+		// built-in /newNotebook + MCP prompts (host 'mcp_prompts' messages)
+		// rendered as /mcp.<server>.<prompt>. Click or Enter inserts the command
+		// + trailing space and refocuses the input; hidden on blur/Escape/send.
+		var slashDropdown = document.getElementById('slash-dropdown');
+		var mcpPromptEntries = [];
+		function slashEntries() {
+			var list = [{ command: '/newNotebook', description: 'Create a new Jupyter notebook' }];
+			mcpPromptEntries.forEach(function (p) {
+				if (!p || !p.server || !p.name) { return; }
+				list.push({ command: '/mcp.' + p.server + '.' + p.name, description: p.description || '' });
+			});
+			return list;
+		}
+		function slashMatches() {
+			var v = inputEl.value;
+			if (v.indexOf('\\n') !== -1) { return []; }
+			var prefix = v.toLowerCase();
+			return slashEntries().filter(function (e) { return e.command.toLowerCase().indexOf(prefix) === 0; });
+		}
+		function hideSlashDropdown() {
+			slashDropdown.hidden = true;
+			slashDropdown.innerHTML = '';
+		}
+		function showSlashDropdown() {
+			var v = inputEl.value;
+			if (v.charAt(0) !== '/' || v.indexOf('\\n') !== -1) { hideSlashDropdown(); return; }
+			var matches = slashMatches();
+			if (matches.length === 0) { hideSlashDropdown(); return; }
+			slashDropdown.innerHTML = '';
+			matches.forEach(function (m) {
+				var btn = document.createElement('button');
+				btn.className = 'slash-item';
+				btn.textContent = m.command;
+				btn.title = m.description || m.command;
+				btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+				btn.addEventListener('click', function () {
+					inputEl.value = m.command + ' ';
+					hideSlashDropdown();
+					inputEl.focus();
+				});
+				slashDropdown.appendChild(btn);
+			});
+			slashDropdown.hidden = false;
+		}
+		inputEl.addEventListener('input', showSlashDropdown);
+		inputEl.addEventListener('blur', hideSlashDropdown);
+		inputEl.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') { hideSlashDropdown(); }
 		});
 
 		// --- Lightweight Markdown renderer (no external deps) ---
@@ -2173,6 +2264,12 @@ export function buildWebviewHtml(init?: Partial<WebviewInit>): string {
 					break;
 				case 'toolsets':
 					setToolsetOptions(msg.toolsets);
+					break;
+				case 'mcp_prompts':
+					// MCP prompts (1.101-2 S-005): host pushes the current prompt
+				// list for the slash-command dropdown.
+					mcpPromptEntries = Array.isArray(msg.prompts) ? msg.prompts : [];
+					if (!slashDropdown.hidden) { showSlashDropdown(); }
 					break;
 				case 'instructions': {
 					const files = (msg.files || []);
