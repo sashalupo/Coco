@@ -88,6 +88,7 @@ export function readSettings(): LlmSettings {
     completionsModel: c.get<string>("completions.model", ""),
     agentAutoFix: c.get<boolean>("agent.autoFix", true),
     agentTrackManualEdits: c.get<boolean>("agent.trackManualEdits", true),
+    agentSuppressAutoSave: c.get<boolean>("agent.suppressAutoSave", true),
     chatSummarizeEnabled: c.get<boolean>("chat.summarize.enabled", true),
     chatSummarizeThreshold: c.get<number>("chat.summarize.threshold", 0.7),
     mcpServers: parseMcpServers(c.get<unknown>("mcp.servers", {})),

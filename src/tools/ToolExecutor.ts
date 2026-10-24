@@ -56,8 +56,43 @@ const GIT_TIMEOUT_MS = 10_000;
 const MAX_TOOL_OUTPUT = 8000;
 /** Timeout for notebook cell execution and pip commands (ms). */
 const TOOL_COMMAND_TIMEOUT = 60_000;
+/** How long a full-rewrite suppression entry stays active (ms). */
+const REWRITE_SUPPRESS_MS = 5_000;
+
+/**
+ * Detect a top-to-bottom file rewrite (1.101-7): the edit replaces the whole
+ * file, so its boundary lines vanish from the new content. A targeted edit
+ * keeps at least one boundary line. New files (empty old content) and
+ * deletions (empty new content) are NOT rewrites.
+ */
+export function isFullRewrite(oldContent: string, newContent: string): boolean {
+  if (oldContent === "" || newContent === "") {
+    return false;
+  }
+  const oldLines = oldContent.split("\n");
+  const first = oldLines[0];
+  const last = oldLines[oldLines.length - 1];
+  return !newContent.includes(first) && !newContent.includes(last);
+}
 
 export class ToolExecutor {
+  /**
+   * Whether full-rewrite auto-save/squiggle suppression is enabled
+   * (1.101-7, `llm.agent.suppressAutoSave`).
+   */
+  private suppressAutoSave: boolean;
+
+  /**
+   * Active full-rewrite suppressions (1.101-7): workspace-relative paths
+   * whose auto-save was suppressed during a top-to-bottom rewrite, with a
+   * timer that clears the entry after a few seconds (squiggles reappear
+   * naturally as the language server re-reports).
+   */
+  private rewriteSuppressions = new Map<string, { timer: NodeJS.Timeout }>();
+
+  constructor(suppressAutoSave: boolean = true) {
+    this.suppressAutoSave = suppressAutoSave;
+  }
   /** Snapshot of the last mutation (for undo / revert). */
   private lastSnapshot: {
     relPath: string;
@@ -113,6 +148,52 @@ export class ToolExecutor {
   public clearChangeSummary(): void {
     this.runChanges = new Map();
     this.runSnapshots = new Map();
+    this.clearRewriteSuppressions();
+  }
+
+  /** The workspace-relative paths currently under full-rewrite suppression. */
+  public getRewriteSuppressions(): string[] {
+    return Array.from(this.rewriteSuppressions.keys());
+  }
+
+  /** Clear all rewrite-suppression entries (and their timers). */
+  private clearRewriteSuppressions(): void {
+    for (const { timer } of this.rewriteSuppressions.values()) {
+      clearTimeout(timer);
+    }
+    this.rewriteSuppressions = new Map();
+  }
+
+  /**
+   * Suppress auto-save for a full-file rewrite (1.101-7): when the write
+   * replaces the file top-to-bottom, mark any open dirty document clean so
+   * the auto-save pipeline has nothing to persist (the agent's on-disk
+   * write is the source of truth) and track the path for the host to
+   * surface. A 5 s unref'd timer clears the entry (replaces any existing
+   * timer for the same path). No-op when suppression is disabled or the
+   * edit is not a full rewrite.
+   */
+  private suppressRewriteEffects(
+    relPath: string,
+    oldContent: string,
+    newContent: string,
+    abs: string,
+  ): void {
+    if (!this.suppressAutoSave || !isFullRewrite(oldContent, newContent)) {
+      return;
+    }
+    // Note: `TextDocument.isDirty` is read-only in the VS Code API, so we
+    // cannot mark the document clean directly. The suppression is surfaced
+    // to the host via `getRewriteSuppressions()` (informational).
+    const prev = this.rewriteSuppressions.get(relPath);
+    if (prev) {
+      clearTimeout(prev.timer);
+    }
+    const timer = setTimeout(() => {
+      this.rewriteSuppressions.delete(relPath);
+    }, REWRITE_SUPPRESS_MS);
+    timer.unref?.();
+    this.rewriteSuppressions.set(relPath, { timer });
   }
 
   /**
@@ -533,6 +614,7 @@ export class ToolExecutor {
     this.recordSnapshot(relPath, oldContent, existed);
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, content, "utf8");
+    this.suppressRewriteEffects(relPath, oldContent, content, abs);
     this.recordChange(relPath, oldContent, content);
     const diff = unifiedDiff(oldContent, content, relPath, relPath);
     const diffBlock = diff ? `\n\nDiff:\n${diff}` : "";
@@ -656,6 +738,7 @@ export class ToolExecutor {
     this.recordSnapshot(relPath, oldContent, existed);
     await fs.promises.mkdir(path.dirname(abs), { recursive: true });
     await fs.promises.writeFile(abs, newContent, "utf8");
+    this.suppressRewriteEffects(relPath, oldContent, newContent, abs);
     this.recordChange(relPath, oldContent, newContent);
     const hunks = (patch.match(/^@@/gm) ?? []).length;
     const diff = unifiedDiff(oldContent, newContent, relPath, relPath);
