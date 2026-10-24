@@ -410,6 +410,10 @@ export class McpClient {
   public tools: McpTool[] = [];
   /** Prompts discovered via best-effort `prompts/list` after the handshake. */
   public prompts: McpPrompt[] = [];
+  /** Resources discovered via best-effort `resources/list` after the handshake. */
+  public resources: McpResource[] = [];
+  /** Resource templates discovered via best-effort `resources/templates/list`. */
+  public resourceTemplates: McpResourceTemplate[] = [];
 
   constructor(config: McpServerConfig, inputs?: Record<string, string>) {
     if (!config.command) {
@@ -478,6 +482,8 @@ export class McpClient {
       // has fully resolved, with its own short timeout, so a server that
       // does not answer `prompts/list` can never stall or fail startup.
       await this.loadPrompts();
+      // Best-effort resource discovery: same pattern as prompts/list.
+      await this.loadResources();
     } catch (e) {
       this.close();
       throw e;
@@ -500,6 +506,33 @@ export class McpClient {
     }
   }
 
+  /**
+   * Best-effort `resources/list` + `resources/templates/list`: any failure
+   * leaves both arrays as `[]` and never throws.
+   */
+  private async loadResources(): Promise<void> {
+    try {
+      const result = (await withTimeout(
+        this.rpc.request("resources/list", {}),
+        2000,
+      )) as { resources?: McpResource[] } | null;
+      this.resources = Array.isArray(result?.resources) ? result!.resources : [];
+    } catch {
+      this.resources = [];
+    }
+    try {
+      const result = (await withTimeout(
+        this.rpc.request("resources/templates/list", {}),
+        2000,
+      )) as { resourceTemplates?: McpResourceTemplate[] } | null;
+      this.resourceTemplates = Array.isArray(result?.resourceTemplates)
+        ? result!.resourceTemplates
+        : [];
+    } catch {
+      this.resourceTemplates = [];
+    }
+  }
+
   /** Fetch a prompt by name via `prompts/get`. */
   getPrompt(
     name: string,
@@ -508,6 +541,13 @@ export class McpClient {
     return this.rpc
       .request("prompts/get", { name, arguments: args })
       .then((r) => r as McpPromptResult);
+  }
+
+  /** Read a resource by URI via `resources/read`. */
+  readResource(uri: string): Promise<McpResourceReadResult> {
+    return this.rpc
+      .request("resources/read", { uri })
+      .then((r) => r as McpResourceReadResult);
   }
 
   /**
@@ -585,6 +625,10 @@ export class McpHttpClient {
   public tools: McpTool[] = [];
   /** Prompts discovered via best-effort `prompts/list` after the handshake. */
   public prompts: McpPrompt[] = [];
+  /** Resources discovered via best-effort `resources/list` after the handshake. */
+  public resources: McpResource[] = [];
+  /** Resource templates discovered via best-effort `resources/templates/list`. */
+  public resourceTemplates: McpResourceTemplate[] = [];
   /** Optional callback for `notifications/progress` SSE messages. */
   private progressCb: McpProgressCallback | undefined;
 
@@ -626,6 +670,8 @@ export class McpHttpClient {
       // has fully resolved, with its own short timeout, so a server that
       // does not answer `prompts/list` can never stall or fail startup.
       await this.loadPrompts();
+      // Best-effort resource discovery: same pattern as prompts/list.
+      await this.loadResources();
     } catch (e) {
       this.close();
       throw e;
@@ -648,6 +694,33 @@ export class McpHttpClient {
     }
   }
 
+  /**
+   * Best-effort `resources/list` + `resources/templates/list`: any failure
+   * leaves both arrays as `[]` and never throws.
+   */
+  private async loadResources(): Promise<void> {
+    try {
+      const result = (await withTimeout(
+        this.post("resources/list", {}),
+        2000,
+      )) as { resources?: McpResource[] } | null;
+      this.resources = Array.isArray(result?.resources) ? result!.resources : [];
+    } catch {
+      this.resources = [];
+    }
+    try {
+      const result = (await withTimeout(
+        this.post("resources/templates/list", {}),
+        2000,
+      )) as { resourceTemplates?: McpResourceTemplate[] } | null;
+      this.resourceTemplates = Array.isArray(result?.resourceTemplates)
+        ? result!.resourceTemplates
+        : [];
+    } catch {
+      this.resourceTemplates = [];
+    }
+  }
+
   /** Fetch a prompt by name via `prompts/get`. */
   getPrompt(
     name: string,
@@ -655,6 +728,13 @@ export class McpHttpClient {
   ): Promise<McpPromptResult> {
     return this.post("prompts/get", { name, arguments: args }).then(
       (r) => r as McpPromptResult,
+    );
+  }
+
+  /** Read a resource by URI via `resources/read`. */
+  readResource(uri: string): Promise<McpResourceReadResult> {
+    return this.post("resources/read", { uri }).then(
+      (r) => r as McpResourceReadResult,
     );
   }
 
